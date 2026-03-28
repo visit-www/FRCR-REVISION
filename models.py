@@ -3378,3 +3378,20 @@ class RadIQQuery(db.Model):
 
     def __repr__(self):
         return f'<RadIQQuery {self.id} cat={self.category} user={self.user_id}>'
+
+
+class PiiOverrideLog(db.Model):
+    """Audit trail for PII guard overrides — when users choose 'Send Anyway'."""
+    __tablename__ = 'pii_override_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    flagged_types = db.Column(db.Text, nullable=False)  # comma-separated PII types
+    flagged_count = db.Column(db.Integer, nullable=False, default=0)
+    target_url = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('pii_overrides', lazy='dynamic'))
+
+    def __repr__(self):
+        return f'<PiiOverrideLog {self.id} user={self.user_id} types={self.flagged_types}>'

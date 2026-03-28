@@ -131,7 +131,7 @@
         },
         {
             type: 'Doctor / Clinician Name',
-            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){0,3}/gi,
+            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){0,3}/gi,
             description: 'Referring/reporting clinician name detected'
         },
         {
@@ -214,10 +214,7 @@
         return { hasPII: matches.length > 0, matches: matches };
     }
 
-    function redact(text, matches) {
-        if (!matches || matches.length === 0) return text;
-
-        // Deduplicate by match text, keep longest matches first
+    function _dedupeMatches(matches) {
         var seen = new Set();
         var unique = [];
         for (var i = 0; i < matches.length; i++) {
@@ -228,18 +225,35 @@
             }
         }
         // Sort by match length descending — replace longer matches first
-        // to prevent partial replacement of substrings
         unique.sort(function(a, b) { return b.match.length - a.match.length; });
+        return unique;
+    }
 
+    function redact(text, matches) {
+        if (!matches || matches.length === 0) return text;
+        var unique = _dedupeMatches(matches);
         var result = text;
         for (var i = 0; i < unique.length; i++) {
             var matchText = unique[i].match;
             if (matchText && result.indexOf(matchText) !== -1) {
-                // Replace ALL occurrences of this exact match text
                 result = result.split(matchText).join('[REDACTED]');
             }
         }
         return result;
+    }
+
+    function remove(text, matches) {
+        if (!matches || matches.length === 0) return text;
+        var unique = _dedupeMatches(matches);
+        var result = text;
+        for (var i = 0; i < unique.length; i++) {
+            var matchText = unique[i].match;
+            if (matchText && result.indexOf(matchText) !== -1) {
+                result = result.split(matchText).join('');
+            }
+        }
+        // Clean up leftover whitespace (double spaces, leading/trailing)
+        return result.replace(/  +/g, ' ').trim();
     }
 
     // ======================== DEEP SCAN JSON ========================
@@ -271,20 +285,17 @@
         return allMatches;
     }
 
-    function redactObject(obj, matches) {
+    function _applyToObject(obj, matches, transformFn) {
         if (!matches || matches.length === 0) return obj;
 
-        // Deep clone
         const clone = JSON.parse(JSON.stringify(obj));
 
-        // Group matches by field path
         const byField = {};
         matches.forEach(m => {
             if (!byField[m.field]) byField[m.field] = [];
             byField[m.field].push(m);
         });
 
-        // Apply redactions
         for (const [path, fieldMatches] of Object.entries(byField)) {
             const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.');
             let target = clone;
@@ -295,7 +306,7 @@
             if (target) {
                 const lastKey = parts[parts.length - 1];
                 if (typeof target[lastKey] === 'string') {
-                    target[lastKey] = redact(target[lastKey], fieldMatches);
+                    target[lastKey] = transformFn(target[lastKey], fieldMatches);
                 }
             }
         }
@@ -303,10 +314,41 @@
         return clone;
     }
 
+    function redactObject(obj, matches) {
+        return _applyToObject(obj, matches, redact);
+    }
+
+    function removeObject(obj, matches) {
+        return _applyToObject(obj, matches, remove);
+    }
+
     // ======================== WARNING UI ========================
 
+    const TYPE_COLORS = {
+        'NHS Number': '#dc3545',
+        'US SSN': '#dc3545',
+        'MRN / Hospital ID': '#dc3545',
+        'Date of Birth': '#e96304',
+        'UK Postcode': '#6b46c1',
+        'Phone Number': '#0d6efd',
+        'Email Address': '#0d6efd',
+        'Patient Name': '#dc3545',
+        'Doctor / Clinician Name': '#e96304',
+        'Patient Age': '#e96304',
+        'Patient Gender': '#e96304',
+        'Patient Address': '#6b46c1',
+        'UK National Insurance Number': '#dc3545',
+        'IP Address': '#6b46c1',
+        'Aadhaar Number': '#dc3545',
+        'PAN Card': '#dc3545',
+        'Possible Patient ID': '#dc3545'
+    };
+
+    function _escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     function getWarningHTML(matches) {
-        // Deduplicate by type+match
         const seen = new Set();
         const unique = matches.filter(m => {
             const key = m.type + ':' + m.match;
@@ -315,28 +357,8 @@
             return true;
         });
 
-        const typeColors = {
-            'NHS Number': '#dc3545',
-            'US SSN': '#dc3545',
-            'MRN / Hospital ID': '#dc3545',
-            'Date of Birth': '#e96304',
-            'UK Postcode': '#6b46c1',
-            'Phone Number': '#0d6efd',
-            'Email Address': '#0d6efd',
-            'Patient Name': '#dc3545',
-            'Doctor / Clinician Name': '#e96304',
-            'Patient Age': '#e96304',
-            'Patient Gender': '#e96304',
-            'Patient Address': '#6b46c1',
-            'UK National Insurance Number': '#dc3545',
-            'IP Address': '#6b46c1',
-            'Aadhaar Number': '#dc3545',
-            'PAN Card': '#dc3545',
-            'Possible Patient ID': '#dc3545'
-        };
-
         return unique.map(m => {
-            const color = typeColors[m.type] || '#6c757d';
+            const color = TYPE_COLORS[m.type] || '#6c757d';
             const masked = m.match.substring(0, 3) + '***';
             return '<div class="d-flex align-items-center mb-2">' +
                 '<span class="badge me-2" style="background:' + color + '; font-size: 0.7rem;">' + m.type + '</span>' +
@@ -345,7 +367,88 @@
         }).join('');
     }
 
-    function showPIIModal(matches) {
+    /**
+     * Build a preview of the source text with all PII highlighted.
+     * Extracts string values from the JSON body object and renders them
+     * with detected PII wrapped in highlighted spans.
+     */
+    function getHighlightedPreview(body, matches) {
+        if (!matches || matches.length === 0) return '';
+
+        // Group matches by field
+        const byField = {};
+        matches.forEach(m => {
+            if (!byField[m.field]) byField[m.field] = [];
+            byField[m.field].push(m);
+        });
+
+        var html = '';
+        for (const [field, fieldMatches] of Object.entries(byField)) {
+            // Resolve field value from body
+            const parts = field.replace(/\[(\d+)\]/g, '.$1').split('.');
+            let val = body;
+            for (let i = 0; i < parts.length; i++) {
+                if (!val) break;
+                val = val[parts[i]];
+            }
+            if (typeof val !== 'string' || !val) continue;
+
+            // Deduplicate matches for this field
+            const seen = new Set();
+            const uniqueField = fieldMatches.filter(m => {
+                if (seen.has(m.match)) return false;
+                seen.add(m.match);
+                return true;
+            });
+            // Sort by length descending for replacement
+            uniqueField.sort((a, b) => b.match.length - a.match.length);
+
+            // Build highlighted text: replace PII with highlighted spans
+            // Use placeholders to avoid double-replacement
+            var processed = val;
+            var placeholders = [];
+            for (var i = 0; i < uniqueField.length; i++) {
+                var m = uniqueField[i];
+                var color = TYPE_COLORS[m.type] || '#6c757d';
+                var placeholder = '\x00PII' + i + '\x00';
+                var replacement = '<span class="pii-highlight" style="background:' + color + '20; border: 1.5px solid ' + color + '; border-radius: 3px; padding: 0 3px;">' +
+                    _escapeHtml(m.match) +
+                    '<sup class="pii-highlight-label" style="color:' + color + '; font-size:0.6rem; font-weight:700; margin-left:2px;">' + m.type + '</sup>' +
+                    '</span>';
+                placeholders.push({ placeholder: placeholder, replacement: replacement });
+                processed = processed.split(m.match).join(placeholder);
+            }
+
+            // Escape HTML in non-PII text, then restore placeholders
+            processed = _escapeHtml(processed);
+            for (var i = 0; i < placeholders.length; i++) {
+                processed = processed.split(_escapeHtml(placeholders[i].placeholder)).join(placeholders[i].replacement);
+            }
+
+            // Truncate long text — show first ~500 chars
+            var lines = processed.split('\n');
+            var truncated = false;
+            var output = '';
+            var charCount = 0;
+            for (var j = 0; j < lines.length; j++) {
+                charCount += lines[j].length;
+                if (charCount > 500 && j > 0) {
+                    truncated = true;
+                    break;
+                }
+                output += (j > 0 ? '<br>' : '') + lines[j];
+            }
+            if (truncated) output += '<br><span class="text-muted">...</span>';
+
+            html += '<div class="pii-preview-block">' +
+                '<div class="pii-preview-text">' + output + '</div>' +
+                '</div>';
+        }
+
+        return html;
+    }
+
+    function showPIIModal(matches, body) {
         return new Promise(function(resolve) {
             // Remove existing modal if any
             var existing = document.getElementById('piiGuardModal');
@@ -355,11 +458,17 @@
                 existing.remove();
             }
 
+            // Build preview with highlighted PII if body is available
+            var previewHTML = '';
+            if (body) {
+                previewHTML = getHighlightedPreview(body, matches);
+            }
+
             // Build Bootstrap modal following app design (scoped via .app-content-modal.pii-guard-modal)
             var wrapper = document.createElement('div');
             wrapper.innerHTML =
                 '<div class="modal fade app-content-modal pii-guard-modal" id="piiGuardModal" tabindex="-1" data-bs-backdrop="static">' +
-                  '<div class="modal-dialog modal-dialog-centered">' +
+                  '<div class="modal-dialog modal-dialog-centered' + (previewHTML ? ' modal-lg' : '') + '">' +
                     '<div class="modal-content">' +
                       '<div class="modal-header">' +
                         '<h5 class="modal-title">' +
@@ -368,23 +477,42 @@
                         '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
                       '</div>' +
                       '<div class="modal-body">' +
-                        '<p class="text-muted small mb-3">' +
-                          'The following patient-identifiable information was found in your input.' +
+                        '<p class="text-muted small mb-2">' +
+                          'The following patient-identifiable information was found in your input. Highlighted items will be affected by your choice.' +
                         '</p>' +
-                        '<div class="pii-matches-list mb-3">' +
-                          getWarningHTML(matches) +
+                        (previewHTML
+                          ? '<div class="pii-preview-container mb-3">' + previewHTML + '</div>'
+                          : '<div class="pii-matches-list mb-3">' + getWarningHTML(matches) + '</div>'
+                        ) +
+                        '<div class="d-flex align-items-start gap-2 small text-muted mb-3" style="line-height:1.4;">' +
+                          '<i class="fas fa-info-circle mt-1" style="flex-shrink:0;"></i>' +
+                          '<span><strong>Redact</strong> replaces highlighted data with [REDACTED]. <strong>Remove</strong> deletes it entirely.</span>' +
                         '</div>' +
-                        '<p class="small text-muted mb-0">' +
-                          '<i class="fas fa-info-circle me-1"></i>' +
-                          'Patient data must not be entered into this application. Choose an action below.' +
-                        '</p>' +
+                        '<div class="pii-override-section">' +
+                          '<div class="form-check mb-1">' +
+                            '<input class="form-check-input" type="checkbox" id="piiOverrideCheck">' +
+                            '<label class="form-check-label small" for="piiOverrideCheck">' +
+                              'I confirm this does not contain patient-identifiable information' +
+                            '</label>' +
+                          '</div>' +
+                          '<div class="d-flex align-items-center gap-1 mb-0" style="margin-left: 1.5rem;">' +
+                            '<i class="fas fa-exclamation-triangle" style="color: #e96304; font-size: 0.65rem;"></i>' +
+                            '<span class="text-muted" style="font-size: 0.7rem;">Overrides are logged in the system audit trail</span>' +
+                          '</div>' +
+                        '</div>' +
                       '</div>' +
                       '<div class="modal-footer">' +
                         '<button type="button" class="btn btn-pii-cancel" id="piiCancelBtn">' +
                           '<i class="fas fa-times me-1"></i>Cancel' +
                         '</button>' +
-                        '<button type="button" class="btn btn-pii-redact" id="piiRedactBtn">' +
-                          '<i class="fas fa-eraser me-1"></i>Remove &amp; Continue' +
+                        '<button type="button" class="btn btn-pii-override" id="piiOverrideBtn" disabled title="Confirm checkbox above to enable">' +
+                          '<i class="fas fa-forward me-1"></i>Send Anyway' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-pii-redact" id="piiRedactBtn" title="Replace detected data with [REDACTED] and continue">' +
+                          '<i class="fas fa-marker me-1"></i>Redact' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-pii-remove" id="piiRemoveBtn" title="Delete detected data entirely and continue">' +
+                          '<i class="fas fa-eraser me-1"></i>Remove' +
                         '</button>' +
                       '</div>' +
                     '</div>' +
@@ -397,10 +525,27 @@
             var bsModal = new bootstrap.Modal(modalEl);
             var resolved = false;
 
+            // Checkbox enables/disables override button
+            document.getElementById('piiOverrideCheck').addEventListener('change', function() {
+                document.getElementById('piiOverrideBtn').disabled = !this.checked;
+            });
+
+            document.getElementById('piiOverrideBtn').addEventListener('click', function() {
+                resolved = true;
+                bsModal.hide();
+                resolve('override');
+            });
+
             document.getElementById('piiRedactBtn').addEventListener('click', function() {
                 resolved = true;
                 bsModal.hide();
                 resolve('redact');
+            });
+
+            document.getElementById('piiRemoveBtn').addEventListener('click', function() {
+                resolved = true;
+                bsModal.hide();
+                resolve('remove');
             });
 
             document.getElementById('piiCancelBtn').addEventListener('click', function() {
@@ -460,19 +605,41 @@
                 return originalFetch.call(this, url, options);
             }
 
-            // PII detected — show modal
-            const action = await showPIIModal(matches);
+            // PII detected — show modal with highlighted preview
+            const action = await showPIIModal(matches, body);
 
             if (action === 'cancel') {
-                // Return a fake response to prevent the request
                 return new Response(JSON.stringify({
                     error: 'Submission cancelled — patient data detected.',
                     pii_blocked: true
                 }), { status: 422, headers: { 'Content-Type': 'application/json' } });
             }
 
-            // Redact and continue
-            const cleaned = redactObject(body, matches);
+            if (action === 'override') {
+                // Log the override to audit trail (fire-and-forget)
+                var flaggedTypes = [];
+                var seen = {};
+                matches.forEach(function(m) {
+                    if (!seen[m.type]) { seen[m.type] = true; flaggedTypes.push(m.type); }
+                });
+                originalFetch.call(this, '/api/pii-override-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        flagged_types: flaggedTypes,
+                        flagged_count: matches.length,
+                        target_url: urlStr
+                    })
+                }).catch(function() {});
+                // Send original body unchanged
+                return originalFetch.call(this, url, options);
+            }
+
+            // Redact ([REDACTED] placeholder) or Remove (delete entirely)
+            const cleaned = action === 'remove'
+                ? removeObject(body, matches)
+                : redactObject(body, matches);
             options.body = JSON.stringify(cleaned);
             return originalFetch.call(this, url, options);
         };
@@ -483,8 +650,10 @@
     window.PIIGuard = {
         scan: scan,
         redact: redact,
+        remove: remove,
         scanObject: scanObject,
         redactObject: redactObject,
+        removeObject: removeObject,
         getWarningHTML: getWarningHTML,
         showPIIModal: showPIIModal,
         attachToFetch: attachToFetch,

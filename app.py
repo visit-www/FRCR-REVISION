@@ -87,6 +87,7 @@ from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
 from models import ContentIntelligence, UserGeneratedIntelligence  # Intelligence layer
 from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, content_links  # Knowledge linking
+from models import PiiOverrideLog  # PII guard audit trail
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -1370,6 +1371,26 @@ def tour_complete():
     """Mark onboarding tour as seen for current user."""
     current_user.has_seen_tour = True
     db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/pii-override-log', methods=['POST'])
+@login_required
+def pii_override_log():
+    """Log a PII guard override for audit trail."""
+    data = request.get_json(silent=True) or {}
+    try:
+        log = PiiOverrideLog(
+            user_id=current_user.id,
+            flagged_types=', '.join(data.get('flagged_types', [])),
+            flagged_count=data.get('flagged_count', 0),
+            target_url=data.get('target_url', '')[:500]
+        )
+        db.session.add(log)
+        db.session.commit()
+        logger.info(f'PII override logged: user={current_user.id} types={log.flagged_types} url={log.target_url}')
+    except Exception as e:
+        logger.warning(f'Failed to log PII override: {e}')
     return jsonify({'success': True})
 
 
