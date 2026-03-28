@@ -32,7 +32,7 @@
     <div class="row g-4 mb-4">
         <!-- Smart Reporter -->
         <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/smart-reporter'">
+            <div class="card h-100 border-0 shadow-sm hover-card tour-card-reporter" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/smart-reporter'">
                 <div class="card-body d-flex flex-column align-items-center text-center p-4">
                     <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(233,99,4,0.1); display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-file-medical" style="font-size: 1.6rem; color: #e96304;"></i>
@@ -48,7 +48,7 @@
 
         <!-- RadIQ -->
         <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/radiq'">
+            <div class="card h-100 border-0 shadow-sm hover-card tour-card-radiq" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/radiq'">
                 <div class="card-body d-flex flex-column align-items-center text-center p-4">
                     <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(94,137,158,0.12); display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-robot" style="font-size: 1.6rem; color: #5E899E;"></i>
@@ -64,7 +64,7 @@
 
         <!-- Your Progress -->
         <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/practice'">
+            <div class="card h-100 border-0 shadow-sm hover-card tour-card-progress" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/practice'">
                 <div class="card-body d-flex flex-column align-items-center text-center p-4">
                     <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(168,213,186,0.25); display: flex; align-items: center; justify-content: center;">
                         <i class="fas fa-brain" style="font-size: 1.6rem; color: #198754;"></i>
@@ -95,7 +95,7 @@
     </div>
 
     <!-- Quick Access Pills -->
-    <div class="text-center mb-4">
+    <div class="text-center mb-4 tour-quick-access">
         <div class="d-flex flex-wrap justify-content-center gap-2">
             <a href="/cases" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-book-medical me-1"></i>Cases</a>
             <a href="/tnm" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-layer-group me-1"></i>TNM Staging</a>
@@ -116,6 +116,13 @@
         <span class="mx-2">|</span>
         <i class="fas fa-check-circle me-1" style="color: #5E899E;"></i>{{ reviewed_count }} cases reviewed
     </div>
+
+    <!-- Tour Trigger -->
+    <div class="text-center mt-3">
+        <button class="tour-trigger-btn" onclick="window.appTour && window.appTour.start()">
+            <i class="fas fa-route"></i>Take a Tour
+        </button>
+    </div>
 </div>
 
 <style>
@@ -134,6 +141,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init dashboard search
     if (window.initGlobalSearch) {
         initGlobalSearch('dashboardSearch', 'dashboardSearchResults');
+    }
+
+    // Dashboard tour
+    window.appTour = new OnboardingTour([
+        { title: 'Welcome to RadInsights!', text: 'Let us show you around. This quick tour highlights the key areas of your dashboard.', selector: null, position: 'center', icon: 'fas fa-hand-sparkles' },
+        { title: 'Intelligent Search', text: 'Search across cases, algorithms, templates, tools, protocols, pearls and more — all from one place.', selector: '#dashboardSearch', position: 'bottom', icon: 'fas fa-search' },
+        { title: 'Smart Reporter', text: 'AI-guided scan reporting with structured templates, decision trees, and instant report generation powered by RadInsight Intelligence.', selector: '.tour-card-reporter', position: 'bottom', icon: 'fas fa-file-medical' },
+        { title: 'RadIQ — Clinical Advisory', text: 'Six powerful AI tools: GP replies, complaint responses, incident reports, protocol justification, imaging protocols, and clinical queries.', selector: '.tour-card-radiq', position: 'bottom', icon: 'fas fa-robot' },
+        { title: 'Your Progress', text: 'Track your learning with spaced-repetition Q&A, SBA and Viva self-assessment scores, and daily study targets.', selector: '.tour-card-progress', position: 'bottom', icon: 'fas fa-brain' },
+        { title: 'Navigation Bar', text: 'Quick access to Practice, Learn (Cases, Oncology, Knowledge Hub), Report, RadIQ, and Resources (Tools, Protocols, TNM Calculators).', selector: '.tool-nav-bar', position: 'bottom', icon: 'fas fa-compass' },
+        { title: 'Quick Access', text: 'Jump directly to any section — Cases, TNM Staging, Knowledge Hub, Calculators, Tools, Protocols, SBA and Viva practice.', selector: '.tour-quick-access', position: 'top', icon: 'fas fa-bolt' },
+        { title: 'You\'re All Set!', text: 'Explore at your own pace. You can restart this tour anytime from the button below.', selector: null, position: 'center', icon: 'fas fa-check-circle' }
+    ], { storageKey: 'radinsights_tour_seen', notifyServer: true });
+
+    // Auto-trigger tour for first-time users
+    if (!window.appTour.hasSeen()) {
+        setTimeout(function() { window.appTour.start(); }, 800);
     }
 
     // Fetch practice stats

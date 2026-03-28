@@ -250,6 +250,110 @@
 
         .landing-footer a:hover { text-decoration: underline; }
 
+        /* ── Pricing Cards ── */
+        .pricing-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 32px 28px;
+            height: 100%;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.04);
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .pricing-card-featured {
+            border: 2px solid #6b46c1;
+            box-shadow: 0 4px 20px rgba(107,70,193,0.15);
+        }
+
+        .pricing-popular {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #6b46c1;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 16px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pricing-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .pricing-price {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--brand-text-primary);
+            margin-bottom: 20px;
+        }
+
+        .pricing-price span {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--brand-text-secondary);
+        }
+
+        .pricing-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px;
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        .pricing-features li {
+            font-size: 0.88rem;
+            color: var(--brand-text-secondary);
+            padding: 6px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .pricing-features li i {
+            color: var(--brand-success);
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .btn-pricing {
+            display: block;
+            padding: 11px 0;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-pricing:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .hero { padding: 50px 0 45px; }
@@ -273,6 +377,9 @@
             <div class="hero-cta">
                 <a href="/auth/login" class="btn-hero-primary">Sign In</a>
                 <a href="/auth/register" class="btn-hero-secondary">Create Account</a>
+                <a href="#" class="btn-hero-secondary" onclick="event.preventDefault(); window.landingTour && window.landingTour.start();">
+                    <i class="fas fa-route me-1"></i>Take a Tour
+                </a>
             </div>
             <div style="margin-top: 16px;">
                 <a href="/auth/google" class="btn-hero-google">
@@ -304,70 +411,84 @@
         </div>
     </section>
 
-    <!-- Four Pillars -->
-    <section class="section section-alt">
+    <!-- Five Pillars -->
+    <section id="pillars-section" class="section section-alt">
         <div class="container">
             <div class="text-center mb-2">
-                <h2 class="section-title">Four Pillars</h2>
-                <p class="section-subtitle mx-auto">From case-based learning to AI-driven reporting, every feature is built with the working radiologist in mind.</p>
+                <h2 class="section-title">Five Pillars</h2>
+                <p class="section-subtitle mx-auto">From case-based learning to AI-driven reporting and clinical advisory, every feature is built with the working radiologist in mind.</p>
             </div>
 
-            <div class="row g-4">
+            <div class="row g-4 justify-content-center">
                 <!-- Pillar 1: Cases -->
-                <div class="col-md-6 col-lg-3">
-                    <div class="pillar-card">
+                <div class="col-md-6 col-lg-4">
+                    <div id="pillar-cases" class="pillar-card">
                         <div class="pillar-icon" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
                             <i class="fas fa-book-medical"></i>
                         </div>
                         <h3>Case-Based Learning</h3>
                         <p>
-                            Each case bridges the gap between textbook knowledge and clinical practice. Structured as FRCR 2B viva-style questions,
-                            cases are crafted to be easy to read, understand, retain, and apply. Enhanced with image stacks, article links,
+                            Each case bridges textbook knowledge and clinical practice. Structured as FRCR 2B viva-style questions,
+                            enhanced with image stacks, article links, spaced-repetition Q&A, SBA and Viva self-assessment,
                             note-taking, and Notion integration.
                         </p>
                     </div>
                 </div>
 
                 <!-- Pillar 2: Oncology -->
-                <div class="col-md-6 col-lg-3">
-                    <div class="pillar-card">
+                <div class="col-md-6 col-lg-4">
+                    <div id="pillar-oncology" class="pillar-card">
                         <div class="pillar-icon" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
                             <i class="fas fa-dna"></i>
                         </div>
                         <h3>Oncology & TNM Staging</h3>
                         <p>
                             Oncology does not need to be intimidating. The TNM Essentials module is a one-stop resource for staging concepts.
-                            Over 30 dedicated calculators enable real-time staging with clear rationale and concise crash courses on
-                            TNM classification.
+                            Over 30 dedicated calculators enable real-time staging with clear rationale and concise crash courses.
                         </p>
                     </div>
                 </div>
 
-                <!-- Pillar 3: Smart Reporting -->
-                <div class="col-md-6 col-lg-3">
-                    <div class="pillar-card">
+                <!-- Pillar 3: RadInsight Intelligence -->
+                <div class="col-md-6 col-lg-4">
+                    <div id="pillar-intelligence" class="pillar-card">
                         <div class="pillar-icon" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
                             <i class="fas fa-file-medical"></i>
                         </div>
-                        <h3>AI-Powered Reporting</h3>
+                        <h3>RadInsight Intelligence</h3>
                         <p>
-                            RadInsights Intelligence reviews your report like a skilled consultant at your side. It highlights strengths,
-                            areas for improvement, and provides targeted teaching points. Complemented by an ever-growing library of
-                            structured templates and interactive decision-tree algorithms.
+                            Your AI reporting companion. Reviews reports like a skilled consultant, highlighting strengths,
+                            areas for improvement, and targeted teaching points. Complemented by structured templates
+                            and interactive decision-tree algorithms.
                         </p>
                     </div>
                 </div>
 
-                <!-- Pillar 4: Resources -->
-                <div class="col-md-6 col-lg-3">
-                    <div class="pillar-card">
+                <!-- Pillar 4: RadIQ -->
+                <div class="col-md-6 col-lg-4">
+                    <div id="pillar-radiq" class="pillar-card">
+                        <div class="pillar-icon" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3>RadIQ Clinical Advisory</h3>
+                        <p>
+                            Six powerful AI tools in one: draft GP referral responses, handle patient complaints,
+                            generate Datix-style incident reports, justify radiographer protocol requests,
+                            advise on imaging protocols and contrast, and answer general clinical queries.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pillar 5: Resources -->
+                <div class="col-md-6 col-lg-4">
+                    <div id="pillar-resources" class="pillar-card">
                         <div class="pillar-icon" style="background: rgba(168,213,186,0.25); color: #2d8a5e;">
                             <i class="fas fa-book-open"></i>
                         </div>
                         <h3>Clinical Resources</h3>
                         <p>
-                            A comprehensive resource hub with clinical calculators, contrast media protocols, adverse reaction management,
-                            and incidental finding tools. Guidelines and safety protocols are organized for instant access during reporting.
+                            A comprehensive hub with clinical calculators, contrast media protocols, adverse reaction management,
+                            and incidental finding tools. Guidelines and safety protocols organized for instant access during reporting.
                         </p>
                     </div>
                 </div>
@@ -411,6 +532,75 @@
         </div>
     </section>
 
+    <!-- Pricing Plans -->
+    <section id="pricing-section" class="section section-alt">
+        <div class="container">
+            <div class="text-center mb-2">
+                <h2 class="section-title">Choose Your Plan</h2>
+                <p class="section-subtitle mx-auto">Start free, upgrade as you grow. Every plan includes full access to core learning resources.</p>
+            </div>
+
+            <div class="row g-4 justify-content-center">
+                <!-- Free -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card">
+                        <div class="pricing-badge" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
+                            <i class="fas fa-compass me-1"></i>Free
+                        </div>
+                        <div class="pricing-price">Free</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Browse cases & Knowledge Hub</li>
+                            <li><i class="fas fa-check"></i>SBA & Viva practice (5/day)</li>
+                            <li><i class="fas fa-check"></i>All 39 TNM Calculators</li>
+                            <li><i class="fas fa-check"></i>Clinical Protocols & Tools</li>
+                            <li><i class="fas fa-check"></i>3 AI requests/day</li>
+                        </ul>
+                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Get Started</a>
+                    </div>
+                </div>
+
+                <!-- Standard (Mid) -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card">
+                        <div class="pricing-badge" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
+                            <i class="fas fa-user-md me-1"></i>Standard
+                        </div>
+                        <div class="pricing-price">&pound;9<span>/month</span></div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Free</li>
+                            <li><i class="fas fa-check"></i>Unlimited cases & practice</li>
+                            <li><i class="fas fa-check"></i>Full template & algorithm library</li>
+                            <li><i class="fas fa-check"></i>Notes & Highlights</li>
+                            <li><i class="fas fa-check"></i>25 AI requests/day</li>
+                            <li><i class="fas fa-check"></i>Save personal templates</li>
+                        </ul>
+                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">Start Free Trial</a>
+                    </div>
+                </div>
+
+                <!-- Elite (Top) -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card pricing-card-featured">
+                        <div class="pricing-popular">Most Popular</div>
+                        <div class="pricing-badge" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
+                            <i class="fas fa-crown me-1"></i>Elite
+                        </div>
+                        <div class="pricing-price">&pound;19<span>/month</span></div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Standard</li>
+                            <li><i class="fas fa-check"></i>50+ AI requests/day</li>
+                            <li><i class="fas fa-check"></i>Full RadIQ (all 6 tools)</li>
+                            <li><i class="fas fa-check"></i>Notion & Anki integration</li>
+                            <li><i class="fas fa-check"></i>Priority content requests</li>
+                            <li><i class="fas fa-check"></i>Early access to new features</li>
+                        </ul>
+                        <a href="/auth/register" class="btn-pricing" style="background: #6b46c1; color: #fff;">Start Free Trial</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- CTA -->
     <section class="cta-section">
         <div class="container">
@@ -439,5 +629,68 @@
         </div>
     </footer>
 
+    <!-- Tour CSS + JS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='onboarding-tour.js') }}"></script>
+    <script>
+    window.landingTour = new OnboardingTour([
+        {
+            title: 'Welcome to RadInsights!',
+            text: 'Let us walk you through the platform. RadInsights is built by radiologists, for radiologists — combining AI with clinical expertise.',
+            selector: null,
+            position: 'center',
+            icon: 'fas fa-hand-sparkles'
+        },
+        {
+            title: 'Case-Based Learning',
+            text: 'FRCR 2B viva-style cases with image stacks, Q&A flashcards, SBA and Viva self-assessment, notes, and Notion integration.',
+            selector: '#pillar-cases',
+            position: 'bottom',
+            icon: 'fas fa-book-medical'
+        },
+        {
+            title: 'Oncology & TNM Staging',
+            text: 'A dedicated oncology module with over 30 interactive TNM staging calculators and concise crash courses on classification.',
+            selector: '#pillar-oncology',
+            position: 'bottom',
+            icon: 'fas fa-dna'
+        },
+        {
+            title: 'RadInsight Intelligence',
+            text: 'AI-powered report review that acts like a skilled consultant — highlighting strengths, improvements, and teaching points, with structured templates and decision-tree algorithms.',
+            selector: '#pillar-intelligence',
+            position: 'bottom',
+            icon: 'fas fa-file-medical'
+        },
+        {
+            title: 'RadIQ — Clinical Advisory',
+            text: 'Six AI tools in one: GP referral replies, complaint responses, Datix-style incident reports, protocol justification, imaging protocols, and clinical queries.',
+            selector: '#pillar-radiq',
+            position: 'bottom',
+            icon: 'fas fa-robot'
+        },
+        {
+            title: 'Clinical Resources',
+            text: 'Instant access to radiology tools, contrast protocols, adverse reaction management, safety guidelines, and incidental finding calculators.',
+            selector: '#pillar-resources',
+            position: 'top',
+            icon: 'fas fa-book-open'
+        },
+        {
+            title: 'Choose Your Plan',
+            text: 'Start free with 3 AI requests per day. Upgrade to Standard or Elite for unlimited learning and full AI access.',
+            selector: '#pricing-section',
+            position: 'top',
+            icon: 'fas fa-tags'
+        },
+        {
+            title: 'Ready to Get Started?',
+            text: 'Create a free account in seconds — or sign in with Google. Your radiology learning journey begins here.',
+            selector: null,
+            position: 'center',
+            icon: 'fas fa-rocket'
+        }
+    ], { storageKey: 'radinsights_landing_tour', notifyServer: false });
+    </script>
 </body>
 </html>

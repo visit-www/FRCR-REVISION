@@ -917,6 +917,9 @@ with app.app_context():
         # -- user: Google OAuth --
         _add_col_if_missing('user', 'google_id', 'google_id VARCHAR(255)')
 
+        # -- user: Onboarding tour --
+        _add_col_if_missing('user', 'has_seen_tour', 'has_seen_tour BOOLEAN DEFAULT false NOT NULL')
+
         # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --
         for _token_col in ['notion_access_token', 'anki_api_key']:
             _widen_col_to_text('user', _token_col)
@@ -1359,6 +1362,15 @@ def dashboard():
                          highlights_count=highlights_count,
                          reviewed_count=reviewed_count,
                          case_count=case_count)
+
+
+@app.route('/api/tour/complete', methods=['POST'])
+@login_required
+def tour_complete():
+    """Mark onboarding tour as seen for current user."""
+    current_user.has_seen_tour = True
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 # ==================== SUGGEST A CASE: Student-powered case contribution ====================
