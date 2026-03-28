@@ -461,7 +461,7 @@
                             <i class="fas fa-spell-check me-1"></i>Quick Check
                         </button>
                         <!-- Finalize -->
-                        <button class="btn btn-sm btn-outline-success" id="btnFinalizeToolbar" onclick="document.getElementById('askClaudeInput').value='Finalize this report'; document.getElementById('askClaudeInput').focus();">
+                        <button class="btn btn-sm btn-outline-success quick-ask-btn" id="btnFinalizeToolbar" data-instruction="Finalize this report" onclick="quickAsk(this)">
                             <i class="fas fa-check-circle me-1"></i>Finalize
                         </button>
                         <!-- Separator -->
@@ -3223,26 +3223,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // Quick Ask: populate the Ask AI input (user clicks send to submit)
+    // Quick Ask: append instruction to Ask AI input (user clicks send to submit)
+    // Clicking again toggles it off. Multiple clicks build a combined instruction.
     window.quickAsk = function(btn) {
         const instruction = btn.getAttribute('data-instruction');
         if (!instruction) return;
         const input = document.getElementById('askClaudeInput');
-        input.value = instruction;
-        input.focus();
-        // Highlight the clicked button briefly
-        btn.classList.remove('btn-outline-secondary');
-        btn.classList.add('btn-brand-primary');
-        setTimeout(function() {
+        const current = input.value.trim();
+        const baseClass = btn.id === 'btnFinalizeToolbar' ? 'btn-outline-success' : 'btn-outline-secondary';
+        // Toggle: if this instruction is already in the box, remove it
+        const lowerInstr = instruction.toLowerCase();
+        const parts = current ? current.split(/,\s*/) : [];
+        const idx = parts.findIndex(p => p.toLowerCase() === lowerInstr);
+        if (idx !== -1) {
+            // Remove this instruction
+            parts.splice(idx, 1);
+            input.value = parts.join(', ');
             btn.classList.remove('btn-brand-primary');
-            btn.classList.add('btn-outline-secondary');
-        }, 1500);
+            btn.classList.add(baseClass);
+        } else {
+            // Append with comma separator
+            parts.push(instruction);
+            input.value = parts.join(', ');
+            btn.classList.remove(baseClass);
+            btn.classList.add('btn-brand-primary');
+        }
+        input.focus();
     };
 
     function _clearQuickAskButtons() {
         document.querySelectorAll('.quick-ask-btn').forEach(function(btn) {
             btn.classList.remove('btn-brand-primary');
-            btn.classList.add('btn-outline-secondary');
+            // Restore original style class
+            if (btn.id === 'btnFinalizeToolbar') {
+                btn.classList.add('btn-outline-success');
+            } else {
+                btn.classList.add('btn-outline-secondary');
+            }
         });
     }
 
