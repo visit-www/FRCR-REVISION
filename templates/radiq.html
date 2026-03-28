@@ -110,6 +110,9 @@
                             </button>
                         </div>
                     </div>
+                    <div class="mt-2 text-end">
+                        <small id="radiqUsageCounter" class="text-muted"></small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -412,16 +415,9 @@ function showResponse(html, remaining, dbLinks) {
 
     document.getElementById('responseArea').classList.remove('d-none');
     document.getElementById('responsePlaceholder').classList.add('d-none');
-    if (remaining != null) {
-        const limit = window._radiqUsage ? window._radiqUsage.limit : remaining;
-        let color = '#28a745';
-        if (remaining <= Math.ceil(limit * 0.1)) color = '#dc3545';
-        else if (remaining <= Math.ceil(limit * 0.3)) color = '#ffc107';
-        let text = `<span style="color:${color};">${remaining}/${limit} RadIQ queries this month</span>`;
-        if (window._radiqUsage && window._radiqUsage.trial_days_left !== null && window._radiqUsage.trial_days_left <= 3 && !window._radiqUsage.trial_expired) {
-            text += ` <span style="color:#ffc107;">&mdash; ${window._radiqUsage.trial_days_left}d left in trial</span>`;
-        }
-        document.getElementById('remainingCounter').innerHTML = text;
+    if (remaining != null && window._radiqUsage) {
+        window._radiqUsage.remaining_requests = remaining;
+        updateRadiqCounter(window._radiqUsage);
     }
     document.getElementById('responseArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -542,25 +538,34 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             window._radiqUsage = data;
-            const el = document.getElementById('remainingCounter');
+            updateRadiqCounter(data);
+            // Auto-show upgrade modal if trial expired
             if (data.trial_expired) {
-                el.innerHTML = '<span style="color:#dc3545;">Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
                 showUpgradeModal('trial_expired', data);
-            } else {
-                const limit = data.limit;
-                const remaining = data.remaining_requests;
-                let color = '#28a745';
-                if (remaining <= Math.ceil(limit * 0.1)) color = '#dc3545';
-                else if (remaining <= Math.ceil(limit * 0.3)) color = '#ffc107';
-                let text = `<span style="color:${color};">${remaining}/${limit} RadIQ queries this month</span>`;
-                if (data.trial_days_left !== null && data.trial_days_left <= 3) {
-                    text += ` <span style="color:#ffc107;">&mdash; ${data.trial_days_left}d left in trial</span>`;
-                }
-                el.innerHTML = text;
             }
         })
         .catch(() => {});
 });
+
+function updateRadiqCounter(data) {
+    // Update both the always-visible counter and the response area counter
+    const els = [document.getElementById('radiqUsageCounter'), document.getElementById('remainingCounter')];
+    let html;
+    if (data.trial_expired) {
+        html = '<span style="color:#dc3545;">Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
+    } else {
+        const limit = data.limit;
+        const remaining = data.remaining_requests;
+        let color = '#28a745';
+        if (remaining <= Math.ceil(limit * 0.1)) color = '#dc3545';
+        else if (remaining <= Math.ceil(limit * 0.3)) color = '#ffc107';
+        html = `<span style="color:${color};">${remaining}/${limit} RadIQ queries this month</span>`;
+        if (data.trial_days_left !== null && data.trial_days_left <= 3) {
+            html += ` <span style="color:#ffc107;">&mdash; ${data.trial_days_left}d left in trial</span>`;
+        }
+    }
+    els.forEach(el => { if (el) el.innerHTML = html; });
+}
 
 function showUpgradeModal(reason, data) {
     const modal = document.getElementById('upgradeModal');
