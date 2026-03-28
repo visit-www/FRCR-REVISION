@@ -6014,15 +6014,21 @@ body {
 
 /* Report Action Buttons */
 .report-action-btn {
-    font-size: 0.65rem !important;
-    padding: 0 0.3rem !important;
-    line-height: 1.6;
+    font-size: 0.72rem !important;
+    padding: 0.15rem 0.5rem !important;
+    line-height: 1.5;
     background: transparent;
     border-width: 1px;
     border-style: solid;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.report-action-btn:hover {
+    opacity: 0.85;
 }
 .report-action-btn i {
-    margin-right: 0.2rem;
+    font-size: 0.68rem;
 }
 
 /* Report Action Further Reading */
