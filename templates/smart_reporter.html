@@ -476,7 +476,7 @@
                         <!-- Separator -->
                         <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
                         <!-- Ask Claude inline -->
-                        <div class="input-group input-group-sm" style="max-width: 300px; flex: 1; min-width: 180px;">
+                        <div class="input-group input-group-sm" style="flex: 1; min-width: 180px;">
                             <input type="text" id="askClaudeInput" class="form-control form-control-sm"
                                    placeholder="Ask AI..." maxlength="1000">
                             <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
@@ -485,9 +485,9 @@
                         </div>
                     </div>
                     <!-- Bottom row: Report Actions -->
-                    <div class="d-flex align-items-center gap-2 mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
-                        <small class="text-muted flex-shrink-0" style="font-size: 0.7rem;"><i class="fas fa-bolt me-1"></i>Actions:</small>
-                        <div class="d-flex flex-wrap gap-1">
+                    <div class="d-flex align-items-center mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
+                        <small class="text-muted flex-shrink-0 me-2" style="font-size: 0.7rem;"><i class="fas fa-bolt me-1"></i>Actions:</small>
+                        <div class="d-flex flex-wrap flex-grow-1 gap-2 justify-content-start">
                             <button class="btn btn-sm report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
                                 <i class="fas fa-users me-1"></i>MDT
                             </button>

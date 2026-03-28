@@ -6014,8 +6014,8 @@ body {
 
 /* Report Action Buttons */
 .report-action-btn {
-    font-size: 0.72rem !important;
-    padding: 0.15rem 0.5rem !important;
+    font-size: 0.74rem !important;
+    padding: 0.2rem 0.75rem !important;
     line-height: 1.5;
     background: transparent;
     border-width: 1px;
@@ -6023,12 +6023,14 @@ body {
     border-radius: 0.25rem;
     white-space: nowrap;
     vertical-align: middle;
+    flex: 1 1 auto;
+    text-align: center;
 }
 .report-action-btn:hover {
     opacity: 0.85;
 }
 .report-action-btn i {
-    font-size: 0.68rem;
+    font-size: 0.7rem;
 }
 
 /* Report Action Further Reading */
