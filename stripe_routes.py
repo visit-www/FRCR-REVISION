@@ -99,7 +99,12 @@ def create_checkout_session():
     if not price_id:
         return jsonify({'error': f'Unknown plan: {plan}'}), 400
 
-    customer_id = _ensure_stripe_customer(current_user)
+    try:
+        customer_id = _ensure_stripe_customer(current_user)
+    except Exception as e:
+        logger.error(f"Stripe ensure_customer error: {e}", exc_info=True)
+        return jsonify({'error': f'Customer error: {str(e)}'}), 500
+
     if not customer_id:
         return jsonify({'error': 'Could not create payment profile'}), 500
 
@@ -114,9 +119,9 @@ def create_checkout_session():
             allow_promotion_codes=True,
         )
         return jsonify({'checkout_url': session.url})
-    except stripe.StripeError as e:
-        logger.error(f"Stripe checkout error: {e}")
-        return jsonify({'error': 'Could not create checkout session'}), 500
+    except Exception as e:
+        logger.error(f"Stripe checkout error: {e}", exc_info=True)
+        return jsonify({'error': f'Checkout error: {str(e)}'}), 500
 
 
 @stripe_bp.route('/success')
