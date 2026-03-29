@@ -293,6 +293,10 @@ class User(UserMixin, db.Model):
     # === STRIPE ===
     stripe_customer_id = db.Column(db.String(255), nullable=True, unique=True, index=True)
 
+    # === PENDING PLAN CHANGE (scheduled downgrades) ===
+    pending_subscription_tier = db.Column(db.String(20), nullable=True)       # 'standard', 'free', or None
+    pending_change_effective_date = db.Column(db.DateTime, nullable=True)     # When change takes effect
+
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)

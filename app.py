@@ -928,6 +928,10 @@ with app.app_context():
         # -- user: Stripe --
         _add_col_if_missing('user', 'stripe_customer_id', 'stripe_customer_id VARCHAR(255)')
 
+        # -- user: Pending plan change (scheduled downgrades) --
+        _add_col_if_missing('user', 'pending_subscription_tier', 'pending_subscription_tier VARCHAR(20)')
+        _add_col_if_missing('user', 'pending_change_effective_date', 'pending_change_effective_date TIMESTAMP')
+
         # -- user: Onboarding tour --
         _add_col_if_missing('user', 'has_seen_tour', 'has_seen_tour BOOLEAN DEFAULT false NOT NULL')
 
@@ -1344,6 +1348,8 @@ def pricing():
             'trial_days_left': trial_days_left,
             'subscription_end_date': current_user.subscription_end_date.strftime('%d %b %Y') if current_user.subscription_end_date else None,
             'has_stripe_customer': bool(current_user.stripe_customer_id),
+            'pending_tier': current_user.pending_subscription_tier,
+            'pending_date': current_user.pending_change_effective_date.strftime('%d %b %Y') if current_user.pending_change_effective_date else None,
         }
     requested_plan = request.args.get('plan', '')
     return render_template('pricing.html', user_data=user_data, requested_plan=requested_plan)
@@ -6802,13 +6808,25 @@ Allow: /
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
+Disallow: /stripe/
 Disallow: /radiology-protocols/admin/
 Disallow: /incidental-findings/admin/
+Disallow: /on-call-helper/admin/
 Disallow: /api/admin/
 Disallow: /api/backup/
 Disallow: /health
+Disallow: /dashboard
+Disallow: /study
+Disallow: /practice
+Disallow: /modules
+Disallow: /cases
+Disallow: /case-list
+Disallow: /view-case/
+Disallow: /revision/
+Disallow: /suggest-case
+Disallow: /notion/
 
-Sitemap: https://radinsights.co.uk/sitemap.xml
+Sitemap: https://www.radinsights.xyz/sitemap.xml
 """
     return content, 200, {'Content-Type': 'text/plain'}
 
@@ -6816,32 +6834,36 @@ Sitemap: https://radinsights.co.uk/sitemap.xml
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
     """Generate sitemap.xml for search engines."""
+    from datetime import date
+
+    today = date.today().isoformat()
+
+    # Static public pages: (path, priority, changefreq, lastmod)
     pages = [
-        ('/', '1.0', 'monthly'),
-        ('/smart-reporter', '0.9', 'weekly'),
-        ('/radiology-protocols', '0.8', 'weekly'),
-        ('/reporting-algorithms', '0.8', 'weekly'),
-        ('/reporting-templates', '0.8', 'weekly'),
-        ('/radiology-tools', '0.8', 'weekly'),
-        ('/on-call-helper', '0.7', 'monthly'),
-        ('/privacy-policy', '0.3', 'yearly'),
-        ('/terms-of-use', '0.3', 'yearly'),
+        ('/', '1.0', 'weekly', today),
+        ('/pricing', '0.9', 'monthly', today),
+        ('/about', '0.7', 'monthly', today),
+        ('/tnm-calculator', '0.9', 'weekly', today),
+        ('/essential-tnm-concepts', '0.6', 'monthly', today),
+        ('/privacy-policy', '0.3', 'yearly', today),
+        ('/terms-of-use', '0.3', 'yearly', today),
     ]
 
-    # Add public TNM calculator pages
+    # Dynamic: public TNM calculator pages (39+)
     try:
         from models import TNMCalculator
         calcs = TNMCalculator.query.filter_by(is_available=True).all()
         for c in calcs:
-            pages.append((f'/tnm-calculator/{c.slug}', '0.7', 'monthly'))
+            pages.append((f'/tnm-calculator/{c.slug}', '0.7', 'monthly', today))
     except Exception:
         pass
 
-    base_url = 'https://radinsights.co.uk'
+    base_url = 'https://www.radinsights.xyz'
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for path, priority, freq in pages:
+    for path, priority, freq, lastmod in pages:
         xml += f'  <url>\n    <loc>{base_url}{path}</loc>\n'
+        xml += f'    <lastmod>{lastmod}</lastmod>\n'
         xml += f'    <priority>{priority}</priority>\n'
         xml += f'    <changefreq>{freq}</changefreq>\n  </url>\n'
     xml += '</urlset>'

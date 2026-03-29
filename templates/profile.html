@@ -62,27 +62,21 @@
                                 <div class="d-flex align-items-center gap-2 mt-1">
                                     {% set tier = current_user.subscription_tier or 'free' %}
                                     {% if tier == 'elite' %}
-                                    <span class="badge" style="background: rgba(107,70,193,0.12); color: #6b46c1; font-size: 0.85rem; padding: 5px 14px;">
+                                    <span class="badge" style="background: rgba(168,213,186,0.15); color: #5a9e73; font-size: 0.85rem; padding: 5px 14px;">
                                         <i class="fas fa-crown me-1"></i>Elite
                                     </span>
-                                    <a href="/pricing" style="font-size: 0.82rem; color: var(--brand-neutral); text-decoration: none;">
-                                        <i class="fas fa-cog me-1"></i>Manage Plan
-                                    </a>
                                     {% elif tier == 'standard' %}
                                     <span class="badge" style="background: rgba(233,99,4,0.12); color: #e96304; font-size: 0.85rem; padding: 5px 14px;">
                                         <i class="fas fa-user-md me-1"></i>Standard
                                     </span>
-                                    <a href="/pricing" style="font-size: 0.82rem; color: var(--brand-neutral); text-decoration: none;">
-                                        <i class="fas fa-arrow-up me-1"></i>Change Plan
-                                    </a>
                                     {% else %}
                                     <span class="badge" style="background: rgba(94,137,158,0.12); color: #5E899E; font-size: 0.85rem; padding: 5px 14px;">
                                         <i class="fas fa-compass me-1"></i>Free
                                     </span>
-                                    <a href="/pricing" style="font-size: 0.82rem; color: #5a9e73; font-weight: 600; text-decoration: none;">
-                                        <i class="fas fa-arrow-up me-1"></i>Upgrade
-                                    </a>
                                     {% endif %}
+                                    <a href="/pricing" style="font-size: 0.82rem; color: #5a9e73; font-weight: 600; text-decoration: none;">
+                                        <i class="fas fa-exchange-alt me-1"></i>Change Plan
+                                    </a>
                                 </div>
                                 {% if current_user.subscription_end_date %}
                                 <small class="text-muted d-block mt-1">

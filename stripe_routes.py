@@ -1,7 +1,13 @@
 """
-Stripe Payment Routes — Checkout, Customer Portal, Webhooks
+Stripe Payment Routes — Checkout, Plan Changes, Webhooks
 Uses Stripe Checkout Sessions (hosted) for PCI compliance.
 Webhook is the single source of truth for subscription state changes.
+
+Plan-change rules:
+  Free → Standard/Elite:  Checkout Session (new subscription)
+  Standard → Elite:       Subscription.modify + proration + billing_cycle_anchor='now'
+  Elite → Standard:       cancel_at_period_end, auto-create Standard in webhook
+  Any → Free:             cancel_at_period_end, downgrade in webhook
 """
 
 import os
@@ -30,6 +36,8 @@ PRICE_IDS = {
 
 BASE_URL = os.environ.get('BASE_URL', 'https://www.radinsights.xyz')
 
+TIER_RANK = {'free': 0, 'standard': 1, 'elite': 2}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,7 +53,6 @@ def _ensure_stripe_customer(user):
                 raise stripe.InvalidRequestError('Customer deleted', param=None)
             return user.stripe_customer_id
         except (stripe.InvalidRequestError, stripe.StripeError):
-            # Customer deleted, wrong mode, or otherwise invalid — clear and re-create
             logger.warning(f"Stripe customer {user.stripe_customer_id} invalid, re-creating for user {user.id}")
             user.stripe_customer_id = None
             db.session.commit()
@@ -94,6 +101,22 @@ def _tier_from_subscription(subscription_obj):
     return 'standard'
 
 
+def _get_active_subscription(customer_id):
+    """Find the customer's active subscription. Returns (sub, item_id) or (None, None)."""
+    subs = stripe.Subscription.list(customer=customer_id, status='active', limit=1)
+    subs_data = _get(subs, 'data', [])
+    if not subs_data:
+        return None, None
+
+    sub = subs_data[0]
+    items_wrapper = _get(sub, 'items', {})
+    items_data = _get(items_wrapper, 'data', [])
+    if not items_data:
+        return sub, None
+
+    return sub, _get(items_data[0], 'id')
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -101,7 +124,7 @@ def _tier_from_subscription(subscription_obj):
 @stripe_bp.route('/create-checkout-session', methods=['POST'])
 @login_required
 def create_checkout_session():
-    """Create a Stripe Checkout Session and return the URL."""
+    """Create a Stripe Checkout Session — free users subscribing for the first time."""
     if not stripe.api_key:
         return jsonify({'error': 'Payments not configured'}), 503
 
@@ -111,12 +134,11 @@ def create_checkout_session():
     if not price_id:
         return jsonify({'error': f'Unknown plan: {plan}'}), 400
 
-    # Block if user already has this plan
     current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
     if current_tier == plan:
         return jsonify({'error': f'You are already on the {plan.capitalize()} plan.'}), 400
 
-    # If user already has a paid plan, redirect to plan-change flow instead
+    # Paid users must use change-plan flow
     if current_tier in ('standard', 'elite'):
         return jsonify({'error': 'Use plan change for existing subscribers', 'use_change': True}), 400
 
@@ -162,15 +184,13 @@ def checkout_cancel():
 @stripe_bp.route('/change-plan', methods=['POST'])
 @login_required
 def change_plan():
-    """Switch between paid plans using Stripe Subscription.modify().
-    Stripe handles proration automatically — unused time is credited."""
+    """Switch between plans. Upgrades are immediate (prorated). Downgrades/cancels happen at period end."""
     if not stripe.api_key:
         return jsonify({'error': 'Payments not configured'}), 503
 
     data = request.get_json(silent=True) or {}
     new_plan = data.get('plan', '')
-    new_price_id = PRICE_IDS.get(new_plan)
-    if not new_price_id:
+    if new_plan not in TIER_RANK:
         return jsonify({'error': f'Unknown plan: {new_plan}'}), 400
 
     current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
@@ -185,51 +205,179 @@ def change_plan():
         return jsonify({'error': 'No payment profile found'}), 400
 
     try:
-        # Find the active subscription
-        subs = stripe.Subscription.list(customer=customer_id, status='active', limit=1)
-        subs_data = _get(subs, 'data', [])
-        if not subs_data:
+        sub, sub_item_id = _get_active_subscription(customer_id)
+        if not sub:
             return jsonify({'error': 'No active subscription found on Stripe'}), 404
-
-        sub = subs_data[0]
-        sub_id = _get(sub, 'id')
-        items_wrapper = _get(sub, 'items', {})
-        items_data = _get(items_wrapper, 'data', [])
-        if not items_data:
+        if not sub_item_id:
             return jsonify({'error': 'Subscription has no items'}), 500
 
-        sub_item_id = _get(items_data[0], 'id')
+        sub_id = _get(sub, 'id')
+        current_rank = TIER_RANK.get(current_tier, 0)
+        new_rank = TIER_RANK.get(new_plan, 0)
 
-        # Modify the subscription — Stripe prorates automatically
-        updated_sub = stripe.Subscription.modify(
-            sub_id,
-            items=[{
-                'id': sub_item_id,
-                'price': new_price_id,
-            }],
-            proration_behavior='create_prorations',
-        )
+        # ── UPGRADE (Standard → Elite) ──
+        if new_rank > current_rank:
+            new_price_id = PRICE_IDS.get(new_plan)
+            if not new_price_id:
+                return jsonify({'error': f'Price not configured for {new_plan}'}), 500
 
-        # Webhook will handle the DB update via subscription.updated,
-        # but update immediately for responsive UI
-        from access_control import upgrade_to_paid
-        end_date = _subscription_end_from_event(updated_sub)
-        tier = _tier_from_subscription(updated_sub)
-        upgrade_to_paid(current_user, end_date, tier)
+            # If sub has cancel_at_period_end (pending downgrade), undo it first
+            if _get(sub, 'cancel_at_period_end'):
+                stripe.Subscription.modify(sub_id, cancel_at_period_end=False)
 
-        direction = 'upgraded' if new_plan == 'elite' else 'switched'
-        logger.info(f"User {current_user.id} {direction} to {new_plan} via plan change (prorated)")
-        return jsonify({'success': True, 'new_plan': new_plan, 'redirect': '/pricing?payment=success'})
+            # Modify subscription: immediate upgrade, new billing cycle starts today
+            updated_sub = stripe.Subscription.modify(
+                sub_id,
+                items=[{
+                    'id': sub_item_id,
+                    'price': new_price_id,
+                }],
+                proration_behavior='create_prorations',
+                billing_cycle_anchor='now',
+            )
+
+            # Immediate DB update for responsive UI (webhook will also fire)
+            from access_control import upgrade_to_paid
+            end_date = _subscription_end_from_event(updated_sub)
+            upgrade_to_paid(current_user, end_date, new_plan)
+
+            logger.info(f"User {current_user.id} upgraded {current_tier} → {new_plan} (prorated, new cycle)")
+            return jsonify({'success': True, 'new_plan': new_plan, 'redirect': '/pricing?payment=success'})
+
+        # ── DOWNGRADE (Elite → Standard or Any → Free) ──
+        else:
+            # Set cancel_at_period_end so current plan stays active until end of period
+            stripe.Subscription.modify(sub_id, cancel_at_period_end=True)
+
+            # Record the pending change in our DB
+            end_date = _subscription_end_from_event(sub)
+            current_user.pending_subscription_tier = new_plan
+            current_user.pending_change_effective_date = end_date
+            db.session.commit()
+
+            effective_date = end_date.strftime('%d %b %Y')
+            logger.info(f"User {current_user.id} scheduled downgrade {current_tier} → {new_plan} (effective {effective_date})")
+            return jsonify({
+                'success': True,
+                'scheduled': True,
+                'new_plan': new_plan,
+                'effective_date': effective_date,
+                'redirect': '/pricing?payment=scheduled',
+            })
 
     except stripe.StripeError as e:
         logger.error(f"Stripe change-plan error for user {current_user.id}: {e}", exc_info=True)
         return jsonify({'error': f'Could not change plan: {str(e)}'}), 500
 
 
+@stripe_bp.route('/preview-change', methods=['POST'])
+@login_required
+def preview_change():
+    """Preview cost/timing for a plan change before user confirms."""
+    if not stripe.api_key:
+        return jsonify({'error': 'Payments not configured'}), 503
+
+    data = request.get_json(silent=True) or {}
+    new_plan = data.get('plan', '')
+    if new_plan not in TIER_RANK:
+        return jsonify({'error': f'Unknown plan: {new_plan}'}), 400
+
+    current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    if current_tier not in ('standard', 'elite'):
+        return jsonify({'error': 'No active subscription'}), 400
+
+    customer_id = current_user.stripe_customer_id
+    if not customer_id:
+        return jsonify({'error': 'No payment profile found'}), 400
+
+    try:
+        sub, sub_item_id = _get_active_subscription(customer_id)
+        if not sub:
+            return jsonify({'error': 'No active subscription found'}), 404
+
+        current_rank = TIER_RANK.get(current_tier, 0)
+        new_rank = TIER_RANK.get(new_plan, 0)
+
+        if new_rank > current_rank:
+            # UPGRADE preview — get prorated invoice
+            new_price_id = PRICE_IDS.get(new_plan)
+            if not new_price_id:
+                return jsonify({'error': f'Price not configured for {new_plan}'}), 500
+
+            upcoming = stripe.Invoice.upcoming(
+                customer=customer_id,
+                subscription=_get(sub, 'id'),
+                subscription_items=[{
+                    'id': sub_item_id,
+                    'price': new_price_id,
+                }],
+                subscription_proration_behavior='create_prorations',
+                subscription_billing_cycle_anchor='now',
+            )
+
+            amount_due = _get(upcoming, 'amount_due', 0) / 100  # pence → pounds
+            return jsonify({
+                'direction': 'upgrade',
+                'amount_due': f'{amount_due:.2f}',
+                'currency': _get(upcoming, 'currency', 'gbp').upper(),
+                'new_plan': new_plan,
+            })
+
+        else:
+            # DOWNGRADE/CANCEL preview — just show effective date
+            end_date = _subscription_end_from_event(sub)
+            return jsonify({
+                'direction': 'downgrade',
+                'effective_date': end_date.strftime('%d %b %Y'),
+                'current_plan': current_tier,
+                'new_plan': new_plan,
+            })
+
+    except stripe.StripeError as e:
+        logger.error(f"Preview change error for user {current_user.id}: {e}", exc_info=True)
+        return jsonify({'error': f'Could not preview: {str(e)}'}), 500
+
+
+@stripe_bp.route('/cancel-pending-change', methods=['POST'])
+@login_required
+def cancel_pending_change():
+    """Undo a scheduled downgrade/cancellation — keep current plan."""
+    if not stripe.api_key:
+        return jsonify({'error': 'Payments not configured'}), 503
+
+    if not current_user.pending_subscription_tier:
+        return jsonify({'error': 'No pending plan change to cancel'}), 400
+
+    customer_id = current_user.stripe_customer_id
+    if not customer_id:
+        return jsonify({'error': 'No payment profile found'}), 400
+
+    try:
+        sub, _ = _get_active_subscription(customer_id)
+        if not sub:
+            return jsonify({'error': 'No active subscription found'}), 404
+
+        # Undo cancel_at_period_end
+        if _get(sub, 'cancel_at_period_end'):
+            stripe.Subscription.modify(_get(sub, 'id'), cancel_at_period_end=False)
+
+        # Clear pending fields
+        current_user.pending_subscription_tier = None
+        current_user.pending_change_effective_date = None
+        db.session.commit()
+
+        logger.info(f"User {current_user.id} cancelled pending plan change, keeping {current_user.subscription_tier}")
+        return jsonify({'success': True, 'current_plan': current_user.subscription_tier})
+
+    except stripe.StripeError as e:
+        logger.error(f"Cancel pending change error for user {current_user.id}: {e}", exc_info=True)
+        return jsonify({'error': f'Could not cancel: {str(e)}'}), 500
+
+
 @stripe_bp.route('/create-portal-session', methods=['POST'])
 @login_required
 def create_portal_session():
-    """Create a Stripe Customer Portal session for subscription management."""
+    """Create a Stripe Customer Portal session for billing/payment method management."""
     if not stripe.api_key:
         return jsonify({'error': 'Payments not configured'}), 503
 
@@ -286,7 +434,6 @@ def stripe_webhook():
             _handle_payment_failed(data_obj)
     except Exception as e:
         logger.error(f"Webhook handler error for {event_type}: {e}", exc_info=True)
-        # Return 200 so Stripe doesn't retry — include error detail for debugging
         return jsonify({'status': 'error logged', 'error': str(e)}), 200
 
     return jsonify({'status': 'ok'}), 200
@@ -311,7 +458,6 @@ def _handle_checkout_completed(session_obj):
     user = _find_user_by_customer_id(customer_id)
 
     if not user:
-        # Try metadata fallback
         metadata = _get(session_obj, 'metadata', {})
         user_id = _get(metadata, 'user_id')
         if user_id:
@@ -324,7 +470,6 @@ def _handle_checkout_completed(session_obj):
         logger.error(f"checkout.session.completed: no user for customer {customer_id}")
         return
 
-    # Retrieve the subscription to get period end and tier
     sub_id = _get(session_obj, 'subscription')
     if sub_id:
         sub = stripe.Subscription.retrieve(sub_id)
@@ -340,7 +485,14 @@ def _handle_checkout_completed(session_obj):
 
 
 def _handle_subscription_updated(sub_obj):
-    """customer.subscription.updated — renewal, plan change, or going past_due."""
+    """customer.subscription.updated — renewal, plan change, or going past_due.
+
+    Key logic:
+    - If cancel_at_period_end=True AND status='active': subscription is winding down.
+      DON'T change the tier yet. Set pending fields if not already set (handles Stripe Portal cancellations).
+    - If cancel_at_period_end=False AND status='active': normal active subscription.
+      Apply upgrade_to_paid and clear any pending fields.
+    """
     from access_control import upgrade_to_paid
     from models import PaymentStatus
 
@@ -351,12 +503,24 @@ def _handle_subscription_updated(sub_obj):
         return
 
     status = _get(sub_obj, 'status')
+    cancel_at_period_end = _get(sub_obj, 'cancel_at_period_end', False)
 
     if status == 'active':
-        end_date = _subscription_end_from_event(sub_obj)
-        tier = _tier_from_subscription(sub_obj)
-        upgrade_to_paid(user, end_date, tier)
-        logger.info(f"User {user.id} subscription renewed/changed to {tier} (ends {end_date})")
+        if cancel_at_period_end:
+            # Subscription is scheduled to cancel — keep current tier active
+            # Set pending fields if not already set (e.g. Stripe Portal cancellation)
+            if not user.pending_subscription_tier:
+                end_date = _subscription_end_from_event(sub_obj)
+                user.pending_subscription_tier = 'free'
+                user.pending_change_effective_date = end_date
+                db.session.commit()
+                logger.info(f"User {user.id} subscription cancel_at_period_end detected, pending free on {end_date}")
+        else:
+            # Normal active subscription — apply tier
+            end_date = _subscription_end_from_event(sub_obj)
+            tier = _tier_from_subscription(sub_obj)
+            upgrade_to_paid(user, end_date, tier)
+            logger.info(f"User {user.id} subscription renewed/changed to {tier} (ends {end_date})")
 
     elif status == 'past_due':
         user.payment_status = PaymentStatus.PAST_DUE
@@ -365,8 +529,13 @@ def _handle_subscription_updated(sub_obj):
 
 
 def _handle_subscription_deleted(sub_obj):
-    """customer.subscription.deleted — subscription cancelled/expired."""
-    from access_control import downgrade_to_free
+    """customer.subscription.deleted — subscription cancelled/expired.
+
+    Check pending_subscription_tier:
+    - 'standard': auto-create a new Standard subscription, upgrade user
+    - 'free' or None: downgrade to free
+    """
+    from access_control import downgrade_to_free, upgrade_to_paid
 
     customer_id = _get(sub_obj, 'customer')
     user = _find_user_by_customer_id(customer_id)
@@ -374,7 +543,27 @@ def _handle_subscription_deleted(sub_obj):
         logger.warning(f"subscription.deleted: no user for customer {customer_id}")
         return
 
-    # Check if customer still has other active subscriptions (plan-change scenario)
+    pending_tier = user.pending_subscription_tier
+
+    # Elite → Standard: auto-create a Standard subscription
+    if pending_tier == 'standard':
+        standard_price_id = PRICE_IDS.get('standard')
+        if standard_price_id:
+            try:
+                new_sub = stripe.Subscription.create(
+                    customer=customer_id,
+                    items=[{'price': standard_price_id}],
+                    metadata={'user_id': str(user.id), 'auto_downgrade': 'elite_to_standard'},
+                )
+                end_date = _subscription_end_from_event(new_sub)
+                upgrade_to_paid(user, end_date, 'standard')
+                logger.info(f"User {user.id} auto-created Standard sub after Elite expiry (ends {end_date})")
+                return
+            except stripe.StripeError as e:
+                logger.error(f"Failed to auto-create Standard sub for user {user.id}: {e}")
+                # Fall through to downgrade_to_free as safety net
+
+    # Check if customer still has other active subscriptions (safety check)
     try:
         active_subs = stripe.Subscription.list(customer=customer_id, status='active', limit=1)
         subs_data = _get(active_subs, 'data', [])

@@ -183,7 +183,7 @@
                         </a>
                         {% elif tier == 'elite' %}
                         <a href="/pricing" class="d-flex align-items-center gap-1" title="Elite Plan"
-                           style="background: rgba(255,255,255,0.92); color: #5a3aad; font-weight: 600; font-size: 0.72rem; padding: 3px 12px; border-radius: 12px; text-decoration: none; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
+                           style="background: rgba(255,255,255,0.92); color: #5a9e73; font-weight: 600; font-size: 0.72rem; padding: 3px 12px; border-radius: 12px; text-decoration: none; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.15);">
                             <i class="fas fa-crown" style="font-size: 0.58rem;"></i>Elite
                         </a>
                         {% endif %}
@@ -204,7 +204,7 @@
                             <li class="px-3 py-1">
                                 {% set tier = current_user.subscription_tier or 'free' %}
                                 {% if tier == 'elite' %}
-                                <span class="badge w-100 text-center" style="background: rgba(107,70,193,0.12); color: #6b46c1; font-size: 0.78rem; padding: 4px 0;">
+                                <span class="badge w-100 text-center" style="background: rgba(168,213,186,0.12); color: #5a9e73; font-size: 0.78rem; padding: 4px 0;">
                                     <i class="fas fa-crown me-1"></i>Elite Plan
                                 </span>
                                 {% elif tier == 'standard' %}
@@ -219,13 +219,7 @@
                             </li>
                             <li><hr class="dropdown-divider my-1"></li>
                             <li><a class="dropdown-item" href="/auth/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            {% if tier == 'free' %}
-                            <li><a class="dropdown-item" href="/pricing" style="color: #e96304;"><i class="fas fa-arrow-up me-2"></i>Upgrade Plan</a></li>
-                            {% elif tier == 'standard' %}
-                            <li><a class="dropdown-item" href="/pricing"><i class="fas fa-credit-card me-2"></i>Change Plan</a></li>
-                            {% else %}
-                            <li><a class="dropdown-item" href="/pricing"><i class="fas fa-credit-card me-2"></i>Manage Plan</a></li>
-                            {% endif %}
+                            <li><a class="dropdown-item" href="/pricing" style="color: #5a9e73; font-weight: 600;"><i class="fas fa-exchange-alt me-2"></i>Change Plan</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="handleLogout(event)"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                         </ul>

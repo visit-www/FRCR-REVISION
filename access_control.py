@@ -510,6 +510,9 @@ def upgrade_to_paid(user, subscription_end_date=None, tier='standard'):
     user.subscription_start_date = datetime.utcnow()
     user.subscription_end_date = subscription_end_date
     user.subscription_tier = tier
+    # Clear any pending plan change
+    user.pending_subscription_tier = None
+    user.pending_change_effective_date = None
     db.session.commit()
 
 
@@ -522,6 +525,9 @@ def downgrade_to_free(user):
     user.payment_status = PaymentStatus.CANCELED
     user.subscription_end_date = datetime.utcnow()
     user.subscription_tier = 'free'
+    # Clear any pending plan change
+    user.pending_subscription_tier = None
+    user.pending_change_effective_date = None
     db.session.commit()
 
 

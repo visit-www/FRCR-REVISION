@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pricing — RadInsights</title>
     <meta name="description" content="RadInsights pricing plans — Free, Standard, and Elite tiers for radiology reporting, learning, and exam preparation.">
+    <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
+    <link rel="canonical" href="https://www.radinsights.xyz/pricing" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-192x192_zkqtvu.png">
@@ -16,6 +18,7 @@
             --brand-bg: #fdfdfb;
             --brand-text-primary: #2c3e50;
             --brand-text-secondary: #5a6270;
+            --elite-green: #5a9e73;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -159,6 +162,51 @@
             color: var(--brand-text-secondary);
         }
 
+        /* ── Pending Change Banner ── */
+        .pending-banner {
+            background: linear-gradient(135deg, #fff8e6, #fff3d0);
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 10px;
+            margin-bottom: -10px;
+            position: relative;
+            z-index: 2;
+            max-width: 650px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .pending-banner-text {
+            font-size: 0.85rem;
+            color: #856404;
+            font-weight: 500;
+        }
+
+        .pending-banner-text strong { color: #664d03; }
+
+        .btn-undo-pending {
+            background: #fff;
+            border: 1.5px solid #d4a017;
+            color: #856404;
+            padding: 5px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .btn-undo-pending:hover {
+            background: #ffc107;
+            color: #664d03;
+        }
+
         /* ── Section ── */
         .section { padding: 60px 0; }
         .section-alt { background: #f5f7f9; }
@@ -203,8 +251,8 @@
         }
 
         .pricing-card-featured {
-            border: 2px solid #6b46c1;
-            box-shadow: 0 4px 20px rgba(107,70,193,0.15);
+            border: 2px solid var(--brand-success);
+            box-shadow: 0 4px 20px rgba(168,213,186,0.25);
         }
 
         .pricing-popular {
@@ -212,7 +260,7 @@
             top: -12px;
             left: 50%;
             transform: translateX(-50%);
-            background: #6b46c1;
+            background: var(--elite-green);
             color: #fff;
             font-size: 0.72rem;
             font-weight: 700;
@@ -304,17 +352,15 @@
             box-shadow: none !important;
         }
 
-        .manage-sub-link {
-            display: block;
-            text-align: center;
-            margin-top: 12px;
-            font-size: 0.82rem;
-            color: var(--brand-neutral);
-            text-decoration: none;
-            font-weight: 500;
+        .btn-pricing-pending {
+            background: #fff8e6 !important;
+            color: #856404 !important;
+            border: 1.5px solid #ffc107 !important;
+            opacity: 0.85;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
         }
-
-        .manage-sub-link:hover { text-decoration: underline; }
 
         /* ── Feature Comparison Table ── */
         .comparison-table {
@@ -487,6 +533,7 @@
 
         .payment-toast.success { background: linear-gradient(135deg, #27ae60, #2ecc71); }
         .payment-toast.cancelled { background: linear-gradient(135deg, #e67e22, #f39c12); }
+        .payment-toast.scheduled { background: linear-gradient(135deg, #5E899E, #3d6575); }
 
         @keyframes slideIn {
             from { transform: translateX(100px); opacity: 0; }
@@ -498,12 +545,162 @@
             to { opacity: 0; transform: translateY(-10px); }
         }
 
+        /* ── Confirmation Modal ── */
+        .confirm-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(44,62,80,0.65);
+            backdrop-filter: blur(4px);
+            z-index: 9998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .confirm-modal {
+            background: #fff;
+            border-radius: 14px;
+            max-width: 440px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(44,62,80,0.25);
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .confirm-header {
+            padding: 18px 24px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .confirm-header-upgrade {
+            background: linear-gradient(135deg, var(--elite-green), #3d7a54);
+        }
+
+        .confirm-header-downgrade {
+            background: linear-gradient(135deg, var(--brand-neutral), #3d6575);
+        }
+
+        .confirm-header h4 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .confirm-header .close-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .confirm-header .close-btn:hover {
+            color: #fff;
+            background: rgba(255,255,255,0.15);
+        }
+
+        .confirm-body {
+            padding: 20px 24px;
+        }
+
+        .confirm-body ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .confirm-body ul li {
+            font-size: 0.88rem;
+            color: var(--brand-text-secondary);
+            padding: 6px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .confirm-body ul li i {
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .confirm-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-confirm-cancel {
+            background: transparent;
+            border: 1px solid #c5cad1;
+            color: var(--brand-text-secondary);
+            padding: 9px 20px;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-confirm-cancel:hover { background: #f5f5f3; }
+
+        .btn-confirm-action {
+            border: none;
+            color: #fff;
+            padding: 9px 24px;
+            border-radius: 6px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-confirm-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .btn-confirm-action:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .confirm-loading {
+            text-align: center;
+            padding: 30px 24px;
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+        }
+
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .pricing-hero { padding: 36px 0 30px; }
             .pricing-hero h1 { font-size: 1.7rem; }
             .section { padding: 40px 0; }
             .current-plan-badge { flex-direction: column; gap: 6px; padding: 14px 20px; }
+            .pending-banner { flex-direction: column; text-align: center; }
             .footer-top { flex-direction: column; text-align: center; }
             .footer-nav { justify-content: center; }
             .comparison-table { font-size: 0.78rem; }
@@ -550,7 +747,7 @@
             <div>
                 <span class="badge-tier">
                     <i class="fas fa-{% if user_data.tier == 'elite' %}crown{% elif user_data.tier == 'standard' %}user-md{% else %}compass{% endif %} me-1"
-                       style="color: {% if user_data.tier == 'elite' %}#6b46c1{% elif user_data.tier == 'standard' %}var(--brand-primary){% else %}var(--brand-neutral){% endif %};"></i>
+                       style="color: {% if user_data.tier == 'elite' %}var(--elite-green){% elif user_data.tier == 'standard' %}var(--brand-primary){% else %}var(--brand-neutral){% endif %};"></i>
                     {{ user_data.tier | capitalize }} Plan
                 </span>
             </div>
@@ -566,6 +763,21 @@
             {% endif %}
         </div>
     </div>
+
+    {% if user_data.pending_tier %}
+    <!-- Pending Change Banner -->
+    <div class="pending-banner" id="pendingBanner">
+        <div class="pending-banner-text">
+            <i class="fas fa-clock me-1"></i>
+            Your plan will switch to <strong>{{ user_data.pending_tier | capitalize }}</strong>
+            {% if user_data.pending_date %}on <strong>{{ user_data.pending_date }}</strong>{% endif %}.
+            You keep full {{ user_data.tier | capitalize }} access until then.
+        </div>
+        <button class="btn-undo-pending" onclick="cancelPendingChange()">
+            <i class="fas fa-undo me-1"></i>Keep {{ user_data.tier | capitalize }}
+        </button>
+    </div>
+    {% endif %}
     {% endif %}
 
     <!-- Pricing Cards -->
@@ -593,10 +805,14 @@
                             <button class="btn-pricing disabled" disabled style="background: var(--brand-neutral); color: #fff;">
                                 <i class="fas fa-check-circle me-1"></i>Current Plan
                             </button>
+                            {% elif user_data.pending_tier == 'free' %}
+                            <button class="btn-pricing btn-pricing-pending" disabled>
+                                <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
+                            </button>
                             {% else %}
-                            <a href="#" onclick="openPortal(event)" class="btn-pricing" style="background: #fff; color: var(--brand-neutral); border: 1.5px solid var(--brand-neutral);">
+                            <button onclick="startPlanChange('free')" class="btn-pricing" style="background: #fff; color: var(--brand-neutral); border: 1.5px solid var(--brand-neutral);">
                                 <i class="fas fa-arrow-down me-1"></i>Downgrade to Free
-                            </a>
+                            </button>
                             {% endif %}
                         {% else %}
                         <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start Free Trial</a>
@@ -626,8 +842,12 @@
                             <button class="btn-pricing disabled" disabled style="background: var(--brand-primary); color: #fff;">
                                 <i class="fas fa-check-circle me-1"></i>Current Plan
                             </button>
+                            {% elif user_data.pending_tier == 'standard' %}
+                            <button class="btn-pricing btn-pricing-pending" disabled>
+                                <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
+                            </button>
                             {% elif user_data.tier == 'elite' %}
-                            <button onclick="startCheckout('standard')" class="btn-pricing" style="background: #fff; color: var(--brand-primary); border: 1.5px solid var(--brand-primary);">
+                            <button onclick="startPlanChange('standard')" class="btn-pricing" style="background: #fff; color: var(--brand-primary); border: 1.5px solid var(--brand-primary);">
                                 <i class="fas fa-exchange-alt me-1"></i>Switch to Standard
                             </button>
                             {% else %}
@@ -645,7 +865,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="pricing-card pricing-card-featured">
                         <div class="pricing-popular">Most Popular</div>
-                        <div class="pricing-badge" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
+                        <div class="pricing-badge" style="background: rgba(168,213,186,0.15); color: var(--elite-green);">
                             <i class="fas fa-crown me-1"></i>Elite
                         </div>
                         <div class="pricing-price">&pound;29<span>/month</span></div>
@@ -659,28 +879,20 @@
                         </ul>
                         {% if user_data %}
                             {% if user_data.tier == 'elite' %}
-                            <button class="btn-pricing disabled" disabled style="background: #6b46c1; color: #fff;">
+                            <button class="btn-pricing disabled" disabled style="background: var(--elite-green); color: #fff;">
                                 <i class="fas fa-check-circle me-1"></i>Current Plan
                             </button>
                             {% else %}
-                            <button onclick="startCheckout('elite')" class="btn-pricing" style="background: #6b46c1; color: #fff;">
+                            <button onclick="startCheckout('elite')" class="btn-pricing" style="background: var(--elite-green); color: #fff;">
                                 <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite
                             </button>
                             {% endif %}
                         {% else %}
-                        <a href="/auth/register?plan=elite" class="btn-pricing" style="background: #6b46c1; color: #fff;">Choose Elite</a>
+                        <a href="/auth/register?plan=elite" class="btn-pricing" style="background: var(--elite-green); color: #fff;">Choose Elite</a>
                         {% endif %}
                     </div>
                 </div>
             </div>
-
-            {% if user_data and user_data.tier in ('standard', 'elite') %}
-            <div class="text-center mt-4">
-                <a href="#" onclick="openPortal(event)" class="manage-sub-link">
-                    <i class="fas fa-external-link-alt me-1"></i>Manage Subscription via Stripe
-                </a>
-            </div>
-            {% endif %}
         </div>
     </section>
 
@@ -817,9 +1029,10 @@
                             </h2>
                             <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                                 <div class="accordion-body">
-                                    Yes. You can upgrade, downgrade, or cancel at any time via the Stripe customer portal.
-                                    When you cancel, your current plan remains active until the end of the billing period.
-                                    Downgrades take effect at the next renewal.
+                                    Yes! <strong>Upgrades</strong> take effect immediately &mdash; you&rsquo;re only charged the prorated difference
+                                    for the remainder of the billing cycle, and a new cycle starts right away.
+                                    <strong>Downgrades</strong> and <strong>cancellations</strong> take effect at the end of your current billing period
+                                    &mdash; you keep full access until then. You can undo a pending downgrade at any time.
                                 </div>
                             </div>
                         </div>
@@ -924,45 +1137,53 @@
         </div>
     </footer>
 
+    <!-- ══ Confirmation Modal ══ -->
+    <div class="confirm-overlay" id="confirmOverlay">
+        <div class="confirm-modal">
+            <div class="confirm-header" id="confirmHeader">
+                <i class="fas fa-exchange-alt"></i>
+                <h4 id="confirmTitle">Confirm Plan Change</h4>
+                <button class="close-btn" onclick="closeConfirmModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="confirm-body" id="confirmBody">
+                <div class="confirm-loading">
+                    <i class="fas fa-spinner fa-spin me-2"></i>Loading preview...
+                </div>
+            </div>
+            <div class="confirm-footer" id="confirmFooter" style="display: none;">
+                <button class="btn-confirm-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-confirm-action" id="confirmActionBtn" onclick="confirmPlanChange()">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     {% if user_data %}
-    // ── Stripe Checkout / Plan Change ──
     const currentTier = '{{ user_data.tier }}';
+    const pendingTier = '{{ user_data.pending_tier or "" }}';
+    let pendingChangePlan = '';
 
+    // ── Plan labels ──
+    const PLAN_LABELS = { free: 'Free', standard: 'Standard', elite: 'Elite' };
+
+    // ── Free → paid: Stripe Checkout ──
     function startCheckout(plan) {
         const btn = event.target.closest('.btn-pricing');
         const orig = btn.innerHTML;
         btn.disabled = true;
 
-        // Existing paid subscriber → use plan-change route (prorated)
+        // If user is a paid subscriber wanting an upgrade, show preview modal
         if (currentTier === 'standard' || currentTier === 'elite') {
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Switching plan...';
-            fetch('/stripe/change-plan', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                credentials: 'include',
-                body: JSON.stringify({plan: plan})
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    window.location.href = data.redirect || '/pricing?payment=success';
-                } else {
-                    btn.disabled = false;
-                    btn.innerHTML = orig;
-                    alert(data.error || 'Could not change plan. Please try again.');
-                }
-            })
-            .catch(() => {
-                btn.disabled = false;
-                btn.innerHTML = orig;
-                alert('Connection error. Please try again.');
-            });
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            startPlanChange(plan);
             return;
         }
 
-        // Free user → use checkout session
+        // Free user → Stripe Checkout
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...';
         fetch('/stripe/create-checkout-session', {
             method: 'POST',
@@ -987,24 +1208,155 @@
         });
     }
 
-    // ── Stripe Portal ──
-    function openPortal(e) {
-        e.preventDefault();
-        fetch('/stripe/create-portal-session', {
+    // ── Paid → different plan: show confirmation modal with preview ──
+    function startPlanChange(plan) {
+        pendingChangePlan = plan;
+
+        // Show modal with loading state
+        const overlay = document.getElementById('confirmOverlay');
+        const body = document.getElementById('confirmBody');
+        const footer = document.getElementById('confirmFooter');
+        const header = document.getElementById('confirmHeader');
+        const title = document.getElementById('confirmTitle');
+
+        body.innerHTML = '<div class="confirm-loading"><i class="fas fa-spinner fa-spin me-2"></i>Loading preview...</div>';
+        footer.style.display = 'none';
+        overlay.style.display = 'flex';
+
+        // Fetch preview
+        fetch('/stripe/preview-change', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({plan: plan})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                body.innerHTML = '<p style="color: #dc3545; padding: 10px;">' + data.error + '</p>';
+                footer.style.display = 'flex';
+                document.getElementById('confirmActionBtn').style.display = 'none';
+                return;
+            }
+
+            const actionBtn = document.getElementById('confirmActionBtn');
+            actionBtn.style.display = '';
+
+            if (data.direction === 'upgrade') {
+                // Upgrade modal
+                header.className = 'confirm-header confirm-header-upgrade';
+                title.textContent = 'Upgrade to ' + PLAN_LABELS[plan];
+                actionBtn.style.background = 'var(--elite-green)';
+                actionBtn.innerHTML = '<i class="fas fa-arrow-up me-1"></i>Confirm Upgrade';
+
+                body.innerHTML = '<ul>' +
+                    '<li><i class="fas fa-bolt" style="color: var(--elite-green);"></i><span><strong>Immediate access</strong> to ' + PLAN_LABELS[plan] + ' features</span></li>' +
+                    '<li><i class="fas fa-receipt" style="color: var(--brand-primary);"></i><span>You\'ll be charged <strong>' + data.currency + ' ' + data.amount_due + '</strong> today (prorated &mdash; unused time on your current plan is credited)</span></li>' +
+                    '<li><i class="fas fa-calendar-check" style="color: var(--brand-neutral);"></i><span>New billing cycle starts today</span></li>' +
+                    '</ul>';
+
+            } else {
+                // Downgrade modal
+                header.className = 'confirm-header confirm-header-downgrade';
+                title.textContent = (plan === 'free') ? 'Cancel Subscription' : ('Switch to ' + PLAN_LABELS[plan]);
+                actionBtn.style.background = 'var(--brand-neutral)';
+
+                if (plan === 'free') {
+                    actionBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm Cancellation';
+                } else {
+                    actionBtn.innerHTML = '<i class="fas fa-check me-1"></i>Confirm Switch';
+                }
+
+                body.innerHTML = '<ul>' +
+                    '<li><i class="fas fa-shield-alt" style="color: var(--elite-green);"></i><span>Keep full <strong>' + PLAN_LABELS[currentTier] + '</strong> access until <strong>' + data.effective_date + '</strong></span></li>' +
+                    '<li><i class="fas fa-calendar-alt" style="color: var(--brand-neutral);"></i><span>Your plan switches to <strong>' + PLAN_LABELS[plan] + '</strong> on ' + data.effective_date + '</span></li>' +
+                    '<li><i class="fas fa-undo" style="color: var(--brand-primary);"></i><span>You can undo this change any time before then</span></li>' +
+                    '</ul>';
+            }
+
+            footer.style.display = 'flex';
+        })
+        .catch(() => {
+            body.innerHTML = '<p style="color: #dc3545; padding: 10px;">Connection error. Please try again.</p>';
+            footer.style.display = 'flex';
+            document.getElementById('confirmActionBtn').style.display = 'none';
+        });
+    }
+
+    // ── Confirm the plan change (after modal) ──
+    function confirmPlanChange() {
+        const btn = document.getElementById('confirmActionBtn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+
+        fetch('/stripe/change-plan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({plan: pendingChangePlan})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                closeConfirmModal();
+                window.location.href = data.redirect || '/pricing?payment=success';
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                alert(data.error || 'Could not change plan. Please try again.');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            alert('Connection error. Please try again.');
+        });
+    }
+
+    // ── Cancel a pending downgrade ──
+    function cancelPendingChange() {
+        const banner = document.getElementById('pendingBanner');
+        const btn = banner.querySelector('.btn-undo-pending');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Undoing...';
+
+        fetch('/stripe/cancel-pending-change', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             credentials: 'include'
         })
         .then(r => r.json())
         .then(data => {
-            if (data.portal_url) {
-                window.location.href = data.portal_url;
+            if (data.success) {
+                window.location.reload();
             } else {
-                alert('Could not open subscription portal. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                alert(data.error || 'Could not cancel. Please try again.');
             }
         })
-        .catch(() => alert('Connection error. Please try again.'));
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            alert('Connection error. Please try again.');
+        });
     }
+
+    // ── Modal helpers ──
+    function closeConfirmModal() {
+        document.getElementById('confirmOverlay').style.display = 'none';
+        pendingChangePlan = '';
+    }
+
+    document.getElementById('confirmOverlay').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirmModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeConfirmModal();
+    });
 
     // ── Auto-checkout on plan param ──
     (function() {
@@ -1024,11 +1376,13 @@
     (function() {
         const params = new URLSearchParams(window.location.search);
         const payment = params.get('payment');
-        if (payment === 'success' || payment === 'cancelled') {
+        if (payment === 'success' || payment === 'cancelled' || payment === 'scheduled') {
             const toast = document.createElement('div');
             toast.className = 'payment-toast ' + payment;
             if (payment === 'success') {
                 toast.innerHTML = '<i class="fas fa-check-circle"></i> Payment successful! Your plan has been upgraded.';
+            } else if (payment === 'scheduled') {
+                toast.innerHTML = '<i class="fas fa-clock"></i> Plan change scheduled. You keep full access until the switch date.';
             } else {
                 toast.innerHTML = '<i class="fas fa-info-circle"></i> Checkout was cancelled. You can try again any time.';
             }
@@ -1037,7 +1391,6 @@
                 toast.style.animation = 'fadeOut 0.4s ease forwards';
                 setTimeout(function() { toast.remove(); }, 400);
             }, 5000);
-            // Clean URL
             window.history.replaceState({}, '', '/pricing');
         }
     })();
