@@ -6833,41 +6833,8 @@ Sitemap: https://www.radinsights.xyz/sitemap.xml
 
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
-    """Generate sitemap.xml for search engines."""
-    from datetime import date
-
-    today = date.today().isoformat()
-
-    # Static public pages: (path, priority, changefreq, lastmod)
-    pages = [
-        ('/', '1.0', 'weekly', today),
-        ('/pricing', '0.9', 'monthly', today),
-        ('/about', '0.7', 'monthly', today),
-        ('/tnm-calculator', '0.9', 'weekly', today),
-        ('/essential-tnm-concepts', '0.6', 'monthly', today),
-        ('/privacy-policy', '0.3', 'yearly', today),
-        ('/terms-of-use', '0.3', 'yearly', today),
-    ]
-
-    # Dynamic: public TNM calculator pages (39+)
-    try:
-        from models import TNMCalculatorContent
-        calcs = TNMCalculatorContent.query.filter_by(is_available=True).all()
-        for c in calcs:
-            pages.append((f'/tnm-calculator/{c.slug}', '0.7', 'monthly', today))
-    except Exception:
-        pass
-
-    base_url = 'https://www.radinsights.xyz'
-    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for path, priority, freq, lastmod in pages:
-        xml += f'  <url>\n    <loc>{base_url}{path}</loc>\n'
-        xml += f'    <lastmod>{lastmod}</lastmod>\n'
-        xml += f'    <priority>{priority}</priority>\n'
-        xml += f'    <changefreq>{freq}</changefreq>\n  </url>\n'
-    xml += '</urlset>'
-    return xml, 200, {'Content-Type': 'application/xml; charset=utf-8'}
+    """Serve static sitemap.xml for search engines."""
+    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
 
 
 @app.errorhandler(404)
