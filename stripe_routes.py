@@ -63,9 +63,16 @@ def _ensure_stripe_customer(user):
         return None
 
 
+def _get(obj, key, default=None):
+    """Get a value from a dict or Stripe object (SDK v8+ uses attribute access)."""
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    return getattr(obj, key, default)
+
+
 def _subscription_end_from_event(subscription_obj):
     """Extract subscription end date from a Stripe subscription object."""
-    ts = subscription_obj.get('current_period_end')
+    ts = _get(subscription_obj, 'current_period_end')
     if ts:
         return datetime.utcfromtimestamp(ts)
     return datetime.utcnow() + timedelta(days=30)
@@ -73,10 +80,13 @@ def _subscription_end_from_event(subscription_obj):
 
 def _tier_from_subscription(subscription_obj):
     """Determine our tier name from Stripe subscription items."""
-    items = subscription_obj.get('items', {}).get('data', [])
-    if not items:
+    items_wrapper = _get(subscription_obj, 'items', {})
+    items_data = _get(items_wrapper, 'data', [])
+    if not items_data:
         return 'standard'
-    price_id = items[0].get('price', {}).get('id', '')
+    first_item = items_data[0]
+    price_obj = _get(first_item, 'price', {})
+    price_id = _get(price_obj, 'id', '')
     if price_id == PRICE_IDS.get('elite'):
         return 'elite'
     return 'standard'
@@ -218,17 +228,16 @@ def _find_user_by_customer_id(customer_id):
 def _handle_checkout_completed(session_obj):
     """checkout.session.completed — first successful payment."""
     from access_control import upgrade_to_paid
-    from models import PaymentStatus
 
-    customer_id = session_obj.get('customer')
+    customer_id = _get(session_obj, 'customer')
     user = _find_user_by_customer_id(customer_id)
 
     if not user:
         # Try metadata fallback
-        metadata = session_obj.get('metadata', {})
-        user_id = metadata.get('user_id')
+        metadata = _get(session_obj, 'metadata', {})
+        user_id = _get(metadata, 'user_id')
         if user_id:
-            user = User.query.get(int(user_id))
+            user = db.session.get(User, int(user_id))
             if user and not user.stripe_customer_id:
                 user.stripe_customer_id = customer_id
                 db.session.commit()
@@ -238,14 +247,15 @@ def _handle_checkout_completed(session_obj):
         return
 
     # Retrieve the subscription to get period end and tier
-    sub_id = session_obj.get('subscription')
+    sub_id = _get(session_obj, 'subscription')
     if sub_id:
         sub = stripe.Subscription.retrieve(sub_id)
         end_date = _subscription_end_from_event(sub)
         tier = _tier_from_subscription(sub)
     else:
         end_date = datetime.utcnow() + timedelta(days=30)
-        tier = session_obj.get('metadata', {}).get('plan', 'standard')
+        metadata = _get(session_obj, 'metadata', {})
+        tier = _get(metadata, 'plan', 'standard')
 
     upgrade_to_paid(user, end_date, tier)
     logger.info(f"User {user.id} upgraded to {tier} via checkout (ends {end_date})")
@@ -256,13 +266,13 @@ def _handle_subscription_updated(sub_obj):
     from access_control import upgrade_to_paid
     from models import PaymentStatus
 
-    customer_id = sub_obj.get('customer')
+    customer_id = _get(sub_obj, 'customer')
     user = _find_user_by_customer_id(customer_id)
     if not user:
         logger.warning(f"subscription.updated: no user for customer {customer_id}")
         return
 
-    status = sub_obj.get('status')
+    status = _get(sub_obj, 'status')
 
     if status == 'active':
         end_date = _subscription_end_from_event(sub_obj)
@@ -280,7 +290,7 @@ def _handle_subscription_deleted(sub_obj):
     """customer.subscription.deleted — subscription cancelled/expired."""
     from access_control import downgrade_to_free
 
-    customer_id = sub_obj.get('customer')
+    customer_id = _get(sub_obj, 'customer')
     user = _find_user_by_customer_id(customer_id)
     if not user:
         logger.warning(f"subscription.deleted: no user for customer {customer_id}")
@@ -294,7 +304,7 @@ def _handle_payment_failed(invoice_obj):
     """invoice.payment_failed — mark payment as past due."""
     from models import PaymentStatus
 
-    customer_id = invoice_obj.get('customer')
+    customer_id = _get(invoice_obj, 'customer')
     user = _find_user_by_customer_id(customer_id)
     if not user:
         logger.warning(f"invoice.payment_failed: no user for customer {customer_id}")
