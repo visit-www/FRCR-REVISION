@@ -519,6 +519,19 @@
     </script>
     {% endif %}
 
+    <!-- Global Search -->
+    {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='js/global-search.js') }}"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.initGlobalSearch) {
+            initGlobalSearch('navSearchInput', 'navSearchResults');
+            initGlobalSearch('mobileNavSearchInput', 'mobileNavSearchResults');
+        }
+    });
+    </script>
+    {% endif %}
+
     <!-- Onboarding Tour -->
     {% if current_user.is_authenticated %}
     <script src="{{ url_for('static', filename='onboarding-tour.js') }}"></script>
