@@ -198,8 +198,8 @@ def stripe_webhook():
             _handle_payment_failed(data_obj)
     except Exception as e:
         logger.error(f"Webhook handler error for {event_type}: {e}", exc_info=True)
-        # Return 200 so Stripe doesn't retry — we logged the error
-        return jsonify({'status': 'error logged'}), 200
+        # Return 200 so Stripe doesn't retry — include error detail for debugging
+        return jsonify({'status': 'error logged', 'error': str(e)}), 200
 
     return jsonify({'status': 'ok'}), 200
 
