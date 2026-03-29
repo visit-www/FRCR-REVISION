@@ -659,7 +659,7 @@ function hideUpgradeModal() {
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Unlimited cases &amp; practice</li>
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Personal templates</li>
                         </ul>
-                        <a href="/pricing?plan=standard" class="btn btn-brand-primary btn-sm w-100">Choose Standard</a>
+                        <button onclick="startCheckout('standard')" class="btn btn-brand-primary btn-sm w-100">Choose Standard</button>
                     </div>
                 </div>
                 <div class="col-6">
@@ -675,7 +675,7 @@ function hideUpgradeModal() {
                             <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Priority content requests</li>
                             <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Early access to new features</li>
                         </ul>
-                        <a href="/pricing?plan=elite" class="btn btn-sm w-100" style="background:#6b46c1; color:#fff;">Choose Elite</a>
+                        <button onclick="startCheckout('elite')" class="btn btn-sm w-100" style="background:#6b46c1; color:#fff;">Choose Elite</button>
                     </div>
                 </div>
             </div>
@@ -688,5 +688,34 @@ function hideUpgradeModal() {
 #upgradeModal.show > div { transform:translateY(0); }
 #upgradeModal:not(.show) { opacity:0; }
 </style>
+<script>
+function startCheckout(plan) {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Redirecting...';
+    fetch('/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+        body: JSON.stringify({plan: plan})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            btn.disabled = false;
+            btn.textContent = orig;
+            alert(data.error || 'Could not start checkout. Please try again.');
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = orig;
+        alert('Connection error. Please try again.');
+    });
+}
+</script>
 
 {% endblock %}

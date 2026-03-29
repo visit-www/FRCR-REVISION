@@ -290,6 +290,9 @@ class User(UserMixin, db.Model):
     # === GOOGLE OAUTH ===
     google_id = db.Column(db.String(255), nullable=True, unique=True)  # Google OAuth user ID
 
+    # === STRIPE ===
+    stripe_customer_id = db.Column(db.String(255), nullable=True, unique=True, index=True)
+
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)

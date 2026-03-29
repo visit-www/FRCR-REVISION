@@ -180,6 +180,7 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="/auth/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="manageSubscription(event)"><i class="fas fa-credit-card me-2"></i>Subscription</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="#" onclick="handleLogout(event)"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
                         </ul>
@@ -469,6 +470,26 @@
             }
         }
         
+        function manageSubscription(event) {
+            event.preventDefault();
+            fetch('/stripe/create-portal-session', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include'
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.portal_url) {
+                    window.location.href = data.portal_url;
+                } else if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    window.location.href = '/#pricing-section';
+                }
+            })
+            .catch(() => { window.location.href = '/#pricing-section'; });
+        }
+
         function handleLogout(event) {
             event.preventDefault();
             

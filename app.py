@@ -925,6 +925,9 @@ with app.app_context():
         # -- user: Google OAuth --
         _add_col_if_missing('user', 'google_id', 'google_id VARCHAR(255)')
 
+        # -- user: Stripe --
+        _add_col_if_missing('user', 'stripe_customer_id', 'stripe_customer_id VARCHAR(255)')
+
         # -- user: Onboarding tour --
         _add_col_if_missing('user', 'has_seen_tour', 'has_seen_tour BOOLEAN DEFAULT false NOT NULL')
 
@@ -1101,6 +1104,9 @@ app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (
 
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
+
+from stripe_routes import stripe_bp
+app.register_blueprint(stripe_bp)  # Stripe payment & subscription management
 
 # Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
 from pii_guard import create_pii_middleware

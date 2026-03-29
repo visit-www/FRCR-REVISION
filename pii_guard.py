@@ -141,6 +141,7 @@ SKIP_ROUTE_PREFIXES = (
     '/radiology-protocols/admin/',
     '/incidental-findings/admin/',
     '/admin/reporting-algorithms/',
+    '/stripe/webhook',
 )
 
 

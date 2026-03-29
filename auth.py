@@ -401,13 +401,20 @@ def register():
                 return jsonify({'error': 'Registration failed. Password was not saved correctly.'}), 500
             
             user = verified_user
-            
+
+            # Create Stripe customer (non-fatal — created lazily at checkout if this fails)
+            try:
+                from stripe_routes import _ensure_stripe_customer
+                _ensure_stripe_customer(user)
+            except Exception as stripe_err:
+                logger.warning(f"Stripe customer creation failed for user {user.id}: {stripe_err}")
+
             # Login user after successful save (don't persist session - require explicit login next time)
             from flask import session as flask_session
             flask_session.permanent = True
             flask_session['last_activity'] = datetime.utcnow().isoformat()
             login_user(user, remember=False)  # New users must explicitly log in next session
-            
+
             return jsonify({'success': True, 'message': 'Registration successful', 'user_id': user.id}), 201
             
         except Exception as e:
@@ -1012,6 +1019,13 @@ def google_callback():
             user.last_login = datetime.utcnow()
             db.session.add(user)
             db.session.commit()
+
+            # Create Stripe customer (non-fatal — created lazily at checkout if this fails)
+            try:
+                from stripe_routes import _ensure_stripe_customer
+                _ensure_stripe_customer(user)
+            except Exception as stripe_err:
+                logger.warning(f"Stripe customer creation failed for Google user {user.id}: {stripe_err}")
 
         # Check soft-deleted account
         if user.is_deleted:
