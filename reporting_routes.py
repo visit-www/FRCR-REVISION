@@ -2868,92 +2868,6 @@ def _extract_learning_title(html_content, question_type):
     return text[:120] + ('...' if len(text) > 120 else '')
 
 
-@reporting_bp.route('/api/smart-reporter/route-intent', methods=['POST'])
-@login_required
-def smart_reporter_route_intent():
-    """Classify user input into an intent category for Smart Reporter routing."""
-    data = request.get_json() or {}
-    user_input = (data.get('query') or '').strip()
-    if not user_input:
-        return jsonify({'error': 'Query is required.'}), 400
-
-    try:
-        from ai_smart_reporter import classify_intent, SmartReporterError
-        result = classify_intent(user_input)
-    except Exception as exc:
-        logger.error(f"Smart Reporter intent classification failed: {exc}")
-        # Fallback: default to walkthrough intent
-        result = {
-            'intent': 'walkthrough',
-            'canonical_topic': '',
-            'display_title': user_input,
-            'modality': None,
-            'body_section': None,
-            'category': None,
-        }
-
-    # Check cache for walkthrough intent
-    cached_tree = None
-    if result.get('intent') == 'walkthrough' and result.get('canonical_topic'):
-        slug = result['canonical_topic']
-        # Check admin-verified templates first, then unverified, then user cache
-        cached = ReportingAlgorithm.query.filter(
-            ReportingAlgorithm.slug == slug,
-            ReportingAlgorithm.is_available == True,
-        ).order_by(
-            ReportingAlgorithm.verified_at.desc().nullslast(),
-        ).first()
-        if cached and cached.algorithm_html:
-            cached_tree = {
-                'source': 'cache',
-                'template_id': cached.id,
-                'title': cached.title,
-                'verified': cached.verified_at is not None,
-            }
-
-    return jsonify({
-        'success': True,
-        'intent': result.get('intent', 'walkthrough'),
-        'canonical_topic': result.get('canonical_topic', ''),
-        'display_title': result.get('display_title', user_input),
-        'modality': result.get('modality'),
-        'body_section': result.get('body_section'),
-        'category': result.get('category'),
-        'cached_tree': cached_tree,
-    })
-
-
-@reporting_bp.route('/api/smart-reporter/blank-template', methods=['POST'])
-@login_required
-def smart_reporter_blank_template():
-    """Generate a blank structured reporting template (Gap 3 abort flow)."""
-    data = request.get_json() or {}
-
-    modality = (data.get('modality') or '').strip()
-    body_section = (data.get('body_section') or '').strip()
-    clinical_question = (data.get('clinical_question') or '').strip()
-
-    if not modality and not body_section and not clinical_question:
-        return jsonify({'error': 'At least one of modality, body_section, or clinical_question is required.'}), 400
-
-    try:
-        from ai_smart_reporter import generate_blank_template, SmartReporterError
-        result = generate_blank_template(
-            modality=modality,
-            body_section=body_section,
-            clinical_question=clinical_question,
-        )
-    except Exception as exc:
-        logger.error(f"Smart Reporter blank template generation failed: {exc}")
-        return jsonify({'error': f'Template generation failed: {exc}'}), 500
-
-    return jsonify({
-        'success': True,
-        'template_text': result.get('template_text', ''),
-        'model': result.get('model', ''),
-        'token_count': result.get('token_count', 0),
-    })
-
 
 
 
@@ -3562,6 +3476,11 @@ def smart_reporter_anatomy():
             'source': 'database',
         })
 
+    # Rate limit before AI generation (cache miss = will call Claude)
+    ok, remaining, err = _check_ai_rate_limit(usage_type='sr')
+    if not ok:
+        return err
+
     # Build additional context + extract reference images from optional admin inputs
     instructions = (data.get('instructions') or '').strip()
     if request.content_type and 'multipart/form-data' in request.content_type:
@@ -3671,6 +3590,7 @@ def smart_reporter_anatomy():
         'source': result.get('source', 'ai'),
         'token_count': result.get('token_count', 0),
         'algorithm_id': algorithm_id,
+        'remaining_requests': remaining,
     })
 
 

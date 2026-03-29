@@ -51,7 +51,7 @@
 | 14 | Cookie consent banner (PECR) | DONE | Added PECR-compliant banner with localStorage persistence. **File:** `templates/base.html` |
 | 15 | AI processing disclosure in Smart Reporter | DONE | Added note: "Powered by AI — your input is processed by Anthropic's Claude. Do not enter patient-identifiable data." **File:** `templates/smart_reporter.html` |
 | 16 | Auto-purge expired soft-deleted accounts | DONE | If `is_deleted=True` and `deleted_at + 31 days < now()`, calls `delete_user_completely()` at login check. **File:** `auth.py` |
-| 17 | Contact email inconsistency | DONE | Standardized to `support@eralight.com` across terms of use, privacy policy, and base.html footer |
+| 17 | Contact email inconsistency | DONE | Standardized to `contact@radinsights.xyz` across terms of use, privacy policy, and base.html footer |
 | 18 | Medical non-diagnostic disclaimer | DONE | Added disclaimers to smart_reporter, reporting_algorithms_browse, reporting_templates_browse, radiology_protocols_user, student_dashboard. Existing disclaimers verified on 9 other pages. |
 
 ### 1.3 Error Handling
@@ -249,7 +249,7 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 14. **Forum image magic byte validation** — `_validate_image_magic()` check added
 15. **Filename sanitization** — `re.sub()` + `os.path.basename()` for case image uploads
 16. **Cron auth hardened** — requires `CRON_SECRET` in production, logs error if missing
-17. **Contact email standardized** — all pages now use `support@eralight.com`
+17. **Contact email standardized** — all pages now use `contact@radinsights.xyz`
 18. **Superadmin email env var** — removed hardcoded default, requires `SUPERADMIN_EMAIL` env var
 19. **Display name blocklist** — blocks admin/moderator/support/system/staff impersonation
 20. **Health check endpoint** — `GET /health` with DB connection check

@@ -145,7 +145,9 @@ class OnboardingTour {
         // Position spotlight and tooltip
         if (step.selector) {
             var el = document.querySelector(step.selector);
-            if (el) {
+            var elRect = el ? el.getBoundingClientRect() : null;
+            // Check element exists AND is visible (hidden elements have zero dimensions)
+            if (el && elRect && elRect.width > 0 && elRect.height > 0) {
                 // Allow scroll so we can scroll to element
                 document.body.style.overflow = '';
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -165,37 +167,52 @@ class OnboardingTour {
     _positionAt(el, position) {
         var rect = el.getBoundingClientRect();
         var pad = 10;
+        var margin = 16;
 
-        // Show spotlight
+        // Show spotlight (absolute position for box-shadow cutout)
         this.spotlight.style.display = 'block';
         this.spotlight.style.top = (rect.top - pad + window.scrollY) + 'px';
         this.spotlight.style.left = (rect.left - pad) + 'px';
         this.spotlight.style.width = (rect.width + pad * 2) + 'px';
         this.spotlight.style.height = (rect.height + pad * 2) + 'px';
 
-        // Show tooltip
+        // Show tooltip with fixed positioning (viewport-relative, immune to overflow:hidden)
+        this.tooltip.style.position = 'fixed';
         this.tooltip.style.display = 'block';
         this.tooltip.classList.remove('tour-tooltip-center');
         var tooltipRect = this.tooltip.getBoundingClientRect();
 
+        var tooltipTop;
+        var tooltipLeft = Math.max(margin, Math.min(
+            rect.left + rect.width / 2 - tooltipRect.width / 2,
+            window.innerWidth - tooltipRect.width - margin
+        ));
+
         if (position === 'bottom') {
-            this.tooltip.style.top = (rect.bottom + pad + 12 + window.scrollY) + 'px';
-            this.tooltip.style.left = Math.max(16, Math.min(
-                rect.left + rect.width / 2 - tooltipRect.width / 2,
-                window.innerWidth - tooltipRect.width - 16
-            )) + 'px';
+            tooltipTop = rect.bottom + pad + 12;
+            // Flip to top if tooltip goes below viewport
+            if (tooltipTop + tooltipRect.height > window.innerHeight - margin) {
+                tooltipTop = rect.top - tooltipRect.height - pad - 12;
+            }
         } else if (position === 'top') {
-            this.tooltip.style.top = (rect.top - tooltipRect.height - pad - 12 + window.scrollY) + 'px';
-            this.tooltip.style.left = Math.max(16, Math.min(
-                rect.left + rect.width / 2 - tooltipRect.width / 2,
-                window.innerWidth - tooltipRect.width - 16
-            )) + 'px';
+            tooltipTop = rect.top - tooltipRect.height - pad - 12;
+            // Flip to bottom if tooltip goes above viewport
+            if (tooltipTop < margin) {
+                tooltipTop = rect.bottom + pad + 12;
+            }
         }
+
+        // Final clamp: keep tooltip fully within viewport
+        tooltipTop = Math.max(margin, Math.min(tooltipTop, window.innerHeight - tooltipRect.height - margin));
+
+        this.tooltip.style.top = tooltipTop + 'px';
+        this.tooltip.style.left = tooltipLeft + 'px';
     }
 
     /** Center tooltip (for welcome/finish steps) */
     _positionCenter() {
         this.spotlight.style.display = 'none';
+        this.tooltip.style.position = '';  // Reset so .tour-tooltip-center CSS takes over
         this.tooltip.style.display = 'block';
         this.tooltip.classList.add('tour-tooltip-center');
         this.tooltip.style.top = '';

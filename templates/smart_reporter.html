@@ -30,10 +30,6 @@
                     <p class="text-muted mb-0">RadInsight Intelligence powered reporting</p>
                 </div>
 
-                <!-- Hidden elements used by routeQuery (kept for compatibility) -->
-                <input type="hidden" id="smartInputBar" value="">
-                <div id="routeIntentLoading" class="d-none"></div>
-                <button id="btnRouteQuery" class="d-none"></button>
 
                 <!-- 5-Option Grid -->
                 <div class="row g-3 mb-4">
@@ -293,9 +289,6 @@
                                 <div class="vr mx-1 d-none d-md-block" style="height: 24px;"></div>
                                 <button class="btn btn-sm btn-outline-info" onclick="exitToEditor()" title="Exit walkthrough and open editor with partial findings">
                                     <i class="fas fa-sign-out-alt me-1"></i><span class="d-none d-md-inline">Exit to Editor</span>
-                                </button>
-                                <button class="btn btn-sm btn-outline-warning" onclick="generateBlankFromWalkthrough()" title="Generate a structured blank template for this scan type">
-                                    <i class="fas fa-file-alt me-1"></i><span class="d-none d-md-inline">Blank Template</span>
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="pasteFromWalkthrough()" title="Discard walkthrough and paste your own report">
                                     <i class="fas fa-paste me-1"></i><span class="d-none d-md-inline">Paste Report</span>
@@ -1331,97 +1324,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     })();
 
-    window.routeQuery = function() {
-        const query = document.getElementById('smartInputBar').value.trim();
-        if (!query) {
-            showToast('Please enter what you\'re working on.', 'warning');
-            return;
-        }
-
-        const loading = document.getElementById('landingAlgoLoading');
-        if (loading) loading.classList.remove('d-none');
-
-        fetch('/api/smart-reporter/route-intent', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query: query }),
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (loading) loading.classList.add('d-none');
-
-            if (data.error) {
-                showToast(data.error, 'error');
-                return;
-            }
-
-            const intent = data.intent || 'walkthrough';
-            const displayTitle = data.display_title || query;
-
-            if (intent === 'paste_report' || intent === 'report_help') {
-                // Go directly to editor
-                pasteMyReport(query);
-            } else if (intent === 'walkthrough') {
-                // Pre-fill walkthrough setup and switch to walkthrough scene
-                showScene('walkthrough');
-                document.getElementById('inputClinicalQuestion').value = displayTitle;
-                if (data.modality) {
-                    // Try to match modality to select options
-                    const modalitySelect = document.getElementById('inputModality');
-                    const modalityMap = {
-                        'CT': 'CT with contrast', 'MRI': 'MRI with contrast',
-                        'US': 'Ultrasound', 'XR': 'X-ray',
-                        'NM': 'Nuclear Medicine', 'PET-CT': 'PET-CT',
-                        'Fluoroscopy': 'Fluoroscopy',
-                    };
-                    const mapped = modalityMap[data.modality] || '';
-                    if (mapped) {
-                        for (let i = 0; i < modalitySelect.options.length; i++) {
-                            if (modalitySelect.options[i].value === mapped) {
-                                modalitySelect.selectedIndex = i;
-                                break;
-                            }
-                        }
-                    }
-                }
-                if (data.body_section) {
-                    const bsSelect = document.getElementById('inputBodySection');
-                    for (let i = 0; i < bsSelect.options.length; i++) {
-                        if (bsSelect.options[i].value === data.body_section ||
-                            bsSelect.options[i].text.toLowerCase().includes(data.body_section.toLowerCase())) {
-                            bsSelect.selectedIndex = i;
-                            break;
-                        }
-                    }
-                }
-            } else if (intent === 'tool_request') {
-                // Open editor with Tool Panel showing matched tool
-                pasteMyReport(query).then(function() {
-                    showToolPanel(data.canonical_topic || query, data.tool_type || 'auto');
-                });
-            } else if (intent === 'reference' || intent === 'protocol') {
-                // Open editor with Reference Panel showing matched content
-                pasteMyReport(query).then(function() {
-                    showReferencePanel(query);
-                });
-            } else if (intent === 'anatomy') {
-                // Open editor with Anatomy Panel
-                pasteMyReport(query).then(function() {
-                    showAnatomyPanel(data.canonical_topic || query);
-                });
-            } else {
-                // Default: walkthrough
-                showScene('walkthrough');
-                document.getElementById('inputClinicalQuestion').value = displayTitle;
-            }
-        })
-        .catch(() => {
-            if (loading) loading.classList.add('d-none');
-            // Fallback: go to walkthrough with the query
-            showScene('walkthrough');
-            document.getElementById('inputClinicalQuestion').value = query;
-        });
-    };
 
     window.pasteMyReport = function(contextQuery) {
         // Fully reset AI state and open a fresh editor
@@ -1768,57 +1670,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    window.generateBlankFromWalkthrough = function() {
-        // Get modality and body section from the walkthrough setup
-        const modality = document.getElementById('inputModality').value || '';
-        const bodySection = document.getElementById('inputBodySection').value || '';
-        const clinicalQuestion = document.getElementById('inputClinicalQuestion').value || '';
-
-        if (!modality && !bodySection && !clinicalQuestion) {
-            showToast('No scan information available for blank template.', 'warning');
-            return;
-        }
-
-        const btn = event.target.closest('button');
-        const origHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
-
-        fetch('/api/smart-reporter/blank-template', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                modality: modality,
-                body_section: bodySection,
-                clinical_question: clinicalQuestion,
-            }),
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-
-            if (data.error) {
-                showToast(data.error, 'error');
-                return;
-            }
-
-            resetEditorSession();
-            state.inputText = data.template_text || '';
-            showScene('editor');
-
-            const input = document.getElementById('editorInput');
-            input.value = state.inputText;
-            autoResizeTextarea(input);
-
-            showToast('Blank template generated. Fill in your findings.', 'success');
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-            showToast('Failed to generate blank template.', 'error');
-        });
-    };
 
     window.pasteFromWalkthrough = function() {
         // Discard walkthrough progress and open editor for paste
@@ -2035,10 +1886,23 @@ document.addEventListener('DOMContentLoaded', function() {
             activeAIController = null;
             loading.classList.add('d-none');
 
+            if (data.upgrade_required) {
+                panel.classList.add('d-none');
+                showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
+                return;
+            }
+
             if (data.error) {
                 panel.classList.add('d-none');
                 showToast('Could not load anatomy snippet: ' + data.error, 'warning');
                 return;
+            }
+
+            // Update usage counter from anatomy response
+            if (data.remaining_requests !== undefined) {
+                state.askClaudeRemaining = data.remaining_requests;
+                if (state.usageData) state.usageData.sr_remaining = data.remaining_requests;
+                updateAskClaudeCounter();
             }
 
             content.innerHTML = data.content_html || '<p class="text-muted">No anatomy content available.</p>';

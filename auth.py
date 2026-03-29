@@ -24,6 +24,43 @@ RECOVERY_PERIOD_DAYS = 31  # 30 days + 1 day grace period
 MAX_FAILED_LOGINS = 5
 LOCKOUT_MINUTES = 15
 
+# Shared email signature appended to all outgoing emails
+EMAIL_SIGNATURE = """
+<table style="font-family:Arial, sans-serif; font-size:13px; color:rgb(31, 41, 55); line-height:1.5; margin-top:24px;">
+    <tbody>
+        <tr>
+            <td style="padding-right:10px; vertical-align:middle">
+                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" width="110" style="display:block">
+            </td>
+            <td style="vertical-align:middle">
+                <div style="font-size:16px; font-weight:700; color:rgb(17, 24, 39)">
+                    <span style="color:rgb(255, 127, 0)">RadInsights</span>
+                </div>
+                <div style="color:rgb(55, 65, 81); margin-top:2px">
+                    <b>Smart Reporting</b> - RadInsights Intelligence.
+                </div>
+                <div><hr style="border:none; border-top:1px solid #e5e7eb; margin:4px 0;">
+                    <b>RadIQ</b> - Smart radiology department workflow.
+                </div>
+                <div><hr style="border:none; border-top:1px solid #e5e7eb; margin:4px 0;">
+                    <b>Radiology learning</b> - Learn as you report.
+                </div>
+                <div><hr style="border:none; border-top:1px solid #e5e7eb; margin:4px 0;">
+                    <b>Exam preparation</b> - Practice intelligently.
+                </div>
+                <div><hr style="border:none; border-top:1px solid #e5e7eb; margin:4px 0;">
+                    <a href="https://www.radinsights.xyz" style="text-decoration:none; color:rgb(37, 99, 235); font-weight:500" target="_blank">www.radinsights.xyz</a>
+                </div>
+                <div style="margin-top:6px; font-size:12px; color:rgb(107, 114, 128); font-style:italic; font-family:Georgia, 'Times New Roman', serif;">
+                    Built for radiologists by radiologists, manifestation of a radiologist's
+                    <span style="color:rgb(255, 127, 0); font-weight:600">Ikigai</span>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+</table>
+"""
+
 def send_recovery_email(email, token):
     """
     Send password recovery email using Resend SDK
@@ -47,7 +84,7 @@ def send_recovery_email(email, token):
     resend.api_key = resend_key
     
     # Use verified domain or Resend's test domain
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <contact@radinsights.xyz>")
     
     try:
         params = {
@@ -65,6 +102,7 @@ def send_recovery_email(email, token):
                 </p>
                 <p style="color: #666;">If you didn't request this, you can safely ignore this email.</p>
                 <p style="color: #999; font-size: 12px;">This link expires in 24 hours.</p>
+                {EMAIL_SIGNATURE}
             </div>
             """
         }
@@ -114,7 +152,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <contact@radinsights.xyz>")
     
     # Build details section
     details_html = ""
@@ -221,6 +259,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
                     <p style="margin: 5px 0 0 0;">This is an automated security notification.</p>
                 </div>
             </div>
+            {EMAIL_SIGNATURE}
             """
         }
         
@@ -244,7 +283,7 @@ def send_case_review_notification(case, submitter):
 
     import resend
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <contact@radinsights.xyz>")
     admin_email = os.getenv('SUPERADMIN_EMAIL')
     if not admin_email:
         logger.warning("SUPERADMIN_EMAIL not set — cannot send case submission notification")
@@ -279,7 +318,8 @@ def send_case_review_notification(case, submitter):
                 <div style="background-color: #2c3e50; color: #aaa; padding: 15px; text-align: center; font-size: 12px;">
                     <p style="margin: 0;">RadInsights Admin Notification</p>
                 </div>
-            </div>"""
+            </div>
+            {EMAIL_SIGNATURE}"""
         }
         response = resend.Emails.send(params)
         logger.info(f"Case review notification sent for case {case.id}: {response}")
@@ -1061,7 +1101,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
         return False
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <contact@radinsights.xyz>")
     
     metadata_html = ""
     if request_metadata:
@@ -1096,6 +1136,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
                 
                 <p style="color: #666;">If this was not you, you can safely ignore this email.</p>
                 <p style="color: #dc3545; font-size: 12px;"><strong>This code will expire in 15 minutes.</strong></p>
+                {EMAIL_SIGNATURE}
             </div>
             """
         }

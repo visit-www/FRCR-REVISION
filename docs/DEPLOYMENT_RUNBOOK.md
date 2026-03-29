@@ -57,7 +57,7 @@ Set `USE_POOLED_DB=1` to reverse priority (pooled URL first). Set `USE_LOCAL_DB=
 | `CLAUDE_MODEL` | `claude-sonnet-4-20250514` | Override the default Claude model for AI generators |
 | `CLAUDE_QUICK_MODEL` | `claude-haiku-4-5-20251001` | Override the fast/cheap model used for Smart Reporter ask/review |
 | `RESEND_API_KEY` | (none) | Resend email service key. Required for account recovery emails and admin notifications |
-| `EMAIL_FROM` | `RadInsights <no-reply@radinsights.xyz>` | From address for transactional emails |
+| `EMAIL_FROM` | `RadInsights <contact@radinsights.xyz>` | From address for transactional emails |
 | `SUPERADMIN_EMAIL` | (none) | Email for admin notification routing (new user reviews, case submissions). Used in `auth.py` |
 | `APP_URL` | (none) | Canonical app URL (e.g. `https://www.radinsights.xyz`). Falls back to `VERCEL_URL` |
 | `CORS_ORIGINS` | Auto-detected | Comma-separated allowed origins. Defaults to `radinsights.xyz` in production, `*` in dev |

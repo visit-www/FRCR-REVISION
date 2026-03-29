@@ -38,4 +38,4 @@ SCOPES = ["User.Read", "Files.Read"]
 AUTHORITY = "https://login.microsoftonline.com/common"
 
 class Config:
-    MAIL_FROM = "RadInsights <no-reply@radinsights.xyz>"
+    MAIL_FROM = "RadInsights <contact@radinsights.xyz>"
