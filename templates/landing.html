@@ -605,7 +605,7 @@
                             <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month</li>
                             <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
-                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start 7-Day Free Trial</a>
+                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start Free Trial</a>
                     </div>
                 </div>
 
@@ -629,7 +629,7 @@
                         {% if current_user.is_authenticated %}
                         <button onclick="startCheckout('standard')" class="btn-pricing" style="background: var(--brand-primary); color: #fff; border: none; cursor: pointer;">Choose Standard</button>
                         {% else %}
-                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">Choose Standard</a>
+                        <a href="/auth/register?plan=standard" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">Choose Standard</a>
                         {% endif %}
                     </div>
                 </div>
@@ -653,10 +653,15 @@
                         {% if current_user.is_authenticated %}
                         <button onclick="startCheckout('elite')" class="btn-pricing" style="background: #6b46c1; color: #fff; border: none; cursor: pointer;">Choose Elite</button>
                         {% else %}
-                        <a href="/auth/register" class="btn-pricing" style="background: #6b46c1; color: #fff;">Choose Elite</a>
+                        <a href="/auth/register?plan=elite" class="btn-pricing" style="background: #6b46c1; color: #fff;">Choose Elite</a>
                         {% endif %}
                     </div>
                 </div>
+            </div>
+            <div class="text-center mt-4">
+                <a href="/pricing" style="color: var(--brand-neutral); font-size: 0.92rem; text-decoration: none; font-weight: 600;">
+                    View full feature comparison <i class="fas fa-arrow-right ms-1" style="font-size: 0.8rem;"></i>
+                </a>
             </div>
         </div>
     </section>

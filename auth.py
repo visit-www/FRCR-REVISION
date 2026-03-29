@@ -887,6 +887,11 @@ def google_login():
         logger.error("GOOGLE_CLIENT_ID not configured")
         return redirect('/auth/login?error=google_not_configured')
 
+    # Preserve plan param through OAuth flow
+    plan = request.args.get('plan', '')
+    if plan in ('standard', 'elite'):
+        session['pending_plan'] = plan
+
     # CSRF state token
     state = secrets.token_urlsafe(32)
     session['google_oauth_state'] = state
@@ -1050,6 +1055,9 @@ def google_callback():
         login_user(user, remember=False)
 
         logger.info(f"Google OAuth login successful for {email}")
+        pending_plan = session.pop('pending_plan', None)
+        if pending_plan:
+            return redirect(f'/pricing?plan={pending_plan}')
         return redirect('/')
 
     except Exception as e:

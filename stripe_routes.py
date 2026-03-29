@@ -115,14 +115,14 @@ def create_checkout_session():
 @login_required
 def checkout_success():
     """Post-checkout redirect. Actual upgrade happens via webhook."""
-    return redirect('/?payment=success')
+    return redirect('/pricing?payment=success')
 
 
 @stripe_bp.route('/cancel')
 @login_required
 def checkout_cancel():
     """User cancelled checkout."""
-    return redirect('/?payment=cancelled')
+    return redirect('/pricing?payment=cancelled')
 
 
 @stripe_bp.route('/create-portal-session', methods=['POST'])

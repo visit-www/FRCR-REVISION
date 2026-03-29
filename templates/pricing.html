@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pricing — RadInsights</title>
+    <meta name="description" content="RadInsights pricing plans — Free, Standard, and Elite tiers for radiology reporting, learning, and exam preparation.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-192x192_zkqtvu.png">
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-neutral: #5E899E;
+            --brand-success: #a8d5ba;
+            --brand-bg: #fdfdfb;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--brand-text-primary);
+            line-height: 1.7;
+            background: var(--brand-bg);
+        }
+
+        /* ── Nav ── */
+        .pricing-nav {
+            background: #fff;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+            padding: 14px 0;
+        }
+
+        .pricing-nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .pricing-nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: var(--brand-text-primary);
+            font-weight: 700;
+            font-size: 1.15rem;
+        }
+
+        .pricing-nav-brand img {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+        }
+
+        .pricing-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .pricing-nav-links a {
+            color: var(--brand-text-secondary);
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .pricing-nav-links a:hover { color: var(--brand-primary); }
+
+        .btn-nav-cta {
+            background: var(--brand-primary);
+            color: #fff;
+            border: none;
+            padding: 7px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-nav-cta:hover {
+            background: #c75002;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        /* ── Hero ── */
+        .pricing-hero {
+            background: linear-gradient(135deg, #5E899E 0%, #3d6575 50%, #2c5060 100%);
+            color: #fff;
+            padding: 48px 0 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .pricing-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.06) 0%, transparent 60%);
+        }
+
+        .pricing-hero h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .pricing-hero p {
+            font-size: 1.05rem;
+            opacity: 0.9;
+            max-width: 580px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .launch-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #e96304, #ffc107);
+            color: #fff;
+            font-size: 0.82rem;
+            padding: 6px 18px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        /* ── Current Plan Badge ── */
+        .current-plan-badge {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px 28px;
+            display: inline-flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-top: 10px;
+            margin-bottom: -20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .current-plan-badge .badge-tier {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--brand-text-primary);
+        }
+
+        .current-plan-badge .badge-detail {
+            font-size: 0.82rem;
+            color: var(--brand-text-secondary);
+        }
+
+        /* ── Section ── */
+        .section { padding: 60px 0; }
+        .section-alt { background: #f5f7f9; }
+
+        .section-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--brand-text-primary);
+            margin-bottom: 8px;
+        }
+
+        .section-subtitle {
+            color: var(--brand-text-secondary);
+            font-size: 1rem;
+            margin-bottom: 40px;
+            max-width: 640px;
+        }
+
+        /* ── Pricing Cards ── */
+        .pricing-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 32px 28px;
+            height: 100%;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.04);
+            text-align: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .pricing-card-standard {
+            border: 2px solid var(--brand-primary);
+            box-shadow: 0 4px 20px rgba(233,99,4,0.12);
+        }
+
+        .pricing-card-featured {
+            border: 2px solid #6b46c1;
+            box-shadow: 0 4px 20px rgba(107,70,193,0.15);
+        }
+
+        .pricing-popular {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #6b46c1;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 16px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pricing-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 16px;
+        }
+
+        .pricing-price {
+            font-size: 2.4rem;
+            font-weight: 800;
+            color: var(--brand-text-primary);
+            margin-bottom: 20px;
+        }
+
+        .pricing-price span {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--brand-text-secondary);
+        }
+
+        .pricing-full-price {
+            font-size: 0.8rem;
+            color: var(--brand-text-secondary);
+            margin-top: -14px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
+        .pricing-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px;
+            text-align: left;
+            flex-grow: 1;
+        }
+
+        .pricing-features li {
+            font-size: 0.88rem;
+            color: var(--brand-text-secondary);
+            padding: 6px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .pricing-features li i {
+            color: var(--brand-success);
+            margin-top: 3px;
+            flex-shrink: 0;
+        }
+
+        .btn-pricing {
+            display: block;
+            padding: 11px 0;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.92rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            text-align: center;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn-pricing:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            opacity: 0.9;
+        }
+
+        .btn-pricing:disabled, .btn-pricing.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .manage-sub-link {
+            display: block;
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.82rem;
+            color: var(--brand-neutral);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .manage-sub-link:hover { text-decoration: underline; }
+
+        /* ── Feature Comparison Table ── */
+        .comparison-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+
+        .comparison-table thead th {
+            background: linear-gradient(135deg, #5E899E, #3d6575);
+            color: #fff;
+            padding: 14px 16px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-align: center;
+            border: none;
+        }
+
+        .comparison-table thead th:first-child {
+            text-align: left;
+        }
+
+        .comparison-table tbody td {
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #f0f0f0;
+            text-align: center;
+            color: var(--brand-text-secondary);
+        }
+
+        .comparison-table tbody td:first-child {
+            text-align: left;
+            font-weight: 500;
+            color: var(--brand-text-primary);
+        }
+
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison-table .check { color: var(--brand-success); font-size: 1rem; }
+        .comparison-table .cross { color: #ddd; font-size: 0.9rem; }
+        .comparison-table .highlight-val { color: var(--brand-primary); font-weight: 600; }
+
+        /* ── FAQ Accordion ── */
+        .faq-accordion .accordion-item {
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 10px !important;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .faq-accordion .accordion-button {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--brand-text-primary);
+            padding: 16px 20px;
+            background: #fff;
+        }
+
+        .faq-accordion .accordion-button:not(.collapsed) {
+            background: rgba(94,137,158,0.05);
+            color: var(--brand-neutral);
+            box-shadow: none;
+        }
+
+        .faq-accordion .accordion-button::after {
+            filter: none;
+        }
+
+        .faq-accordion .accordion-body {
+            font-size: 0.9rem;
+            color: var(--brand-text-secondary);
+            line-height: 1.7;
+            padding: 4px 20px 20px;
+        }
+
+        /* ── CTA Section ── */
+        .cta-section {
+            background: linear-gradient(135deg, var(--brand-text-primary) 0%, #1a2a36 100%);
+            color: #fff;
+            padding: 50px 0;
+            text-align: center;
+        }
+
+        .cta-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; color: #fff; }
+        .cta-section p { color: var(--brand-success); margin-bottom: 24px; font-size: 0.95rem; }
+
+        .btn-cta {
+            display: inline-block;
+            background: var(--brand-primary);
+            color: #fff;
+            border: none;
+            padding: 12px 36px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cta:hover {
+            background: #c75002;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233,99,4,0.3);
+        }
+
+        /* ── Footer ── */
+        .landing-footer {
+            background: #1a2a36;
+            color: rgba(255,255,255,0.85);
+            padding: 40px 0 0;
+            font-size: 0.88rem;
+        }
+
+        .landing-footer a {
+            color: rgba(255,255,255,0.75);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .landing-footer a:hover { color: #fff; }
+
+        .footer-top {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 28px;
+            gap: 20px;
+        }
+
+        .footer-brand-name { font-size: 1.15rem; font-weight: 700; color: #fff; }
+        .footer-brand-tagline { color: rgba(255,255,255,0.5); font-size: 0.82rem; margin-top: 2px; }
+
+        .footer-nav { display: flex; flex-wrap: wrap; gap: 24px; font-size: 0.85rem; }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: 18px 0;
+            font-size: 0.76rem;
+            color: rgba(255,255,255,0.4);
+            line-height: 1.7;
+            text-align: center;
+        }
+
+        /* ── Toast ── */
+        .payment-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            padding: 16px 24px;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 600;
+            font-size: 0.92rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.4s ease;
+        }
+
+        .payment-toast.success { background: linear-gradient(135deg, #27ae60, #2ecc71); }
+        .payment-toast.cancelled { background: linear-gradient(135deg, #e67e22, #f39c12); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .pricing-hero { padding: 36px 0 30px; }
+            .pricing-hero h1 { font-size: 1.7rem; }
+            .section { padding: 40px 0; }
+            .current-plan-badge { flex-direction: column; gap: 6px; padding: 14px 20px; }
+            .footer-top { flex-direction: column; text-align: center; }
+            .footer-nav { justify-content: center; }
+            .comparison-table { font-size: 0.78rem; }
+            .comparison-table thead th,
+            .comparison-table tbody td { padding: 8px 6px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Nav -->
+    <nav class="pricing-nav">
+        <div class="container">
+            <a href="/" class="pricing-nav-brand">
+                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadInsights">
+                RadInsights
+            </a>
+            <div class="pricing-nav-links">
+                {% if user_data %}
+                <a href="/dashboard"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+                {% else %}
+                <a href="/"><i class="fas fa-arrow-left me-1"></i>Home</a>
+                <a href="/auth/login" class="btn-nav-cta">Sign In</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="pricing-hero">
+        <div class="container position-relative">
+            <span class="launch-badge">
+                <i class="fas fa-rocket me-1"></i>Launch pricing &mdash; lock in before prices increase
+            </span>
+            <h1>Choose Your Plan</h1>
+            <p>Try free for 7 days, then pick the plan that fits your workflow. All plans include cases, Knowledge Hub, TNM calculators, and clinical tools.</p>
+        </div>
+    </section>
+
+    {% if user_data %}
+    <!-- Current Plan Badge -->
+    <div class="text-center">
+        <div class="current-plan-badge">
+            <div>
+                <span class="badge-tier">
+                    <i class="fas fa-{% if user_data.tier == 'elite' %}crown{% elif user_data.tier == 'standard' %}user-md{% else %}compass{% endif %} me-1"
+                       style="color: {% if user_data.tier == 'elite' %}#6b46c1{% elif user_data.tier == 'standard' %}var(--brand-primary){% else %}var(--brand-neutral){% endif %};"></i>
+                    {{ user_data.tier | capitalize }} Plan
+                </span>
+            </div>
+            {% if user_data.trial_active and user_data.trial_days_left is not none %}
+            <div class="badge-detail">
+                <i class="fas fa-clock me-1"></i>{{ user_data.trial_days_left }} trial day{{ 's' if user_data.trial_days_left != 1 else '' }} remaining
+            </div>
+            {% endif %}
+            {% if user_data.subscription_end_date %}
+            <div class="badge-detail">
+                <i class="fas fa-calendar me-1"></i>Renews {{ user_data.subscription_end_date }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Pricing Cards -->
+    <section class="section">
+        <div class="container">
+            <div class="row g-4 justify-content-center">
+                <!-- Free -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card">
+                        <div class="pricing-badge" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
+                            <i class="fas fa-compass me-1"></i>Free
+                        </div>
+                        <div class="pricing-price">Free<span> for 7 days</span></div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Browse all cases & Knowledge Hub</li>
+                            <li><i class="fas fa-check"></i>SBA & Viva practice questions</li>
+                            <li><i class="fas fa-check"></i>All 39 TNM Calculators</li>
+                            <li><i class="fas fa-check"></i>Clinical Protocols & Radiology Tools</li>
+                            <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
+                        </ul>
+                        {% if user_data %}
+                            {% if user_data.tier == 'free' %}
+                            <button class="btn-pricing disabled" disabled style="background: var(--brand-neutral); color: #fff;">
+                                <i class="fas fa-check-circle me-1"></i>Current Plan
+                            </button>
+                            {% else %}
+                            <span></span>
+                            {% endif %}
+                        {% else %}
+                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start Free Trial</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Standard -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card pricing-card-standard">
+                        <div class="pricing-badge" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
+                            <i class="fas fa-user-md me-1"></i>Standard
+                        </div>
+                        <div class="pricing-price">&pound;9<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;15/month after launch</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Free</li>
+                            <li><i class="fas fa-check"></i>Unlimited cases & practice</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 75 AI actions/month (~30 reports)</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
+                            <li><i class="fas fa-check"></i>Save personal templates</li>
+                            <li><i class="fas fa-check"></i>Full template & algorithm library</li>
+                            <li><i class="fas fa-check"></i>Notes & Highlights</li>
+                        </ul>
+                        {% if user_data %}
+                            {% if user_data.tier == 'standard' %}
+                            <button class="btn-pricing disabled" disabled style="background: var(--brand-primary); color: #fff;">
+                                <i class="fas fa-check-circle me-1"></i>Current Plan
+                            </button>
+                            {% elif user_data.tier == 'elite' %}
+                            <span></span>
+                            {% else %}
+                            <button onclick="startCheckout('standard')" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">
+                                <i class="fas fa-arrow-up me-1"></i>Upgrade to Standard
+                            </button>
+                            {% endif %}
+                        {% else %}
+                        <a href="/auth/register?plan=standard" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">Choose Standard</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Elite -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="pricing-card pricing-card-featured">
+                        <div class="pricing-popular">Most Popular</div>
+                        <div class="pricing-badge" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
+                            <i class="fas fa-crown me-1"></i>Elite
+                        </div>
+                        <div class="pricing-price">&pound;29<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;45/month after launch</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Standard</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 1,500 AI actions/month (~600 reports)</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 60 queries/month</li>
+                            <li><i class="fas fa-check"></i>Priority content requests</li>
+                            <li><i class="fas fa-check"></i>Early access to new features</li>
+                        </ul>
+                        {% if user_data %}
+                            {% if user_data.tier == 'elite' %}
+                            <button class="btn-pricing disabled" disabled style="background: #6b46c1; color: #fff;">
+                                <i class="fas fa-check-circle me-1"></i>Current Plan
+                            </button>
+                            {% else %}
+                            <button onclick="startCheckout('elite')" class="btn-pricing" style="background: #6b46c1; color: #fff;">
+                                <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite
+                            </button>
+                            {% endif %}
+                        {% else %}
+                        <a href="/auth/register?plan=elite" class="btn-pricing" style="background: #6b46c1; color: #fff;">Choose Elite</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if user_data and user_data.tier in ('standard', 'elite') %}
+            <div class="text-center mt-4">
+                <a href="#" onclick="openPortal(event)" class="manage-sub-link">
+                    <i class="fas fa-external-link-alt me-1"></i>Manage Subscription via Stripe
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Feature Comparison -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2 class="section-title">Feature Comparison</h2>
+                <p class="section-subtitle mx-auto">A detailed look at what each plan includes.</p>
+            </div>
+            <div class="table-responsive">
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 200px;">Feature</th>
+                            <th>Free</th>
+                            <th>Standard</th>
+                            <th>Elite</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Browse cases & Knowledge Hub</td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>SBA & Viva practice</td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>TNM Calculators (39+)</td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Clinical Protocols & Tools</td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Smart Reporter AI actions</td>
+                            <td><span class="highlight-val">10/month</span></td>
+                            <td><span class="highlight-val">75/month</span></td>
+                            <td><span class="highlight-val">1,500/month</span></td>
+                        </tr>
+                        <tr>
+                            <td>RadIQ queries</td>
+                            <td><span class="highlight-val">5/month</span></td>
+                            <td><span class="highlight-val">20/month</span></td>
+                            <td><span class="highlight-val">60/month</span></td>
+                        </tr>
+                        <tr>
+                            <td>7-day AI free trial</td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td>&mdash;</td>
+                            <td>&mdash;</td>
+                        </tr>
+                        <tr>
+                            <td>Unlimited cases & practice</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Save personal templates</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Full template & algorithm library</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Notes & Highlights</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Priority content requests</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Early access to new features</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section">
+        <div class="container">
+            <div class="text-center mb-4">
+                <h2 class="section-title">Frequently Asked Questions</h2>
+            </div>
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="accordion faq-accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                    How does the free trial work?
+                                </button>
+                            </h2>
+                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Every new account gets a 7-day free trial with full access to all AI features, including Smart Reporter and RadIQ,
+                                    at the same limits as paid plans. After the trial, you keep access to cases, tools, and calculators on the Free tier,
+                                    with reduced AI limits. No credit card required to start.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                    Can I change or cancel my plan?
+                                </button>
+                            </h2>
+                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Yes. You can upgrade, downgrade, or cancel at any time via the Stripe customer portal.
+                                    When you cancel, your current plan remains active until the end of the billing period.
+                                    Downgrades take effect at the next renewal.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                    What payment methods are accepted?
+                                </button>
+                            </h2>
+                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Payments are securely handled by Stripe. We accept all major credit and debit cards
+                                    (Visa, Mastercard, American Express). Stripe also supports Apple Pay and Google Pay
+                                    where available.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                    What are AI actions?
+                                </button>
+                            </h2>
+                            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    An AI action is any request to our AI engine &mdash; reviewing a report, generating a decision tree,
+                                    getting anatomy guidance, or asking a follow-up question. A typical report review uses 2&ndash;3 actions.
+                                    RadIQ queries are counted separately.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                    What happens when I hit my monthly limit?
+                                </button>
+                            </h2>
+                            <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    You&rsquo;ll see a friendly notification letting you know. All non-AI features continue to work normally.
+                                    Your limits reset on the first of each month. You can upgrade your plan at any time to get more actions immediately.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                                    What is launch pricing?
+                                </button>
+                            </h2>
+                            <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Launch pricing is a discounted rate available during our early-access period.
+                                    Standard is &pound;9/month (will increase to &pound;15) and Elite is &pound;29/month (will increase to &pound;45).
+                                    If you subscribe now, you lock in the launch price for as long as your subscription remains active.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Bottom CTA -->
+    <section class="cta-section">
+        <div class="container">
+            {% if user_data %}
+            <h2>Questions about your plan?</h2>
+            <p>We&rsquo;re here to help. Reach out any time.</p>
+            <a href="mailto:contact@radinsights.xyz" class="btn-cta">
+                <i class="fas fa-envelope me-2"></i>Contact Us
+            </a>
+            {% else %}
+            <h2>Ready to transform your radiology workflow?</h2>
+            <p>Start with a free 7-day trial &mdash; no credit card required.</p>
+            <a href="/auth/register" class="btn-cta">Get Started Free</a>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="container">
+            <div class="footer-top">
+                <div>
+                    <div class="footer-brand-name">RadInsights</div>
+                    <div class="footer-brand-tagline">Smart radiology — reporting, learning, exams.</div>
+                </div>
+                <nav class="footer-nav">
+                    <a href="/about">About</a>
+                    <a href="/privacy">Privacy</a>
+                    <a href="/terms">Terms</a>
+                    <a href="mailto:contact@radinsights.xyz">contact@radinsights.xyz</a>
+                </nav>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 Eralight Limited (Company No. 15277498). All rights reserved. RadInsights is a product of Eralight Limited.<br>
+                Content is for educational purposes only and does not constitute medical advice.
+                &nbsp;&middot;&nbsp; Company Address: 1 Hildyards Crescent, Shanklin, Isle Of Wight, England, PO37 7EY
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    {% if user_data %}
+    // ── Stripe Checkout ──
+    function startCheckout(plan) {
+        const btn = event.target.closest('.btn-pricing');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...';
+        fetch('/stripe/create-checkout-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({plan: plan})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                alert(data.error || 'Could not start checkout. Please try again.');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            alert('Connection error. Please try again.');
+        });
+    }
+
+    // ── Stripe Portal ──
+    function openPortal(e) {
+        e.preventDefault();
+        fetch('/stripe/create-portal-session', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.portal_url) {
+                window.location.href = data.portal_url;
+            } else {
+                alert('Could not open subscription portal. Please try again.');
+            }
+        })
+        .catch(() => alert('Connection error. Please try again.'));
+    }
+
+    // ── Auto-checkout on plan param ──
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        const plan = params.get('plan');
+        if (plan && (plan === 'standard' || plan === 'elite')) {
+            const key = 'pricing_auto_checkout_' + plan;
+            if (!sessionStorage.getItem(key)) {
+                sessionStorage.setItem(key, '1');
+                setTimeout(function() { startCheckout(plan); }, 500);
+            }
+        }
+    })();
+    {% endif %}
+
+    // ── Payment toast ──
+    (function() {
+        const params = new URLSearchParams(window.location.search);
+        const payment = params.get('payment');
+        if (payment === 'success' || payment === 'cancelled') {
+            const toast = document.createElement('div');
+            toast.className = 'payment-toast ' + payment;
+            if (payment === 'success') {
+                toast.innerHTML = '<i class="fas fa-check-circle"></i> Payment successful! Your plan has been upgraded.';
+            } else {
+                toast.innerHTML = '<i class="fas fa-info-circle"></i> Checkout was cancelled. You can try again any time.';
+            }
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.style.animation = 'fadeOut 0.4s ease forwards';
+                setTimeout(function() { toast.remove(); }, 400);
+            }, 5000);
+            // Clean URL
+            window.history.replaceState({}, '', '/pricing');
+        }
+    })();
+    </script>
+</body>
+</html>

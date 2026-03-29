@@ -1324,6 +1324,31 @@ def terms_of_use():
     return render_template('terms_of_use.html')
 
 
+@app.route('/pricing')
+def pricing():
+    """Standalone pricing page — works for guests and authenticated users."""
+    from datetime import timedelta
+    user_data = None
+    if current_user.is_authenticated:
+        tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+        trial_days_left = None
+        trial_active = False
+        if tier == 'free' and current_user.trial_started_at is not None:
+            trial_end = current_user.trial_started_at + timedelta(days=7)
+            remaining = (trial_end - datetime.utcnow()).days
+            trial_days_left = max(0, remaining)
+            trial_active = remaining >= 0
+        user_data = {
+            'tier': tier,
+            'trial_active': trial_active,
+            'trial_days_left': trial_days_left,
+            'subscription_end_date': current_user.subscription_end_date.strftime('%d %b %Y') if current_user.subscription_end_date else None,
+            'has_stripe_customer': bool(current_user.stripe_customer_id),
+        }
+    requested_plan = request.args.get('plan', '')
+    return render_template('pricing.html', user_data=user_data, requested_plan=requested_plan)
+
+
 @app.route('/about')
 def about():
     """About page - app philosophy, design principles, and developer info"""
