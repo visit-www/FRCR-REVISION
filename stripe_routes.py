@@ -313,6 +313,16 @@ def _handle_subscription_deleted(sub_obj):
         logger.warning(f"subscription.deleted: no user for customer {customer_id}")
         return
 
+    # Check if customer still has other active subscriptions (plan-change scenario)
+    try:
+        active_subs = stripe.Subscription.list(customer=customer_id, status='active', limit=1)
+        subs_data = _get(active_subs, 'data', [])
+        if subs_data:
+            logger.info(f"subscription.deleted for user {user.id} but other active subs exist — skipping downgrade")
+            return
+    except Exception as e:
+        logger.warning(f"Could not check active subs for user {user.id}: {e}")
+
     downgrade_to_free(user)
     logger.info(f"User {user.id} downgraded to free (subscription deleted)")
 
