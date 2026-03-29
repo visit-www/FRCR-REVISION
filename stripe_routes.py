@@ -36,9 +36,17 @@ BASE_URL = os.environ.get('BASE_URL', 'https://www.radinsights.xyz')
 # ---------------------------------------------------------------------------
 
 def _ensure_stripe_customer(user):
-    """Return existing stripe_customer_id or create a new Stripe Customer."""
+    """Return existing stripe_customer_id or create a new Stripe Customer.
+    Validates existing ID still works (handles live/test mode mismatch)."""
     if user.stripe_customer_id:
-        return user.stripe_customer_id
+        try:
+            stripe.Customer.retrieve(user.stripe_customer_id)
+            return user.stripe_customer_id
+        except stripe.InvalidRequestError:
+            # Customer ID from different mode (live vs test) — clear and re-create
+            logger.warning(f"Stripe customer {user.stripe_customer_id} invalid, re-creating for user {user.id}")
+            user.stripe_customer_id = None
+            db.session.commit()
 
     try:
         customer = stripe.Customer.create(
