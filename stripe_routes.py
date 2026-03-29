@@ -40,10 +40,12 @@ def _ensure_stripe_customer(user):
     Validates existing ID still works (handles live/test mode mismatch)."""
     if user.stripe_customer_id:
         try:
-            stripe.Customer.retrieve(user.stripe_customer_id)
+            cust = stripe.Customer.retrieve(user.stripe_customer_id)
+            if getattr(cust, 'deleted', False):
+                raise stripe.InvalidRequestError('Customer deleted', param=None)
             return user.stripe_customer_id
-        except stripe.InvalidRequestError:
-            # Customer ID from different mode (live vs test) — clear and re-create
+        except (stripe.InvalidRequestError, stripe.StripeError):
+            # Customer deleted, wrong mode, or otherwise invalid — clear and re-create
             logger.warning(f"Stripe customer {user.stripe_customer_id} invalid, re-creating for user {user.id}")
             user.stripe_customer_id = None
             db.session.commit()
