@@ -109,6 +109,11 @@ def create_checkout_session():
     if not price_id:
         return jsonify({'error': f'Unknown plan: {plan}'}), 400
 
+    # Block if user already has this plan
+    current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    if current_tier == plan:
+        return jsonify({'error': f'You are already on the {plan.capitalize()} plan.'}), 400
+
     try:
         customer_id = _ensure_stripe_customer(current_user)
     except Exception as e:
@@ -117,6 +122,16 @@ def create_checkout_session():
 
     if not customer_id:
         return jsonify({'error': 'Could not create payment profile'}), 500
+
+    # Cancel existing Stripe subscriptions before creating a new one
+    if current_tier in ('standard', 'elite'):
+        try:
+            subs = stripe.Subscription.list(customer=customer_id, status='active', limit=10)
+            for sub in subs.auto_paging_iter():
+                stripe.Subscription.cancel(sub.id)
+                logger.info(f"Cancelled existing subscription {sub.id} for user {current_user.id} (upgrading to {plan})")
+        except Exception as e:
+            logger.warning(f"Could not cancel existing subs for user {current_user.id}: {e}")
 
     try:
         session = stripe.checkout.Session.create(
