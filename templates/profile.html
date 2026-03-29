@@ -55,7 +55,47 @@
                                     </span>
                                 </div>
                             </div>
-                            
+
+                            <!-- Subscription Plan -->
+                            <div class="mb-3">
+                                <small class="text-muted">Subscription Plan</small>
+                                <div class="d-flex align-items-center gap-2 mt-1">
+                                    {% set tier = current_user.subscription_tier or 'free' %}
+                                    {% if tier == 'elite' %}
+                                    <span class="badge" style="background: rgba(107,70,193,0.12); color: #6b46c1; font-size: 0.85rem; padding: 5px 14px;">
+                                        <i class="fas fa-crown me-1"></i>Elite
+                                    </span>
+                                    <a href="/pricing" style="font-size: 0.82rem; color: var(--brand-neutral); text-decoration: none;">
+                                        <i class="fas fa-cog me-1"></i>Manage Plan
+                                    </a>
+                                    {% elif tier == 'standard' %}
+                                    <span class="badge" style="background: rgba(233,99,4,0.12); color: #e96304; font-size: 0.85rem; padding: 5px 14px;">
+                                        <i class="fas fa-user-md me-1"></i>Standard
+                                    </span>
+                                    <a href="/pricing" style="font-size: 0.82rem; color: var(--brand-neutral); text-decoration: none;">
+                                        <i class="fas fa-arrow-up me-1"></i>Change Plan
+                                    </a>
+                                    {% else %}
+                                    <span class="badge" style="background: rgba(94,137,158,0.12); color: #5E899E; font-size: 0.85rem; padding: 5px 14px;">
+                                        <i class="fas fa-compass me-1"></i>Free
+                                    </span>
+                                    <a href="/pricing" style="font-size: 0.82rem; color: #e96304; font-weight: 600; text-decoration: none;">
+                                        <i class="fas fa-bolt me-1"></i>Upgrade
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                {% if current_user.subscription_end_date %}
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-calendar-alt me-1"></i>Renews {{ current_user.subscription_end_date.strftime('%d %b %Y') }}
+                                </small>
+                                {% endif %}
+                                {% if trial_days_left is defined and trial_days_left is not none %}
+                                <small class="d-block mt-1" style="color: var(--brand-primary);">
+                                    <i class="fas fa-clock me-1"></i>{{ trial_days_left }} trial day{{ 's' if trial_days_left != 1 else '' }} remaining
+                                </small>
+                                {% endif %}
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-6">
                                     <small class="text-muted">Member Since</small>

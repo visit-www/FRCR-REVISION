@@ -854,8 +854,16 @@ def profile():
             'last_login': current_user.last_login.isoformat() if current_user.last_login else None
         }), 200
     
+    # Compute trial days remaining for profile template
+    trial_days_left = None
+    tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    if tier == 'free' and current_user.trial_started_at is not None:
+        trial_end = current_user.trial_started_at + timedelta(days=7)
+        remaining = (datetime.utcnow() - current_user.trial_started_at).days
+        trial_days_left = max(0, 7 - remaining)
+
     # Return HTML profile page
-    return render_template('profile.html', user=current_user)
+    return render_template('profile.html', user=current_user, trial_days_left=trial_days_left)
 
 
 
