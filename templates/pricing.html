@@ -927,11 +927,42 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     {% if user_data %}
-    // ── Stripe Checkout ──
+    // ── Stripe Checkout / Plan Change ──
+    const currentTier = '{{ user_data.tier }}';
+
     function startCheckout(plan) {
         const btn = event.target.closest('.btn-pricing');
         const orig = btn.innerHTML;
         btn.disabled = true;
+
+        // Existing paid subscriber → use plan-change route (prorated)
+        if (currentTier === 'standard' || currentTier === 'elite') {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Switching plan...';
+            fetch('/stripe/change-plan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
+                body: JSON.stringify({plan: plan})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect || '/pricing?payment=success';
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = orig;
+                    alert(data.error || 'Could not change plan. Please try again.');
+                }
+            })
+            .catch(() => {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                alert('Connection error. Please try again.');
+            });
+            return;
+        }
+
+        // Free user → use checkout session
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...';
         fetch('/stripe/create-checkout-session', {
             method: 'POST',

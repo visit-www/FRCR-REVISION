@@ -116,6 +116,10 @@ def create_checkout_session():
     if current_tier == plan:
         return jsonify({'error': f'You are already on the {plan.capitalize()} plan.'}), 400
 
+    # If user already has a paid plan, redirect to plan-change flow instead
+    if current_tier in ('standard', 'elite'):
+        return jsonify({'error': 'Use plan change for existing subscribers', 'use_change': True}), 400
+
     try:
         customer_id = _ensure_stripe_customer(current_user)
     except Exception as e:
@@ -124,16 +128,6 @@ def create_checkout_session():
 
     if not customer_id:
         return jsonify({'error': 'Could not create payment profile'}), 500
-
-    # Cancel existing Stripe subscriptions before creating a new one
-    if current_tier in ('standard', 'elite'):
-        try:
-            subs = stripe.Subscription.list(customer=customer_id, status='active', limit=10)
-            for sub in subs.auto_paging_iter():
-                stripe.Subscription.cancel(sub.id)
-                logger.info(f"Cancelled existing subscription {sub.id} for user {current_user.id} (upgrading to {plan})")
-        except Exception as e:
-            logger.warning(f"Could not cancel existing subs for user {current_user.id}: {e}")
 
     try:
         session = stripe.checkout.Session.create(
@@ -163,6 +157,73 @@ def checkout_success():
 def checkout_cancel():
     """User cancelled checkout."""
     return redirect('/pricing?payment=cancelled')
+
+
+@stripe_bp.route('/change-plan', methods=['POST'])
+@login_required
+def change_plan():
+    """Switch between paid plans using Stripe Subscription.modify().
+    Stripe handles proration automatically — unused time is credited."""
+    if not stripe.api_key:
+        return jsonify({'error': 'Payments not configured'}), 503
+
+    data = request.get_json(silent=True) or {}
+    new_plan = data.get('plan', '')
+    new_price_id = PRICE_IDS.get(new_plan)
+    if not new_price_id:
+        return jsonify({'error': f'Unknown plan: {new_plan}'}), 400
+
+    current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    if current_tier == new_plan:
+        return jsonify({'error': f'You are already on the {new_plan.capitalize()} plan.'}), 400
+
+    if current_tier not in ('standard', 'elite'):
+        return jsonify({'error': 'No active subscription to change. Please subscribe first.'}), 400
+
+    customer_id = current_user.stripe_customer_id
+    if not customer_id:
+        return jsonify({'error': 'No payment profile found'}), 400
+
+    try:
+        # Find the active subscription
+        subs = stripe.Subscription.list(customer=customer_id, status='active', limit=1)
+        subs_data = _get(subs, 'data', [])
+        if not subs_data:
+            return jsonify({'error': 'No active subscription found on Stripe'}), 404
+
+        sub = subs_data[0]
+        sub_id = _get(sub, 'id')
+        items_wrapper = _get(sub, 'items', {})
+        items_data = _get(items_wrapper, 'data', [])
+        if not items_data:
+            return jsonify({'error': 'Subscription has no items'}), 500
+
+        sub_item_id = _get(items_data[0], 'id')
+
+        # Modify the subscription — Stripe prorates automatically
+        updated_sub = stripe.Subscription.modify(
+            sub_id,
+            items=[{
+                'id': sub_item_id,
+                'price': new_price_id,
+            }],
+            proration_behavior='create_prorations',
+        )
+
+        # Webhook will handle the DB update via subscription.updated,
+        # but update immediately for responsive UI
+        from access_control import upgrade_to_paid
+        end_date = _subscription_end_from_event(updated_sub)
+        tier = _tier_from_subscription(updated_sub)
+        upgrade_to_paid(current_user, end_date, tier)
+
+        direction = 'upgraded' if new_plan == 'elite' else 'switched'
+        logger.info(f"User {current_user.id} {direction} to {new_plan} via plan change (prorated)")
+        return jsonify({'success': True, 'new_plan': new_plan, 'redirect': '/pricing?payment=success'})
+
+    except stripe.StripeError as e:
+        logger.error(f"Stripe change-plan error for user {current_user.id}: {e}", exc_info=True)
+        return jsonify({'error': f'Could not change plan: {str(e)}'}), 500
 
 
 @stripe_bp.route('/create-portal-session', methods=['POST'])
