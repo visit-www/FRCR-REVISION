@@ -6851,8 +6851,8 @@ def sitemap_xml():
 
     # Dynamic: public TNM calculator pages (39+)
     try:
-        from models import TNMCalculator
-        calcs = TNMCalculator.query.filter_by(is_available=True).all()
+        from models import TNMCalculatorContent
+        calcs = TNMCalculatorContent.query.filter_by(is_available=True).all()
         for c in calcs:
             pages.append((f'/tnm-calculator/{c.slug}', '0.7', 'monthly', today))
     except Exception:
@@ -6867,7 +6867,7 @@ def sitemap_xml():
         xml += f'    <priority>{priority}</priority>\n'
         xml += f'    <changefreq>{freq}</changefreq>\n  </url>\n'
     xml += '</urlset>'
-    return xml, 200, {'Content-Type': 'application/xml'}
+    return xml, 200, {'Content-Type': 'application/xml; charset=utf-8'}
 
 
 @app.errorhandler(404)
