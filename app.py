@@ -6974,74 +6974,117 @@ Sitemap: https://www.radinsights.xyz/sitemap.xml
 
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
-    """Generate dynamic sitemap including all public content."""
-    from models import TNMCalculatorContent, ReportingAlgorithm, RadiologyTemplate, IncidentalFindingCalculator, ClinicalProtocol, Case, CaseStatus
+    """Generate dynamic sitemap including all public content with <lastmod> dates."""
+    from models import TNMCalculatorContent, ReportingAlgorithm, RadiologyTemplate, IncidentalFindingCalculator, ClinicalProtocol, Case, CaseStatus, RadiologyPearl
 
+    def _lastmod(item):
+        """Return best available timestamp as YYYY-MM-DD string, or None."""
+        dt = getattr(item, 'updated_at', None) or getattr(item, 'created_at', None)
+        return dt.strftime('%Y-%m-%d') if dt else None
+
+    # (url, priority, changefreq, lastmod)
     pages = []
+    # Track latest dates per browse page so index pages get lastmod too
+    browse_dates = {}
 
-    # Static pages
+    # Static pages — lastmod filled in from browse_dates after DB queries
+    BASE = 'https://www.radinsights.xyz'
     static_pages = [
-        ('https://www.radinsights.xyz/', '1.0', 'weekly'),
-        ('https://www.radinsights.xyz/pricing', '0.9', 'monthly'),
-        ('https://www.radinsights.xyz/about', '0.7', 'monthly'),
-        ('https://www.radinsights.xyz/tnm-calculator', '0.9', 'weekly'),
-        ('https://www.radinsights.xyz/essential-tnm-concepts', '0.6', 'monthly'),
-        ('https://www.radinsights.xyz/knowledge-hub', '0.8', 'weekly'),
-        ('https://www.radinsights.xyz/case-library', '0.8', 'weekly'),
-        ('https://www.radinsights.xyz/reporting-algorithms', '0.8', 'weekly'),
-        ('https://www.radinsights.xyz/reporting-templates', '0.7', 'weekly'),
-        ('https://www.radinsights.xyz/incidental-findings', '0.8', 'weekly'),
-        ('https://www.radinsights.xyz/radiology-protocols', '0.7', 'weekly'),
-        ('https://www.radinsights.xyz/privacy-policy', '0.3', 'yearly'),
-        ('https://www.radinsights.xyz/terms-of-use', '0.3', 'yearly'),
-        ('https://www.radinsights.xyz/trust-and-accuracy', '0.4', 'monthly'),
+        (f'{BASE}/', '1.0', 'weekly'),
+        (f'{BASE}/pricing', '0.9', 'monthly'),
+        (f'{BASE}/about', '0.7', 'monthly'),
+        (f'{BASE}/tnm-calculator', '0.9', 'weekly'),
+        (f'{BASE}/essential-tnm-concepts', '0.6', 'monthly'),
+        (f'{BASE}/knowledge-hub', '0.8', 'weekly'),
+        (f'{BASE}/case-library', '0.8', 'weekly'),
+        (f'{BASE}/reporting-algorithms', '0.8', 'weekly'),
+        (f'{BASE}/reporting-templates', '0.7', 'weekly'),
+        (f'{BASE}/incidental-findings', '0.8', 'weekly'),
+        (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
+        (f'{BASE}/radiology-pearls', '0.7', 'weekly'),
+        (f'{BASE}/privacy-policy', '0.3', 'yearly'),
+        (f'{BASE}/terms-of-use', '0.3', 'yearly'),
+        (f'{BASE}/trust-and-accuracy', '0.4', 'monthly'),
     ]
+
+    def _track_browse(browse_url, items):
+        """Track the most recent date among items for a browse page."""
+        for item in items:
+            dt = getattr(item, 'updated_at', None) or getattr(item, 'created_at', None)
+            if dt and (browse_url not in browse_dates or dt > browse_dates[browse_url]):
+                browse_dates[browse_url] = dt
 
     try:
         # Published Cases (public case library)
         published_cases = Case.query.filter_by(status=CaseStatus.PUBLISHED).all()
+        _track_browse(f'{BASE}/case-library', published_cases)
         for case in published_cases:
-            pages.append((f'https://www.radinsights.xyz/case-library/{case.id}', '0.6', 'monthly'))
+            pages.append((f'{BASE}/case-library/{case.id}', '0.6', 'monthly', _lastmod(case)))
 
         # TNM Calculators (dynamic from DB)
         calculators = TNMCalculatorContent.query.filter_by(is_available=True).all()
+        _track_browse(f'{BASE}/tnm-calculator', calculators)
         for calc in calculators:
             if calc.slug:
-                pages.append((f'https://www.radinsights.xyz/tnm-calculator/{calc.slug}', '0.7', 'monthly'))
+                pages.append((f'{BASE}/tnm-calculator/{calc.slug}', '0.7', 'monthly', _lastmod(calc)))
 
         # Reporting Algorithms (admin-verified only)
         algorithms = ReportingAlgorithm.query.filter_by(origin='admin', is_available=True).all()
+        _track_browse(f'{BASE}/reporting-algorithms', algorithms)
         for algo in algorithms:
-            pages.append((f'https://www.radinsights.xyz/reporting-template/{algo.slug}', '0.6', 'monthly'))
+            pages.append((f'{BASE}/reporting-template/{algo.slug}', '0.6', 'monthly', _lastmod(algo)))
 
         # Radiology Templates (admin, available)
         rad_templates = RadiologyTemplate.query.filter_by(is_available=True).all()
+        _track_browse(f'{BASE}/reporting-templates', rad_templates)
         for t in rad_templates:
-            pages.append((f'https://www.radinsights.xyz/radiology-template/view/{t.id}', '0.5', 'monthly'))
+            pages.append((f'{BASE}/radiology-template/view/{t.id}', '0.5', 'monthly', _lastmod(t)))
 
         # Radiology Tools (published)
         tools = IncidentalFindingCalculator.query.filter_by(is_available=True).all()
+        _track_browse(f'{BASE}/incidental-findings', tools)
         for tool in tools:
             if tool.slug:
-                pages.append((f'https://www.radinsights.xyz/incidental-findings/{tool.slug}', '0.6', 'monthly'))
+                pages.append((f'{BASE}/incidental-findings/{tool.slug}', '0.6', 'monthly', _lastmod(tool)))
 
         # Clinical Protocols (published)
         protocols = ClinicalProtocol.query.filter_by(is_published=True).all()
+        _track_browse(f'{BASE}/radiology-protocols', protocols)
         for proto in protocols:
-            pages.append((f'https://www.radinsights.xyz/radiology-protocols/view/{proto.id}', '0.5', 'monthly'))
+            pages.append((f'{BASE}/radiology-protocols/view/{proto.id}', '0.5', 'monthly', _lastmod(proto)))
 
-        # Anatomy Snippets (published)
+        # Anatomy Snippets (published) — browse page is /knowledge-hub
         snippets = ReportingAlgorithm.query.filter_by(origin='anatomy_cache', is_available=True).all()
+        _track_browse(f'{BASE}/knowledge-hub', snippets)
         for s in snippets:
-            pages.append((f'https://www.radinsights.xyz/anatomy-snippets/{s.slug}', '0.5', 'monthly'))
+            pages.append((f'{BASE}/anatomy-snippets/{s.slug}', '0.5', 'monthly', _lastmod(s)))
+
+        # Radiology Pearls (verified) — no individual URLs, just update browse page
+        pearls = RadiologyPearl.query.filter_by(is_verified=True).all()
+        _track_browse(f'{BASE}/radiology-pearls', pearls)
     except Exception as e:
         logger.error(f"Sitemap DB query error: {e}")
 
     # Build XML
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for url, priority, changefreq in static_pages + pages:
-        xml += f'  <url><loc>{url}</loc><priority>{priority}</priority><changefreq>{changefreq}</changefreq></url>\n'
+
+    # Static/browse pages — inject lastmod from browse_dates where available
+    for url, priority, changefreq in static_pages:
+        lastmod = browse_dates.get(url)
+        lastmod_str = lastmod.strftime('%Y-%m-%d') if lastmod else None
+        xml += f'  <url>\n    <loc>{url}</loc>\n    <priority>{priority}</priority>\n    <changefreq>{changefreq}</changefreq>\n'
+        if lastmod_str:
+            xml += f'    <lastmod>{lastmod_str}</lastmod>\n'
+        xml += '  </url>\n'
+
+    # Dynamic content pages
+    for url, priority, changefreq, lastmod in pages:
+        xml += f'  <url>\n    <loc>{url}</loc>\n    <priority>{priority}</priority>\n    <changefreq>{changefreq}</changefreq>\n'
+        if lastmod:
+            xml += f'    <lastmod>{lastmod}</lastmod>\n'
+        xml += '  </url>\n'
+
     xml += '</urlset>'
 
     return Response(xml, status=200, mimetype='application/xml', headers={
