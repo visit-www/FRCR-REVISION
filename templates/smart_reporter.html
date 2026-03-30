@@ -3041,20 +3041,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.insertClaudeResponse = function() {
-        // Get answer from AI assist (advisory text only) — replaces PACS output
+        // Get answer from AI assist (advisory text only) — appends to PACS output
         const aiAssistAnswer = document.getElementById('aiAssistAnswer');
         const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || '';
         if (!answer.trim()) return;
 
         // Show output box without auto-populating from draft
         const output = ensureOutputBoxVisible(true);
-        output.value = answer;
+        const current = output.value.trim();
+        output.value = current ? current + '\n\n' + answer : answer;
 
         state.outputText = output.value;
         autoResizeTextarea(output);
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
-        showToast('Inserted into report.', 'success');
+        showToast('Appended to PACS report.', 'success');
         // Focus clinical insights section if visible, otherwise ask box
         var insights = document.getElementById('aiAssistInsightsSection');
         if (insights && !insights.classList.contains('d-none')) {
@@ -3092,15 +3093,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.insertReportText = function() {
         const reportText = state.aiAssistReportText;
         if (!reportText || !reportText.trim()) return;
-        // Replace PACS output with the AI-generated report (not append to draft)
+        // Append AI-generated report to PACS output
         const output = ensureOutputBoxVisible(true);
-        output.value = reportText;
+        const current = output.value.trim();
+        output.value = current ? current + '\n\n' + reportText : reportText;
 
         state.outputText = output.value;
         autoResizeTextarea(output);
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
-        showToast('Report text inserted.', 'success');
+        showToast('Report text appended.', 'success');
         // Focus clinical insights section if visible, otherwise ask box
         var insights = document.getElementById('aiAssistInsightsSection');
         if (insights && !insights.classList.contains('d-none')) {
