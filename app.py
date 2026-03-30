@@ -72,7 +72,7 @@ if _sentry_dsn:
 
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash, Response
 from models import UserRole
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
@@ -6833,8 +6833,14 @@ Sitemap: https://www.radinsights.xyz/sitemap.xml
 
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
-    """Serve static sitemap.xml for search engines."""
-    return send_from_directory('static', 'sitemap.xml', mimetype='application/xml')
+    """Serve sitemap.xml for search engines."""
+    sitemap_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'sitemap.xml')
+    with open(sitemap_path, 'r') as f:
+        xml_content = f.read()
+    return Response(xml_content, status=200, mimetype='application/xml', headers={
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400',
+        'X-Robots-Tag': 'noindex'
+    })
 
 
 @app.errorhandler(404)
