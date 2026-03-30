@@ -1,0 +1,26 @@
+{# Public CTA Banner — only renders for unauthenticated users #}
+{# Variables: cta_title (optional), cta_description (optional) #}
+{% if not current_user.is_authenticated %}
+<div class="public-cta-banner">
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8 text-center">
+                <h5 class="mb-2 text-white fw-semibold">
+                    {{ cta_title | default('Access the full RadInsights platform') }}
+                </h5>
+                <p class="mb-3 text-white-50 small">
+                    {{ cta_description | default('Free access to AI-powered reporting tools, clinical protocols, TNM staging calculators, and curated radiology cases.') }}
+                </p>
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <a href="{{ url_for('auth.register', next=request.path) }}" class="btn btn-brand-primary">
+                        <i class="fas fa-user-plus me-1"></i>Create Free Account
+                    </a>
+                    <a href="{{ url_for('auth.login', next=request.path) }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-sign-in-alt me-1"></i>Sign In
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

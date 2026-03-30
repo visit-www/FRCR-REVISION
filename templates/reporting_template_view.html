@@ -1,4 +1,16 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}{{ template.title }} - RadInsights{% endblock %}
+{% block meta_description %}{{ template.description[:160] if template.description else template.title ~ ' — Interactive radiology reporting algorithm for clinical practice and FRCR exam preparation.' }}{% endblock %}
+
+{% block og_title %}{{ template.title }} - RadInsights{% endblock %}
+{% block og_description %}{{ template.description[:200] if template.description else 'Interactive radiology reporting algorithm for clinical practice.' }}{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(template.title, template.description or 'Interactive radiology reporting algorithm', 'https://www.radinsights.xyz/reporting-template/' ~ template.slug) }}
+{% endblock %}
+
 {% block tool_active_templates %}{% if nav_active != 'algorithms' %}active{% endif %}{% endblock %}
 {% block mobile_active_templates %}{% if nav_active != 'algorithms' %}active{% endif %}{% endblock %}
 {% block tool_active_algorithms %}{% if nav_active == 'algorithms' %}active{% endif %}{% endblock %}
@@ -6,7 +18,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('reporting.smart_reporter') }}" class="text-white text-decoration-none">Smart Reporter</a>
+    <a href="{{ url_for('reporting.browse_reporting_algorithms') }}" class="text-white text-decoration-none">Algorithms</a>
 </li>
 <li class="breadcrumb-item active text-white-50">{{ template.title }}</li>
 {% endblock %}
@@ -17,12 +29,18 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
                 <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
+                {% else %}
+                <a href="{{ url_for('reporting.browse_reporting_algorithms') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-arrow-left me-1"></i>All Algorithms
+                </a>
+                {% endif %}
             </div>
 
             <!-- Resources -->
@@ -201,6 +219,8 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}

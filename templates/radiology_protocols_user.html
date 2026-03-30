@@ -1,5 +1,21 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import collection_page %}
+
 {% block title %}Radiology Protocols, Safety & Quality - RadInsights{% endblock %}
+{% block meta_description %}Evidence-based clinical protocols for radiologists. Contrast safety, emergency imaging, MRI protocols, and post-procedural guidelines.{% endblock %}
+
+{% block og_title %}Radiology Protocols, Safety & Quality - RadInsights{% endblock %}
+{% block og_description %}Evidence-based clinical protocols covering contrast safety, emergency imaging, MRI protocols, radiation protection, and interventional procedures.{% endblock %}
+
+{% block extra_schema %}
+{{ collection_page(
+    'Radiology Protocols, Safety & Quality',
+    'Evidence-based clinical protocols for radiologists covering safety, emergency imaging, and procedures.',
+    'https://www.radinsights.xyz/radiology-protocols',
+    protocols|length
+) }}
+{% endblock %}
+
 {% block tool_active_protocols %}active{% endblock %}
 {% block mobile_active_protocols %}active{% endblock %}
 
@@ -22,12 +38,14 @@
 
             <!-- Header -->
             <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
                 <a href="/smart-reporter" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
+                {% endif %}
                 <a href="/incidental-findings" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-tools me-1"></i>Radiology Tools
                 </a>
@@ -214,6 +232,8 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}

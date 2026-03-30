@@ -68,9 +68,8 @@ _CAT_META = {slug: {'name': name, 'color': color, 'pastel': pastel, 'icon': icon
 
 
 @if_bp.route('/')
-@login_required
 def finder():
-    """Main radiology tools browse page."""
+    """Main radiology tools browse page (public)."""
     calculators = IncidentalFindingCalculator.query.filter_by(
         is_available=True
     ).order_by(
@@ -91,9 +90,8 @@ def finder():
 
 
 @if_bp.route('/<slug>')
-@login_required
 def view_calculator(slug):
-    """View a specific incidental finding calculator."""
+    """View a specific incidental finding calculator (public)."""
     calculator = IncidentalFindingCalculator.query.filter_by(
         slug=slug, is_available=True
     ).first_or_404()

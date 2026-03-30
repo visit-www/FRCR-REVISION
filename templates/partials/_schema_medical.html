@@ -1,0 +1,86 @@
+{# Schema.org JSON-LD macros for SEO #}
+
+{% macro medical_web_page(title, desc, url, specialty='Radiology') %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MedicalWebPage",
+  "name": {{ title|tojson }},
+  "description": {{ desc|tojson }},
+  "url": {{ url|tojson }},
+  "medicalAudience": {
+    "@type": "MedicalAudience",
+    "audienceType": "Clinician"
+  },
+  "specialty": {
+    "@type": "MedicalSpecialty",
+    "name": {{ specialty|tojson }}
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "RadInsights",
+    "url": "https://www.radinsights.xyz"
+  }
+}
+</script>
+{% endmacro %}
+
+{% macro medical_case(case, images, url) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MedicalCondition",
+  "name": {{ case.diagnosis|tojson }},
+  "url": {{ url|tojson }},
+  {% if images %}
+  "image": {{ images[0]|tojson }},
+  {% endif %}
+  "medicalSpecialty": {
+    "@type": "MedicalSpecialty",
+    "name": "Radiology"
+  },
+  "isPartOf": {
+    "@type": "MedicalWebPage",
+    "name": "RadInsights Case Library",
+    "url": "https://www.radinsights.xyz/case-library"
+  }
+}
+</script>
+{% endmacro %}
+
+{% macro collection_page(title, desc, url, count) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": {{ title|tojson }},
+  "description": {{ desc|tojson }},
+  "url": {{ url|tojson }},
+  "numberOfItems": {{ count }},
+  "publisher": {
+    "@type": "Organization",
+    "name": "RadInsights",
+    "url": "https://www.radinsights.xyz"
+  }
+}
+</script>
+{% endmacro %}
+
+{% macro educational_content(title, desc, url) %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LearningResource",
+  "name": {{ title|tojson }},
+  "description": {{ desc|tojson }},
+  "url": {{ url|tojson }},
+  "educationalLevel": "Postgraduate",
+  "learningResourceType": "Clinical Reference",
+  "publisher": {
+    "@type": "Organization",
+    "name": "RadInsights",
+    "url": "https://www.radinsights.xyz"
+  }
+}
+</script>
+{% endmacro %}

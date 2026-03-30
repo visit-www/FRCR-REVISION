@@ -1,4 +1,16 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}{{ snippet.title }} - RadInsights{% endblock %}
+{% block meta_description %}{{ snippet.title }} — Anatomy reference for radiology. {% if snippet.body_section %}{{ snippet.body_section }}.{% endif %} Essential anatomy, imaging appearance, and clinical correlation.{% endblock %}
+
+{% block og_title %}{{ snippet.title }} - RadInsights{% endblock %}
+{% block og_description %}Anatomy reference: {{ snippet.title }}. Essential anatomy, imaging appearance, normal variants, and clinical correlation for radiologists.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(snippet.title, 'Anatomy reference for radiology: ' ~ snippet.title, 'https://www.radinsights.xyz/anatomy-snippets/' ~ snippet.slug) }}
+{% endblock %}
+
 {% block tool_active_anatomy %}active{% endblock %}
 {% block mobile_active_anatomy %}active{% endblock %}
 
@@ -19,12 +31,14 @@
                 <a href="/knowledge-hub" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-book-medical me-1"></i>Knowledge Hub
                 </a>
+                {% if current_user.is_authenticated %}
                 <a href="/smart-reporter" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
+                {% endif %}
             </div>
 
             <!-- Header Card -->
@@ -120,6 +134,8 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}

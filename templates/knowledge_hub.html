@@ -1,5 +1,21 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import collection_page %}
+
 {% block title %}Knowledge Hub - RadInsights{% endblock %}
+{% block meta_description %}Browse reporting algorithms, radiology templates, clinical tools, and anatomy snippets. Evidence-based resources for daily radiology practice.{% endblock %}
+
+{% block og_title %}Knowledge Hub - RadInsights{% endblock %}
+{% block og_description %}Clinical radiology pearls and anatomy snippets. High-yield educational content for FRCR exam preparation and daily practice.{% endblock %}
+
+{% block extra_schema %}
+{{ collection_page(
+    'Knowledge Hub',
+    'Clinical radiology pearls and anatomy snippets for education and practice.',
+    'https://www.radinsights.xyz/knowledge-hub',
+    pearl_count + snippet_count
+) }}
+{% endblock %}
+
 {% block tool_active_knowledge_hub %}active{% endblock %}
 {% block mobile_active_knowledge_hub %}active{% endblock %}
 
@@ -25,9 +41,11 @@
                 <input type="text" id="knowledgeSearch" class="form-control border-start-0"
                        placeholder="Search..." autocomplete="off">
             </div>
+            {% if current_user.is_authenticated %}
             <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
                 <i class="fas fa-file-medical me-1"></i><span class="d-none d-sm-inline">Smart Reporter</span>
             </a>
+            {% endif %}
             {% if is_admin %}
             <div class="btn-group">
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -521,6 +539,8 @@
 {% endif %}
 
 {% endif %}
+
+{% include 'partials/_public_cta.html' %}
 
 <style>
 /* ==================== PAGE LAYOUT OVERRIDE ==================== */

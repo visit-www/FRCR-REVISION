@@ -153,9 +153,8 @@ def get_query_detail(log_id):
 # ==================== USER-FACING BROWSE & SEARCH ====================
 
 @protocol_bp.route('/radiology-protocols')
-@login_required
 def radiology_protocols_index():
-    """User-facing browse page for clinical protocols."""
+    """User-facing browse page for clinical protocols (public)."""
     protocols = ClinicalProtocol.query.filter_by(is_published=True).order_by(ClinicalProtocol.title).all()
     grouped = {}
     for p in protocols:
@@ -193,9 +192,8 @@ def radiology_protocols_search():
 # ==================== PROTOCOL VIEW ====================
 
 @protocol_bp.route('/radiology-protocols/view/<int:protocol_id>')
-@login_required
 def view_protocol(protocol_id):
-    """Individual protocol view page."""
+    """Individual protocol view page (public, gated content)."""
     protocol = ClinicalProtocol.query.filter_by(
         id=protocol_id, is_published=True
     ).first_or_404()
@@ -276,11 +274,13 @@ def view_protocol(protocol_id):
     except Exception:
         pass
 
+    is_public_preview = not current_user.is_authenticated
     return render_template('protocol_view.html',
                            protocol=protocol,
                            resources=resources,
                            resources_json=resources_json,
                            category_map=CATEGORY_MAP,
+                           is_public_preview=is_public_preview,
                            ai_cross_links=ai_cross_links)
 
 

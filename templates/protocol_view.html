@@ -1,5 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}Protocol - RadInsights{% endblock %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}{{ protocol.title }} - RadInsights{% endblock %}
+{% block meta_description %}{{ protocol.title }} — Evidence-based clinical protocol for radiology practice. {% if protocol.category %}Category: {{ protocol.category }}.{% endif %}{% endblock %}
+
+{% block og_title %}{{ protocol.title }} - RadInsights{% endblock %}
+{% block og_description %}Evidence-based clinical protocol: {{ protocol.title }}. Guideline-based reference for safe radiology practice.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(protocol.title, 'Evidence-based clinical protocol for radiology practice', 'https://www.radinsights.xyz/radiology-protocols/view/' ~ protocol.id) }}
+{% endblock %}
+
 {% block tool_active_protocols %}active{% endblock %}
 {% block mobile_active_protocols %}active{% endblock %}
 {% from 'partials/resource_fields.html' import resource_styles %}
@@ -17,16 +28,20 @@
         <div class="col-12">
             <!-- Navigation -->
             <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
+                {% endif %}
                 <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-clipboard-list me-1"></i>Protocols
                 </a>
+                {% if current_user.is_authenticated %}
                 <a href="/smart-reporter?context=protocol&id={{ protocol.id }}&title={{ protocol.title|urlencode }}"
                    class="btn btn-sm btn-brand-primary">
                     <i class="fas fa-file-medical me-1"></i>Use in Report
                 </a>
+                {% endif %}
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                 <a href="/radiology-protocols/admin/edit/{{ protocol.id }}" class="btn btn-outline-warning btn-sm ms-auto">
                     <i class="fas fa-edit me-1"></i>Edit Protocol
@@ -116,7 +131,8 @@
             </div>
             {% endif %}
 
-            <!-- Link Content Panel (collapsible) -->
+            <!-- Link Content Panel (collapsible, authenticated only) -->
+            {% if current_user.is_authenticated %}
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
                      data-bs-toggle="collapse" data-bs-target="#viewLinkPanel" role="button"
@@ -145,11 +161,14 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
+{% if current_user.is_authenticated %}
 {% include 'partials/_ai_cross_links.html' %}
+{% endif %}
 
 <!-- Protocol Content -->
 {% if protocol.content_html %}
@@ -190,9 +209,33 @@
 </div>
 {% endif %}
 
+{% if is_public_preview %}
+{# Gated: show teaser + CTA for anonymous users #}
+<div class="container-fluid py-3">
+    <div class="content-teaser">
+        <div class="calculator-integrated-wrapper">
+            {{ protocol.content_html | safe }}
+        </div>
+        <div class="gated-fade-overlay"></div>
+    </div>
+    <div class="text-center py-4">
+        <i class="fas fa-lock mb-2" style="font-size:1.5rem;color:#5E899E;"></i>
+        <h6 class="mb-2" style="color:#2c3e50;">Sign in to view the full protocol</h6>
+        <div class="d-flex justify-content-center gap-2">
+            <a href="{{ url_for('auth.register', next=request.path) }}" class="btn btn-brand-primary btn-sm">
+                <i class="fas fa-user-plus me-1"></i>Create Free Account
+            </a>
+            <a href="{{ url_for('auth.login', next=request.path) }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-sign-in-alt me-1"></i>Sign In
+            </a>
+        </div>
+    </div>
+</div>
+{% else %}
 <div class="calculator-integrated-wrapper">
     {{ protocol.content_html | safe }}
 </div>
+{% endif %}
 {% endif %}
 
 <!-- Clinical Disclaimer -->
@@ -214,9 +257,12 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}
+{% if current_user.is_authenticated %}
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
 <script>
@@ -434,4 +480,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
     #viewLinkChevron { transition: transform 0.2s ease; }
 </style>
+{% endif %}
 {% endblock %}

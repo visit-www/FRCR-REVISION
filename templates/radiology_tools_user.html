@@ -1,5 +1,21 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import collection_page %}
+
 {% block title %}Radiology Tools - RadInsights{% endblock %}
+{% block meta_description %}Interactive radiology calculators and decision tools. Incidental finding management, classification systems, and clinical algorithms.{% endblock %}
+
+{% block og_title %}Radiology Tools - RadInsights{% endblock %}
+{% block og_description %}Interactive guideline-based radiology tools: Fleischner, Bosniak, TI-RADS, and more. Free calculators for clinical radiology practice.{% endblock %}
+
+{% block extra_schema %}
+{{ collection_page(
+    'Radiology Tools',
+    'Interactive guideline-based radiology calculators, classifications, and decision tools.',
+    'https://www.radinsights.xyz/incidental-findings',
+    calculators|length
+) }}
+{% endblock %}
+
 {% block tool_active_if %}active{% endblock %}
 {% block mobile_active_if %}active{% endblock %}
 
@@ -14,12 +30,14 @@
 
             <!-- Header -->
             <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
                 <a href="/smart-reporter" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
+                {% endif %}
                 <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-shield-alt me-1"></i>Protocols
                 </a>
@@ -143,6 +161,8 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}

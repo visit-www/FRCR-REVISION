@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import medical_case %}
+
+{% block title %}{{ case.diagnosis }} - RadInsights Case Library{% endblock %}
+{% block meta_description %}Radiology case: {{ case.diagnosis }}. {% if case.body_part %}{{ case.body_part.value }}{% endif %}{% if case.module %} — {{ case.module.value }}{% endif %}. View images, discussion, and teaching points.{% endblock %}
+
+{% block og_title %}{{ case.diagnosis }} - RadInsights{% endblock %}
+{% block og_description %}Radiology case: {{ case.diagnosis }}. {% if case.body_part %}{{ case.body_part.value }}.{% endif %} View images, discussion, and teaching points on RadInsights.{% endblock %}
+{% block og_image %}{% if images and images[0].image_thumbnail_url %}{{ images[0].image_thumbnail_url }}{% else %}https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-512x512_myzqfe.png{% endif %}{% endblock %}
+
+{% block extra_schema %}
+{{ medical_case(case, [images[0].image_url] if images and images[0].image_url else [], 'https://www.radinsights.xyz/case-library/' ~ case.id) }}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <!-- Breadcrumb -->
+            <nav class="mb-3">
+                <a href="{{ url_for('public.case_library') }}" class="text-decoration-none" style="color:#5E899E;">
+                    <i class="fas fa-arrow-left me-1"></i>Case Library
+                </a>
+            </nav>
+
+            <!-- Case Header -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h3 class="mb-2" style="color:#2c3e50;">{{ case.diagnosis }}</h3>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        {% if case.module %}
+                        <span class="badge" style="background:#e4eff4;color:#5E899E;">{{ case.module.value }}</span>
+                        {% endif %}
+                        {% if case.body_part %}
+                        <span class="badge bg-light text-dark border">{{ case.body_part.value }}</span>
+                        {% endif %}
+                        {% if case.case_number %}
+                        <span class="badge bg-light text-muted border">{{ case.case_number }}</span>
+                        {% endif %}
+                        {% if case.age_group %}
+                        <span class="badge bg-light text-muted border">{{ case.age_group.value }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Case Images (visible) -->
+            {% if images %}
+            <div class="mb-4">
+                <h5 class="mb-3"><i class="fas fa-images me-2" style="color:#5E899E;"></i>Case Images</h5>
+                <div class="row g-3">
+                    {% for img in images %}
+                    <div class="col-12 col-md-4">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ img.image_url or img.image_thumbnail_url }}"
+                                 alt="{{ img.image_description or 'Case image' }}"
+                                 class="card-img-top" style="max-height:300px;object-fit:contain;background:#f0f2f4;" loading="lazy">
+                            {% if img.image_description %}
+                            <div class="card-body py-2 px-3">
+                                <small class="text-muted">{{ img.image_description }}</small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Discussion (gated preview) -->
+            {% if discussion_teaser %}
+            <div class="mb-4">
+                <h5 class="mb-3"><i class="fas fa-comments me-2" style="color:#5E899E;"></i>Discussion</h5>
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="content-teaser">
+                            <p class="mb-0 text-muted">{{ discussion_teaser }}...</p>
+                            <div class="gated-fade-overlay"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Gated Content Summary -->
+            <div class="card border-0 shadow-sm mb-4" style="background:#f8f9fa;">
+                <div class="card-body text-center py-4">
+                    <i class="fas fa-lock mb-2" style="font-size:1.5rem;color:#5E899E;"></i>
+                    <h6 class="mb-2" style="color:#2c3e50;">Full case content available to registered users</h6>
+                    <div class="d-flex justify-content-center gap-3 flex-wrap mb-3">
+                        {% if discussion_teaser %}
+                        <span class="badge bg-white text-dark border"><i class="fas fa-comments me-1" style="color:#5E899E;"></i>Full Discussion</span>
+                        {% endif %}
+                        {% if question_count > 0 %}
+                        <span class="badge bg-white text-dark border"><i class="fas fa-question-circle me-1" style="color:#e96304;"></i>{{ question_count }} Question{{ 's' if question_count != 1 }}</span>
+                        {% endif %}
+                        <span class="badge bg-white text-dark border"><i class="fas fa-lightbulb me-1" style="color:#ffc107;"></i>Teaching Points</span>
+                        <span class="badge bg-white text-dark border"><i class="fas fa-scroll me-1" style="color:#5E899E;"></i>Image Stacks</span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-2">
+                        <a href="{{ url_for('auth.register', next='/view-case/' ~ case.id) }}" class="btn btn-brand-primary btn-sm">
+                            <i class="fas fa-user-plus me-1"></i>Create Free Account
+                        </a>
+                        <a href="{{ url_for('auth.login', next='/view-case/' ~ case.id) }}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-sign-in-alt me-1"></i>Sign In
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disclaimer -->
+            <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                <small class="text-muted">
+                    <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+                    <strong>Educational Resource</strong> &mdash;
+                    Cases are curated for radiology education and FRCR exam preparation. All patient data is anonymized.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/_public_cta.html' %}
+{% endblock %}

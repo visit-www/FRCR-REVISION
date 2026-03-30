@@ -1,4 +1,16 @@
 {% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}{{ calculator.finding_name }} - RadInsights{% endblock %}
+{% block meta_description %}{{ calculator.description[:160] if calculator.description else calculator.finding_name ~ ' — Interactive radiology tool based on published guidelines.' }}{% endblock %}
+
+{% block og_title %}{{ calculator.finding_name }} - RadInsights{% endblock %}
+{% block og_description %}{{ calculator.description[:200] if calculator.description else 'Interactive radiology tool based on published guidelines.' }}{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(calculator.finding_name, calculator.description or 'Interactive radiology tool', 'https://www.radinsights.xyz/incidental-findings/' ~ calculator.slug) }}
+{% endblock %}
+
 {% block tool_active_if %}active{% endblock %}
 {% block mobile_active_if %}active{% endblock %}
 
@@ -15,16 +27,20 @@
     <div class="row">
         <div class="col-12">
             <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
+                {% endif %}
                 <a href="{{ url_for('radiology_tools.finder') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-search-plus me-1"></i>All Radiology Tools
                 </a>
+                {% if current_user.is_authenticated %}
                 <a href="/smart-reporter?context=if&slug={{ calculator.slug }}&title={{ calculator.finding_name|urlencode }}"
                    class="btn btn-sm btn-brand-primary">
                     <i class="fas fa-file-medical me-1"></i>Use the results in a report
                 </a>
+                {% endif %}
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                 <a href="/incidental-findings/admin/edit/{{ calculator.id }}" class="btn btn-sm btn-outline-secondary">
                     <i class="fas fa-edit me-1"></i>Edit Tool
@@ -160,6 +176,8 @@
         </div>
     </div>
 </div>
+
+{% include 'partials/_public_cta.html' %}
 {% endblock %}
 
 {% block scripts %}

@@ -154,22 +154,29 @@ CORS(app, resources={
     }
 })
 
-# Rate limiting — per-IP limits for abuse prevention
-try:
-    from flask_limiter import Limiter
-    from flask_limiter.util import get_remote_address
-    limiter = Limiter(
-        get_remote_address,
-        app=app,
-        default_limits=["200 per minute"],
-        storage_uri="memory://",
-    )
-    # Stricter limits for sensitive endpoints (applied via decorators in auth.py)
-    app.config['LIMITER'] = limiter
-    logger.info("Flask-Limiter enabled (200/min default)")
-except ImportError:
-    limiter = None
-    logger.warning("flask-limiter not installed — rate limiting disabled")
+# DB-backed rate limiting — persists across serverless cold starts
+def check_rate_limit(key, endpoint, max_hits, window_seconds):
+    """Check and record a rate limit hit. Returns (allowed, remaining) or (False, 0) if exceeded."""
+    if app.testing:
+        return True, max_hits  # Skip in test environment
+    from models import RateLimitEntry, db as _db
+    from datetime import datetime, timedelta
+    try:
+        cutoff = datetime.utcnow() - timedelta(seconds=window_seconds)
+        count = RateLimitEntry.query.filter(
+            RateLimitEntry.key == key,
+            RateLimitEntry.endpoint == endpoint,
+            RateLimitEntry.hit_at >= cutoff
+        ).count()
+        if count >= max_hits:
+            return False, 0
+        _db.session.add(RateLimitEntry(key=key, endpoint=endpoint))
+        _db.session.commit()
+        return True, max_hits - count - 1
+    except Exception as e:
+        _db.session.rollback()
+        logger.error(f"Rate limit check error: {e}")
+        return True, max_hits  # Fail open — don't block on DB errors
 
 # Ensure instance folder exists
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
@@ -952,6 +959,9 @@ with app.app_context():
         # -- pii_override_log: granular action tracking --
         _add_col_if_missing('pii_override_log', 'action', "action VARCHAR(20) DEFAULT 'override' NOT NULL")
 
+        # -- user: 2FA grace period for admin accounts --
+        _add_col_if_missing('user', 'totp_grace_period_until', 'totp_grace_period_until TIMESTAMP')
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
         
@@ -1109,6 +1119,9 @@ app.register_blueprint(protocol_bp)  # Clinical Protocols + On-Call Helper
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
 app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
+from public_routes import public_bp
+app.register_blueprint(public_bp)  # Public preview pages for SEO (case library, etc.)
+
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
 
@@ -1119,11 +1132,7 @@ app.register_blueprint(stripe_bp)  # Stripe payment & subscription management
 from pii_guard import create_pii_middleware
 create_pii_middleware(app)
 
-# Apply stricter rate limits to sensitive auth endpoints
-if limiter:
-    limiter.limit("5 per hour")(app.view_functions.get('auth.register', lambda: None))
-    limiter.limit("10 per minute")(app.view_functions.get('auth.login', lambda: None))
-    limiter.limit("5 per hour")(app.view_functions.get('auth.forgot_password', lambda: None))
+# Rate limits for auth endpoints are applied inline in auth.py via check_rate_limit()
 
 # Security headers — applied to every response
 @app.after_request
@@ -1149,6 +1158,72 @@ def add_security_headers(response):
         "base-uri 'self'"
     )
     return response
+
+
+# ============================================================================
+# BEFORE-REQUEST HOOKS — 2FA enforcement + session fingerprint validation
+# ============================================================================
+
+@app.before_request
+def enforce_admin_2fa():
+    """Redirect admin users without 2FA to profile page (after grace period expires)."""
+    if app.testing:
+        return  # Skip in test environment
+    from flask_login import current_user as _cu
+    if not _cu.is_authenticated:
+        return
+    if _cu.role != UserRole.ADMIN:
+        return
+    if getattr(_cu, 'totp_enabled', False):
+        return  # 2FA already enabled
+    # Check grace period
+    grace = getattr(_cu, 'totp_grace_period_until', None)
+    if grace and grace > datetime.utcnow():
+        return  # Still within grace period
+    # Exempt certain endpoints so the user can actually set up 2FA
+    exempt_prefixes = ('/auth/profile', '/auth/logout', '/static/', '/api/admin/2fa', '/auth/api/2fa')
+    if request.path.startswith(tuple(exempt_prefixes)):
+        return
+    # For API requests return JSON, for page requests redirect
+    if request.is_json or request.headers.get('Accept', '').startswith('application/json'):
+        return jsonify({'error': 'Two-factor authentication is required for admin accounts. Please set it up in your profile.', 'redirect': '/auth/profile'}), 403
+    return redirect('/auth/profile')
+
+
+@app.before_request
+def validate_session_fingerprint():
+    """Invalidate session if User-Agent changes (detect session hijacking)."""
+    from flask_login import current_user as _cu
+    import hashlib as _hashlib
+    if not _cu.is_authenticated:
+        return
+    ua = request.headers.get('User-Agent', '')
+    fp = _hashlib.sha256(ua.encode()).hexdigest()[:16]
+    stored = session.get('_ua_fp')
+    if stored is None:
+        # Legacy session — stamp it now, don't invalidate
+        session['_ua_fp'] = fp
+        return
+    if stored != fp:
+        logger.warning(f"Session fingerprint mismatch for user {_cu.id} — logging out")
+        from flask_login import logout_user
+        logout_user()
+        session.clear()
+        if request.is_json or request.headers.get('Accept', '').startswith('application/json'):
+            return jsonify({'error': 'Session invalidated due to security check. Please log in again.'}), 401
+        return redirect('/auth/login')
+
+
+# ============================================================================
+# SEO CONTEXT PROCESSORS
+# ============================================================================
+
+@app.context_processor
+def seo_helpers():
+    """Provide SEO helper functions to all templates."""
+    def canonical_url():
+        return request.url.split('?')[0]  # Strip query params
+    return {'canonical_url': canonical_url}
 
 
 # ============================================================================
@@ -1258,7 +1333,7 @@ def data_retention_cleanup():
     Deletes expired recovery codes, approval codes, and stale TNM jobs.
     """
     from datetime import datetime, timedelta
-    from models import AccountRecoveryCode, AdminApprovalCode, TNMGeneratorJob
+    from models import AccountRecoveryCode, AdminApprovalCode, TNMGeneratorJob, RateLimitEntry, User, ErasureLog
 
     # Verify cron secret
     cron_secret = os.environ.get('CRON_SECRET')
@@ -1296,6 +1371,39 @@ def data_retention_cleanup():
             TNMGeneratorJob.completed_at < cutoff_jobs
         ).delete(synchronize_session=False)
         cleaned['old_tnm_jobs'] = old_jobs
+
+        # 4. Rate limit entries older than 24 hours
+        cutoff_rate = now - timedelta(hours=24)
+        old_rate = RateLimitEntry.query.filter(
+            RateLimitEntry.hit_at < cutoff_rate
+        ).delete(synchronize_session=False)
+        cleaned['old_rate_limit_entries'] = old_rate
+
+        # 5. Auto-purge soft-deleted accounts older than 31 days (GDPR right to erasure)
+        from access_control import delete_user_completely
+        import hashlib
+        cutoff_purge = now - timedelta(days=31)
+        stale_users = User.query.filter(
+            User.is_deleted == True,
+            User.deleted_at < cutoff_purge
+        ).all()
+        purged_count = 0
+        for stale_user in stale_users:
+            email_hash = hashlib.sha256(stale_user.email.encode()).hexdigest()
+            success, result = delete_user_completely(stale_user)
+            if success:
+                purged_count += 1
+                db.session.add(ErasureLog(
+                    erasure_type='auto_purge',
+                    initiated_by_user_id=None,
+                    target_user_email_hash=email_hash,
+                    records_deleted=json.dumps(result) if isinstance(result, dict) else str(result)
+                ))
+                db.session.commit()
+                logger.info(f"[Data Retention] Auto-purged soft-deleted user (hash: {email_hash[:12]}...)")
+            else:
+                logger.error(f"[Data Retention] Failed to purge user (hash: {email_hash[:12]}...): {result}")
+        cleaned['auto_purged_users'] = purged_count
 
         db.session.commit()
         total = sum(cleaned.values())
@@ -6819,12 +6927,24 @@ def robots_txt():
     """Serve robots.txt to prevent search engines crawling admin/API routes."""
     content = """User-agent: *
 Allow: /
+Allow: /case-library
+Allow: /case-library/
+Allow: /reporting-algorithms
+Allow: /reporting-template/
+Allow: /reporting-templates
+Allow: /radiology-template/view/
+Allow: /incidental-findings/
+Allow: /radiology-protocols
+Allow: /radiology-protocols/view/
+Allow: /knowledge-hub
+Allow: /anatomy-snippets/
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
 Disallow: /stripe/
 Disallow: /radiology-protocols/admin/
 Disallow: /incidental-findings/admin/
+Disallow: /incidental-findings/embed/
 Disallow: /on-call-helper/admin/
 Disallow: /api/admin/
 Disallow: /api/backup/
@@ -6839,6 +6959,13 @@ Disallow: /view-case/
 Disallow: /revision/
 Disallow: /suggest-case
 Disallow: /notion/
+Disallow: /smart-reporter
+
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+User-agent: SemrushBot
+Crawl-delay: 10
 
 Sitemap: https://www.radinsights.xyz/sitemap.xml
 """
@@ -6847,11 +6974,77 @@ Sitemap: https://www.radinsights.xyz/sitemap.xml
 
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
-    """Serve sitemap.xml for search engines."""
-    sitemap_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'sitemap.xml')
-    with open(sitemap_path, 'r') as f:
-        xml_content = f.read()
-    return Response(xml_content, status=200, mimetype='application/xml', headers={
+    """Generate dynamic sitemap including all public content."""
+    from models import TNMCalculatorContent, ReportingAlgorithm, RadiologyTemplate, IncidentalFindingCalculator, ClinicalProtocol, Case, CaseStatus
+
+    pages = []
+
+    # Static pages
+    static_pages = [
+        ('https://www.radinsights.xyz/', '1.0', 'weekly'),
+        ('https://www.radinsights.xyz/pricing', '0.9', 'monthly'),
+        ('https://www.radinsights.xyz/about', '0.7', 'monthly'),
+        ('https://www.radinsights.xyz/tnm-calculator', '0.9', 'weekly'),
+        ('https://www.radinsights.xyz/essential-tnm-concepts', '0.6', 'monthly'),
+        ('https://www.radinsights.xyz/knowledge-hub', '0.8', 'weekly'),
+        ('https://www.radinsights.xyz/case-library', '0.8', 'weekly'),
+        ('https://www.radinsights.xyz/reporting-algorithms', '0.8', 'weekly'),
+        ('https://www.radinsights.xyz/reporting-templates', '0.7', 'weekly'),
+        ('https://www.radinsights.xyz/incidental-findings', '0.8', 'weekly'),
+        ('https://www.radinsights.xyz/radiology-protocols', '0.7', 'weekly'),
+        ('https://www.radinsights.xyz/privacy-policy', '0.3', 'yearly'),
+        ('https://www.radinsights.xyz/terms-of-use', '0.3', 'yearly'),
+        ('https://www.radinsights.xyz/trust-and-accuracy', '0.4', 'monthly'),
+    ]
+
+    try:
+        # Published Cases (public case library)
+        published_cases = Case.query.filter_by(status=CaseStatus.PUBLISHED).all()
+        for case in published_cases:
+            pages.append((f'https://www.radinsights.xyz/case-library/{case.id}', '0.6', 'monthly'))
+
+        # TNM Calculators (dynamic from DB)
+        calculators = TNMCalculatorContent.query.filter_by(is_available=True).all()
+        for calc in calculators:
+            if calc.slug:
+                pages.append((f'https://www.radinsights.xyz/tnm-calculator/{calc.slug}', '0.7', 'monthly'))
+
+        # Reporting Algorithms (admin-verified only)
+        algorithms = ReportingAlgorithm.query.filter_by(origin='admin', is_available=True).all()
+        for algo in algorithms:
+            pages.append((f'https://www.radinsights.xyz/reporting-template/{algo.slug}', '0.6', 'monthly'))
+
+        # Radiology Templates (admin, available)
+        rad_templates = RadiologyTemplate.query.filter_by(is_available=True).all()
+        for t in rad_templates:
+            pages.append((f'https://www.radinsights.xyz/radiology-template/view/{t.id}', '0.5', 'monthly'))
+
+        # Radiology Tools (published)
+        tools = IncidentalFindingCalculator.query.filter_by(is_available=True).all()
+        for tool in tools:
+            if tool.slug:
+                pages.append((f'https://www.radinsights.xyz/incidental-findings/{tool.slug}', '0.6', 'monthly'))
+
+        # Clinical Protocols (published)
+        protocols = ClinicalProtocol.query.filter_by(is_published=True).all()
+        for proto in protocols:
+            pages.append((f'https://www.radinsights.xyz/radiology-protocols/view/{proto.id}', '0.5', 'monthly'))
+
+        # Anatomy Snippets (published)
+        snippets = ReportingAlgorithm.query.filter_by(origin='anatomy_cache', is_available=True).all()
+        for s in snippets:
+            pages.append((f'https://www.radinsights.xyz/anatomy-snippets/{s.slug}', '0.5', 'monthly'))
+    except Exception as e:
+        logger.error(f"Sitemap DB query error: {e}")
+
+    # Build XML
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for url, priority, changefreq in static_pages + pages:
+        xml += f'  <url><loc>{url}</loc><priority>{priority}</priority><changefreq>{changefreq}</changefreq></url>\n'
+    xml += '</urlset>'
+
+    return Response(xml, status=200, mimetype='application/xml', headers={
         'Cache-Control': 'public, max-age=3600, s-maxage=86400'
     })
 

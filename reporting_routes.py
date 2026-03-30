@@ -26,7 +26,7 @@ from models import (
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ContentRequest, RadiologyPearl,
     ContentIntelligence, UserGeneratedIntelligence,
-    SubscriptionStatus, LearningQuestion,
+    SubscriptionStatus, LearningQuestion, log_admin_action,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -1567,9 +1567,8 @@ def browse_algorithms():
 # ==================== REPORTING TEMPLATE VIEWS ====================
 
 @reporting_bp.route('/reporting-template/<slug>')
-@login_required
 def view_reporting_template(slug):
-    """View a specific admin-curated reporting template."""
+    """View a specific admin-curated reporting template (public)."""
     template = ReportingAlgorithm.query.filter_by(slug=slug, is_available=True).first_or_404()
 
     content = {'styles': '', 'body': ''}
@@ -1626,9 +1625,8 @@ def embed_reporting_template(slug):
 # ==================== USER: REPORTING ALGORITHMS BROWSE ====================
 
 @reporting_bp.route('/reporting-algorithms')
-@login_required
 def browse_reporting_algorithms():
-    """User-facing browse page for reporting algorithms (interactive decision trees)."""
+    """User-facing browse page for reporting algorithms (public)."""
     templates = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.is_available == True,
         ReportingAlgorithm.origin == 'admin',
@@ -1647,18 +1645,22 @@ def browse_reporting_algorithms():
 # ==================== USER: RADIOLOGY TEMPLATES BROWSE ====================
 
 @reporting_bp.route('/knowledge-hub')
-@login_required
 def knowledge_hub():
-    """Unified Knowledge Hub combining Radiology Pearls and Anatomy Snippets."""
+    """Unified Knowledge Hub combining Radiology Pearls and Anatomy Snippets (public)."""
     from models import UserRole
 
-    # Fetch pearls (verified + own unverified)
-    pearls = RadiologyPearl.query.filter(
-        db.or_(
-            RadiologyPearl.is_verified == True,
-            RadiologyPearl.created_by_user_id == current_user.id,
-        )
-    ).order_by(RadiologyPearl.created_at.desc()).all()
+    # Fetch pearls: authenticated users see own unverified + verified; anonymous see verified only
+    if current_user.is_authenticated:
+        pearls = RadiologyPearl.query.filter(
+            db.or_(
+                RadiologyPearl.is_verified == True,
+                RadiologyPearl.created_by_user_id == current_user.id,
+            )
+        ).order_by(RadiologyPearl.created_at.desc()).all()
+    else:
+        pearls = RadiologyPearl.query.filter_by(
+            is_verified=True
+        ).order_by(RadiologyPearl.created_at.desc()).all()
 
     # Fetch anatomy snippets
     snippets = ReportingAlgorithm.query.filter(
@@ -1723,14 +1725,12 @@ def admin_pearls():
 
 
 @reporting_bp.route('/anatomy-snippets')
-@login_required
 def browse_anatomy_snippets():
     """Redirect to Knowledge Hub."""
     return redirect(url_for('reporting.knowledge_hub'), code=301)
 
 
 @reporting_bp.route('/anatomy-snippets/<slug>')
-@login_required
 def view_anatomy_snippet(slug):
     """View a single anatomy snippet in styled layout."""
     snippet = ReportingAlgorithm.query.filter(
@@ -1783,16 +1783,14 @@ def search_anatomy_snippets():
 
 
 @reporting_bp.route('/radiology-pearls')
-@login_required
 def browse_radiology_pearls():
     """Redirect to Knowledge Hub."""
     return redirect(url_for('reporting.knowledge_hub'), code=301)
 
 
 @reporting_bp.route('/reporting-templates')
-@login_required
 def browse_reporting_templates():
-    """User-facing browse page for radiology templates (plain-text PACS reports)."""
+    """User-facing browse page for radiology templates (public)."""
     radiology_templates = RadiologyTemplate.query.filter_by(
         is_available=True
     ).order_by(RadiologyTemplate.title).all()
@@ -1815,9 +1813,8 @@ def get_radiology_template_text(template_id):
 
 
 @reporting_bp.route('/radiology-template/view/<int:template_id>')
-@login_required
 def view_radiology_template(template_id):
-    """Full-page view for a radiology template with resources and Smart Reporter integration."""
+    """Full-page view for a radiology template (public, gated template text)."""
     t = RadiologyTemplate.query.get_or_404(template_id)
     if not t.is_available or t.origin not in ('admin', 'personal'):
         from flask import abort
@@ -1839,7 +1836,9 @@ def view_radiology_template(template_id):
             if t.source_citation.strip():
                 resources['references'] = [{'source': t.source_citation.strip(), 'version': '', 'url': ''}]
 
+    is_public_preview = not current_user.is_authenticated
     return render_template('radiology_template_view.html', template=t, resources=resources,
+                           is_public_preview=is_public_preview,
                            ai_cross_links=_get_ai_cross_links('radiology_template', t.id))
 
 
@@ -1943,6 +1942,8 @@ def verify_reporting_template(template_id):
     template.verified_at = datetime.utcnow()
     template.is_available = True
     db.session.commit()
+    log_admin_action(current_user.id, 'verify_algorithm', 'reporting_algorithm', template_id,
+                     {'title': template.title}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': f'Template "{template.title}" verified and published.'})
 
 
@@ -1981,6 +1982,8 @@ def delete_reporting_template(template_id):
     title = template.title
     db.session.delete(template)
     db.session.commit()
+    log_admin_action(current_user.id, 'delete_algorithm', 'reporting_algorithm', template_id,
+                     {'title': title}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
@@ -2170,6 +2173,8 @@ def verify_radiology_template(template_id):
     t.verified_at = datetime.utcnow()
     t.is_available = True
     db.session.commit()
+    log_admin_action(current_user.id, 'verify_template', 'radiology_template', template_id,
+                     {'title': t.title}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': f'Template "{t.title}" verified and published.'})
 
 
@@ -2181,6 +2186,8 @@ def delete_radiology_template(template_id):
     title = t.title
     db.session.delete(t)
     db.session.commit()
+    log_admin_action(current_user.id, 'delete_template', 'radiology_template', template_id,
+                     {'title': title}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
@@ -4221,8 +4228,11 @@ def update_pearl(pearl_id):
 def delete_pearl(pearl_id):
     """Delete a pearl (admin only)."""
     pearl = RadiologyPearl.query.get_or_404(pearl_id)
+    pearl_text_preview = (pearl.pearl_text or '')[:100]
     db.session.delete(pearl)
     db.session.commit()
+    log_admin_action(current_user.id, 'delete_pearl', 'radiology_pearl', pearl_id,
+                     {'preview': pearl_text_preview}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': 'Pearl deleted.'})
 
 
@@ -4236,6 +4246,8 @@ def verify_pearl(pearl_id):
     pearl.verified_by_user_id = current_user.id
     pearl.verified_at = datetime.utcnow()
     db.session.commit()
+    log_admin_action(current_user.id, 'verify_pearl', 'radiology_pearl', pearl_id,
+                     {'preview': (pearl.pearl_text or '')[:100]}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': 'Pearl verified.', 'pearl': _pearl_to_dict(pearl)})
 
 
