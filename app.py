@@ -6838,8 +6838,7 @@ def sitemap_xml():
     with open(sitemap_path, 'r') as f:
         xml_content = f.read()
     return Response(xml_content, status=200, mimetype='application/xml', headers={
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400',
-        'X-Robots-Tag': 'noindex'
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400'
     })
 
 
