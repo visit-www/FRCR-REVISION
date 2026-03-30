@@ -3428,11 +3428,12 @@ class RadIQQuery(db.Model):
 
 
 class PiiOverrideLog(db.Model):
-    """Audit trail for PII guard overrides — when users choose 'Send Anyway'."""
+    """Audit trail for PII guard actions — overrides, dismissals, batch dismissals."""
     __tablename__ = 'pii_override_log'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    action = db.Column(db.String(20), nullable=False, default='override')  # override | dismiss | batch_dismiss
     flagged_types = db.Column(db.Text, nullable=False)  # comma-separated PII types
     flagged_count = db.Column(db.Integer, nullable=False, default=0)
     target_url = db.Column(db.String(500))

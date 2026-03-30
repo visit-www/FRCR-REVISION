@@ -949,6 +949,9 @@ with app.app_context():
         # -- published_report (legacy) --
         _add_col_if_missing('published_report', 'algorithm_tree_json', 'algorithm_tree_json TEXT')
 
+        # -- pii_override_log: granular action tracking --
+        _add_col_if_missing('pii_override_log', 'action', "action VARCHAR(20) DEFAULT 'override' NOT NULL")
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
         
@@ -1355,6 +1358,13 @@ def pricing():
     return render_template('pricing.html', user_data=user_data, requested_plan=requested_plan)
 
 
+@app.route('/trust')
+@app.route('/trust-and-accuracy')
+def trust_accuracy():
+    """Trust & Accuracy page - peer-review process and data security measures"""
+    return render_template('trust_accuracy.html')
+
+
 @app.route('/about')
 def about():
     """About page - app philosophy, design principles, and developer info"""
@@ -1424,18 +1434,22 @@ def tour_complete():
 @app.route('/api/pii-override-log', methods=['POST'])
 @login_required
 def pii_override_log():
-    """Log a PII guard override for audit trail."""
+    """Log a PII guard action (override, dismiss, batch_dismiss) for audit trail."""
     data = request.get_json(silent=True) or {}
+    action = data.get('action', 'override')
+    if action not in ('override', 'dismiss', 'batch_dismiss'):
+        action = 'override'
     try:
         log = PiiOverrideLog(
             user_id=current_user.id,
+            action=action,
             flagged_types=', '.join(data.get('flagged_types', [])),
             flagged_count=data.get('flagged_count', 0),
             target_url=data.get('target_url', '')[:500]
         )
         db.session.add(log)
         db.session.commit()
-        logger.info(f'PII override logged: user={current_user.id} types={log.flagged_types} url={log.target_url}')
+        logger.info(f'PII {action} logged: user={current_user.id} types={log.flagged_types} url={log.target_url}')
     except Exception as e:
         logger.warning(f'Failed to log PII override: {e}')
     return jsonify({'success': True})

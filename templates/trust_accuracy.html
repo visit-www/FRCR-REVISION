@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trust &amp; Accuracy - RadInsights</title>
+    <meta name="description" content="How RadInsights ensures clinical accuracy through peer review, content verification, and robust data security measures.">
+    <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
+    <link rel="canonical" href="https://www.radinsights.xyz/trust" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Trust &amp; Accuracy - RadInsights">
+    <meta property="og:description" content="How RadInsights ensures clinical accuracy through peer review, expert verification, and multi-layered data security measures.">
+    <meta property="og:url" content="https://www.radinsights.xyz/trust">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="RadInsights">
+    <meta property="og:image" content="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Trust &amp; Accuracy - RadInsights">
+    <meta name="twitter:description" content="Peer-reviewed clinical content, multi-layered PII protection, and HIPAA-aligned audit trails. How RadInsights keeps you safe.">
+    <meta name="twitter:image" content="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #a8d5ba;
+            --petroleum-blue: #2c5f6e;
+            --text-dark: #2c3e50;
+            --peach: #ffb088;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #f8f9fa;
+            color: var(--text-dark);
+            line-height: 1.7;
+        }
+
+        /* Hero */
+        .trust-hero {
+            background: linear-gradient(135deg, var(--petroleum-blue) 0%, #1a3d47 100%);
+            color: white;
+            padding: 4rem 0 5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trust-hero::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.5;
+        }
+
+        .trust-hero .container { position: relative; z-index: 1; }
+
+        .hero-title { font-size: 3rem; font-weight: 700; margin-bottom: 1rem; }
+        .hero-subtitle { font-size: 1.25rem; opacity: 0.9; max-width: 700px; }
+
+        /* Sections */
+        .section { padding: 5rem 0; }
+        .section-alt { background: white; }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--petroleum-blue);
+            margin-bottom: 1rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px; left: 0;
+            width: 60px; height: 4px;
+            background: linear-gradient(90deg, var(--brand-primary), var(--peach));
+            border-radius: 2px;
+        }
+
+        .section-subtitle { color: #666; font-size: 1.1rem; margin-bottom: 2rem; }
+
+        .intro-prose { font-size: 1.05rem; line-height: 1.9; color: #444; }
+        .intro-prose p { margin-bottom: 1.25rem; }
+
+        /* Process Steps */
+        .process-step {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            height: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border: 1px solid #eee;
+            border-top: 5px solid var(--petroleum-blue);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .process-step:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+        }
+
+        .process-step.step-teal { border-top-color: var(--petroleum-blue); }
+        .process-step.step-orange { border-top-color: var(--brand-primary); }
+        .process-step.step-green { border-top-color: #059669; }
+        .process-step.step-purple { border-top-color: #7c3aed; }
+
+        .step-number {
+            position: absolute;
+            top: -18px;
+            left: 24px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: white;
+        }
+
+        .step-number.num-teal { background: linear-gradient(135deg, var(--petroleum-blue), #3d7a8c); }
+        .step-number.num-orange { background: linear-gradient(135deg, var(--brand-primary), var(--peach)); }
+        .step-number.num-green { background: linear-gradient(135deg, #059669, #34d399); }
+        .step-number.num-purple { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+
+        .step-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .step-icon i { font-size: 1.3rem; color: white; }
+
+        .step-icon.icon-teal { background: linear-gradient(135deg, var(--petroleum-blue), #3d7a8c); }
+        .step-icon.icon-orange { background: linear-gradient(135deg, var(--brand-primary), var(--peach)); }
+        .step-icon.icon-green { background: linear-gradient(135deg, #059669, #34d399); }
+        .step-icon.icon-purple { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+
+        .process-step h4 { color: var(--text-dark); font-weight: 600; margin-bottom: 0.75rem; }
+        .process-step p, .process-step ul { color: #666; font-size: 0.95rem; }
+        .process-step ul { padding-left: 1.2rem; margin-bottom: 0.5rem; }
+        .process-step ul li { margin-bottom: 0.4rem; }
+
+        /* Security Items */
+        .security-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            height: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border: 1px solid #eee;
+            transition: all 0.3s ease;
+        }
+
+        .security-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+        }
+
+        .security-card-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--petroleum-blue), #3d7a8c);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .security-card-icon i { font-size: 1.3rem; color: white; }
+        .security-card-icon.icon-red { background: linear-gradient(135deg, #dc3545, #e66070); }
+        .security-card-icon.icon-green { background: linear-gradient(135deg, #059669, #34d399); }
+        .security-card-icon.icon-orange { background: linear-gradient(135deg, var(--brand-primary), var(--peach)); }
+
+        .security-card h5 { font-weight: 600; color: var(--text-dark); margin-bottom: 0.75rem; }
+        .security-card p { color: #666; font-size: 0.95rem; margin-bottom: 0; }
+
+        /* Verification Badge */
+        .verification-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-verified { background: #e8f5ec; color: #059669; }
+        .badge-reviewed { background: #e8f0fe; color: #1a73e8; }
+        .badge-ai { background: #fff3e0; color: #e96304; }
+
+        /* Trust Principles */
+        .trust-principle {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+
+        .principle-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--brand-primary), var(--peach));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .principle-icon i { color: white; font-size: 1rem; }
+        .principle-icon.icon-teal { background: linear-gradient(135deg, var(--petroleum-blue), #3d7a8c); }
+
+        .principle-text strong { display: block; color: var(--text-dark); margin-bottom: 0.25rem; }
+        .principle-text span { color: #666; font-size: 0.9rem; }
+
+        /* Highlight Boxes */
+        .highlight-box {
+            background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ec 100%);
+            border-left: 4px solid var(--brand-secondary);
+            padding: 1.25rem 1.5rem;
+            border-radius: 0 12px 12px 0;
+            margin: 1.5rem 0;
+        }
+
+        .highlight-box strong { color: var(--petroleum-blue); }
+
+        .warning-box {
+            background: #fff8e6;
+            border-left: 4px solid #f0c14b;
+            padding: 1.25rem 1.5rem;
+            border-radius: 0 12px 12px 0;
+            margin: 1.5rem 0;
+        }
+
+        /* Content Types Grid */
+        .content-type-item {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+        }
+
+        .content-type-item i { color: var(--petroleum-blue); margin-right: 0.75rem; font-size: 1rem; width: 20px; text-align: center; }
+        .content-type-item span { font-size: 0.95rem; color: var(--text-dark); }
+
+        /* CTA */
+        .cta-section {
+            background: linear-gradient(135deg, #1a3d47 0%, var(--petroleum-blue) 50%, #2c7a5c 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .cta-section h2 { font-size: 2rem; font-weight: 700; margin-bottom: 1rem; }
+        .cta-section p { font-size: 1.1rem; opacity: 0.9; max-width: 600px; margin: 0 auto 2rem; }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 0.85rem 2.5rem;
+            background: var(--brand-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(233, 99, 4, 0.3);
+        }
+
+        .cta-btn:hover {
+            background: #d45800;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(233, 99, 4, 0.4);
+        }
+
+        /* Footer */
+        .trust-footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        .trust-footer a { color: var(--brand-secondary); text-decoration: none; }
+        .trust-footer a:hover { text-decoration: underline; }
+
+        /* Back Button */
+        .back-btn {
+            position: fixed;
+            top: 20px; left: 20px;
+            width: 50px; height: 50px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            color: var(--petroleum-blue);
+            text-decoration: none;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover { transform: scale(1.1); color: var(--brand-primary); }
+
+        @media (max-width: 768px) {
+            .hero-title { font-size: 2rem; }
+            .section { padding: 3rem 0; }
+            .process-step, .security-card { margin-bottom: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Back Button -->
+    <a href="/" class="back-btn">
+        <i class="fas fa-arrow-left"></i>
+    </a>
+
+    <!-- 1. Hero -->
+    <section class="trust-hero">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center mb-4">
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadInsights" style="width: 72px; height: 72px; border-radius: 12px; margin-right: 20px; object-fit: cover; flex-shrink: 0;">
+                        <h1 class="hero-title mb-0">Trust &amp; Accuracy</h1>
+                    </div>
+                    <p class="hero-subtitle">
+                        Clinical accuracy is not optional. Every piece of content on RadInsights is verified through a structured peer-review process and protected by multi-layered data security.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. Introduction -->
+    <section class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 class="section-title">Our Commitment</h2>
+                    <p class="section-subtitle">Accuracy, transparency, and patient safety underpin everything we build.</p>
+
+                    <div class="intro-prose">
+                        <p>
+                            RadInsights is a clinical documentation support tool built by a radiologist, for radiologists.
+                            We combine AI-powered content generation with rigorous human expert review to ensure that
+                            every algorithm, template, calculator, and teaching case meets the standards expected
+                            of a reference used at the reporting workstation.
+                        </p>
+                        <p>
+                            We do not ask you to trust blindly. This page explains exactly how content is created,
+                            reviewed, and maintained &mdash; and how your data is protected at every stage.
+                        </p>
+                    </div>
+
+                    <div class="highlight-box">
+                        <strong><i class="fas fa-shield-alt me-2"></i>Regulatory Classification:</strong>
+                        RadInsights is a <strong>clinical documentation support tool</strong> (Class I). It is not an autonomous
+                        diagnostic device. All AI-generated outputs require validation by a qualified medical professional
+                        before clinical use.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. Peer-Review Process -->
+    <section class="section section-alt">
+        <div class="container">
+            <h2 class="section-title">Peer-Review Process</h2>
+            <p class="section-subtitle">Every piece of clinical content follows a structured four-step verification pipeline.</p>
+
+            <div class="row g-4 mt-2">
+                <!-- Step 1: Generation -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="process-step step-teal">
+                        <span class="step-number num-teal">1</span>
+                        <div class="step-icon icon-teal">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>AI Generation</h4>
+                        <p>
+                            Content is drafted using medically-trained large language models with domain-specific
+                            prompts crafted by a consultant radiologist. Source materials and guidelines are
+                            embedded directly into each prompt.
+                        </p>
+                        <div class="mt-2">
+                            <span class="verification-badge badge-ai"><i class="fas fa-microchip"></i> AI-Drafted</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Expert Review -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="process-step step-orange">
+                        <span class="step-number num-orange">2</span>
+                        <div class="step-icon icon-orange">
+                            <i class="fas fa-user-md"></i>
+                        </div>
+                        <h4>Expert Review</h4>
+                        <p>
+                            A consultant radiologist reviews every generated item for clinical accuracy,
+                            completeness, and adherence to current guidelines (RCR, ACR, NICE, AJCC).
+                            Errors are corrected before any content reaches users.
+                        </p>
+                        <div class="mt-2">
+                            <span class="verification-badge badge-reviewed"><i class="fas fa-stethoscope"></i> Expert-Reviewed</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Verification & Publishing -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="process-step step-green">
+                        <span class="step-number num-green">3</span>
+                        <div class="step-icon icon-green">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                        <h4>Verification</h4>
+                        <p>
+                            Reviewed content is formally verified through the admin panel. Only verified
+                            items are published and visible to all users. Unverified content remains in
+                            draft status and is clearly labelled.
+                        </p>
+                        <div class="mt-2">
+                            <span class="verification-badge badge-verified"><i class="fas fa-check-circle"></i> Verified</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4: Continuous Monitoring -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="process-step step-purple">
+                        <span class="step-number num-purple">4</span>
+                        <div class="step-icon icon-purple">
+                            <i class="fas fa-sync-alt"></i>
+                        </div>
+                        <h4>Maintenance</h4>
+                        <p>
+                            Published content is periodically reviewed against updated guidelines.
+                            Users can submit content requests and corrections directly through the
+                            platform. Every edit is tracked with timestamps and authorship.
+                        </p>
+                        <div class="mt-2">
+                            <span class="verification-badge badge-reviewed"><i class="fas fa-history"></i> Tracked</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. What Gets Reviewed -->
+    <section class="section">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-5 mb-4 mb-lg-0">
+                    <h2 class="section-title">Content Under Review</h2>
+                    <p class="section-subtitle">Every content type has its own verification workflow.</p>
+                    <p style="color: #666; font-size: 0.95rem;">
+                        All admin-curated content follows the four-step pipeline above. User-generated content
+                        (personal templates, cached algorithms) remains private until explicitly submitted
+                        for verification and publishing.
+                    </p>
+                    <div class="warning-box mt-3">
+                        <strong><i class="fas fa-exclamation-triangle me-2"></i>Important:</strong>
+                        User-generated algorithms from the Smart Reporter are labelled as drafts.
+                        They are only promoted to the public library after expert verification.
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="content-type-item">
+                        <i class="fas fa-sitemap"></i>
+                        <span><strong>Reporting Algorithms</strong> &mdash; interactive decision trees for systematic reporting</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-file-alt"></i>
+                        <span><strong>Radiology Templates</strong> &mdash; structured PACS report templates</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-calculator"></i>
+                        <span><strong>TNM Calculators</strong> &mdash; 39 staging calculators aligned with AJCC 8th edition</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-tools"></i>
+                        <span><strong>Radiology Tools</strong> &mdash; clinical scoring systems and classification guides</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span><strong>Clinical Protocols</strong> &mdash; on-call reference and procedural guidelines</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-book-medical"></i>
+                        <span><strong>Teaching Cases</strong> &mdash; viva-format cases with structured discussions</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-gem"></i>
+                        <span><strong>Radiology Pearls</strong> &mdash; high-yield teaching points from expert reviews</span>
+                    </div>
+                    <div class="content-type-item">
+                        <i class="fas fa-bone"></i>
+                        <span><strong>Anatomy Snippets</strong> &mdash; imaging anatomy references with clinical correlation</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. Data Security -->
+    <section class="section section-alt">
+        <div class="container">
+            <h2 class="section-title">Data Security</h2>
+            <p class="section-subtitle">Multi-layered protection for patients and professionals.</p>
+
+            <div class="row g-4 mt-2">
+                <!-- PII Guard -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon icon-red">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <h5>PII Guard</h5>
+                        <p>
+                            A dual-layer protection system actively scans all text before it leaves your browser.
+                            Client-side detection identifies 24 categories of patient-identifiable information
+                            (names, NHS numbers, dates of birth, postcodes, hospital numbers). Server-side
+                            middleware provides a second line of defence. Detected items can be individually
+                            redacted, removed, or dismissed with full audit logging.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- No Patient Data Storage -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon icon-green">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h5>Zero Patient Data Storage</h5>
+                        <p>
+                            RadInsights does not store, retain, or log patient data. AI features process
+                            clinical text transiently to generate feedback and are designed as documentation
+                            support tools. No patient information persists on our servers after the request
+                            is completed. Report text stays in your browser session only.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Authentication -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <h5>Secure Authentication</h5>
+                        <p>
+                            All accounts are protected with secure session management and encrypted
+                            credentials. OAuth integration with Google provides trusted identity verification.
+                            Role-based access controls separate admin and user capabilities. Session tokens
+                            are rotated and invalidated on logout.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Encryption -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h5>Encryption in Transit</h5>
+                        <p>
+                            All data transmitted between your browser and RadInsights is encrypted using
+                            TLS 1.2+. API calls to AI services use encrypted channels with authenticated
+                            endpoints. No unencrypted patient-adjacent data ever traverses the network.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- HIPAA-Aligned Audit -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon icon-orange">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <h5>Audit Trail</h5>
+                        <p>
+                            Every PII detection event is logged with the action taken (redact, remove, dismiss,
+                            or override), the type of data detected, a timestamp, and the user identity.
+                            Match text is never stored in logs &mdash; only the category and count. This
+                            HIPAA-aligned approach ensures accountability without compromising privacy.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Stripe Payment Security -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="security-card">
+                        <div class="security-card-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <h5>Payment Security</h5>
+                        <p>
+                            All payment processing is handled entirely by Stripe, a PCI DSS Level 1
+                            certified payment processor. RadInsights never sees, stores, or processes
+                            card numbers or payment credentials. Subscription management uses Stripe
+                            Checkout and webhook-driven state management.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. AI Transparency -->
+    <section class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 class="section-title">AI Transparency</h2>
+                    <p class="section-subtitle">How we use AI responsibly in clinical education.</p>
+
+                    <div class="trust-principle">
+                        <div class="principle-icon icon-teal">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <div class="principle-text">
+                            <strong>AI Assists, Humans Decide</strong>
+                            <span>All AI-generated content &mdash; from report reviews to algorithm trees &mdash; is presented as a clinical suggestion, never as a definitive diagnosis. The qualified radiologist always has the final word.</span>
+                        </div>
+                    </div>
+
+                    <div class="trust-principle">
+                        <div class="principle-icon">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="principle-text">
+                            <strong>No Black Boxes</strong>
+                            <span>Our AI prompts are designed by a consultant radiologist using established guidelines (RCR, ACR, NICE, AJCC). Generated content is structured, traceable, and editable &mdash; never opaque or unexplainable.</span>
+                        </div>
+                    </div>
+
+                    <div class="trust-principle">
+                        <div class="principle-icon icon-teal">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <div class="principle-text">
+                            <strong>Rate-Limited by Design</strong>
+                            <span>AI usage is rate-limited per user per day across all tiers. This prevents misuse, controls costs, and ensures the platform remains sustainable and available for everyone.</span>
+                        </div>
+                    </div>
+
+                    <div class="trust-principle">
+                        <div class="principle-icon">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <div class="principle-text">
+                            <strong>No Ambient Voice or Autonomous Actions</strong>
+                            <span>RadInsights does not use ambient voice technology, screen monitoring, or autonomous diagnostic workflows. Every AI interaction is explicitly initiated by the user.</span>
+                        </div>
+                    </div>
+
+                    <div class="trust-principle">
+                        <div class="principle-icon icon-teal">
+                            <i class="fas fa-graduation-cap"></i>
+                        </div>
+                        <div class="principle-text">
+                            <strong>Education First</strong>
+                            <span>AI features are designed to teach, not to replace. Report reviews include teaching points, differential diagnoses, and references &mdash; building clinical competence rather than dependence.</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7. Reporting Concerns -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 class="section-title">Reporting Concerns</h2>
+                    <p class="section-subtitle">We take accuracy seriously and welcome your feedback.</p>
+
+                    <div class="intro-prose">
+                        <p>
+                            If you identify an error in any clinical content, an inaccurate staging criterion,
+                            an outdated guideline reference, or a security concern, we want to know immediately.
+                        </p>
+                    </div>
+
+                    <div class="highlight-box">
+                        <strong><i class="fas fa-envelope me-2"></i>Contact:</strong>
+                        Report clinical accuracy concerns or security issues to
+                        <strong>support@radinsights.xyz</strong>. Include the content type, title, and a
+                        description of the issue. Verified corrections are prioritised and applied promptly.
+                    </div>
+
+                    <div class="highlight-box" style="border-left-color: var(--petroleum-blue); background: linear-gradient(135deg, #eef5f8 0%, #e0edf2 100%);">
+                        <strong><i class="fas fa-lightbulb me-2"></i>Content Requests:</strong>
+                        Registered users can submit content requests directly through the Smart Reporter
+                        landing page. Requested algorithms, templates, and tools are reviewed and prioritised
+                        by the editorial team.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. CTA -->
+    <section class="section cta-section">
+        <div class="container">
+            <h2>Built on Trust, Designed for Excellence</h2>
+            <p>
+                Every feature, every algorithm, every template &mdash; verified by radiologists who
+                understand what it means to report with confidence.
+            </p>
+            <a href="/auth/register" class="cta-btn">
+                <i class="fas fa-user-plus me-2"></i>Sign Up Free
+            </a>
+        </div>
+    </section>
+
+    <!-- 9. Footer -->
+    <footer class="trust-footer">
+        <div class="container">
+            <p class="mb-2">
+                <i class="fas fa-graduation-cap me-2"></i>
+                RadInsights &mdash; Medical Education Platform
+            </p>
+            <p class="mb-0 small">
+                &copy; 2026 RadInsights is a product of Eralight Limited. All rights reserved.<br>
+                <a href="/">Return to App</a> |
+                <a href="/about">About</a> |
+                <a href="/privacy">Privacy Policy</a> |
+                <a href="/terms">Terms of Use</a>
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

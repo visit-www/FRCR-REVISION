@@ -565,6 +565,114 @@
         });
     }
 
+    // ======================== DISMISS TRACKING ========================
+
+    // Per-session dismissed items: stores "type:matchText" keys
+    var _dismissedKeys = new Set();
+
+    function _dismissKey(match) {
+        return match.type + ':' + match.match;
+    }
+
+    function dismiss(match) {
+        _dismissedKeys.add(_dismissKey(match));
+    }
+
+    function dismissType(type, matches) {
+        for (var i = 0; i < matches.length; i++) {
+            if (matches[i].type === type) {
+                _dismissedKeys.add(_dismissKey(matches[i]));
+            }
+        }
+    }
+
+    function isDismissed(match) {
+        return _dismissedKeys.has(_dismissKey(match));
+    }
+
+    function filterDismissed(matches) {
+        return matches.filter(function(m) { return !_dismissedKeys.has(_dismissKey(m)); });
+    }
+
+    function clearDismissals() {
+        _dismissedKeys.clear();
+    }
+
+    // ======================== ACTIONABLE WARNING UI ========================
+
+    function getActionableWarningHTML(matches) {
+        // Dedupe matches
+        var seen = new Set();
+        var unique = matches.filter(function(m) {
+            var key = m.type + ':' + m.match;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        if (unique.length === 0) return '';
+
+        // Group by type
+        var groups = {};
+        var groupOrder = [];
+        for (var i = 0; i < unique.length; i++) {
+            var m = unique[i];
+            if (!groups[m.type]) {
+                groups[m.type] = [];
+                groupOrder.push(m.type);
+            }
+            groups[m.type].push({ match: m, originalIndex: i });
+        }
+
+        // Build HTML
+        var html = '';
+
+        // Bulk actions header
+        html += '<div class="d-flex align-items-center gap-2 mb-2">';
+        html += '<button class="btn btn-sm py-0 px-2" style="font-size:0.72rem;background:#dc3545;color:#fff;border:none;border-radius:3px;" onclick="piiRedactAll()" title="Replace all detected items with [REDACTED]"><i class="fas fa-marker me-1"></i>Redact All</button>';
+        html += '<button class="btn btn-sm py-0 px-2" style="font-size:0.72rem;background:#e96304;color:#fff;border:none;border-radius:3px;" onclick="piiRemoveAll()" title="Delete all detected items from text"><i class="fas fa-eraser me-1"></i>Remove All</button>';
+        html += '<span class="ms-auto text-muted" style="font-size:0.7rem;">' + unique.length + ' item' + (unique.length !== 1 ? 's' : '') + ' detected</span>';
+        html += '</div>';
+
+        // Per-type groups
+        for (var g = 0; g < groupOrder.length; g++) {
+            var type = groupOrder[g];
+            var items = groups[type];
+            var color = TYPE_COLORS[type] || '#6c757d';
+
+            html += '<div class="mb-2 pb-2" style="border-bottom:1px solid #ffe69c;">';
+
+            // Type header with batch dismiss
+            html += '<div class="d-flex align-items-center gap-2 mb-1">';
+            html += '<span class="badge" style="background:' + color + ';font-size:0.68rem;">' + _escapeHtml(type) + '</span>';
+            html += '<span class="text-muted" style="font-size:0.7rem;">(' + items.length + ')</span>';
+            if (items.length >= 2) {
+                html += '<button class="btn btn-sm py-0 px-2 ms-auto" style="font-size:0.65rem;background:#f8f9fa;color:#856404;border:1px solid #ffe69c;border-radius:3px;" onclick="piiDismissType(\'' + _escapeHtml(type).replace(/'/g, "\\'") + '\')" title="Dismiss all ' + _escapeHtml(type) + ' — dismissals are audited">Dismiss all ' + _escapeHtml(type) + '</button>';
+            }
+            html += '</div>';
+
+            // Individual matches
+            for (var j = 0; j < items.length; j++) {
+                var item = items[j];
+                var masked = item.match.match.length > 3 ? item.match.match.substring(0, 3) + '***' : '***';
+                var idx = item.originalIndex;
+
+                html += '<div class="d-flex align-items-center gap-1 mb-1 pii-match-row" data-pii-index="' + idx + '" style="padding-left:0.5rem;">';
+                html += '<code class="small" style="color:' + color + ';">' + _escapeHtml(masked) + '</code>';
+                html += '<div class="ms-auto d-flex gap-1">';
+                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#dc354520;color:#dc3545;border:1px solid #dc354540;border-radius:3px;" onclick="piiAction(\'redact\',' + idx + ')" title="Replace with [REDACTED]">Redact</button>';
+                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#e9630420;color:#e96304;border:1px solid #e9630440;border-radius:3px;" onclick="piiAction(\'remove\',' + idx + ')" title="Delete from text">Remove</button>';
+                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#ffc10720;color:#856404;border:1px solid #ffc10740;border-radius:3px;" onclick="piiAction(\'dismiss\',' + idx + ')" title="Dismiss — dismissals are audited">Dismiss <small>\u2715</small></button>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        return html;
+    }
+
     // ======================== FETCH INTERCEPTOR ========================
 
     // Decision cache: prevents re-prompting when the same URL is re-submitted
@@ -693,8 +801,14 @@
         redactObject: redactObject,
         removeObject: removeObject,
         getWarningHTML: getWarningHTML,
+        getActionableWarningHTML: getActionableWarningHTML,
         showPIIModal: showPIIModal,
         attachToFetch: attachToFetch,
+        dismiss: dismiss,
+        dismissType: dismissType,
+        isDismissed: isDismissed,
+        filterDismissed: filterDismissed,
+        clearDismissals: clearDismissals,
         PII_PATTERNS: PII_PATTERNS
     };
 

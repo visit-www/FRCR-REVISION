@@ -501,10 +501,10 @@
                 </div>
 
                 <!-- PII Warning Bar (hidden by default) -->
-                <div id="piiWarningBar" class="d-none" style="background:#fff3cd;border:1px solid #ffc107;border-radius:0.375rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;cursor:pointer;" onclick="showPIIDetails()">
-                    <div class="d-flex align-items-center gap-2">
+                <div id="piiWarningBar" class="d-none" style="background:#fff3cd;border:1px solid #ffc107;border-radius:0.375rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;">
+                    <div class="d-flex align-items-center gap-2" style="cursor:pointer;" onclick="showPIIDetails()">
                         <i class="fas fa-exclamation-triangle" style="color:#dc3545;"></i>
-                        <span style="font-size:0.82rem;color:#856404;"><strong>Patient data detected</strong> — remove PII before using AI features.</span>
+                        <span style="font-size:0.82rem;color:#856404;"><strong>Patient data detected</strong> — redact, remove, or dismiss items below.</span>
                         <span class="ms-auto badge bg-danger" id="piiMatchCount" style="font-size:0.7rem;"></span>
                     </div>
                     <div id="piiDetailsList" class="d-none mt-2 pt-2" style="border-top:1px solid #ffe69c;"></div>
@@ -2165,6 +2165,9 @@ document.addEventListener('DOMContentLoaded', function() {
         state.aiAssistInsights = {};
         state.externalContext = null;
 
+        // Clear PII dismissals for new session
+        if (window.PIIGuard && PIIGuard.clearDismissals) PIIGuard.clearDismissals();
+
         // Clear UI
         hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
@@ -3518,7 +3521,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== LIVE PII SCANNER ====================
     var _piiScanTimer = null;
     var _piiBlocked = false;
-    var _lastPIIMatches = [];
+    var _lastPIIMatches = [];       // all raw matches from scan
+    var _activePIIMatches = [];     // matches after filtering dismissed
 
     function livePIIScan() {
         if (!window.PIIGuard) return;
@@ -3527,23 +3531,37 @@ document.addEventListener('DOMContentLoaded', function() {
         var text = editor.value || '';
         var result = PIIGuard.scan(text);
 
+        _lastPIIMatches = result.matches || [];
+
+        // Filter out dismissed matches
+        var active = PIIGuard.filterDismissed ? PIIGuard.filterDismissed(_lastPIIMatches) : _lastPIIMatches;
+        _activePIIMatches = active;
+
+        if (active.length > 0) {
+            _piiBlocked = true;
+            renderPIIWarningBar(active);
+            _setPIIButtonState(true);
+        } else {
+            _piiBlocked = false;
+            var bar = document.getElementById('piiWarningBar');
+            bar.classList.add('d-none');
+            document.getElementById('piiDetailsList').classList.add('d-none');
+            _setPIIButtonState(false);
+        }
+    }
+
+    function renderPIIWarningBar(matches) {
         var bar = document.getElementById('piiWarningBar');
         var countBadge = document.getElementById('piiMatchCount');
         var detailsList = document.getElementById('piiDetailsList');
 
-        if (result.hasPII && result.matches.length > 0) {
-            _piiBlocked = true;
-            _lastPIIMatches = result.matches;
-            bar.classList.remove('d-none');
-            countBadge.textContent = result.matches.length + ' item' + (result.matches.length !== 1 ? 's' : '');
-            detailsList.innerHTML = PIIGuard.getWarningHTML(result.matches);
-            _setPIIButtonState(true);
+        bar.classList.remove('d-none');
+        countBadge.textContent = matches.length + ' item' + (matches.length !== 1 ? 's' : '');
+
+        if (PIIGuard.getActionableWarningHTML) {
+            detailsList.innerHTML = PIIGuard.getActionableWarningHTML(matches);
         } else {
-            _piiBlocked = false;
-            _lastPIIMatches = [];
-            bar.classList.add('d-none');
-            detailsList.classList.add('d-none');
-            _setPIIButtonState(false);
+            detailsList.innerHTML = PIIGuard.getWarningHTML(matches);
         }
     }
 
@@ -3580,6 +3598,78 @@ document.addEventListener('DOMContentLoaded', function() {
         var detailsList = document.getElementById('piiDetailsList');
         detailsList.classList.toggle('d-none');
     };
+
+    // ==================== PII ACTION HANDLERS ====================
+
+    // Called by per-match buttons in the actionable warning bar
+    window.piiAction = function(action, matchIndex) {
+        if (!_activePIIMatches || matchIndex >= _activePIIMatches.length) return;
+        var match = _activePIIMatches[matchIndex];
+        var editor = document.getElementById('editorInput');
+        if (!editor) return;
+
+        if (action === 'redact') {
+            editor.value = editor.value.split(match.match).join('[REDACTED]');
+            state.inputText = editor.value;
+            livePIIScan();
+        } else if (action === 'remove') {
+            editor.value = editor.value.split(match.match).join('');
+            editor.value = editor.value.replace(/  +/g, ' ');
+            state.inputText = editor.value;
+            livePIIScan();
+        } else if (action === 'dismiss') {
+            PIIGuard.dismiss(match);
+            // Log dismissal to audit trail
+            _logPIIAction('dismiss', [match.type], 1);
+            livePIIScan();
+        }
+    };
+
+    // Dismiss all matches of a given type
+    window.piiDismissType = function(type) {
+        var count = 0;
+        for (var i = 0; i < _activePIIMatches.length; i++) {
+            if (_activePIIMatches[i].type === type) count++;
+        }
+        PIIGuard.dismissType(type, _activePIIMatches);
+        _logPIIAction('batch_dismiss', [type], count);
+        livePIIScan();
+    };
+
+    // Redact all active PII matches at once
+    window.piiRedactAll = function() {
+        var editor = document.getElementById('editorInput');
+        if (!editor || !_activePIIMatches.length) return;
+        editor.value = PIIGuard.redact(editor.value, _activePIIMatches);
+        state.inputText = editor.value;
+        livePIIScan();
+    };
+
+    // Remove all active PII matches at once
+    window.piiRemoveAll = function() {
+        var editor = document.getElementById('editorInput');
+        if (!editor || !_activePIIMatches.length) return;
+        editor.value = PIIGuard.remove(editor.value, _activePIIMatches);
+        state.inputText = editor.value;
+        livePIIScan();
+    };
+
+    // Fire-and-forget audit log for dismiss/batch_dismiss actions
+    function _logPIIAction(action, types, count) {
+        try {
+            fetch('/api/pii-override-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    action: action,
+                    flagged_types: types,
+                    flagged_count: count,
+                    target_url: 'smart-reporter-editor'
+                })
+            }).catch(function() {});
+        } catch(e) {}
+    }
 
     // Auto-resize on editor input changes
     document.getElementById('editorInput').addEventListener('input', function() {

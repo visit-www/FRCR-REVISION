@@ -26,6 +26,11 @@
     <changefreq>monthly</changefreq>
   </url>
   <url>
+    <loc>https://www.radinsights.xyz/trust</loc>
+    <priority>0.6</priority>
+    <changefreq>monthly</changefreq>
+  </url>
+  <url>
     <loc>https://www.radinsights.xyz/privacy-policy</loc>
     <priority>0.3</priority>
     <changefreq>yearly</changefreq>

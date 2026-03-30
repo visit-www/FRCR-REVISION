@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** February 5, 2026
+> **Last Updated:** March 30, 2026
 > **Status:** Active Development
-> **Total Plans:** 12 Feature Areas
+> **Total Plans:** 16 Feature Areas
 
 ---
 
@@ -28,6 +28,8 @@ This document serves as the master index for all planned features and enhancemen
 | 10 | Railway Migration | Low | High | Ready (Documented) |
 | 11 | AI Reporting Assistant | Medium-High | Very High | Planned |
 | 12 | TNM Prompt Engineering | Medium | High | Ready to Implement |
+| 13 | PHI/PII Protection (5-Layer) | High | Critical | **P0 Done** |
+| 14 | SEO & Architecture | Medium-High | High | Planned |
 
 ---
 
@@ -482,6 +484,107 @@ Fix the TNM calculator AI generation workflow to consistently produce oropharyng
 
 ---
 
+## Plan 13: PHI/PII Protection (5-Layer Hybrid Architecture)
+
+**Priority:** 13 (Security Critical)
+**Complexity:** High
+**Estimated Effort:** 4-6 weeks (phased)
+**Dependencies:** Railway/Cloud Run for Presidio service (P2)
+**Status:** P0 Complete, P1–P5 Planned
+
+### Summary
+Comprehensive PHI/PII protection system targeting >98% sensitivity and >95% specificity across all 18 HIPAA Safe Harbor identifiers. Combines our existing 24-pattern regex engine with Microsoft Presidio NLP/NER, fuzzy matching, adversarial detection, and quasi-identifier risk scoring. Includes admin audit dashboard, automated alerting, and HIPAA-compliant override workflows.
+
+### 5-Layer Architecture
+1. **Regex Engine** (Done) — 24 client+server patterns, fast pre-filter
+2. **NLP/NER** (P2) — Microsoft Presidio with spaCy, free-text name/location detection
+3. **Fuzzy Matching** (P2) — Levenshtein/Soundex for misspellings and phonetic variants
+4. **Adversarial Detection** (P3) — Homoglyph normalization, spacing tricks, OCR noise
+5. **Risk Scoring** (P3) — Quasi-identifier combination scoring for re-identification risk
+
+### Implementation Phases
+| Phase | Items | Effort | Status |
+|-------|-------|--------|--------|
+| P0 | Per-match redact/dismiss UI, audit trail | 1 day | **Done** |
+| P1 | Regex expansion, medical allowlist | 2 days | Planned |
+| P2 | Presidio integration, confidence scoring | 1 week | Planned |
+| P3 | Admin dashboard, adversarial detection | 1 week | Planned |
+| P4 | Alerting, read-path scanning | 3 days | Planned |
+| P5 | BAA tooling, compliance reporting | 2 days | Planned |
+
+### Key Deliverables
+- Per-match Redact/Remove/Dismiss with HIPAA audit trail (Done)
+- Medical term allowlist to reduce false positives
+- Presidio microservice (Railway) with custom recognizers
+- Admin audit dashboard with charts, filters, CSV export
+- Email/Slack alerting on override spikes
+- Read-path (GET response) PHI scanning
+
+### Plan Document
+📄 **Location:** [docs/plans/PHI_PROTECTION_PLAN.md](PHI_PROTECTION_PLAN.md)
+
+---
+
+## Plan 14: SEO & Architecture (Master SEO Plan)
+
+**Priority:** 14 (Growth Critical)
+**Complexity:** Medium-High
+**Estimated Effort:** 6 phases, ~1 week total
+**Dependencies:** None (incremental improvements)
+**Status:** Planned
+
+### Summary
+Comprehensive SEO overhaul: Open Graph tags, Twitter Cards, Schema.org JSON-LD (MedicalWebPage, Organization, SoftwareApplication, FAQ), per-page meta descriptions, dynamic sitemap, and content-driven keyword strategy targeting "radiology education platform", "TNM staging calculator", "FRCR revision", and "AI radiology reporting".
+
+### Implementation Phases
+| Phase | Items | Effort |
+|-------|-------|--------|
+| P1 | Global metadata (OG, Twitter, canonical, robots) in base.html + landing.html | 1 day |
+| P2 | Schema.org JSON-LD — Organization, MedicalWebPage, FAQ, Breadcrumb | 1 day |
+| P3 | Landing page "Beyond the Shorthand" AI section + keyword optimization | 1 day |
+| P4 | Per-page title/description on 31+ templates, noindex on auth pages | 2 days |
+| P5 | Dynamic sitemap, canonical context processor, Core Web Vitals | 1 day |
+| P6 | Content strategy, internal linking, keyword monitoring | Ongoing |
+
+### Key Deliverables
+- Open Graph + Twitter Card tags on all pages
+- Schema.org MedicalWebPage with SoftwareApplication parts
+- FAQPage schema on pricing page
+- Dynamic sitemap (100+ URLs vs. current 43)
+- Per-page meta descriptions for 12+ public templates
+- "Beyond the Shorthand" conversion section on landing page
+- noindex on all authenticated-only pages
+
+### Plan Document
+📄 **Location:** [docs/plans/SEO_MASTER_PLAN.md](SEO_MASTER_PLAN.md)
+
+---
+
+## Plan 15: Stripe Payment Gateway Testing
+
+**Priority:** P0 — Revenue-Critical
+**Status:** Planned
+**Dependencies:** Existing Stripe integration (stripe_routes.py, access_control.py)
+
+### Summary
+Comprehensive test plan covering 56+ test cases across 10 suites: signup/trial flows, upgrades with proration, downgrades (end-of-cycle), cancellation, payment failures, edge cases (double-click, idempotency), webhook verification, AI rate limiting, UI/UX, and security.
+
+### Plan Document
+📄 **Location:** [docs/plans/STRIPE_TEST_PLAN.md](STRIPE_TEST_PLAN.md)
+
+---
+
+## Plan 16: RadIQ Custom Hospital Protocols (Future Idea)
+
+**Priority:** P3 — Exploratory / Under Evaluation
+**Status:** Idea — utility not yet confirmed
+**Dependencies:** RadIQ module (radiq_routes.py, ai_radiq.py)
+
+### Summary
+Currently RadIQ provides **general best practice** only — all protocols are admin-curated and published. There is no way for users to input their own department or hospital protocols. Adding custom protocol upload would move RadIQ from "study aid" to "essential departmental tool." Requires: hospital/department fields on User model, personal protocol table, filtered context injection in AI prompts. **On hold pending utility assessment.**
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -573,4 +676,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-02-05 | Added Railway Migration plan (Plan 10); migrate from Vercel to Railway for better timeouts/cron | AI Assistant |
 | 2026-02-05 | Added AI Reporting Assistant plan (Plan 11); diagnosis-agnostic algorithmic pathway generator | AI Assistant |
 | 2026-02-05 | Added TNM Prompt Engineering plan (Plan 12); fix AI workflow to produce oropharynx-quality calculators | AI Assistant |
+| 2026-03-30 | Added PHI Protection (Plan 13), SEO (Plan 14), Stripe Testing (Plan 15), RadIQ Custom Protocols idea (Plan 16) | AI Assistant |
 
