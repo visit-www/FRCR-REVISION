@@ -5,7 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}RadInsights{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}RadInsights — Radiology education platform for FRCR exam revision with AI-powered reporting, TNM staging calculators, and clinical tools.{% endblock %}">
-    
+
+    <!-- SEO: Open Graph (Facebook, LinkedIn, WhatsApp) -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{{ self.title() }}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}High-yield radiology pearls, AJCC TNM 8 staging tools, and AI-powered reporting modules. Bridging the gap between textbook theory and clinical practice for radiologists.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-512x512_myzqfe.png{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}{{ request.url }}{% endblock %}">
+    <meta property="og:site_name" content="RadInsights">
+    <meta property="og:locale" content="en_GB">
+
+    <!-- SEO: Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ self.og_title() }}">
+    <meta name="twitter:description" content="{{ self.og_description() }}">
+    <meta name="twitter:image" content="{{ self.og_image() }}">
+
+    <!-- SEO: Canonical URL (overridable per page) -->
+    {% block canonical %}<link rel="canonical" href="{{ canonical_url() }}">{% endblock %}
+
+    <!-- SEO: Robots directive (overridable — authenticated pages can set noindex) -->
+    {% block robots_meta %}<meta name="robots" content="index, follow">{% endblock %}
+
+    <!-- SEO: Author -->
+    <meta name="author" content="RadInsights">
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('manifest') }}">
     
@@ -39,13 +63,38 @@
     <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/app-icon_ekyaqs.png">
     <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" href="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/app-icon_ekyaqs.png">
     
+    <!-- Preconnect to CDNs -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://res.cloudinary.com" crossorigin>
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="{{ url_for('static', filename='config.js') }}"></script>
-    
+
     <!-- PWA Service Worker Registration -->
     <script src="{{ url_for('static', filename='pwa-register.js') }}" defer></script>
+
+    <!-- Schema.org: Organization -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "RadInsights",
+      "url": "https://www.radinsights.xyz",
+      "logo": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-512x512_myzqfe.png",
+      "description": "High-yield radiology education platform bridging the gap between textbook theory and clinical practice.",
+      "sameAs": [],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "email": "support@radinsights.xyz"
+      }
+    }
+    </script>
+    {% block breadcrumb_schema %}{% endblock %}
+    {% block extra_schema %}{% endblock %}
 </head>
 <body>
     <a href="#main-content" class="visually-hidden-focusable skip-link">Skip to main content</a>
@@ -623,12 +672,20 @@
     </div>
     <script>
     (function(){
-        if (!localStorage.getItem('cookieConsent')) {
+        var CONSENT_VERSION = 'v1';
+        try {
+            var stored = JSON.parse(localStorage.getItem('cookieConsent'));
+            if (!stored || stored.version !== CONSENT_VERSION) {
+                document.getElementById('cookieConsentBanner').style.display = 'block';
+            }
+        } catch(e) {
             document.getElementById('cookieConsentBanner').style.display = 'block';
         }
     })();
     function acceptCookies() {
-        localStorage.setItem('cookieConsent', 'accepted');
+        localStorage.setItem('cookieConsent', JSON.stringify({
+            version: 'v1', accepted: true, timestamp: new Date().toISOString()
+        }));
         document.getElementById('cookieConsentBanner').style.display = 'none';
     }
     </script>

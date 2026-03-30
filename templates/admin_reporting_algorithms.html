@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{% if origin_filter == 'anatomy_cache' %}Manage Anatomy Snippets{% else %}Admin Algorithms{% endif %} - RadInsights{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block tool_active_anatomy %}{% if origin_filter == 'anatomy_cache' %}active{% endif %}{% endblock %}
 {% block mobile_active_anatomy %}{% if origin_filter == 'anatomy_cache' %}active{% endif %}{% endblock %}
 {% block tool_active_algorithms %}{% if origin_filter != 'anatomy_cache' %}active{% endif %}{% endblock %}

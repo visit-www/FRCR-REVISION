@@ -286,6 +286,7 @@ class User(UserMixin, db.Model):
     totp_secret = db.Column(EncryptedText(), nullable=True)  # Base32 TOTP secret (encrypted at rest)
     totp_enabled = db.Column(db.Boolean, default=False)       # Whether 2FA is active
     totp_backup_codes = db.Column(EncryptedText(), nullable=True)  # JSON list of hashed backup codes
+    totp_grace_period_until = db.Column(db.DateTime, nullable=True)  # Admins get 7-day grace to set up 2FA
 
     # === GOOGLE OAUTH ===
     google_id = db.Column(db.String(255), nullable=True, unique=True)  # Google OAuth user ID
@@ -3443,3 +3444,76 @@ class PiiOverrideLog(db.Model):
 
     def __repr__(self):
         return f'<PiiOverrideLog {self.id} user={self.user_id} types={self.flagged_types}>'
+
+
+# ==================== RATE LIMIT ENTRY ====================
+class RateLimitEntry(db.Model):
+    """DB-backed rate limiting — persists across serverless cold starts."""
+    __tablename__ = 'rate_limit_entry'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(255), nullable=False)       # IP address or user identifier
+    endpoint = db.Column(db.String(255), nullable=False)   # e.g. 'auth.register'
+    hit_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        db.Index('ix_rate_limit_key_endpoint_hit', 'key', 'endpoint', 'hit_at'),
+    )
+
+    def __repr__(self):
+        return f'<RateLimitEntry {self.key} {self.endpoint} {self.hit_at}>'
+
+
+# ==================== ERASURE LOG ====================
+class ErasureLog(db.Model):
+    """GDPR erasure audit trail — records what was deleted and when."""
+    __tablename__ = 'erasure_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    erasure_type = db.Column(db.String(50), nullable=False)  # 'user_request', 'auto_purge', 'admin_action'
+    initiated_by_user_id = db.Column(db.Integer, nullable=True)  # NULL for auto-purge
+    target_user_email_hash = db.Column(db.String(64), nullable=False)  # SHA-256 for auditability without PII
+    records_deleted = db.Column(db.Text, nullable=True)  # JSON summary of deleted record counts
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f'<ErasureLog {self.id} type={self.erasure_type}>'
+
+
+# ==================== ADMIN ACTION LOG ====================
+class AdminActionLog(db.Model):
+    """Persistent audit trail for admin actions."""
+    __tablename__ = 'admin_action_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    action = db.Column(db.String(100), nullable=False)     # e.g. 'role_change', 'delete_user', 'verify_algorithm'
+    target_type = db.Column(db.String(50), nullable=True)   # e.g. 'user', 'case', 'reporting_algorithm'
+    target_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.Text, nullable=True)             # JSON with action-specific metadata
+    ip_address = db.Column(db.String(45), nullable=True)    # IPv4 or IPv6
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = db.relationship('User', backref=db.backref('admin_actions', lazy='dynamic'))
+
+    def __repr__(self):
+        return f'<AdminActionLog {self.id} action={self.action}>'
+
+
+def log_admin_action(user_id, action, target_type=None, target_id=None, details=None, ip_address=None):
+    """Log an admin action. Never raises — failures are logged and swallowed."""
+    try:
+        details_json = json.dumps(details) if details and not isinstance(details, str) else details
+        entry = AdminActionLog(
+            user_id=user_id,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            details=details_json,
+            ip_address=ip_address
+        )
+        db.session.add(entry)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        _models_logger.error(f"Failed to log admin action: {e}")

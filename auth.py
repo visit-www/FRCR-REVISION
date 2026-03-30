@@ -2,7 +2,7 @@
 User authentication module
 Handles login, signup, password recovery, and session management
 """
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, current_app
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import db, User, UserRole
 from datetime import datetime, timedelta
@@ -341,6 +341,13 @@ def register():
     """User registration — rate limited to 5/hour per IP"""
     if request.method == 'POST':
         try:
+            # DB-backed rate limit: 5 registrations per hour per IP
+            from app import check_rate_limit
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr or '127.0.0.1').split(',')[0].strip()
+            allowed, remaining = check_rate_limit(ip, 'auth.register', max_hits=5, window_seconds=3600)
+            if not allowed:
+                return jsonify({'error': 'Too many registration attempts. Please try again later.'}), 429
+
             # Verify database connection is working
             try:
                 test_count = User.query.limit(1).count()
@@ -438,17 +445,24 @@ def login():
         return redirect(url_for('index'))
     
     if request.method == 'POST':
+        # DB-backed rate limit: 10 login attempts per minute per IP
+        from app import check_rate_limit
+        ip = request.headers.get('X-Forwarded-For', request.remote_addr or '127.0.0.1').split(',')[0].strip()
+        allowed, remaining = check_rate_limit(ip, 'auth.login', max_hits=10, window_seconds=60)
+        if not allowed:
+            return jsonify({'error': 'Too many login attempts. Please try again shortly.'}), 429
+
         data = request.get_json() if request.is_json else request.form
         email = data.get('email', '').strip().lower()
         password = data.get('password', '')
         remember = data.get('remember', False)
-        
+
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
-        
+
         # Query user and ensure password_hash is loaded
         user = User.query.filter_by(email=email).first()
-        
+
         if not user:
             return jsonify({'error': 'Invalid email or password'}), 401
 
@@ -754,6 +768,13 @@ def forgot_password():
     """Request password recovery"""
     if request.method == 'POST':
         try:
+            # DB-backed rate limit: 5 forgot-password requests per hour per IP
+            from app import check_rate_limit
+            ip = request.headers.get('X-Forwarded-For', request.remote_addr or '127.0.0.1').split(',')[0].strip()
+            allowed, remaining = check_rate_limit(ip, 'auth.forgot_password', max_hits=5, window_seconds=3600)
+            if not allowed:
+                return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+
             logger.debug("Forgot password - processing request")
             data = request.get_json() if request.is_json else request.form
             email = data.get('email', '').strip().lower()
@@ -1093,12 +1114,33 @@ def soft_delete_account():
         if current_user.is_deleted:
             return jsonify({'error': 'Account is already deactivated'}), 400
         
+        # Cancel active Stripe subscription if present
+        if current_user.stripe_customer_id:
+            try:
+                import stripe as _stripe
+                _stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+                if _stripe.api_key:
+                    subs = _stripe.Subscription.list(customer=current_user.stripe_customer_id, status='active', limit=10)
+                    for sub in subs.data:
+                        _stripe.Subscription.cancel(sub.id)
+                        logger.info(f"Cancelled Stripe subscription {sub.id} for soft-deleted user {current_user.email}")
+            except Exception as stripe_err:
+                logger.error(f"Stripe cancellation error during soft-delete: {stripe_err}")
+
         # Clear subscription (this is permanent - not restored on recovery)
         from models import SubscriptionStatus, PaymentStatus
         current_user.subscription_status = SubscriptionStatus.CANCELED
         current_user.payment_status = PaymentStatus.NO_SUBSCRIPTION
         current_user.subscription_end_date = datetime.utcnow()
-        
+
+        # Clear encrypted tokens and connected service data
+        for attr in ['notion_access_token', 'notion_workspace_id', 'anki_api_key', 'sciencedirect_session_cookies']:
+            if hasattr(current_user, attr):
+                setattr(current_user, attr, None)
+        for attr in ['notion_connected_at', 'anki_connected_at', 'sciencedirect_connected_at']:
+            if hasattr(current_user, attr):
+                setattr(current_user, attr, None)
+
         # Mark as soft deleted
         current_user.is_deleted = True
         current_user.deleted_at = datetime.utcnow()
@@ -1627,3 +1669,103 @@ def change_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to change password'}), 500
+
+
+@auth_bp.route('/api/user/data-export', methods=['GET'])
+@login_required
+def data_export():
+    """GDPR data export — returns all user data as JSON download. Rate limited to 1/hour."""
+    from app import check_rate_limit
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr or '127.0.0.1').split(',')[0].strip()
+    allowed, _ = check_rate_limit(f'user:{current_user.id}', 'data_export', max_hits=1, window_seconds=3600)
+    if not allowed:
+        return jsonify({'error': 'Data export is limited to once per hour. Please try again later.'}), 429
+
+    try:
+        from models import (CandidateNote, TextHighlight, ForumMessage, RevisionSession,
+                            UserQAProgress, LearningQuestionProgress, RadIQQuery,
+                            ContentRequest, CaseFlag, StudyProgress)
+
+        user = current_user
+        export = {
+            'export_date': datetime.utcnow().isoformat(),
+            'profile': {
+                'id': user.id,
+                'email': user.email,
+                'full_name': user.full_name,
+                'display_name': user.display_name,
+                'role': user.role.value if user.role else None,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                'subscription_status': user.subscription_status.value if user.subscription_status else None,
+                'totp_enabled': user.totp_enabled if hasattr(user, 'totp_enabled') else False,
+            },
+            'notes': [
+                {'case_id': n.case_id, 'content': n.content, 'created_at': n.created_at.isoformat() if n.created_at else None}
+                for n in CandidateNote.query.filter_by(user_id=user.id).all()
+            ],
+            'highlights': [
+                {'case_id': h.case_id, 'text': h.highlighted_text, 'created_at': h.created_at.isoformat() if h.created_at else None}
+                for h in TextHighlight.query.filter_by(user_id=user.id).all()
+            ],
+            'forum_posts': [
+                {'id': m.id, 'content': m.content, 'created_at': m.created_at.isoformat() if m.created_at else None}
+                for m in ForumMessage.query.filter_by(user_id=user.id).all()
+            ],
+            'study_sessions': [
+                {'id': s.id, 'started_at': s.started_at.isoformat() if s.started_at else None,
+                 'ended_at': s.ended_at.isoformat() if s.ended_at else None,
+                 'cases_viewed': s.cases_viewed if hasattr(s, 'cases_viewed') else None}
+                for s in RevisionSession.query.filter_by(user_id=user.id).all()
+            ],
+            'content_requests': [
+                {'id': cr.id, 'title': cr.title, 'description': cr.description,
+                 'status': cr.status, 'created_at': cr.created_at.isoformat() if cr.created_at else None}
+                for cr in ContentRequest.query.filter_by(user_id=user.id).all()
+            ],
+            'flagged_cases': [
+                {'case_id': f.case_id, 'created_at': f.created_at.isoformat() if f.created_at else None}
+                for f in CaseFlag.query.filter_by(user_id=user.id).all()
+            ],
+        }
+
+        # Optional tables — some may not exist for all users
+        try:
+            export['qa_progress'] = [
+                {'question_id': q.question_id, 'is_correct': q.is_correct,
+                 'attempted_at': q.attempted_at.isoformat() if q.attempted_at else None}
+                for q in UserQAProgress.query.filter_by(user_id=user.id).all()
+            ]
+        except Exception:
+            export['qa_progress'] = []
+
+        try:
+            export['learning_progress'] = [
+                {'question_id': lp.question_id, 'is_correct': lp.is_correct,
+                 'attempted_at': lp.attempted_at.isoformat() if lp.attempted_at else None}
+                for lp in LearningQuestionProgress.query.filter_by(user_id=user.id).all()
+            ]
+        except Exception:
+            export['learning_progress'] = []
+
+        try:
+            export['radiq_queries'] = [
+                {'agent_type': rq.agent_type, 'query_text': rq.query_text,
+                 'created_at': rq.created_at.isoformat() if rq.created_at else None}
+                for rq in RadIQQuery.query.filter_by(user_id=user.id).all()
+            ]
+        except Exception:
+            export['radiq_queries'] = []
+
+        import json as _json
+        response = current_app.response_class(
+            response=_json.dumps(export, indent=2, default=str),
+            status=200,
+            mimetype='application/json'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="radinsights-data-export-{user.id}.json"'
+        return response
+
+    except Exception as e:
+        logger.error(f"Data export error for user {current_user.id}: {e}")
+        return jsonify({'error': 'Failed to export data. Please try again.'}), 500

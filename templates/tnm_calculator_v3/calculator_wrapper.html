@@ -5,8 +5,47 @@
 {% else %}
 {# Full mode: integrated with app base template #}
 {% extends 'base.html' %}
+{% block title %}{{ disease_name }} TNM Staging | RadInsights | High-Yield Radiology Education{% endblock %}
+{% block meta_description %}Interactive AJCC TNM 8th Edition staging calculator for {{ disease_name }}. Auto-calculate T, N, M categories with evidence-based imaging pearls and pitfall warnings.{% endblock %}
+{% block og_title %}{{ disease_name }} TNM Staging | RadInsights{% endblock %}
+{% block og_description %}Interactive AJCC TNM 8th Edition staging calculator for {{ disease_name }}. Auto-calculate T, N, M categories with evidence-based pearls.{% endblock %}
+{% block og_url %}https://www.radinsights.xyz/tnm-calculator/{{ disease_slug }}{% endblock %}
 {% block tool_active_tnm %}active{% endblock %}
 {% block mobile_active_tnm %}active{% endblock %}
+
+{% block breadcrumb_schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.radinsights.xyz/"},
+    {"@type": "ListItem", "position": 2, "name": "TNM Calculators", "item": "https://www.radinsights.xyz/tnm-calculator"},
+    {"@type": "ListItem", "position": 3, "name": "{{ disease_name }}"}
+  ]
+}
+</script>
+{% endblock %}
+
+{% block extra_schema %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "MedicalWebPage",
+  "name": "{{ disease_name }} TNM Staging Calculator | RadInsights",
+  "url": "https://www.radinsights.xyz/tnm-calculator/{{ disease_slug }}",
+  "description": "Interactive AJCC TNM 8th Edition staging calculator for {{ disease_name }}.",
+  "medicalAudience": {"@type": "MedicalAudience", "audienceType": "MedicalProfessional"},
+  "specialty": {"@type": "MedicalSpecialty", "name": "Radiology"},
+  "about": {"@type": "MedicalCondition", "name": "{{ disease_name }}"},
+  "mainEntity": {
+    "@type": "MedicalCode",
+    "codingSystem": "AJCC TNM 8th Edition",
+    "name": "{{ disease_name }} TNM Classification"
+  }
+}
+</script>
+{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">

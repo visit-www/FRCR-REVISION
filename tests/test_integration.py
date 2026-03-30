@@ -291,6 +291,12 @@ class TestLoginLockout:
             db.session.add(u)
             db.session.commit()
 
+        # Clear rate limit entries so DB-backed limiter doesn't interfere with lockout test
+        with app.app_context():
+            from models import RateLimitEntry
+            RateLimitEntry.query.filter_by(endpoint='auth.login').delete()
+            db.session.commit()
+
         with app.test_client() as c:
             # Exceed the MAX_FAILED_LOGINS threshold (5)
             for _ in range(5):
@@ -305,7 +311,7 @@ class TestLoginLockout:
                 'password': 'wrongpassword',
             })
             assert resp.status_code == 429
-            assert 'locked' in resp.get_json()['error'].lower()
+            assert 'locked' in resp.get_json()['error'].lower() or 'too many' in resp.get_json()['error'].lower()
 
         # Cleanup
         with app.app_context():

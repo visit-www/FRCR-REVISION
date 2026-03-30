@@ -358,33 +358,29 @@ def delete_user_completely(target_user):
     Permanently delete a user and clean up related data sensibly.
     
     DELETES (private user data):
-    - CandidateNote (private notes)
-    - TextHighlight (private highlights)  
-    - RevisionSession (revision tracking)
-    - RevisionHistory (revision history)
-    - CaseViewLog (view analytics)
-    - ForumMessageVote (user's votes)
-    - ForumMessageFlag (user's flags - as flagger)
-    
+    - CandidateNote, TextHighlight, RevisionSession, RevisionHistory
+    - CaseViewLog, ForumMessageVote, ForumMessageFlag
+    - RadIQQuery, ContentRequest, CaseFlag
+    - UserQAProgress, LearningQuestionProgress
+    - PiiOverrideLog, OnCallQueryLog, CaseImageAnnotation
+
     PRESERVES (public/shared content):
     - ForumMessage (forum comments stay, but user_id set to NULL)
-    - Forum message images (preserved with the message)
-    - Profile picture URL (just a string, no cleanup needed)
-    
-    NULLIFIES (case-related references for admin/content managers):
-    - Case.created_by_user_id -> NULL
-    - Case.approved_by_user_id -> NULL
-    - CaseAuditLog.user_id -> NULL (preserve audit trail)
-    - CaseApprovalQueue.submitted_by_user_id -> NULL
-    - ImportedCaseStaging.*_user_id -> NULL
-    - AiDiagnosisCache.first_user_id -> NULL
-    
+
+    NULLIFIES (preserve records, remove user link):
+    - Case.created_by_user_id, Case.approved_by_user_id
+    - CaseAuditLog.user_id, CaseApprovalQueue.submitted_by_user_id
+    - ImportedCaseStaging.*_user_id, AiDiagnosisCache.first_user_id
+    - ForumMessageFlag.resolved_by_user_id, AIAuditLog.user_id
+
     Returns dict with cleanup stats.
     """
     from models import (
         db, CandidateNote, TextHighlight, RevisionSession, RevisionHistory,
         CaseViewLog, ForumMessage, ForumMessageVote, ForumMessageFlag,
-        Case, CaseAuditLog, CaseApprovalQueue, ImportedCaseStaging, AiDiagnosisCache
+        Case, CaseAuditLog, CaseApprovalQueue, ImportedCaseStaging, AiDiagnosisCache,
+        RadIQQuery, ContentRequest, CaseFlag, UserQAProgress, LearningQuestionProgress,
+        PiiOverrideLog, OnCallQueryLog, CaseImageAnnotation, AIAuditLog
     )
     
     user_id = target_user.id
@@ -424,7 +420,31 @@ def delete_user_completely(target_user):
         
         # Delete forum flags (where user was the flagger)
         stats['flags_deleted'] = ForumMessageFlag.query.filter_by(user_id=user_id).delete()
-        
+
+        # Delete RadIQ queries (private)
+        stats['radiq_queries_deleted'] = RadIQQuery.query.filter_by(user_id=user_id).delete()
+
+        # Delete content requests (private)
+        stats['content_requests_deleted'] = ContentRequest.query.filter_by(user_id=user_id).delete()
+
+        # Delete case flags (private)
+        stats['case_flags_deleted'] = CaseFlag.query.filter_by(user_id=user_id).delete()
+
+        # Delete Q&A progress (private)
+        stats['qa_progress_deleted'] = UserQAProgress.query.filter_by(user_id=user_id).delete()
+
+        # Delete learning question progress (private)
+        stats['learning_progress_deleted'] = LearningQuestionProgress.query.filter_by(user_id=user_id).delete()
+
+        # Delete PII override logs (private)
+        stats['pii_overrides_deleted'] = PiiOverrideLog.query.filter_by(user_id=user_id).delete()
+
+        # Delete on-call query logs (private)
+        stats['oncall_queries_deleted'] = OnCallQueryLog.query.filter_by(user_id=user_id).delete()
+
+        # Delete case image annotations (private)
+        stats['annotations_deleted'] = CaseImageAnnotation.query.filter_by(user_id=user_id).delete()
+
         # ===== ANONYMIZE FORUM MESSAGES (preserve content, remove author link) =====
         stats['forum_messages_anonymized'] = ForumMessage.query.filter_by(user_id=user_id).update(
             {'user_id': None}, synchronize_session=False
@@ -470,7 +490,12 @@ def delete_user_completely(target_user):
         ForumMessageFlag.query.filter_by(resolved_by_user_id=user_id).update(
             {'resolved_by_user_id': None}, synchronize_session=False
         )
-        
+
+        # AI audit logs (preserve for cost tracking, remove user link)
+        AIAuditLog.query.filter_by(user_id=user_id).update(
+            {'user_id': None}, synchronize_session=False
+        )
+
         # ===== DELETE THE USER =====
         db.session.delete(target_user)
         db.session.commit()

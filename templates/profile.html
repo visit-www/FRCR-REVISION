@@ -331,9 +331,33 @@
                         By using RadInsights, you agree to our Terms of Use and Privacy Policy.
                     </div>
                     
+                    <hr class="my-4">
+
+                    <!-- GDPR Data Export -->
+                    <h5 class="mb-3" style="color: var(--brand-neutral, #5E899E);">
+                        <i class="fas fa-download me-2"></i>Your Data
+                    </h5>
+                    <div class="card mb-3" style="border-color: var(--brand-neutral, #5E899E);">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">
+                                        <i class="fas fa-file-export me-1"></i>Download My Data
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        Export all your data (profile, notes, highlights, progress) as a JSON file. Limited to once per hour.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn btn-brand-neutral btn-sm" onclick="downloadMyData(this)">
+                                    <i class="fas fa-download me-1"></i>Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     {% if current_user.role and current_user.role.value == 'student' %}
                     <hr class="my-4">
-                    
+
                     <!-- Account Settings / Delete Account Section (Students Only) -->
                     <h5 class="mb-3" style="color: #dc3545;">
                         <i class="fas fa-user-cog me-2"></i>Account Settings
@@ -681,6 +705,29 @@
 </style>
 
 <script>
+// GDPR Data Export
+function downloadMyData(btn) {
+    var orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Exporting...';
+    fetch('/auth/api/user/data-export', {credentials: 'include'})
+        .then(function(r) {
+            if (r.status === 429) { alert('Export limited to once per hour. Please try again later.'); throw new Error('rate limited'); }
+            if (!r.ok) throw new Error('Export failed');
+            return r.blob();
+        })
+        .then(function(blob) {
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'radinsights-data-export.json';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        })
+        .catch(function(e) { if (e.message !== 'rate limited') alert('Failed to export data. Please try again.'); })
+        .finally(function() { btn.disabled = false; btn.innerHTML = orig; });
+}
+
 // Profile Picture Upload
 document.getElementById('profilePictureInput').addEventListener('change', function(e) {
     const file = e.target.files[0];

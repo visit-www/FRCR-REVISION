@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Admin Dashboard - RadInsights{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block mobile_breadcrumb %}
     <li class="breadcrumb-item active text-white" aria-current="page">
@@ -90,6 +91,11 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring-content" type="button" role="tab" aria-controls="monitoring-content" aria-selected="false">
                 <i class="fas fa-heartbeat"></i> Monitoring
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit-content" type="button" role="tab" aria-controls="audit-content" aria-selected="false">
+                <i class="fas fa-clipboard-list"></i> Audit Log
             </button>
         </li>
     </ul>
@@ -656,6 +662,52 @@
             <div id="sentry-error" class="alert alert-danger" style="display: none;"></div>
         </div>
         <!-- End Monitoring Tab -->
+
+        <!-- Audit Log Tab -->
+        <div class="tab-pane fade" id="audit-content" role="tabpanel" aria-labelledby="audit-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-clipboard-list"></i> Admin Audit Log</h2>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex gap-2 align-items-center">
+                    <select id="auditActionFilter" class="form-select form-select-sm" style="width: auto;" onchange="loadAuditLog(1)">
+                        <option value="">All Actions</option>
+                        <option value="role_change">Role Change</option>
+                        <option value="subscription_change">Subscription Change</option>
+                        <option value="toggle_active">Toggle Active</option>
+                        <option value="delete_user">Delete User</option>
+                        <option value="delete_case">Delete Case</option>
+                        <option value="verify_algorithm">Verify Algorithm</option>
+                        <option value="delete_algorithm">Delete Algorithm</option>
+                        <option value="verify_template">Verify Template</option>
+                        <option value="delete_template">Delete Template</option>
+                        <option value="verify_pearl">Verify Pearl</option>
+                        <option value="delete_pearl">Delete Pearl</option>
+                    </select>
+                </div>
+                <small class="text-muted" id="auditLogTotal"></small>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover" id="auditLogTable">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Admin</th>
+                            <th>Action</th>
+                            <th>Target</th>
+                            <th>Details</th>
+                            <th>IP</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditLogBody">
+                        <tr><td colspan="6" class="text-center text-muted py-4">Select the Audit Log tab to load entries.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <nav id="auditPagination" class="d-flex justify-content-center mt-3"></nav>
+        </div>
+        <!-- End Audit Log Tab -->
     </div>
 </div>
 
@@ -2679,6 +2731,67 @@
         // Load badge count immediately
         loadModCounts();
     })();
+
+    // ── Audit Log ──
+    var auditLoaded = false;
+    document.getElementById('audit-tab').addEventListener('shown.bs.tab', function() {
+        if (!auditLoaded) { loadAuditLog(1); auditLoaded = true; }
+    });
+
+    function loadAuditLog(page) {
+        var action = document.getElementById('auditActionFilter').value;
+        var url = '/api/admin/audit-log?page=' + page + '&per_page=50';
+        if (action) url += '&action=' + encodeURIComponent(action);
+
+        fetch(url, {credentials: 'include'})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var tbody = document.getElementById('auditLogBody');
+                document.getElementById('auditLogTotal').textContent = data.total + ' entries';
+                if (!data.entries || data.entries.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No audit log entries found.</td></tr>';
+                    document.getElementById('auditPagination').innerHTML = '';
+                    return;
+                }
+                tbody.innerHTML = data.entries.map(function(e) {
+                    var details = '';
+                    if (e.details) {
+                        var parts = [];
+                        Object.keys(e.details).forEach(function(k) {
+                            if (k !== 'cleanup_stats') parts.push(k + ': ' + e.details[k]);
+                        });
+                        details = parts.join(', ');
+                    }
+                    var ts = e.created_at ? new Date(e.created_at).toLocaleString() : '';
+                    return '<tr>' +
+                        '<td class="small">' + ts + '</td>' +
+                        '<td class="small">' + (e.admin_email || '') + '</td>' +
+                        '<td><span class="badge bg-secondary">' + (e.action || '') + '</span></td>' +
+                        '<td class="small">' + (e.target_type || '') + (e.target_id ? ' #' + e.target_id : '') + '</td>' +
+                        '<td class="small text-truncate" style="max-width:250px;" title="' + details.replace(/"/g, '&quot;') + '">' + details + '</td>' +
+                        '<td class="small">' + (e.ip_address || '') + '</td>' +
+                        '</tr>';
+                }).join('');
+
+                // Pagination
+                var nav = document.getElementById('auditPagination');
+                if (data.pages > 1) {
+                    var html = '<ul class="pagination pagination-sm">';
+                    for (var p = 1; p <= data.pages && p <= 10; p++) {
+                        html += '<li class="page-item' + (p === data.page ? ' active' : '') + '">' +
+                            '<a class="page-link" href="#" onclick="event.preventDefault();loadAuditLog(' + p + ')">' + p + '</a></li>';
+                    }
+                    html += '</ul>';
+                    nav.innerHTML = html;
+                } else {
+                    nav.innerHTML = '';
+                }
+            })
+            .catch(function(err) {
+                console.error('Audit log error:', err);
+                document.getElementById('auditLogBody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Failed to load audit log.</td></tr>';
+            });
+    }
 
 </script>
 

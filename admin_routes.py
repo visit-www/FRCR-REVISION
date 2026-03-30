@@ -5,7 +5,7 @@ Provides CRUD operations for user management and case management with role-based
 
 from flask import Blueprint, request, jsonify, render_template_string, render_template
 from flask_login import login_required, current_user
-from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
+from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case, AdminActionLog, log_admin_action
 from access_control import require_admin, require_role, delete_user_completely, can_delete_user, upgrade_to_paid, downgrade_to_free
 from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
@@ -346,6 +346,9 @@ def update_user_role(user_id):
         
         # Perform the role change
         user.role = new_role_enum
+        # Set 7-day 2FA grace period when promoting to admin
+        if new_role == 'admin' and not user.totp_enabled:
+            user.totp_grace_period_until = datetime.utcnow() + timedelta(days=7)
         db.session.commit()
         
         # Build response with warning for superadmin
@@ -365,9 +368,12 @@ def update_user_role(user_id):
             response['warning'] = warnings.get(new_role, '')
         
         logger.info(f"Admin {current_user.email} changed {user.email} role from {old_role} to {new_role}")
-        
+        log_admin_action(current_user.id, 'role_change', 'user', user.id,
+                         {'old_role': old_role, 'new_role': new_role, 'target_email': user.email},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
         return jsonify(response), 200
-    
+
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating user role: {str(e)}")
@@ -412,7 +418,10 @@ def update_user_subscription(user_id):
         
         # Log action
         logger.info(f"Admin {current_user.email} changed {user.email} subscription from {old_status} to {new_status}")
-        
+        log_admin_action(current_user.id, 'subscription_change', 'user', user.id,
+                         {'old_status': old_status, 'new_status': new_status, 'target_email': user.email},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
         return jsonify({
             'message': f'Subscription updated to {new_status}',
             'user_id': user.id,
@@ -447,7 +456,10 @@ def toggle_user_active(user_id):
         db.session.commit()
         
         logger.info(f"Admin {current_user.email} set {user.email} active={is_active}")
-        
+        log_admin_action(current_user.id, 'toggle_active', 'user', user.id,
+                         {'old_active': old_status, 'new_active': is_active, 'target_email': user.email},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
         return jsonify({
             'message': f'User active status: {is_active}',
             'old_status': old_status,
@@ -664,7 +676,10 @@ def delete_user(user_id):
             f"{stats['forum_messages_anonymized']} forum messages anonymized, "
             f"{stats['cases_updated']} case references updated"
         )
-        
+        log_admin_action(current_user.id, 'delete_user', 'user', user_id,
+                         {'target_email': email, 'target_role': user_role, 'cleanup_stats': stats},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
         return jsonify({
             'message': f'User permanently deleted: {email}',
             'user_id': user_id,
@@ -851,7 +866,10 @@ def delete_case(case_id):
         db.session.commit()
         
         logger.info(f"[ADMIN] Case {case_id} deleted by user {current_user.id}")
-        
+        log_admin_action(current_user.id, 'delete_case', 'case', case_id,
+                         {'case_title': getattr(case, 'title', None)},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
         return jsonify({
             'success': True,
             'message': 'Case deleted successfully'
@@ -2664,6 +2682,55 @@ def ai_costs():
 
     except Exception as e:
         logger.error(f"Error fetching AI costs: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# ADMIN AUDIT LOG
+# ============================================================================
+
+@admin_bp.route('/audit-log', methods=['GET'])
+@require_admin
+def get_audit_log():
+    """Paginated admin audit log with optional filtering."""
+    try:
+        page = request.args.get('page', 1, type=int)
+        per_page = min(request.args.get('per_page', 50, type=int), 200)
+        action_filter = request.args.get('action')
+        user_filter = request.args.get('user_id', type=int)
+
+        query = AdminActionLog.query.order_by(AdminActionLog.created_at.desc())
+        if action_filter:
+            query = query.filter(AdminActionLog.action == action_filter)
+        if user_filter:
+            query = query.filter(AdminActionLog.user_id == user_filter)
+
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+        entries = []
+        for e in pagination.items:
+            admin_user = User.query.get(e.user_id) if e.user_id else None
+            entries.append({
+                'id': e.id,
+                'user_id': e.user_id,
+                'admin_email': admin_user.email if admin_user else 'System',
+                'action': e.action,
+                'target_type': e.target_type,
+                'target_id': e.target_id,
+                'details': json.loads(e.details) if e.details else None,
+                'ip_address': e.ip_address,
+                'created_at': e.created_at.isoformat() if e.created_at else None,
+            })
+
+        return jsonify({
+            'entries': entries,
+            'page': pagination.page,
+            'pages': pagination.pages,
+            'total': pagination.total,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching audit log: {e}")
         return jsonify({'error': str(e)}), 500
 
 
