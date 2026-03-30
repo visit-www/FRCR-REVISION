@@ -29,7 +29,7 @@ This document serves as the master index for all planned features and enhancemen
 | 11 | AI Reporting Assistant | Medium-High | Very High | Planned |
 | 12 | TNM Prompt Engineering | Medium | High | Ready to Implement |
 | 13 | PHI/PII Protection (5-Layer) | High | Critical | **P0 Done** |
-| 14 | SEO & Architecture | Medium-High | High | Planned |
+| 14 | SEO & Architecture | Medium-High | High | **Phase 1 Done** |
 
 ---
 
@@ -531,29 +531,50 @@ Comprehensive PHI/PII protection system targeting >98% sensitivity and >95% spec
 **Complexity:** Medium-High
 **Estimated Effort:** 6 phases, ~1 week total
 **Dependencies:** None (incremental improvements)
-**Status:** Planned
+**Status:** Phase 1 Done (Public Preview Pages — March 2026)
 
 ### Summary
 Comprehensive SEO overhaul: Open Graph tags, Twitter Cards, Schema.org JSON-LD (MedicalWebPage, Organization, SoftwareApplication, FAQ), per-page meta descriptions, dynamic sitemap, and content-driven keyword strategy targeting "radiology education platform", "TNM staging calculator", "FRCR revision", and "AI radiology reporting".
 
-### Implementation Phases
+### Phase 1 — Public Preview Pages (DONE — March 2026)
+
+Made all educational content publicly accessible with SEO optimization:
+
+**New files created:**
+- `public_routes.py` — Blueprint for `/case-library` and `/case-library/<id>` public case routes
+- `templates/public_case_library.html` — Public case browse page with filters
+- `templates/public_case_preview.html` — Public case preview with content gating
+- `templates/partials/_public_cta.html` — Reusable CTA banner for unauthenticated users
+- `templates/partials/_schema_medical.html` — Schema.org JSON-LD macros (MedicalWebPage, MedicalCondition, CollectionPage, LearningResource)
+
+**Routes made public (removed @login_required):**
+- Reporting Algorithms: `/reporting-algorithms` (browse), `/reporting-template/<slug>` (view)
+- Radiology Templates: `/reporting-templates` (browse), `/radiology-template/view/<id>` (view — gated text)
+- Radiology Tools: `/incidental-findings/` (browse), `/incidental-findings/<slug>` (view)
+- Clinical Protocols: `/radiology-protocols` (browse), `/radiology-protocols/view/<id>` (view — gated content)
+- Knowledge Hub: `/knowledge-hub`, `/anatomy-snippets/<slug>`, `/radiology-pearls`
+
+**Content gating strategy:**
+- Educational content (algorithms, tools, pearls, anatomy): shown in full
+- Patient-adjacent content (cases, protocols, templates): preview + fade overlay + CTA
+
+**SEO enhancements:**
+- Schema.org JSON-LD on all public pages (CollectionPage for browse, LearningResource for view)
+- Open Graph + Twitter Card meta tags on all public templates
+- Per-page meta descriptions on all public templates
+- Dynamic sitemap expanded to 100+ URLs (cases, algorithms, templates, anatomy snippets)
+- robots.txt updated with Allow directives for all public paths
+- noindex added to authenticated-only templates (login, register, dashboard, etc.)
+- CSS classes: `.gated-fade-overlay`, `.content-teaser`, `.public-cta-banner`
+
+### Remaining SEO Phases (TODO)
 | Phase | Items | Effort |
 |-------|-------|--------|
-| P1 | Global metadata (OG, Twitter, canonical, robots) in base.html + landing.html | 1 day |
-| P2 | Schema.org JSON-LD — Organization, MedicalWebPage, FAQ, Breadcrumb | 1 day |
+| P2 | Schema.org Organization (base.html), MedicalWebPage + SoftwareApplication (landing.html), FAQPage (pricing) | 1 day |
 | P3 | Landing page "Beyond the Shorthand" AI section + keyword optimization | 1 day |
-| P4 | Per-page title/description on 31+ templates, noindex on auth pages | 2 days |
-| P5 | Dynamic sitemap, canonical context processor, Core Web Vitals | 1 day |
+| P4 | Remaining per-page title/description updates, canonical context processor | 1 day |
+| P5 | Core Web Vitals optimization, preconnect hints | 1 day |
 | P6 | Content strategy, internal linking, keyword monitoring | Ongoing |
-
-### Key Deliverables
-- Open Graph + Twitter Card tags on all pages
-- Schema.org MedicalWebPage with SoftwareApplication parts
-- FAQPage schema on pricing page
-- Dynamic sitemap (100+ URLs vs. current 43)
-- Per-page meta descriptions for 12+ public templates
-- "Beyond the Shorthand" conversion section on landing page
-- noindex on all authenticated-only pages
 
 ### Plan Document
 📄 **Location:** [docs/plans/SEO_MASTER_PLAN.md](SEO_MASTER_PLAN.md)
@@ -677,4 +698,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-02-05 | Added AI Reporting Assistant plan (Plan 11); diagnosis-agnostic algorithmic pathway generator | AI Assistant |
 | 2026-02-05 | Added TNM Prompt Engineering plan (Plan 12); fix AI workflow to produce oropharynx-quality calculators | AI Assistant |
 | 2026-03-30 | Added PHI Protection (Plan 13), SEO (Plan 14), Stripe Testing (Plan 15), RadIQ Custom Protocols idea (Plan 16) | AI Assistant |
+| 2026-03-31 | SEO Plan 14 Phase 1 complete: public preview pages for all content types, Schema.org macros, dynamic sitemap expansion, content gating | AI Assistant |
 

@@ -1,7 +1,8 @@
 # RadInsights — Master SEO & Architecture Plan
 
 > **Created:** March 30, 2026
-> **Status:** Planned
+> **Last Updated:** March 31, 2026
+> **Status:** Phase 1 Done (Public Preview Pages), Phases 2-6 Planned
 > **Target:** Top 10 SERP for "radiology education platform", "FRCR revision", "TNM calculator", "AI radiology reporting"
 > **Keyword:** `RADINSIGHTS-SEO-2026`
 
@@ -59,32 +60,32 @@ RadInsights (radinsights.xyz) is a high-end radiology informatics and education 
 | Skip-to-content link | Done | Accessibility aid in base.html |
 | Mobile viewport | Done | `width=device-width, initial-scale=1.0` |
 
-### 2.2 What's Missing
+### 2.2 What's Missing (Updated March 31, 2026)
 
-| Element | Impact | Priority |
-|---------|--------|----------|
-| **Open Graph tags** | Social sharing shows no image/description | P1 |
-| **Twitter Card tags** | Twitter sharing broken | P1 |
-| **Schema.org JSON-LD** | No rich results in Google (medical, software, FAQ) | P1 |
-| **Per-page meta descriptions** | 31 templates override title but NOT description | P1 |
-| **Canonical URLs on all pages** | Only 6 pages have canonical; rest missing | P2 |
-| **Dynamic sitemap** | Only static XML; no Knowledge Hub, tools, or protocols | P2 |
-| **`<meta name="robots">`** | No per-page noindex control for authenticated pages | P2 |
-| **Author/organization markup** | No publisher or creator attribution | P3 |
-| **hreflang tags** | No language targeting (en-GB / en-US) | P4 |
-| **FAQ schema** | Pricing and about pages could use FAQ rich results | P3 |
-| **Breadcrumb schema** | Mobile breadcrumb exists in HTML but no JSON-LD | P3 |
-| **Content keywords strategy** | No deliberate keyword targeting per page | P2 |
+| Element | Impact | Priority | Status |
+|---------|--------|----------|--------|
+| **Open Graph tags** | Social sharing shows no image/description | P1 | **DONE** — added to all public templates via `{% block og_title/og_description %}` |
+| **Twitter Card tags** | Twitter sharing broken | P1 | **DONE** — added to base.html, inherited by all templates |
+| **Schema.org JSON-LD** | No rich results in Google (medical, software, FAQ) | P1 | **PARTIAL** — CollectionPage + LearningResource + MedicalCondition via `_schema_medical.html` macros. Organization + SoftwareApplication on landing still TODO |
+| **Per-page meta descriptions** | 31 templates override title but NOT description | P1 | **DONE** — all public templates now override `{% block meta_description %}` |
+| **Canonical URLs on all pages** | Only 6 pages have canonical; rest missing | P2 | TODO |
+| **Dynamic sitemap** | Only static XML; no Knowledge Hub, tools, or protocols | P2 | **DONE** — sitemap now includes cases, algorithms, templates, anatomy snippets (100+ URLs) |
+| **`<meta name="robots">`** | No per-page noindex control for authenticated pages | P2 | **DONE** — noindex on auth templates (login, register, forgot-password, etc.) |
+| **Author/organization markup** | No publisher or creator attribution | P3 | TODO |
+| **hreflang tags** | No language targeting (en-GB / en-US) | P4 | TODO |
+| **FAQ schema** | Pricing and about pages could use FAQ rich results | P3 | TODO |
+| **Breadcrumb schema** | Mobile breadcrumb exists in HTML but no JSON-LD | P3 | TODO |
+| **Content keywords strategy** | No deliberate keyword targeting per page | P2 | TODO |
 
-### 2.3 Critical Issues
+### 2.3 Critical Issues (Updated March 31, 2026)
 
-1. **Landing page (`landing.html`) is a standalone template** — does NOT extend `base.html`, so any SEO improvements to base.html won't apply. Both files need updates.
+1. **Landing page (`landing.html`) is a standalone template** — does NOT extend `base.html`, so any SEO improvements to base.html won't apply. Both files need updates. *(Still applies — landing.html needs OG/schema separately)*
 
-2. **31 child templates override `{% block title %}` but NONE override `{% block meta_description %}`** — every page beyond the homepage shows the generic description in Google results.
+2. ~~**31 child templates override `{% block title %}` but NONE override `{% block meta_description %}`**~~ — **FIXED:** All public templates now override `{% block meta_description %}` with page-specific descriptions.
 
-3. **Sitemap is static** — doesn't include the 39 TNM calculators dynamically (they're hardcoded in XML). New content (tools, protocols, pearls) won't appear until manually added.
+3. ~~**Sitemap is static**~~ — **FIXED:** Sitemap is now dynamic, includes published cases (`/case-library/<id>`), admin algorithms (`/reporting-template/<slug>`), radiology templates (`/radiology-template/view/<id>`), anatomy snippets (`/anatomy-snippets/<slug>`), and 6 new static pages. 100+ URLs.
 
-4. **robots.txt blocks `/cases` and `/practice`** — if any public case-browsing page is ever added, it won't be indexed.
+4. ~~**robots.txt blocks `/cases` and `/practice`**~~ — **FIXED:** robots.txt now allows `/case-library`, `/reporting-algorithms`, `/reporting-templates`, `/incidental-findings`, `/radiology-protocols`, `/knowledge-hub`, `/anatomy-snippets`, `/radiology-pearls`. Still blocks `/cases`, `/view-case/`, `/practice` (authenticated routes).
 
 ---
 
@@ -709,23 +710,25 @@ Currently, most content requires authentication. To capture organic search traff
 + 39 TNM calculator pages
 ```
 
-### 12.2 Target (100+ URLs)
+### 12.2 Target (100+ URLs) — DONE (March 31, 2026)
 
 ```
-Current 43 URLs
-+ /knowledge-hub
-+ /radiology-pearls
-+ /clinical-protocols (public index)
-+ /radiology-tools (public index)
-+ Dynamic: admin-verified reporting algorithms (public view)
-+ Dynamic: admin-verified radiology templates (public view)
-+ Dynamic: published clinical protocols (public summary)
-+ Dynamic: published radiology tools (public view)
+Current 43 URLs (TNM calculators + static pages)
++ /case-library                           ← NEW
++ /reporting-algorithms                   ← NEW
++ /reporting-templates                    ← NEW
++ /incidental-findings                    ← NEW
++ /radiology-protocols                    ← NEW
++ /knowledge-hub                          ← NEW
++ Dynamic: /case-library/<id>             ← published cases
++ Dynamic: /reporting-template/<slug>     ← admin algorithms
++ Dynamic: /radiology-template/view/<id>  ← admin templates
++ Dynamic: /anatomy-snippets/<slug>       ← anatomy cache
 ```
 
 ### 12.3 Implementation
 
-Switch from static `sitemap.xml` file to dynamic Flask route (see Phase 5, Section 9.1).
+~~Switch from static `sitemap.xml` file to dynamic Flask route.~~ **DONE** — `sitemap_xml()` in `app.py` now generates dynamic sitemap with all public content types.
 
 ---
 
@@ -869,22 +872,42 @@ TNM calculator pages should override with calculator-specific OG:
 
 ## 18. Implementation Checklist
 
+### Pre-Phase: Public Preview Pages (DONE — March 31, 2026)
+- [x] Create `public_routes.py` blueprint with `/case-library` and `/case-library/<id>` routes
+- [x] Create `templates/public_case_library.html` with card grid, filters, search
+- [x] Create `templates/public_case_preview.html` with content gating (fade overlay + CTA)
+- [x] Create `templates/partials/_public_cta.html` reusable CTA banner
+- [x] Create `templates/partials/_schema_medical.html` Schema.org JSON-LD macros
+- [x] Remove `@login_required` from reporting algorithms browse + view
+- [x] Remove `@login_required` from radiology templates browse + view (gated template text)
+- [x] Remove `@login_required` from radiology tools browse + view
+- [x] Remove `@login_required` from clinical protocols browse + view (gated content)
+- [x] Remove `@login_required` from Knowledge Hub, anatomy snippets, pearls
+- [x] Add OG tags + meta descriptions to all 14 public templates
+- [x] Add Schema.org JSON-LD (CollectionPage, LearningResource, MedicalCondition) to public templates
+- [x] Expand dynamic sitemap to 100+ URLs (cases, algorithms, templates, anatomy)
+- [x] Update robots.txt with Allow directives for all public paths
+- [x] Add noindex to authenticated-only templates (login, register, forgot-password, etc.)
+- [x] Add `.gated-fade-overlay`, `.content-teaser`, `.public-cta-banner` CSS classes
+- [x] Wrap auth-only template elements in `{% if current_user.is_authenticated %}` conditionals
+- [x] Server-side truncation for case discussion (150 chars) — no content leaks in HTML source
+
 ### Phase 1 — Global Metadata
-- [ ] Add OG tags to `base.html` (og:type, og:title, og:description, og:image, og:url, og:site_name, og:locale)
-- [ ] Add Twitter Card tags to `base.html`
+- [x] Add OG tags to `base.html` (og:type, og:title, og:description, og:image, og:url, og:site_name, og:locale)
+- [x] Add Twitter Card tags to `base.html`
 - [ ] Add OG + Twitter tags to `landing.html` (standalone template)
-- [ ] Add `{% block canonical %}` to `base.html`
-- [ ] Add `{% block robots_meta %}` to `base.html` with default `index, follow`
-- [ ] Add `<meta name="author" content="RadInsights">` to `base.html`
+- [x] Add `{% block canonical %}` to `base.html`
+- [x] Add `{% block robots_meta %}` to `base.html` with default `index, follow`
+- [x] Add `<meta name="author" content="RadInsights">` to `base.html`
 - [ ] Add `<link rel="preconnect">` hints for CDNs
-- [ ] Verify 512x512 icon URL is valid for OG image
+- [x] Verify 512x512 icon URL is valid for OG image
 
 ### Phase 2 — Structured Data
 - [ ] Add Organization JSON-LD to `base.html`
 - [ ] Add MedicalWebPage + SoftwareApplication JSON-LD to `landing.html`
 - [ ] Add MedicalWebPage JSON-LD to TNM calculator template
 - [ ] Add FAQPage JSON-LD to `pricing.html`
-- [ ] Add `{% block breadcrumb_schema %}` to `base.html`
+- [x] Add `{% block extra_schema %}` to `base.html` (used by public templates)
 - [ ] Add BreadcrumbList JSON-LD to TNM calculator pages
 - [ ] Validate all structured data with Google Rich Results Test
 
@@ -897,15 +920,15 @@ TNM calculator pages should override with calculator-specific OG:
 - [ ] Verify all CTAs link to /register
 
 ### Phase 4 — Per-Page SEO
-- [ ] Override `{% block title %}` in all public templates (12+ pages)
-- [ ] Override `{% block meta_description %}` in all public templates
-- [ ] Add `noindex, nofollow` to all authenticated-only templates (10+ pages)
+- [x] Override `{% block title %}` in all public templates (12+ pages)
+- [x] Override `{% block meta_description %}` in all public templates
+- [x] Add `noindex, nofollow` to all authenticated-only templates (10+ pages)
 - [ ] Add canonical URLs to all pages via context processor
-- [ ] Add OG overrides to key public pages (TNM calculators, Knowledge Hub)
+- [x] Add OG overrides to key public pages (algorithms, templates, tools, protocols, knowledge hub, anatomy, cases)
 
 ### Phase 5 — Technical SEO
-- [ ] Replace static sitemap.xml with dynamic Flask route
-- [ ] Include TNM calculators, Knowledge Hub content in sitemap
+- [x] Replace static sitemap.xml with dynamic Flask route
+- [x] Include TNM calculators, Knowledge Hub content in sitemap
 - [ ] Update robots.txt with crawl-delay for aggressive bots
 - [ ] Add canonical URL context processor
 - [ ] Run PageSpeed Insights and fix any Core Web Vitals issues
@@ -921,4 +944,4 @@ TNM calculator pages should override with calculator-specific OG:
 
 ---
 
-> **Next step:** Begin Phase 1 implementation — add OG tags, Twitter cards, canonical URLs, and robots directives to `base.html` and `landing.html`.
+> **Phase 1 (Public Preview Pages) COMPLETE.** Next step: Phase 2 — add Organization JSON-LD to `base.html`, MedicalWebPage + SoftwareApplication to `landing.html`, FAQPage to `pricing.html`, and OG tags to `landing.html` (standalone template).

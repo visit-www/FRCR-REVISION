@@ -1,16 +1,16 @@
 # RadInsights — Comprehensive TODO & Roadmap
 
-**Generated:** 2026-03-13 | **Last updated:** 2026-03-14
+**Generated:** 2026-03-13 | **Last updated:** 2026-03-31
 **Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit
 
 ### Progress Summary
 
 | Status | Count |
 |--------|-------|
-| DONE | **50** / 72 |
-| WONTFIX | 2 / 72 |
-| TODO | **20** / 72 |
-| **Completion** | **72%** |
+| DONE | **53** / 75 |
+| WONTFIX | 2 / 75 |
+| TODO | **20** / 75 |
+| **Completion** | **73%** |
 
 ---
 
@@ -89,8 +89,8 @@
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 30 | Automated database backups | DONE | Cron endpoint `GET /api/backup/scheduled-backup` — builds backup JSON, gzip-compresses, uploads to R2. Keeps last 30 backups, auto-prunes older. Runs daily at 2am UTC via Vercel cron. |
-| 31 | `robots.txt` | DONE | `GET /robots.txt` disallows `/api/`, `/auth/`, `/admin/`, backup, and admin tool routes |
-| 32 | SEO meta tags | DONE | `base.html` supports `{% block title %}` and `{% block meta_description %}` — templates can override |
+| 31 | `robots.txt` | DONE | `GET /robots.txt` disallows admin/API/auth routes. Updated Mar 2026: allows `/case-library`, `/reporting-algorithms`, `/reporting-templates`, `/incidental-findings`, `/radiology-protocols`, `/knowledge-hub`, `/anatomy-snippets` |
+| 32 | SEO meta tags | DONE | `base.html` supports `{% block title %}` and `{% block meta_description %}` — templates can override. OG + Twitter Card tags added. |
 
 ---
 
@@ -140,6 +140,14 @@
 
 ## TIER 4 — LOW PRIORITY / NICE-TO-HAVE
 
+### 4.0 SEO & Public Access (Mar 2026)
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 73 | Public preview pages for all content types | DONE | Created `public_routes.py` blueprint. Removed `@login_required` from algorithms, templates, tools, protocols, knowledge hub, anatomy, pearls. Content gating: educational content fully public, patient-adjacent content gated with CTA. |
+| 74 | Schema.org JSON-LD structured data | DONE | Created `templates/partials/_schema_medical.html` with macros: `medical_web_page()`, `medical_case()`, `collection_page()`, `educational_content()`. Applied to all public browse + view pages. |
+| 75 | Dynamic sitemap expansion (100+ URLs) | DONE | `sitemap_xml()` now includes 6 new static pages + dynamic URLs for published cases, admin algorithms, admin templates, anatomy snippets. Expanded from ~43 to 100+ URLs. |
+
 ### 4.1 Code Quality
 
 | # | Item | Status | Details |
@@ -159,7 +167,7 @@
 |---|------|--------|---------|
 | 61 | WCAG 2.1 AA audit | TODO | ARIA labels partially applied. Color contrast unverified. No skip links. |
 | 62 | Dynamic page titles | DONE | Added `{% block title %}` to 28 templates with context-specific titles (e.g. "Smart Reporter - RadInsights"). |
-| 63 | Sitemap.xml | DONE | `GET /sitemap.xml` generates XML sitemap with static pages + dynamic TNM calculator URLs. Referenced in robots.txt. |
+| 63 | Sitemap.xml | DONE | `GET /sitemap.xml` generates dynamic XML sitemap. Updated Mar 2026: now includes published cases, algorithms, templates, anatomy snippets (100+ URLs). |
 | 64 | Skip-to-content link | DONE | Added `<a href="#main-content" class="visually-hidden-focusable skip-link">` in `base.html` with `id="main-content"` target on content div. |
 
 ### 4.3 Admin UX
@@ -231,7 +239,7 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ## COMPLETED ITEMS (Mar 2026 Sessions)
 
-50 of 70 items completed. Key implementations:
+53 of 75 items completed. Key implementations:
 
 1. **PII Guard email bypass fix** — removed `'email'` from SKIP_KEYS in both layers
 2. **PII Guard NINO pattern** — added `[A-Z]{2}\d{6}[A-D]` detection
@@ -278,6 +286,11 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 43. **Algorithm Finder redirect removed** — deprecated route cleaned up
 44. **Medical disclaimers** — added to Smart Reporter, browse pages, student dashboard
 45. **Service worker CSP fix** — fixed 503 errors from CDN resources blocked by CSP
+46. **Public preview pages** — all content types publicly accessible (algorithms, tools, protocols, templates, cases, knowledge hub, anatomy, pearls). Content gating with fade overlay + CTA for patient-adjacent content. 5 new files, 14 modified files.
+47. **Schema.org JSON-LD macros** — `_schema_medical.html` with CollectionPage, LearningResource, MedicalCondition, MedicalWebPage macros. Applied to all public templates.
+48. **Dynamic sitemap expansion** — sitemap now includes published cases, algorithms, templates, anatomy snippets. Expanded from ~43 to 100+ URLs.
+49. **OG/Twitter Card meta tags** — all public templates now have Open Graph + Twitter Card tags via `{% block og_title/og_description %}`
+50. **noindex on auth pages** — login, register, forgot-password, reset-password, verify-2fa, account-deactivated templates now have `noindex, nofollow`
 
 ---
 

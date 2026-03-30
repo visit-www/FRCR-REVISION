@@ -30,6 +30,8 @@ All scripts support `list` (check status), `batch` (generate all), and `generate
 
 **Key gaps:** Templates (1 admin), tools (1), and protocols (0) are virtually empty. Algorithms improving (4 admin) but need ~56 more for RADS family, trauma scales, grading systems. Cases strong in CNS/HN (17, well-covered) but **Paediatrics empty (0)**, Cardiothoracic weak (3), GU/Breast (4) needs expansion. TNM calculators complete.
 
+> **SEO Note (March 31, 2026):** All content types are now publicly accessible to search engines. Public preview pages implemented for algorithms (full content), tools (full content), protocols (gated), templates (gated text), cases (`/case-library` with preview), knowledge hub, anatomy snippets, and pearls. Dynamic sitemap includes all public content. **Content generated via batch scripts will be immediately crawlable and indexable.** This makes content creation higher-impact — every new item directly improves SEO.
+
 ---
 
 ## Content Creation Phases
