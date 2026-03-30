@@ -207,6 +207,7 @@ DRAFT REPORT:
 
 TRAINEE'S QUESTION: {question}
 {resource_section}
+{report_status_section}
 Return a JSON object with EXACTLY this structure:
 
 {{
@@ -231,8 +232,11 @@ Return a JSON object with EXACTLY this structure:
 }}
 
 RULES FOR RESPONSE_TYPE:
-1. "full_report" — the default. Use whenever you provide report text in report_text. You should almost always provide a finalized report, so this is the usual response_type.
-2. "advisory" — use ONLY when the trainee asks a pure knowledge question completely unrelated to their draft (e.g. "what is the anatomy of the circle of Willis?") where producing report text would not make sense. report_text must be empty string.
+1. "full_report" — use when you provide complete report text in report_text. Use this when the trainee explicitly asks to "finalize", "rewrite", or "redo" their report.
+2. "advisory" — use for focused answers without regenerating the full report. report_text must be empty string. Use this when:
+   a. The trainee asks a knowledge question unrelated to their draft.
+   b. REPORT STATUS is ALREADY_FINALIZED and the trainee asks about differentials, recommendations, missing findings, impressions, or other follow-up questions (NOT "finalize"/"rewrite"/"redo").
+   c. REPORT STATUS is NOT_YET_FINALIZED and the trainee asks about differentials, recommendations, or missing findings without explicitly requesting finalization.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -267,7 +271,10 @@ RULES FOR CORRECTIONS:
 RULES FOR ANSWER AND REPORT_TEXT:
 1. "answer" is for advisory/explanatory text ONLY. Never put complete report sections in answer.
 2. "report_text" is for complete PACS-ready report text ONLY. Put full impressions, findings rewrites, or finalized reports here.
-3. ALWAYS produce a finalized report in report_text — whether the trainee asks to "finalize", asks a question, or both. The finalized report should incorporate any relevant points from the trainee's question.
+3. When to produce report_text:
+   a. If REPORT STATUS is ALREADY_FINALIZED: Only produce report_text when the trainee EXPLICITLY asks to "finalize", "rewrite", or "redo". For all other questions (differentials, recommendations, "what am I missing?", impressions), provide your answer in the answer field only — do NOT regenerate the report.
+   b. If REPORT STATUS is NOT_YET_FINALIZED: Only produce report_text when the trainee EXPLICITLY asks to "finalize", "rewrite", or "redo". For other questions, provide your focused answer and end with: "When you're ready, click 'Finalize this report' to get your complete PACS-ready report."
+   c. When you DO produce report_text, it should incorporate any relevant points from the trainee's question.
 4. If the trainee asks a specific question (e.g. "what am I missing?", "is the laterality correct?", "should I mention X?"), ALSO answer it in the answer field. This applies whether the question comes alone or alongside a "finalize" / "write impression" / "add recommendation" command.
 5. If the trainee ONLY asks for report text with no question (e.g. just "finalize this report"), report_text has the report. answer can be empty UNLESS you made substantive changes (see rule 9).
 6. Write report_text as a consultant would dictate at a workstation. No hedging beyond standard conventions. Plain text only — no markdown, no HTML, no bullet lists.
@@ -1188,7 +1195,8 @@ def quick_review(report_text):
 # ==================== UNIFIED AI ASSIST (Layers 1+2+3) ====================
 
 def unified_ai_assist(report_text, question, clinical_question='', modality='',
-                      body_section='', external_context=None, resources=None):
+                      body_section='', external_context=None, resources=None,
+                      has_finalized_report=False):
     """
     Unified AI assistant: corrections + direct answer + clinical insights.
     Single API call returns all three layers.
@@ -1225,6 +1233,19 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
                 f"{label}: \"{ctx_title}\". Factor this into your corrections, answer, and insights.\n"
             )
 
+    # Build report status section for advisory-only follow-up mode
+    if has_finalized_report:
+        report_status_section = (
+            "\nREPORT STATUS: ALREADY_FINALIZED — The trainee has already received a finalized "
+            "report. For follow-up questions (differentials, recommendations, missing findings, "
+            "impressions), provide ONLY your advisory answer and insights. Do NOT regenerate the "
+            "full report unless they explicitly ask to 'finalize', 'rewrite', or 'redo' the report."
+        )
+    else:
+        report_status_section = (
+            "\nREPORT STATUS: NOT_YET_FINALIZED — The trainee has not yet received a finalized report."
+        )
+
     user_prompt = UNIFIED_ASSIST_PROMPT.format(
         report_text=report_text or '(empty report — user may be starting fresh or about to paste their report)',
         question=question,
@@ -1232,6 +1253,7 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         modality=modality or 'Not specified',
         body_section=body_section or 'Not specified',
         resource_section=resource_section,
+        report_status_section=report_status_section,
     )
 
     effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")

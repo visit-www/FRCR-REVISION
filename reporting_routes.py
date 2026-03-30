@@ -2682,6 +2682,7 @@ def smart_reporter_ai_assist():
     modality = (data.get('modality') or '')
     body_section = (data.get('body_section') or '')
     external_context = data.get('external_context')
+    has_finalized_report = bool(data.get('has_finalized_report', False))
 
     try:
         from ai_smart_reporter import unified_ai_assist, SmartReporterError
@@ -2692,6 +2693,7 @@ def smart_reporter_ai_assist():
             modality=modality,
             body_section=body_section,
             external_context=external_context,
+            has_finalized_report=has_finalized_report,
         )
     except Exception as exc:
         logger.error(f"Smart Reporter AI assist failed: {exc}")
