@@ -738,25 +738,8 @@
                             <div class="card-body p-3">
                                 <!-- Loading spinner -->
                                 <div id="askClaudeLoadingInPanel" class="d-none"></div>
-                                <!-- Report Action Response (MDT, SBA, Viva, Email) -->
-                                <div id="reportActionResponse" class="d-none mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="fw-semibold" id="reportActionLabel">
-                                            <i class="fas fa-users me-1"></i>MDT Summary
-                                        </small>
-                                    </div>
-                                    <div id="reportActionCard" class="p-2 rounded" style="border-left: 3px solid #e96304; background: #fff8f0;">
-                                        <div id="reportActionContent" style="font-size: 0.85rem; line-height: 1.5;"></div>
-                                        <div class="d-flex flex-wrap gap-2 mt-2">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyReportAction()">
-                                                <i class="fas fa-copy me-1"></i>Copy
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissReportAction()">
-                                                Dismiss
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- Report Action Responses (MDT, SBA, Viva, Email) — stacked history -->
+                                <div id="reportActionResponse" class="d-none mb-3"></div>
                             </div>
                         </div>
 
@@ -2341,6 +2324,7 @@ document.addEventListener('DOMContentLoaded', function() {
         state.aiAssistCorrections = [];
         state.aiAssistFillIns = [];
         state.aiAssistInsights = {};
+        state.reportActionHistory = [];
         state.externalContext = null;
 
         // Clear PII dismissals for new session
@@ -2354,7 +2338,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('aiAssistFillInsSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
-        document.getElementById('reportActionResponse').classList.add('d-none');
+        destroyReportActionEditor();
+        var raContainer = document.getElementById('reportActionResponse');
+        raContainer.innerHTML = '';
+        raContainer.classList.add('d-none');
         hideAllAdaptivePanels();
         updateActionButtonState();
     }
@@ -3148,7 +3135,6 @@ document.addEventListener('DOMContentLoaded', function() {
         var _progBar = _loadEl.querySelector('.ai-loading-progress');
         if (_progBar) { _progBar.style.animation = 'none'; _progBar.offsetHeight; _progBar.style.animation = ''; }
         _loadEl.classList.remove('d-none');
-        document.getElementById('reportActionResponse').classList.add('d-none');
 
         const payload = {
             action: action,
@@ -3194,35 +3180,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
-            // Render into the report action card
-            const container = document.getElementById('reportActionResponse');
-            const label = document.getElementById('reportActionLabel');
-            const card = document.getElementById('reportActionCard');
-            const content = document.getElementById('reportActionContent');
-
-            label.innerHTML = '<i class="fas ' + meta.icon + ' me-1"></i>' + meta.label;
-            label.style.color = meta.border;
-            card.style.borderLeft = '3px solid ' + meta.border;
-            card.style.background = meta.bg;
-            // Destroy any existing TinyMCE instance before re-rendering
+            // Destroy TinyMCE on previous latest card before adding new one
             destroyReportActionEditor();
-            content.innerHTML = data.html || '<p>No content generated.</p>';
-            // Append learning capture note for SBA/Viva
+
+            // Build HTML content for this action
+            var actionHtml = data.html || '<p>No content generated.</p>';
             if (action === 'sba' || action === 'viva') {
                 var learnLink = action === 'sba' ? '/learn/sba' : '/learn/viva';
-                content.insertAdjacentHTML('beforeend',
-                    '<p style="font-size:0.62rem;color:#999;margin-top:0.5rem;margin-bottom:0;">' +
+                actionHtml += '<p style="font-size:0.62rem;color:#999;margin-top:0.5rem;margin-bottom:0;">' +
                     '<i class="fas fa-database me-1"></i>Questions &amp; answers saved to the ' +
-                    '<a href="' + learnLink + '" style="color:#999;text-decoration:underline;">learning database</a>.</p>');
+                    '<a href="' + learnLink + '" style="color:#999;text-decoration:underline;">learning database</a>.</p>';
             }
-            container.classList.remove('d-none');
-            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-            // Init TinyMCE for editable actions (email/MDT/patient letter)
-            var editableActions = ['email_colleague', 'email_patient', 'mdt'];
-            if (editableActions.indexOf(action) !== -1) {
-                initReportActionEditor();
-            }
+            // Push to history (newest first)
+            state.reportActionHistory.unshift({
+                action: action,
+                label: meta.label,
+                icon: meta.icon,
+                border: meta.border,
+                bg: meta.bg,
+                html: actionHtml,
+                editable: ['email_colleague', 'email_patient', 'mdt'].indexOf(action) !== -1,
+                timestamp: new Date(),
+            });
+
+            renderReportActionHistory();
+
+            var container = document.getElementById('reportActionResponse');
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
             // Fetch internal DB resources (only for SBA/Viva — skip for emails and MDT)
             var skipLinkedResources = ['email_colleague', 'email_patient', 'mdt'];
@@ -3245,11 +3230,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                     html += '<li><a href="' + escapeHtmlSafe(r.url) + '" target="_blank">' + escapeHtmlSafe(r.title) + '</a></li>';
                                 });
                                 html += '</ul></div>';
-                                const furtherReading = content.querySelector('.action-further-reading');
-                                if (furtherReading) {
-                                    furtherReading.insertAdjacentHTML('beforebegin', html);
-                                } else {
-                                    content.insertAdjacentHTML('beforeend', html);
+                                // Target the latest card's content div
+                                var latestContent = document.getElementById('reportActionContent_0');
+                                if (latestContent) {
+                                    var furtherReading = latestContent.querySelector('.action-further-reading');
+                                    if (furtherReading) {
+                                        furtherReading.insertAdjacentHTML('beforebegin', html);
+                                    } else {
+                                        latestContent.insertAdjacentHTML('beforeend', html);
+                                    }
+                                    // Also save to history so it persists on re-render
+                                    if (state.reportActionHistory[0]) {
+                                        state.reportActionHistory[0].html = latestContent.innerHTML;
+                                    }
                                 }
                             }
                         }).catch(() => {});
@@ -3271,11 +3264,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ---- TinyMCE helpers for editable report actions ----
     var _reportActionEditorReady = false;
+    var _reportActionEditorId = null;
 
-    function initReportActionEditor() {
+    function initReportActionEditor(elId) {
         if (_reportActionEditorReady) return;
+        _reportActionEditorId = elId || 'reportActionContent_0';
         tinymce.init({
-            selector: '#reportActionContent',
+            selector: '#' + _reportActionEditorId,
             inline: true,
             menubar: false,
             toolbar: 'undo redo | bold italic underline strikethrough',
@@ -3292,28 +3287,107 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function destroyReportActionEditor() {
-        var editor = tinymce.get('reportActionContent');
-        if (editor) {
-            editor.destroy();
-            _reportActionEditorReady = false;
+        if (_reportActionEditorId) {
+            var editor = tinymce.get(_reportActionEditorId);
+            if (editor) {
+                // Save content back to history before destroying
+                var idx = parseInt((_reportActionEditorId || '').split('_').pop(), 10);
+                if (!isNaN(idx) && state.reportActionHistory[idx]) {
+                    state.reportActionHistory[idx].html = editor.getContent();
+                }
+                editor.destroy();
+            }
+        }
+        _reportActionEditorReady = false;
+        _reportActionEditorId = null;
+    }
+
+    // ---- Report Action History Rendering ----
+
+    function renderReportActionHistory() {
+        var container = document.getElementById('reportActionResponse');
+        if (state.reportActionHistory.length === 0) {
+            container.innerHTML = '';
+            container.classList.add('d-none');
+            return;
+        }
+        container.classList.remove('d-none');
+
+        var html = '';
+        state.reportActionHistory.forEach(function(item, i) {
+            var isLatest = (i === 0);
+            var collapsed = !isLatest;
+            var contentId = 'reportActionContent_' + i;
+            var bodyId = 'reportActionBody_' + i;
+
+            html += '<div class="mb-2 rounded" style="border-left: 3px solid ' + item.border + '; background: ' + item.bg + ';">';
+
+            // Header — always visible, clickable for collapsed items
+            html += '<div class="d-flex justify-content-between align-items-center p-2" style="cursor: pointer;" onclick="toggleReportAction(' + i + ')">';
+            html += '<small class="fw-semibold" style="color: ' + item.border + ';">';
+            html += '<i class="fas ' + item.icon + ' me-1"></i>' + escapeHtml(item.label);
+            if (collapsed) {
+                html += ' <span class="text-muted" style="font-size: 0.65rem; font-weight: 400;">(click to expand)</span>';
+            }
+            html += '</small>';
+            html += '<div class="d-flex align-items-center gap-1">';
+            if (!isLatest) {
+                html += '<i class="fas fa-chevron-' + (collapsed ? 'down' : 'up') + ' text-muted" id="reportActionChevron_' + i + '" style="font-size: 0.65rem;"></i>';
+            }
+            html += '</div>';
+            html += '</div>';
+
+            // Body — expanded for latest, collapsed for older
+            html += '<div id="' + bodyId + '" class="px-2 pb-2' + (collapsed ? ' d-none' : '') + '">';
+            html += '<div id="' + contentId + '" style="font-size: 0.85rem; line-height: 1.5;">' + item.html + '</div>';
+            html += '<div class="d-flex flex-wrap gap-2 mt-2">';
+            html += '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyReportAction(' + i + ')"><i class="fas fa-copy me-1"></i>Copy</button>';
+            html += '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="removeReportAction(' + i + ')"><i class="fas fa-times me-1"></i>Remove</button>';
+            html += '</div>';
+            html += '</div>';
+
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+
+        // Init TinyMCE on the latest card if it's editable
+        if (state.reportActionHistory[0] && state.reportActionHistory[0].editable) {
+            initReportActionEditor('reportActionContent_0');
         }
     }
 
-    window.copyReportAction = function() {
-        // Get content from TinyMCE if active, otherwise from DOM
-        var editor = tinymce.get('reportActionContent');
+    window.toggleReportAction = function(index) {
+        var bodyId = 'reportActionBody_' + index;
+        var body = document.getElementById(bodyId);
+        var chevron = document.getElementById('reportActionChevron_' + index);
+        if (!body) return;
+        if (body.classList.contains('d-none')) {
+            body.classList.remove('d-none');
+            if (chevron) { chevron.classList.replace('fa-chevron-down', 'fa-chevron-up'); }
+        } else {
+            body.classList.add('d-none');
+            if (chevron) { chevron.classList.replace('fa-chevron-up', 'fa-chevron-down'); }
+        }
+    };
+
+    window.copyReportAction = function(index) {
+        if (index === undefined) index = 0;
+        var contentId = 'reportActionContent_' + index;
+        // Get content from TinyMCE if active on this element, otherwise from DOM
+        var editor = tinymce.get(contentId);
         var text = '';
-        if (editor && _reportActionEditorReady) {
+        if (editor && _reportActionEditorReady && _reportActionEditorId === contentId) {
             text = editor.getContent({ format: 'text' });
         } else {
-            var content = document.getElementById('reportActionContent');
+            var content = document.getElementById(contentId);
             if (!content) return;
             text = content.innerText || content.textContent;
         }
         navigator.clipboard.writeText(text).then(function() {
             showToast('Copied to clipboard.', 'success');
         }).catch(function() {
-            var content = document.getElementById('reportActionContent');
+            var content = document.getElementById(contentId);
             if (content) {
                 var range = document.createRange();
                 range.selectNodeContents(content);
@@ -3325,9 +3399,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
+    window.removeReportAction = function(index) {
+        // Save TinyMCE content if removing the one being edited
+        if (_reportActionEditorId === 'reportActionContent_' + index) {
+            destroyReportActionEditor();
+        }
+        state.reportActionHistory.splice(index, 1);
+        destroyReportActionEditor();
+        renderReportActionHistory();
+    };
+
     window.dismissReportAction = function() {
         destroyReportActionEditor();
-        document.getElementById('reportActionResponse').classList.add('d-none');
+        state.reportActionHistory = [];
+        var container = document.getElementById('reportActionResponse');
+        container.innerHTML = '';
+        container.classList.add('d-none');
     };
 
     // Helper: ensure the output box is visible and editable.
