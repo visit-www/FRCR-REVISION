@@ -12,7 +12,7 @@
     'Reporting Algorithms',
     'Interactive decision-tree algorithms for systematic radiology reporting.',
     'https://www.radinsights.xyz/reporting-algorithms',
-    grouped.values()|sum(attribute='__len__', start=0) if grouped else 0
+    grouped.values()|map('length')|sum if grouped else 0
 ) }}
 {% endblock %}
 
