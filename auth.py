@@ -30,7 +30,7 @@ EMAIL_SIGNATURE = """
     <tbody>
         <tr>
             <td style="padding-right:10px; vertical-align:middle">
-                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" width="110" style="display:block">
+                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/q_auto,w_200/v1769503548/frcr-rev-logo-transp_o2hmrq.png" width="110" style="display:block">
             </td>
             <td style="vertical-align:middle">
                 <div style="font-size:16px; font-weight:700; color:rgb(17, 24, 39)">
