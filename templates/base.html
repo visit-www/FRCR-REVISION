@@ -657,6 +657,21 @@
 
     {% block scripts %}{% endblock %}
 
+    <!-- Set --navbar-height CSS variable for sticky elements below the navbar -->
+    <script>
+    (function() {
+        var nav = document.querySelector('.navbar.sticky-top');
+        if (nav) {
+            var h = nav.offsetHeight;
+            document.documentElement.style.setProperty('--navbar-height', h + 'px');
+            // Update on resize (navbar height can change on mobile toggle)
+            window.addEventListener('resize', function() {
+                document.documentElement.style.setProperty('--navbar-height', nav.offsetHeight + 'px');
+            });
+        }
+    })();
+    </script>
+
     <!-- Cookie Consent Banner (PECR/UK GDPR compliance) -->
     <div id="cookieConsentBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999; background:#2c3e50; color:#fff; padding:1rem 1.5rem; font-size:0.85rem; box-shadow:0 -2px 10px rgba(0,0,0,0.2);">
         <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">

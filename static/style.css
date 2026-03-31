@@ -5954,7 +5954,7 @@ body {
 /* ==================== Smart Reporter Sticky Toolbar ==================== */
 .sr-editor-toolbar {
     position: sticky;
-    top: 56px;
+    top: var(--navbar-height, 110px);
     z-index: 100;
     background: #fff;
     border: 1px solid #e9ecef;
@@ -6214,10 +6214,10 @@ body {
 }
 .sr-split-mode #editorLeftCol,
 .sr-split-mode #editorRightCol {
-    max-height: calc(100vh - 160px);
+    max-height: calc(100vh - var(--navbar-height, 110px) - 60px);
     overflow-y: auto;
     position: sticky;
-    top: 80px;
+    top: calc(var(--navbar-height, 110px) + 10px);
 }
 .sr-split-mode #outputSection {
     display: block !important;
