@@ -6,7 +6,7 @@
 
 {% block og_title %}{{ case.diagnosis }} - RadInsights{% endblock %}
 {% block og_description %}Radiology case: {{ case.diagnosis }}. {% if case.body_part %}{{ case.body_part.value }}.{% endif %} View images, discussion, and teaching points on RadInsights.{% endblock %}
-{% block og_image %}{% if images and images[0].image_thumbnail_url %}{{ images[0].image_thumbnail_url }}{% else %}https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-512x512_myzqfe.png{% endif %}{% endblock %}
+{% block og_image %}{% if images and images[0].image_thumbnail_url %}{{ images[0].image_thumbnail_url }}{% else %}https://res.cloudinary.com/dx7b7chvn/image/upload/v1774977837/og-im-radinsights_q5slrb.png{% endif %}{% endblock %}
 
 {% block extra_schema %}
 {{ medical_case(case, [images[0].image_url] if images and images[0].image_url else [], 'https://www.radinsights.xyz/case-library/' ~ case.id) }}

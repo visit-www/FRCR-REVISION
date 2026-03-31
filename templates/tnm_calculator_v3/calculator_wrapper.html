@@ -123,11 +123,39 @@
     .calculator-integrated-wrapper p {
         text-align: left !important;
     }
+    /* Related calculator cards */
+    .col-6 > a.card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important; }
 </style>
 
 <div class="calculator-integrated-wrapper">
     {# Render just the body content, not the full HTML document #}
     {{ calculator_body | safe }}
 </div>
+
+{% if related_calculators %}
+<div class="container-fluid px-3 mt-4 mb-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <h5 class="mb-3"><i class="fas fa-calculator me-2" style="color: var(--brand-neutral);"></i>Related Calculators</h5>
+            <div class="row g-2">
+                {% for calc in related_calculators %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a href="{{ url_for('tnm_calculator.calculator', disease=calc.slug) }}"
+                       class="card h-100 text-decoration-none border-0 shadow-sm"
+                       style="transition: transform 0.15s;">
+                        <div class="card-body py-2 px-3">
+                            <div class="fw-semibold text-dark" style="font-size: 0.85rem;">{{ calc.name }}</div>
+                            {% if calc.description %}
+                            <small class="text-muted" style="font-size: 0.72rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ calc.description }}</small>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 {% endif %}

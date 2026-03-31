@@ -313,12 +313,29 @@ def calculator(disease: str):
     # Extract styles and body content from full HTML (removes DOCTYPE, html, head, body tags)
     content = extract_calculator_content(calculator_html)
 
+    # Get related calculators from same body section
+    related_calcs = []
+    try:
+        from models import TNMCalculatorContent
+        if db_calc and db_calc.body_section:
+            peers = TNMCalculatorContent.query.filter_by(
+                body_section=db_calc.body_section,
+                is_available=True
+            ).all()
+            related_calcs = [
+                {'slug': c.slug, 'name': c.cancer_name, 'description': c.description}
+                for c in peers if c.slug != disease
+            ]
+    except Exception as e:
+        logger.warning(f"[TNM Calculator] Failed to load related calcs: {e}")
+
     return render_template(
         'tnm_calculator_v3/calculator_wrapper.html',
         disease_name=disease_name,
         disease_slug=disease,
         calculator_styles=content['styles'],
         calculator_body=content['body'],
+        related_calculators=related_calcs,
         embed_mode=False
     )
 
