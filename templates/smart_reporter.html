@@ -3806,10 +3806,11 @@ document.addEventListener('DOMContentLoaded', function() {
             state.inputText = editor.value;
             livePIIScan();
         } else if (action === 'dismiss') {
-            PIIGuard.dismiss(match);
-            // Log dismissal to audit trail
-            _logPIIAction('dismiss', [match.type], 1);
-            livePIIScan();
+            _showPIIDismissConfirm(function() {
+                PIIGuard.dismiss(match);
+                _logPIIAction('dismiss', [match.type], 1);
+                livePIIScan();
+            });
         }
     };
 
@@ -3819,10 +3820,67 @@ document.addEventListener('DOMContentLoaded', function() {
         for (var i = 0; i < _activePIIMatches.length; i++) {
             if (_activePIIMatches[i].type === type) count++;
         }
-        PIIGuard.dismissType(type, _activePIIMatches);
-        _logPIIAction('batch_dismiss', [type], count);
-        livePIIScan();
+        _showPIIDismissConfirm(function() {
+            PIIGuard.dismissType(type, _activePIIMatches);
+            _logPIIAction('batch_dismiss', [type], count);
+            livePIIScan();
+        });
     };
+
+    // PII Dismiss confirmation with HIPAA acknowledgement checkbox
+    function _showPIIDismissConfirm(onConfirm) {
+        var existing = document.getElementById('piiDismissConfirmOverlay');
+        if (existing) existing.remove();
+
+        var overlay = document.createElement('div');
+        overlay.id = 'piiDismissConfirmOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+
+        var dialog = document.createElement('div');
+        dialog.style.cssText = 'background:#fff;border-radius:8px;padding:1.25rem;max-width:420px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2);';
+        dialog.innerHTML =
+            '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">' +
+                '<i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:1.1rem;"></i>' +
+                '<strong style="font-size:0.95rem;">Confirm Dismissal</strong>' +
+            '</div>' +
+            '<p style="font-size:0.82rem;color:#444;margin-bottom:0.75rem;line-height:1.5;">' +
+                'Dismissing a PII flag means this text will be sent to external AI services. ' +
+                'Under HIPAA guidelines, you must ensure the flagged text does <strong>not</strong> contain protected health information (PHI).' +
+            '</p>' +
+            '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">' +
+                '<label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;font-size:0.8rem;color:#664d03;margin:0;">' +
+                    '<input type="checkbox" id="piiDismissCheckbox" style="margin-top:3px;flex-shrink:0;">' +
+                    '<span>I confirm this is <strong>not</strong> patient-identifiable information and I authorise this dismissal. This action will be logged.</span>' +
+                '</label>' +
+            '</div>' +
+            '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
+                '<button id="piiDismissCancelBtn" class="btn btn-sm btn-outline-secondary">Cancel</button>' +
+                '<button id="piiDismissConfirmBtn" class="btn btn-sm" style="background:#dc3545;color:#fff;opacity:0.5;pointer-events:none;" disabled>Dismiss</button>' +
+            '</div>';
+
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        var checkbox = document.getElementById('piiDismissCheckbox');
+        var confirmBtn = document.getElementById('piiDismissConfirmBtn');
+        var cancelBtn = document.getElementById('piiDismissCancelBtn');
+
+        checkbox.addEventListener('change', function() {
+            confirmBtn.disabled = !this.checked;
+            confirmBtn.style.opacity = this.checked ? '1' : '0.5';
+            confirmBtn.style.pointerEvents = this.checked ? 'auto' : 'none';
+        });
+
+        cancelBtn.addEventListener('click', function() { overlay.remove(); });
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+        confirmBtn.addEventListener('click', function() {
+            overlay.remove();
+            onConfirm();
+        });
+
+        setTimeout(function() { checkbox.focus(); }, 100);
+    }
 
     // Redact all active PII matches at once
     window.piiRedactAll = function() {
