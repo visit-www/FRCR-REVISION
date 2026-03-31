@@ -6056,7 +6056,9 @@ body {
     border-radius: 0.375rem;
     padding: 0.5rem 0.75rem;
     margin-bottom: 0.75rem;
-    position: relative;
+    position: sticky;
+    top: calc(var(--navbar-height, 110px) + 46px);
+    z-index: 99;
     overflow: hidden;
 }
 .ai-loading-pulse {
