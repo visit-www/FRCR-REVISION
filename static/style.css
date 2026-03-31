@@ -40,33 +40,38 @@
     background: transparent;
 }
 .mobile-tool-nav .list-group-item {
-    background: transparent;
-    color: rgba(255,255,255,0.85);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255,255,255,0.9);
     font-size: 0.95rem;
     font-weight: 500;
-    border-radius: 6px !important;
-    margin-bottom: 1px;
+    border-radius: 8px !important;
+    margin-bottom: 3px;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 .mobile-tool-nav .list-group-item:hover,
 .mobile-tool-nav .list-group-item:focus {
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-}
-.mobile-tool-nav .list-group-item.active {
     background: rgba(255,255,255,0.15);
     color: #fff;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+.mobile-tool-nav .list-group-item.active {
+    background: rgba(255,255,255,0.18);
+    color: #fff;
     font-weight: 600;
+    border-color: rgba(255, 255, 255, 0.2);
 }
 /* Mobile sub-items (indented) */
 .mobile-sub-item {
     padding-left: 36px !important;
     font-size: 0.9rem;
-    background: transparent;
-    color: rgba(255,255,255,0.75);
+    background: rgba(255, 255, 255, 0.04) !important;
+    color: rgba(255,255,255,0.8);
+    border-color: transparent !important;
 }
 .mobile-sub-item:hover,
 .mobile-sub-item:focus {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.12) !important;
     color: #fff;
 }
 .mobile-sub-item.active {
@@ -472,13 +477,17 @@ a:hover {
 /* ==================== MOBILE NAVBAR ENHANCEMENT ==================== */
 /* Enhance mobile navbar with breadcrumb navigation */
 @media (max-width: 991px) {
-    /* Hide default navbar links on mobile, show breadcrumbs instead */
+    /* Mobile collapsed navbar — semi-transparent dark panel for readability */
     .navbar-collapse {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 0.75rem;
+        padding: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 0 0 12px 12px;
+        max-height: 80vh;
+        overflow-y: auto;
     }
-    
+
     /* Make navbar items more touch-friendly */
     .navbar-nav .nav-link {
         padding: 0.75rem 1rem;
@@ -486,6 +495,44 @@ a:hover {
         min-height: 44px;
         display: flex;
         align-items: center;
+        border-radius: 8px;
+    }
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link:focus {
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* User dropdown menu — dark theme inside mobile navbar */
+    .navbar-nav .dropdown-menu {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        margin-top: 0.25rem;
+    }
+
+    /* Search results inside mobile navbar — ensure visibility */
+    .navbar-collapse .global-search-results {
+        position: relative;
+        width: 100%;
+        margin-top: 4px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Mobile search input — better contrast */
+    #mobileNavSearchInput {
+        background: rgba(255, 255, 255, 0.2) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        color: #fff !important;
+    }
+    #mobileNavSearchInput::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+    }
+    #mobileNavSearchInput:focus {
+        background: rgba(255, 255, 255, 0.28) !important;
+        border-color: rgba(255, 255, 255, 0.5) !important;
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
     }
     
     /* Mobile breadcrumb navigation in navbar */
