@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Analytics 4 -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZSSC3PLZFN"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-ZSSC3PLZFN');
+    </script>
     <title>{% block title %}RadInsights — Your Radiology Companion{% endblock %}</title>
     <meta name="description" content="{% block meta_description %}RadInsights — your trusted radiology companion. AI reporting from shorthand, MDT summaries, patient and colleague emails, incident reports, 39 TNM calculators, clinical tools, on-call protocols, and continuous learning for radiologists and trainees.{% endblock %}">
 
@@ -677,7 +685,8 @@
         <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div style="flex:1; min-width:200px;">
                 <i class="fas fa-cookie-bite me-1"></i>
-                This site uses essential cookies for authentication and session management. No tracking or analytics cookies are used.
+                This site uses essential cookies for authentication and session management. We also use Google Analytics to understand how the site is used.
+                By continuing, you consent to our use of cookies.
                 <a href="/privacy" style="color:#a8d5ba; text-decoration:underline;" target="_blank">Privacy Policy</a>
             </div>
             <button onclick="acceptCookies()" class="btn btn-sm" style="background:#e96304; color:#fff; white-space:nowrap;">
@@ -687,7 +696,7 @@
     </div>
     <script>
     (function(){
-        var CONSENT_VERSION = 'v1';
+        var CONSENT_VERSION = 'v2';
         try {
             var stored = JSON.parse(localStorage.getItem('cookieConsent'));
             if (!stored || stored.version !== CONSENT_VERSION) {
