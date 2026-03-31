@@ -2440,6 +2440,14 @@ def _do_backfill_intelligence():
                     processed_at=datetime.utcnow(),
                 )
                 db.session.add(ci)
+
+                # Write-back: populate source model metadata from CI results
+                if ctype == 'learning_question' and result.get('search_tags'):
+                    if not item.tags:
+                        item.tags = result['search_tags']
+                    if not item.description and result.get('summary'):
+                        item.description = result['summary'][:300]
+
                 db.session.commit()
                 processed_count += 1
             except Exception as exc:
