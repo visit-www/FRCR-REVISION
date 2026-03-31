@@ -533,6 +533,12 @@
                                     <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Working Draft</small>
                                     <div class="d-flex align-items-center gap-2">
                                         <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-robot me-1"></i>RadInsight Intelligence reads this text</small>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 d-none" onclick="undoDraftInsert()" id="btnUndoDraft" title="Undo (Ctrl+Z)" style="font-size: 0.7rem;">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 d-none" onclick="redoDraftInsert()" id="btnRedoDraft" title="Redo (Ctrl+Shift+Z)" style="font-size: 0.7rem;">
+                                            <i class="fas fa-redo"></i>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="copyDraftText()" id="btnCopyDraft" title="Copy draft to clipboard" style="font-size: 0.7rem;">
                                             <i class="fas fa-copy me-1"></i>Copy
                                         </button>
@@ -608,8 +614,11 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="pacs-output-title"><i class="fas fa-file-medical-alt me-1"></i>PACS-Ready Report</span>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-outline-warning d-none" onclick="undoPacsInsert()" id="btnUndoPacs" title="Undo last insert (Ctrl+Z)">
-                                                <i class="fas fa-undo me-1"></i>Undo
+                                            <button class="btn btn-sm btn-outline-warning d-none" onclick="undoPacsInsert()" id="btnUndoPacs" title="Undo (Ctrl+Z)">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning d-none" onclick="redoPacsInsert()" id="btnRedoPacs" title="Redo (Ctrl+Shift+Z)">
+                                                <i class="fas fa-redo"></i>
                                             </button>
                                             <button class="btn btn-sm pacs-btn-copy" onclick="copyFinalReport()" id="btnCopyReport">
                                                 <i class="fas fa-copy me-1"></i>Copy
@@ -2257,6 +2266,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.insertDraftText = function(text) {
         var input = document.getElementById('editorInput');
         if (!input) return;
+        _saveDraftUndo(input);
         var current = input.value.trimEnd();
         // Add on a new line if there's existing content
         input.value = current ? current + '\n' + text : text;
@@ -3114,6 +3124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!answer.trim()) return;
 
         const input = document.getElementById('editorInput');
+        _saveDraftUndo(input);
         const current = input.value.trim();
         input.value = current ? current + '\n\n' + answer : answer;
         state.inputText = input.value;
@@ -3159,6 +3170,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!reportText || !reportText.trim()) return;
         // Update the working draft — this is what RadInsight Intelligence reads
         const input = document.getElementById('editorInput');
+        _saveDraftUndo(input);
         input.value = reportText;
         state.inputText = reportText;
         autoResizeTextarea(input);
@@ -3176,27 +3188,79 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Draft and PACS report updated with finalized version.', 'success');
     };
 
-    // Undo stack for PACS output box (programmatic replacements only)
-    var _pacsUndoStack = [];
+    // ==================== UNDO/REDO SYSTEM ====================
+    // Generic undo/redo for programmatic changes (insert/replace operations).
+    // Normal typing uses browser's native undo; this handles JS-driven replacements.
+    var _history = {
+        pacs:  { undo: [], redo: [] },
+        draft: { undo: [], redo: [] }
+    };
 
-    function _savePacsUndo(output) {
-        _pacsUndoStack.push(output.value);
-        var btn = document.getElementById('btnUndoPacs');
-        if (btn) btn.classList.remove('d-none');
+    function _saveUndo(which, el) {
+        _history[which].undo.push(el.value);
+        _history[which].redo = []; // clear redo on new action
+        _updateUndoRedoBtns(which);
+    }
+
+    function _updateUndoRedoBtns(which) {
+        var prefix = which === 'pacs' ? 'Pacs' : 'Draft';
+        var undoBtn = document.getElementById('btnUndo' + prefix);
+        var redoBtn = document.getElementById('btnRedo' + prefix);
+        if (undoBtn) undoBtn.classList.toggle('d-none', !_history[which].undo.length);
+        if (redoBtn) redoBtn.classList.toggle('d-none', !_history[which].redo.length);
     }
 
     window.undoPacsInsert = function() {
-        if (!_pacsUndoStack.length) return;
+        var h = _history.pacs;
+        if (!h.undo.length) return;
         var output = document.getElementById('editorOutput');
-        output.value = _pacsUndoStack.pop();
+        h.redo.push(output.value);
+        output.value = h.undo.pop();
         state.outputText = output.value;
         autoResizeTextarea(output);
+        _updateUndoRedoBtns('pacs');
         showToast('PACS report restored.', 'info');
-        if (!_pacsUndoStack.length) {
-            var btn = document.getElementById('btnUndoPacs');
-            if (btn) btn.classList.add('d-none');
-        }
     };
+
+    window.redoPacsInsert = function() {
+        var h = _history.pacs;
+        if (!h.redo.length) return;
+        var output = document.getElementById('editorOutput');
+        h.undo.push(output.value);
+        output.value = h.redo.pop();
+        state.outputText = output.value;
+        autoResizeTextarea(output);
+        _updateUndoRedoBtns('pacs');
+        showToast('PACS report re-applied.', 'info');
+    };
+
+    window.undoDraftInsert = function() {
+        var h = _history.draft;
+        if (!h.undo.length) return;
+        var input = document.getElementById('editorInput');
+        h.redo.push(input.value);
+        input.value = h.undo.pop();
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+        _updateUndoRedoBtns('draft');
+        showToast('Draft restored.', 'info');
+    };
+
+    window.redoDraftInsert = function() {
+        var h = _history.draft;
+        if (!h.redo.length) return;
+        var input = document.getElementById('editorInput');
+        h.undo.push(input.value);
+        input.value = h.redo.pop();
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+        _updateUndoRedoBtns('draft');
+        showToast('Draft re-applied.', 'info');
+    };
+
+    // Alias for backward compat
+    function _savePacsUndo(output) { _saveUndo('pacs', output); }
+    function _saveDraftUndo(input) { _saveUndo('draft', input); }
 
     window.insertReportText = function() {
         const reportText = state.aiAssistReportText;
@@ -3854,11 +3918,29 @@ document.addEventListener('DOMContentLoaded', function() {
         autoResizeTextarea(this);
     });
 
-    // Ctrl+Z in PACS output: use our undo stack first (for programmatic inserts)
+    // Ctrl+Z / Ctrl+Shift+Z in PACS output: use our undo/redo stacks for programmatic inserts
     document.getElementById('editorOutput').addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && _pacsUndoStack.length) {
-            e.preventDefault();
-            undoPacsInsert();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            if (e.shiftKey && _history.pacs.redo.length) {
+                e.preventDefault();
+                redoPacsInsert();
+            } else if (!e.shiftKey && _history.pacs.undo.length) {
+                e.preventDefault();
+                undoPacsInsert();
+            }
+        }
+    });
+
+    // Ctrl+Z / Ctrl+Shift+Z in Draft input: use our undo/redo stacks for programmatic inserts
+    document.getElementById('editorInput').addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            if (e.shiftKey && _history.draft.redo.length) {
+                e.preventDefault();
+                redoDraftInsert();
+            } else if (!e.shiftKey && _history.draft.undo.length) {
+                e.preventDefault();
+                undoDraftInsert();
+            }
         }
     });
 
