@@ -122,6 +122,57 @@ PII_PATTERNS = [
     ('PAN Card', re.compile(r'\b[A-Z]{5}\d{4}[A-Z]\b')),
 ]
 
+# ======================== MEDICAL ALLOWLIST ========================
+# Known medical/radiology terms that should NOT trigger PII warnings.
+# Suppresses false positives from vertebral levels, TNM staging, MRI sequences, etc.
+
+MEDICAL_ALLOWLIST = frozenset({
+    # Vertebral levels
+    'C1','C2','C3','C4','C5','C6','C7',
+    'T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12',
+    'L1','L2','L3','L4','L5','S1','S2','S3','S4','S5',
+    # Vertebral ranges
+    'C1-C2','C2-C3','C3-C4','C4-C5','C5-C6','C6-C7',
+    'T1-T2','T2-T3','T3-T4','T4-T5','T5-T6','T6-T7','T7-T8','T8-T9','T9-T10','T10-T11','T11-T12','T12-L1',
+    'L1-L2','L2-L3','L3-L4','L4-L5','L5-S1',
+    # TNM staging
+    'T0','T1A','T1B','T1C','T2A','T2B','T2C','T3A','T3B','T4A','T4B',
+    'N0','N1','N1A','N1B','N2','N2A','N2B','N3','N3A','N3B',
+    'M0','M1','M1A','M1B','M1C',
+    'STAGE I','STAGE IA','STAGE IB','STAGE II','STAGE IIA','STAGE IIB','STAGE IIC',
+    'STAGE III','STAGE IIIA','STAGE IIIB','STAGE IIIC','STAGE IV','STAGE IVA','STAGE IVB',
+    # Radiology / imaging
+    'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
+    'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
+    'T1W','T2W','T1 WEIGHTED','T2 WEIGHTED','T1 W','T2 W',
+    'DR','CR','US','XR',
+    # Measurements
+    'HU','SUV','ADC VALUE','SUV MAX','SUVMAX',
+    # Contrast
+    'IV CONTRAST',
+    # Grading
+    'G1','G2','G3','G4','GX',
+    # RADS scoring
+    'BI-RADS','BIRADS','PI-RADS','PIRADS','TI-RADS','TIRADS','LI-RADS','LIRADS',
+    # Anatomy abbreviations
+    'SA NODE','AV NODE','SI JOINT','SI JOINTS',
+})
+
+
+def _is_medical_term(match_text):
+    """Check if matched text is a known medical/radiology term (false positive suppression)."""
+    if not match_text:
+        return False
+    upper = match_text.strip().upper()
+    if upper in MEDICAL_ALLOWLIST:
+        return True
+    # Check hyphenated/slashed compound terms (e.g. C3-C4, L4/L5)
+    parts = re.split(r'[-/]', upper)
+    if len(parts) >= 2 and all(p.strip() in MEDICAL_ALLOWLIST for p in parts):
+        return True
+    return False
+
+
 # Keys in JSON payloads that are safe to skip
 SKIP_KEYS = frozenset({
     'password', 'token', 'csrf', 'username',
@@ -156,7 +207,8 @@ def check_pii(text):
     matches = []
     for pattern_type, regex in PII_PATTERNS:
         for match in regex.finditer(text):
-            matches.append((pattern_type, match.group()))
+            if not _is_medical_term(match.group()):
+                matches.append((pattern_type, match.group()))
     return matches
 
 

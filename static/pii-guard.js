@@ -6,6 +6,54 @@
 (function() {
     'use strict';
 
+    // ======================== MEDICAL ALLOWLIST ========================
+    // Known medical/radiology terms that should NOT trigger PII warnings.
+    // Suppresses false positives from vertebral levels, TNM staging, MRI sequences, etc.
+
+    const MEDICAL_ALLOWLIST = new Set([
+        // Vertebral levels
+        'C1','C2','C3','C4','C5','C6','C7',
+        'T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12',
+        'L1','L2','L3','L4','L5','S1','S2','S3','S4','S5',
+        // Vertebral ranges (hyphenated)
+        'C1-C2','C2-C3','C3-C4','C4-C5','C5-C6','C6-C7',
+        'T1-T2','T2-T3','T3-T4','T4-T5','T5-T6','T6-T7','T7-T8','T8-T9','T9-T10','T10-T11','T11-T12','T12-L1',
+        'L1-L2','L2-L3','L3-L4','L4-L5','L5-S1',
+        // TNM staging
+        'T0','T1A','T1B','T1C','T2A','T2B','T2C','T3A','T3B','T4A','T4B',
+        'N0','N1','N1A','N1B','N2','N2A','N2B','N3','N3A','N3B',
+        'M0','M1','M1A','M1B','M1C',
+        'STAGE I','STAGE IA','STAGE IB','STAGE II','STAGE IIA','STAGE IIB','STAGE IIC',
+        'STAGE III','STAGE IIIA','STAGE IIIB','STAGE IIIC','STAGE IV','STAGE IVA','STAGE IVB',
+        // Common radiology / imaging terms
+        'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
+        'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
+        'T1W','T2W','T1 WEIGHTED','T2 WEIGHTED','T1 W','T2 W',
+        'DR','CR','US','XR',
+        // Measurements & units used in radiology
+        'HU','SUV','ADC VALUE','SUV MAX','SUVMAX',
+        // Contrast phases
+        'IV CONTRAST',
+        // Grading
+        'G1','G2','G3','G4','GX',
+        // BIRADS / PIRADS / TIRADS / LIRADS
+        'BI-RADS','BIRADS','PI-RADS','PIRADS','TI-RADS','TIRADS','LI-RADS','LIRADS',
+        // Common anatomy abbreviations that look like IDs
+        'SA NODE','AV NODE','SI JOINT','SI JOINTS',
+    ]);
+
+    function _isMedicalTerm(matchText) {
+        if (!matchText) return false;
+        var upper = matchText.trim().toUpperCase();
+        if (MEDICAL_ALLOWLIST.has(upper)) return true;
+        // Check hyphenated/slashed compound terms (e.g. "C3-C4", "L4/L5")
+        var parts = upper.split(/[-\/]/);
+        if (parts.length >= 2 && parts.every(function(p) { return MEDICAL_ALLOWLIST.has(p.trim()); })) {
+            return true;
+        }
+        return false;
+    }
+
     // ======================== PII PATTERNS ========================
 
     // Common English words that must NOT be treated as parts of a person's name.
@@ -211,7 +259,9 @@
             }
         }
 
-        return { hasPII: matches.length > 0, matches: matches };
+        // Filter out known medical/radiology terms (false positive suppression)
+        var filtered = matches.filter(function(m) { return !_isMedicalTerm(m.match); });
+        return { hasPII: filtered.length > 0, matches: filtered };
     }
 
     function _dedupeMatches(matches) {
@@ -809,7 +859,9 @@
         isDismissed: isDismissed,
         filterDismissed: filterDismissed,
         clearDismissals: clearDismissals,
-        PII_PATTERNS: PII_PATTERNS
+        PII_PATTERNS: PII_PATTERNS,
+        MEDICAL_ALLOWLIST: MEDICAL_ALLOWLIST,
+        isMedicalTerm: _isMedicalTerm
     };
 
 })();

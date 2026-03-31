@@ -2835,6 +2835,7 @@ def smart_reporter_ai_assist():
         'corrections': result.get('corrections', []),
         'answer': result.get('answer', ''),
         'report_text': result.get('report_text', ''),
+        'fill_ins': result.get('fill_ins', []),
         'insights': insights,
         'remaining_requests': remaining,
     })

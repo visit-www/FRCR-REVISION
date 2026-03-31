@@ -178,6 +178,30 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "appropriate headings (FINDINGS, IMPRESSION, etc.) — but ONLY expand what the trainee actually wrote. "
     "Do not infer, assume, or invent findings beyond what the shorthand states. "
     "If the shorthand is ambiguous, expand it conservatively and note the ambiguity in the answer field.\n"
+    "- SHORTHAND EXPANSION QUALITY (critical): Do NOT simply restate the trainee's shorthand in a longer "
+    "sentence. Expand it into a proper radiological report structure as a consultant would dictate:\n"
+    "  a. DESCRIBE the finding properly: use standard radiological descriptors for the finding's location "
+    "and relationship to adjacent structures. For characteristics the trainee did NOT explicitly state "
+    "(e.g. margins, enhancement, attenuation), use PLACEHOLDERS — do NOT assume or invent them. "
+    "Example: 'carcinoid RIF' → 'There is a mass in the right iliac fossa, arising from the mesentery, "
+    "with features in keeping with a carcinoid tumour. The lesion measures [___ x ___ cm] and demonstrates "
+    "[___ enhancement pattern]. Margins are [well-defined/ill-defined].'\n"
+    "  b. MEASUREMENT PLACEHOLDERS: Where size, attenuation (HU), or signal characteristics are clinically "
+    "relevant but not provided by the trainee, insert placeholders like [___ cm], [___ mm], [___ HU], "
+    "[___ x ___ cm] so the trainee can fill in actual values from the images.\n"
+    "  c. STAGING/CLASSIFICATION/GRADING: Where the diagnosis has a recognised staging or classification "
+    "system, mention it in the ANSWER field (not report_text) as educational guidance. In the report_text, "
+    "only include staging if the trainee provided enough information to stage (e.g. they described tumour "
+    "extent, nodal status). Otherwise add a placeholder like '[TNM stage: to be determined]' or note in "
+    "the answer: 'Consider adding TNM staging — relevant classification for this tumour is [X].'\n"
+    "    Common frameworks to reference in the answer: TNM (tumours), LI-RADS (liver), Bosniak (renal cysts), "
+    "BI-RADS (breast), Fleischner (pulmonary nodules), Garden (NOF #), Weber (ankle #), "
+    "aortic diameter thresholds, lymph node short-axis criteria.\n"
+    "  d. ADJACENT STRUCTURES: Use placeholders for adjacent structures the trainee didn't mention but "
+    "a consultant would assess (e.g. for a mesenteric mass: 'Regional lymph nodes: [normal/enlarged]. "
+    "Mesenteric vessels: [patent/encased]. Adjacent bowel: [normal/involved].').\n"
+    "  e. Keep descriptions precise and concise — do NOT pad with unnecessary prose. A consultant's "
+    "report is detailed but efficient.\n"
     "- NEVER add findings the trainee didn't describe — the images aren't available to you\n"
     "- NEVER fabricate or hallucinate imaging findings\n"
     "- NEVER suggest the trainee add findings they didn't observe — you cannot see the images\n"
@@ -220,6 +244,15 @@ Return a JSON object with EXACTLY this structure:
       "suggested": "corrected/improved phrase",
       "reason": "Brief explanation (5-10 words)",
       "type": "terminology|gender_check|anatomy_check|consistency|phrasing|sidedness"
+    }}
+  ],
+  "fill_ins": [
+    {{
+      "placeholder": "[exact placeholder text from report_text]",
+      "label": "Short human-readable label (e.g. Mass size, Margins, TNM Stage)",
+      "type": "free_text|options",
+      "options": ["option1", "option2"],
+      "hint": "Brief guidance for the trainee (e.g. Measure maximum axial dimensions)"
     }}
   ],
   "insights": {{
@@ -296,6 +329,31 @@ RULES FOR ANSWER AND REPORT_TEXT:
      phrases like "clinical correlation recommended" unless genuinely justified.
    - Before returning report_text, review it as a consultant who must sign it: Are positive findings
      described accurately and concisely? Would you sign this without modification? If not, revise.
+   - NEVER produce flat, parrot-like output that simply restates the trainee's shorthand in slightly
+     longer form. If the trainee writes "mesenteric mass consistent with carcinoid in RIF", do NOT
+     just output "There is a mesenteric mass consistent with carcinoid in the right iliac fossa."
+     Instead, structure it properly with location, size placeholder, and placeholders for characteristics
+     the trainee hasn't specified. The output must read like a real consultant report template,
+     not a paraphrased version of the input.
+   - Where measurements are clinically important but not provided, insert placeholders:
+     [___ cm], [___ mm], [___ HU], [___ x ___ x ___ cm] so the trainee fills in actual values.
+   - IMPORTANT: Use placeholders (square brackets) for any imaging characteristic the trainee did NOT
+     explicitly describe. Never assert margins are "well-defined" or enhancement is "homogeneous"
+     unless the trainee said so. Placeholders keep the report honest while providing the right structure.
+
+RULES FOR FILL_INS:
+1. Only provide fill_ins when response_type is "full_report" AND report_text contains square-bracket placeholders.
+2. If response_type is "advisory" or report_text has no placeholders, return an empty fill_ins array [].
+3. Each fill_in MUST correspond to a placeholder that ACTUALLY EXISTS verbatim in report_text. Never invent placeholders that aren't in the report.
+4. "placeholder" must be the EXACT text as it appears in report_text (including square brackets).
+5. "type" must be one of:
+   - "free_text" — for measurements, dimensions, HU values, or any open-ended value. Do NOT include "options" for free_text items.
+   - "options" — for classification choices (margins, enhancement, staging, grading). MUST include 2-6 clinically appropriate options in the "options" array.
+6. "label" should be a short human-readable name (2-4 words, e.g. "Mass size", "Margins", "Enhancement pattern").
+7. "hint" should be brief clinical guidance (under 15 words) to help the trainee fill in the value correctly.
+8. For staging/classification placeholders (TNM, LI-RADS, Bosniak, BI-RADS, Fleischner, etc.), use type "options" and provide the most relevant staging options based on the clinical context. Include the stage grouping where helpful (e.g. "T2N0M0 (Stage II)").
+9. For placeholders like "[well-defined/ill-defined]" that already contain slash-separated options, extract each option and list them in the "options" array, plus add any additional relevant choices.
+10. Order fill_ins in the same order the placeholders appear in report_text.
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic platitudes.
@@ -1506,6 +1564,7 @@ def _parse_assist_response(text, original_question):
             'corrections': [],
             'answer': text,
             'report_text': '',
+            'fill_ins': [],
             'insights': {},
         }
 
@@ -1542,6 +1601,33 @@ def _parse_assist_response(text, original_question):
     if not isinstance(insights['differentials_to_consider'], list):
         insights['differentials_to_consider'] = []
 
+    # Extract and validate fill_ins
+    fill_ins = []
+    for fi in parsed.get('fill_ins', []):
+        if not isinstance(fi, dict):
+            continue
+        placeholder = fi.get('placeholder', '').strip()
+        label = fi.get('label', '').strip()
+        fi_type = fi.get('type', '').strip()
+        if not placeholder or not label or fi_type not in ('free_text', 'options'):
+            continue
+        # Only include fill_ins whose placeholder actually appears in report_text
+        if placeholder not in report_text:
+            continue
+        item = {
+            'placeholder': placeholder,
+            'label': label,
+            'type': fi_type,
+            'hint': fi.get('hint', '').strip(),
+        }
+        if fi_type == 'options':
+            opts = fi.get('options', [])
+            if isinstance(opts, list) and len(opts) >= 2:
+                item['options'] = [str(o) for o in opts]
+            else:
+                continue  # options type must have at least 2 options
+        fill_ins.append(item)
+
     # Extract response_type
     response_type = parsed.get('response_type', 'advisory')
     if response_type not in ('full_report', 'advisory'):
@@ -1552,6 +1638,7 @@ def _parse_assist_response(text, original_question):
         'corrections': corrections,
         'answer': answer,
         'report_text': report_text,
+        'fill_ins': fill_ins,
         'insights': insights,
     }
 

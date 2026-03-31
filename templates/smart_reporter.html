@@ -479,11 +479,22 @@
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
-                        <!-- Resource Search toggle -->
-                        <button class="btn btn-sm btn-outline-secondary" id="btnResourceSearchToggle"
-                                onclick="toggleResourceSearchOverlay()" title="Search Resources">
-                            <i class="fas fa-search"></i>
-                        </button>
+                        <!-- Separator -->
+                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
+                        <!-- Resource Search inline -->
+                        <div class="input-group input-group-sm" style="flex: 0 1 220px; min-width: 160px;">
+                            <span class="input-group-text py-0 px-2" style="background: #6b46c1; color: #fff; font-size: 0.7rem; border-color: #6b46c1;">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="toolbarResourceSearch" class="form-control form-control-sm"
+                                   placeholder="Search resources"
+                                   autocomplete="off"
+                                   onkeydown="if(event.key==='Enter') toolbarResourceSearchGo()">
+                            <button class="btn btn-sm" onclick="toolbarResourceSearchGo()" title="Search Resources"
+                                    style="background: #6b46c1; color: #fff; border-color: #6b46c1;">
+                                Go
+                            </button>
+                        </div>
                     </div>
                     <!-- Bottom row: Report Actions -->
                     <div class="d-flex align-items-center mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
@@ -552,6 +563,31 @@
                     <div id="piiDetailsList" class="d-none mt-2 pt-2" style="border-top:1px solid #ffe69c;"></div>
                 </div>
 
+                <!-- Blank State Guidance (hidden when draft has content) -->
+                <div id="blankStateGuide" class="mb-3">
+                    <div class="card border-0 shadow-sm" style="background: #fff5ec; border-left: 3px solid var(--brand-primary) !important;">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-center gap-3" style="font-size: 0.82rem;">
+                                <small class="fw-semibold flex-shrink-0" style="color: var(--brand-primary);">
+                                    <i class="fas fa-route me-1"></i>Getting Started
+                                </small>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge rounded-pill me-1" style="background: var(--brand-primary); font-size: 0.65rem;">1</span>
+                                    <span><strong>Type or paste</strong> your draft</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge rounded-pill me-1" style="background: var(--brand-neutral); font-size: 0.65rem;">2</span>
+                                    <span><strong>Quick Check</strong> or <strong>Finalize</strong></span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <span class="badge rounded-pill me-1" style="background: var(--brand-success); font-size: 0.65rem;">3</span>
+                                    <span>Copy <strong>PACS-ready</strong> output</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3" id="editorMainRow">
                     <!-- Left column: Input + Output -->
                     <div class="col-lg-7" id="editorLeftCol">
@@ -568,14 +604,20 @@
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2 d-none" onclick="redoDraftInsert()" id="btnRedoDraft" title="Redo (Ctrl+Shift+Z)" style="font-size: 0.7rem;">
                                             <i class="fas fa-redo"></i>
                                         </button>
+                                        <button class="btn btn-sm d-none" id="btnCorrectionsToggleDraft" onclick="toggleDraftCorrections()" type="button"
+                                                style="background: #dc3545; color: #fff; border-color: #dc3545; font-size: 0.7rem;">
+                                            <i class="fas fa-pen-fancy me-1"></i>Corrections <span id="correctionsCountBadgeDraft" class="badge bg-light text-danger ms-1" style="font-size: 0.6rem;"></span>
+                                        </button>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="copyDraftText()" id="btnCopyDraft" title="Copy draft to clipboard" style="font-size: 0.7rem;">
                                             <i class="fas fa-copy me-1"></i>Copy
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <!-- Anchor for corrections when no PACS text -->
-                            <div id="correctionsAnchorDraft"></div>
+                            <!-- Collapsible corrections panel in draft card -->
+                            <div id="draftCorrectionsCollapse" class="d-none" style="border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.5rem 0.75rem; background: #fffbf0;">
+                                <div id="correctionsAnchorDraft"></div>
+                            </div>
                             <div class="card-body p-3">
                                 <div class="mb-2 px-1" style="font-size: 0.78rem; color: #5a6270; line-height: 1.5;">
                                     <i class="fas fa-magic me-1" style="color: #5E899E;"></i>
@@ -632,7 +674,7 @@
                             </button>
                         </div>
 
-                        <!-- Anchor for stack-mode output position -->
+                        <!-- Anchor for stack-mode output position (PACS goes here in stack view) -->
                         <div id="stackOutputTarget"></div>
                         <!-- Output Box (shown after review) -->
                         <div id="outputSection" class="d-none">
@@ -669,10 +711,8 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- Anchor for answer/changes box above PACS -->
-                                <div id="answerAnchorPacs"></div>
-                                <!-- Anchor for corrections when PACS has content -->
-                                <div id="correctionsAnchorPacs"></div>
+                                <!-- Corrections anchor (no longer used, kept for compat) -->
+                                <div id="correctionsAnchorPacs" class="d-none"></div>
                                 <div class="card-body p-0">
                                     <textarea class="form-control pacs-output-textarea" id="editorOutput" rows="12"></textarea>
                                 </div>
@@ -685,7 +725,45 @@
 
                     <!-- Right column: Quick Check Suggestions + RadInsight Intelligence -->
                     <div class="col-lg-5" id="editorRightCol">
-                        <!-- Anchor for split-mode output position -->
+                        <!-- 1. RadInsight Intelligence Header (always at top) -->
+                        <div id="radInsightPanel" class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white border-0 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by RadInsight Intelligence &mdash; a fine-tuned radiology specific model. <a href="/privacy" target="_blank">Privacy Policy</a></small>
+                                </div>
+                            </div>
+                            <div class="card-body p-3">
+                                <!-- Loading spinner -->
+                                <div id="askClaudeLoadingInPanel" class="d-none"></div>
+                                <!-- Report Action Response (MDT, SBA, Viva, Email) -->
+                                <div id="reportActionResponse" class="d-none mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="fw-semibold" id="reportActionLabel">
+                                            <i class="fas fa-users me-1"></i>MDT Summary
+                                        </small>
+                                    </div>
+                                    <div id="reportActionCard" class="p-2 rounded" style="border-left: 3px solid #e96304; background: #fff8f0;">
+                                        <div id="reportActionContent" style="font-size: 0.85rem; line-height: 1.5;"></div>
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyReportAction()">
+                                                <i class="fas fa-copy me-1"></i>Copy
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissReportAction()">
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Anchor for Changes Made / Answer box (always in right col, below header) -->
+                        <div id="answerAnchorRight"></div>
+
+                        <!-- 3. Anchor for split-mode PACS position (PACS goes here in split view) -->
                         <div id="splitOutputTarget"></div>
 
                         <!-- Movable: AI Assist Report preview (repositioned by JS near PACS) -->
@@ -715,16 +793,43 @@
 
                         <!-- Movable: Answer / Changes Rationale -->
                         <div id="aiAssistAnswerSection" class="mb-3 d-none">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <small class="fw-semibold text-muted">
-                                    <i class="fas fa-comment-medical me-1"></i>Changes Made
-                                </small>
-                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
-                                    <i class="fas fa-times me-1"></i>Dismiss
-                                </button>
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header py-2 px-3" style="background: #1a3a4a; border-bottom: 2px solid #e96304;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="fw-semibold" style="color: #fff;">
+                                            <i class="fas fa-comment-medical me-1" style="color: #e96304;"></i>Changes Made
+                                        </small>
+                                        <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
+                                            <i class="fas fa-times me-1"></i>Dismiss
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-3" style="background: #0d2230 !important; color: #e0e8ef !important;">
+                                    <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; margin: 0; color: #e0e8ef !important; background: transparent !important;"></pre>
+                                </div>
                             </div>
-                            <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
-                                <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
+                        </div>
+
+                        <!-- Fill-in Chips (placeholders to complete) -->
+                        <div id="aiAssistFillInsSection" class="mb-3 d-none">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header py-2 px-3" style="background: linear-gradient(135deg, #1a3a4a 0%, #0d2230 100%); border-bottom: 2px solid var(--brand-secondary);">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="fw-semibold" style="color: #fff;">
+                                            <i class="fas fa-fill-drip me-1" style="color: var(--brand-secondary);"></i>Fill in Placeholders
+                                        </small>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm py-0 px-2" id="fillInInsertAllBtn" onclick="applyAllFillIns()" style="font-size: 0.7rem; background: var(--brand-secondary); color: #1a3a4a; font-weight: 600;">
+                                                <i class="fas fa-check-double me-1"></i>Insert All
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="document.getElementById('aiAssistFillInsSection').classList.add('d-none');" style="font-size: 0.7rem;">
+                                                <i class="fas fa-times me-1"></i>Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body p-2" id="aiAssistFillInsList" style="background: #f8f9fa; max-height: 400px; overflow-y: auto;">
+                                </div>
                             </div>
                         </div>
 
@@ -775,140 +880,9 @@
                             </div>
                         </div>
 
-                        <!-- Blank State Guidance (hidden when draft has content) -->
-                        <div id="blankStateGuide" class="mb-3">
-                            <div class="card border-0 shadow-sm" style="border-left: 3px solid var(--brand-primary) !important;">
-                                <div class="card-body py-3 px-3">
-                                    <small class="fw-semibold d-block mb-2" style="color: var(--brand-primary);">
-                                        <i class="fas fa-route me-1"></i>Getting Started
-                                    </small>
-                                    <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
-                                        <div class="d-flex align-items-start">
-                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-primary); font-size: 0.7rem; min-width: 20px;">1</span>
-                                            <span><strong>Type or paste</strong> your report draft in the editor</span>
-                                        </div>
-                                        <div class="d-flex align-items-start">
-                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-neutral); font-size: 0.7rem; min-width: 20px;">2</span>
-                                            <span>Click <strong>Quick Check</strong> for spelling &amp; grammar, or <strong>Finalize</strong> for a consultant-grade report</span>
-                                        </div>
-                                        <div class="d-flex align-items-start">
-                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-success); font-size: 0.7rem; min-width: 20px;">3</span>
-                                            <span>Copy the <strong>PACS-ready</strong> output and use AI actions (MDT, SBA, Viva)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <!-- Blank State Guidance moved above editorMainRow -->
 
                         <!-- Search Resources + Related Resources moved to toolbar overlay -->
-
-                        <!-- RadInsight Intelligence Panel -->
-                        <div class="card border-0 shadow-sm mb-3" style="overflow: visible;">
-                            <div class="card-header bg-white border-0 py-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
-                                </div>
-                                <div class="mt-1">
-                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by RadInsight Intelligence &mdash; a fine-tuned radiology specific model. Do not enter patient-identifiable data. <a href="/privacy" target="_blank">Privacy Policy</a></small>
-                                </div>
-                            </div>
-                            <div class="card-body p-3" style="overflow: visible;">
-                                <!-- Anatomy quick-access with typeahead -->
-                                <div class="mb-2" style="position: relative;">
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text py-0 px-2" style="font-size: 0.7rem; background: #fff;">
-                                            <i class="fas fa-bone me-1" style="color: #e96304;"></i>Anatomy
-                                        </span>
-                                        <input type="text" id="anatomyTypeahead" class="form-control form-control-sm py-0"
-                                               placeholder="e.g. circle of Willis, hepatic segments..."
-                                               autocomplete="off" style="font-size: 0.8rem;">
-                                        <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.7rem;"
-                                                onclick="submitAnatomyTypeahead()" title="Load anatomy">
-                                            <i class="fas fa-arrow-right"></i>
-                                        </button>
-                                    </div>
-                                    <div id="anatomySuggestDropdown" class="d-none mb-3"
-                                         style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
-                                                background: #fff; border: 1px solid #dee2e6; border-top: 0;
-                                                border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                                                max-height: 200px; overflow-y: auto;">
-                                    </div>
-                                </div>
-
-                                <!-- Loading spinner (visual placeholder — actual spinner moved to toolbar area) -->
-                                <div id="askClaudeLoadingInPanel" class="d-none"></div>
-
-                                <!-- AI Assist Report/Answer/Corrections moved to standalone elements (repositioned by JS) -->
-
-                                <!-- Report Action Response -->
-                                <div id="reportActionResponse" class="d-none mb-3">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <small class="fw-semibold" id="reportActionLabel">
-                                            <i class="fas fa-users me-1"></i>MDT Summary
-                                        </small>
-                                    </div>
-                                    <div id="reportActionCard" class="p-2 rounded" style="border-left: 3px solid #e96304; background: #fff8f0;">
-                                        <div id="reportActionContent" style="font-size: 0.85rem; line-height: 1.5;"></div>
-                                        <div class="d-flex flex-wrap gap-2 mt-2">
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyReportAction()">
-                                                <i class="fas fa-copy me-1"></i>Copy
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissReportAction()">
-                                                Dismiss
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Persistent Clinical Insights (survives dismiss/insert) -->
-                                <div id="aiAssistInsightsSection" class="d-none mb-3">
-                                    <div class="d-flex align-items-center mb-1">
-                                        <small class="fw-semibold" style="color: #6b46c1;">
-                                            <i class="fas fa-brain me-1"></i>Clinical Insights
-                                        </small>
-                                    </div>
-                                    <div id="aiAssistInsightsBody">
-                                        <div class="p-2 rounded" style="background: #f8f4ff; border: 1px solid #d4c5f9; font-size: 0.8rem;">
-                                            <div id="insightCoverage" class="mb-2 d-none">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="fas fa-bullseye me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
-                                                    <div><strong>Clinical Question:</strong> <span id="insightCoverageText"></span></div>
-                                                </div>
-                                            </div>
-                                            <div id="insightQuality" class="mb-2 d-none">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="fas fa-award me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
-                                                    <div><strong>Quality:</strong> <span id="insightQualityText"></span></div>
-                                                </div>
-                                            </div>
-                                            <div id="insightDifferentials" class="mb-2 d-none">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="fas fa-list-ul me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
-                                                    <div><strong>Consider:</strong> <span id="insightDifferentialsText"></span></div>
-                                                </div>
-                                            </div>
-                                            <div id="insightRecommendation" class="mb-2 d-none">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="fas fa-clipboard-check me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
-                                                    <div><strong>Recommendations:</strong> <span id="insightRecommendationText"></span></div>
-                                                </div>
-                                            </div>
-                                            <div id="insightTeaching" class="d-none">
-                                                <div class="d-flex align-items-start">
-                                                    <i class="fas fa-lightbulb me-2 mt-1" style="color: #e96304; font-size: 0.7rem;"></i>
-                                                    <div class="flex-grow-1"><strong>Teaching Point:</strong> <span id="insightTeachingText"></span></div>
-                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1 ms-2 flex-shrink-0"
-                                                            onclick="savePearl()" title="Save as Radiology Pearl" id="savePearlBtn"
-                                                            style="font-size: 0.65rem; line-height: 1.2;">
-                                                        <i class="fas fa-gem"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Tool Panel (Phase 6: embeds IF/TNM calculators via iframe) -->
                         <div id="toolPanel" class="d-none mb-3">
@@ -963,6 +937,84 @@
                             </div>
                         </div>
 
+                        <!-- Anatomy Snippet Search (always bottom of right panel, above Clinical Insights) -->
+                        <div id="anatomySearchSection" class="mb-3" style="position: relative;">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <small class="fw-semibold"><i class="fas fa-bone me-1" style="color: #e96304;"></i>Anatomy Snippet Search</small>
+                                </div>
+                                <div class="card-body py-2 px-3" style="overflow: visible;">
+                                    <div style="position: relative;">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" id="anatomyTypeahead" class="form-control form-control-sm py-0"
+                                                   placeholder="e.g. circle of Willis, hepatic segments..."
+                                                   autocomplete="off" style="font-size: 0.8rem;">
+                                            <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.7rem;"
+                                                    onclick="submitAnatomyTypeahead()" title="Load anatomy">
+                                                <i class="fas fa-arrow-right"></i>
+                                            </button>
+                                        </div>
+                                        <div id="anatomySuggestDropdown" class="d-none"
+                                             style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+                                                    background: #fff; border: 1px solid #dee2e6; border-top: 0;
+                                                    border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                                    max-height: 200px; overflow-y: auto;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clinical Insights (always bottom of right panel) -->
+                        <div id="aiAssistInsightsSection" class="d-none mb-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <small class="fw-semibold" style="color: #6b46c1;">
+                                        <i class="fas fa-brain me-1"></i>Clinical Insights
+                                    </small>
+                                </div>
+                                <div class="card-body py-2 px-3" id="aiAssistInsightsBody">
+                                    <div class="p-2 rounded" style="background: #f8f4ff; border: 1px solid #d4c5f9; font-size: 0.8rem;">
+                                        <div id="insightCoverage" class="mb-2 d-none">
+                                            <div class="d-flex align-items-start">
+                                                <i class="fas fa-bullseye me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                <div><strong>Clinical Question:</strong> <span id="insightCoverageText"></span></div>
+                                            </div>
+                                        </div>
+                                        <div id="insightQuality" class="mb-2 d-none">
+                                            <div class="d-flex align-items-start">
+                                                <i class="fas fa-award me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                <div><strong>Quality:</strong> <span id="insightQualityText"></span></div>
+                                            </div>
+                                        </div>
+                                        <div id="insightDifferentials" class="mb-2 d-none">
+                                            <div class="d-flex align-items-start">
+                                                <i class="fas fa-list-ul me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                <div><strong>Consider:</strong> <span id="insightDifferentialsText"></span></div>
+                                            </div>
+                                        </div>
+                                        <div id="insightRecommendation" class="mb-2 d-none">
+                                            <div class="d-flex align-items-start">
+                                                <i class="fas fa-clipboard-check me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                <div><strong>Recommendations:</strong> <span id="insightRecommendationText"></span></div>
+                                            </div>
+                                        </div>
+                                        <div id="insightTeaching" class="d-none">
+                                            <div class="d-flex align-items-start">
+                                                <i class="fas fa-lightbulb me-2 mt-1" style="color: #e96304; font-size: 0.7rem;"></i>
+                                                <div class="flex-grow-1"><strong>Teaching Point:</strong> <span id="insightTeachingText"></span></div>
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-1 ms-2 flex-shrink-0"
+                                                        onclick="savePearl()" title="Save as Radiology Pearl" id="savePearlBtn"
+                                                        style="font-size: 0.65rem; line-height: 1.2;">
+                                                    <i class="fas fa-gem"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- PII Warning -->
                         <div class="alert alert-warning border-0 py-2 small">
                             <i class="fas fa-exclamation-triangle me-1"></i>
@@ -1009,7 +1061,7 @@
         <button class="sr-fab-item" onclick="pasteMyReport(); srFabClose();" title="Start a new blank report">
             <i class="fas fa-plus"></i><span>New Report</span>
         </button>
-        <button class="sr-fab-item" onclick="document.getElementById('sceneEditor').scrollIntoView({behavior:'smooth'}); srFabClose();" title="Scroll to top navigation">
+        <button class="sr-fab-item" onclick="window.scrollTo({top:0,behavior:'smooth'}); srFabClose();" title="Scroll to top of page">
             <i class="fas fa-arrow-up"></i><span>Top</span>
         </button>
     </div>
@@ -1076,6 +1128,8 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- TinyMCE (local core, CDN for themes/skins/plugins) -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -2285,6 +2339,7 @@ document.addEventListener('DOMContentLoaded', function() {
         state.aiAssistReportText = '';
         state.hasReceivedFinalizedReport = false;
         state.aiAssistCorrections = [];
+        state.aiAssistFillIns = [];
         state.aiAssistInsights = {};
         state.externalContext = null;
 
@@ -2296,6 +2351,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistAnswerSection').classList.add('d-none');
+        document.getElementById('aiAssistFillInsSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
         document.getElementById('reportActionResponse').classList.add('d-none');
@@ -2778,6 +2834,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         list.innerHTML = html;
+
+        // Auto-hide suggestions panel when no pending items left
+        var pendingSuggestions = state.suggestions.filter(function(s) { return s.status === 'pending'; });
+        if (pendingSuggestions.length === 0 && state.suggestions.length > 0) {
+            setTimeout(function() {
+                document.getElementById('suggestionsPanel').classList.add('d-none');
+            }, 800);
+        }
     }
 
     function escapeHtml(str) {
@@ -2840,22 +2904,37 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function applyAcceptedSuggestions() {
-        // Start from the original input text and apply all accepted suggestions
-        let text = document.getElementById('editorInput').value;
+        // Apply all accepted suggestions to BOTH draft and PACS
+        var input = document.getElementById('editorInput');
+        var output = document.getElementById('editorOutput');
+        var inputText = input.value;
+        var outputText = output && output.value ? output.value : inputText;
+
         state.suggestions.forEach(s => {
             if (s.status === 'accepted' && s.original && s.suggested) {
-                // Replace all occurrences
-                if (text.indexOf(s.original) >= 0) {
-                    text = text.split(s.original).join(s.suggested);
+                if (inputText.indexOf(s.original) >= 0) {
+                    inputText = inputText.split(s.original).join(s.suggested);
+                }
+                if (outputText.indexOf(s.original) >= 0) {
+                    outputText = outputText.split(s.original).join(s.suggested);
                 }
             }
         });
-        state.outputText = text;
-        const output = document.getElementById('editorOutput');
-        output.value = text;
+
+        // Update draft
+        input.value = inputText;
+        state.inputText = inputText;
+        autoResizeTextarea(input);
+
+        // Update PACS
+        state.outputText = outputText;
+        output.value = outputText;
         autoResizeTextarea(output);
-        // Show PACS box when suggestions are applied
-        document.getElementById('outputSection').classList.remove('d-none');
+
+        // Show PACS box
+        var os = document.getElementById('outputSection');
+        os.classList.add('has-content');
+        os.classList.remove('d-none');
     }
 
     // ==================== COPY REPORT ====================
@@ -3006,6 +3085,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
+            state.aiAssistFillIns = (data.fill_ins || []).map(fi => ({ ...fi, status: 'pending' }));
 
             // Accumulate insights (new non-empty values enhance existing ones)
             const newIns = data.insights || {};
@@ -3124,6 +3204,8 @@ document.addEventListener('DOMContentLoaded', function() {
             label.style.color = meta.border;
             card.style.borderLeft = '3px solid ' + meta.border;
             card.style.background = meta.bg;
+            // Destroy any existing TinyMCE instance before re-rendering
+            destroyReportActionEditor();
             content.innerHTML = data.html || '<p>No content generated.</p>';
             // Append learning capture note for SBA/Viva
             if (action === 'sba' || action === 'viva') {
@@ -3136,8 +3218,16 @@ document.addEventListener('DOMContentLoaded', function() {
             container.classList.remove('d-none');
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-            // Fetch internal DB resources related to the report
+            // Init TinyMCE for editable actions (email/MDT/patient letter)
+            var editableActions = ['email_colleague', 'email_patient', 'mdt'];
+            if (editableActions.indexOf(action) !== -1) {
+                initReportActionEditor();
+            }
+
+            // Fetch internal DB resources (only for SBA/Viva — skip for emails and MDT)
+            var skipLinkedResources = ['email_colleague', 'email_patient', 'mdt'];
             try {
+                if (skipLinkedResources.indexOf(action) === -1) {
                 const reportText = getCurrentReportText();
                 let q = '';
                 const lines = reportText.split('\n');
@@ -3155,7 +3245,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     html += '<li><a href="' + escapeHtmlSafe(r.url) + '" target="_blank">' + escapeHtmlSafe(r.title) + '</a></li>';
                                 });
                                 html += '</ul></div>';
-                                // Insert above the AI's Further Reading section
                                 const furtherReading = content.querySelector('.action-further-reading');
                                 if (furtherReading) {
                                     furtherReading.insertAdjacentHTML('beforebegin', html);
@@ -3165,6 +3254,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }).catch(() => {});
                 }
+                } // end skipLinkedResources check
             } catch(e) {}
         })
         .catch(err => {
@@ -3179,25 +3269,64 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
+    // ---- TinyMCE helpers for editable report actions ----
+    var _reportActionEditorReady = false;
+
+    function initReportActionEditor() {
+        if (_reportActionEditorReady) return;
+        tinymce.init({
+            selector: '#reportActionContent',
+            inline: true,
+            menubar: false,
+            toolbar: 'undo redo | bold italic underline strikethrough',
+            plugins: '',
+            base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+            relative_urls: false,
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; }',
+            setup: function(editor) {
+                editor.on('init', function() {
+                    _reportActionEditorReady = true;
+                });
+            }
+        });
+    }
+
+    function destroyReportActionEditor() {
+        var editor = tinymce.get('reportActionContent');
+        if (editor) {
+            editor.destroy();
+            _reportActionEditorReady = false;
+        }
+    }
+
     window.copyReportAction = function() {
-        const content = document.getElementById('reportActionContent');
-        if (!content) return;
-        // Copy as plain text
-        const text = content.innerText || content.textContent;
+        // Get content from TinyMCE if active, otherwise from DOM
+        var editor = tinymce.get('reportActionContent');
+        var text = '';
+        if (editor && _reportActionEditorReady) {
+            text = editor.getContent({ format: 'text' });
+        } else {
+            var content = document.getElementById('reportActionContent');
+            if (!content) return;
+            text = content.innerText || content.textContent;
+        }
         navigator.clipboard.writeText(text).then(function() {
             showToast('Copied to clipboard.', 'success');
         }).catch(function() {
-            // Fallback: select the text
-            const range = document.createRange();
-            range.selectNodeContents(content);
-            const sel = window.getSelection();
-            sel.removeAllRanges();
-            sel.addRange(range);
+            var content = document.getElementById('reportActionContent');
+            if (content) {
+                var range = document.createRange();
+                range.selectNodeContents(content);
+                var sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
             showToast('Text selected — use Ctrl+C to copy.', 'info');
         });
     };
 
     window.dismissReportAction = function() {
+        destroyReportActionEditor();
         document.getElementById('reportActionResponse').classList.add('d-none');
     };
 
@@ -3213,6 +3342,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 output.value = inputText;
                 state.outputText = inputText;
             }
+            outputSection.classList.add('has-content');
             outputSection.classList.remove('d-none');
         }
         output.removeAttribute('readonly');
@@ -3287,10 +3417,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear stale corrections since they applied to old draft
         state.aiAssistCorrections = [];
         renderAiAssistCorrections();
-        // Hide report preview, answer and corrections — but keep insights
+        // Hide report preview, answer and corrections — but keep insights and fill-ins
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
+        // Keep fill-ins visible — they're needed to complete placeholders after report insertion
         showToast('Draft and PACS report updated with finalized version.', 'success');
     };
 
@@ -3380,10 +3511,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Finalized report inserted into PACS box.', 'success');
-        // Scroll to PACS box so user can review
+        // Show fill-ins panel if there are placeholders to complete
+        if (state.aiAssistFillIns.length > 0) {
+            var fillInsSection = document.getElementById('aiAssistFillInsSection');
+            renderFillIns();
+            fillInsSection.classList.remove('d-none');
+        }
+        // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
         if (outputSection) {
             outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
         }
     };
 
@@ -3490,6 +3628,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (state.aiAssistAnswer) {
             document.getElementById('aiAssistAnswer').textContent = state.aiAssistAnswer;
             answerSection.classList.remove('d-none');
+            repositionAnswerBox();
         } else {
             answerSection.classList.add('d-none');
         }
@@ -3536,12 +3675,32 @@ document.addEventListener('DOMContentLoaded', function() {
             correctionsSection.classList.add('d-none');
         }
 
+        // Layer 3.5: Fill-in chips (placeholders to complete)
+        const fillInsSection = document.getElementById('aiAssistFillInsSection');
+        if (state.aiAssistFillIns.length > 0 && isFullReport) {
+            renderFillIns();
+            fillInsSection.classList.remove('d-none');
+        } else {
+            fillInsSection.classList.add('d-none');
+        }
+
         // Layer 4: Insights (persistent — rendered outside #aiAssistResponse)
         renderInsights();
 
         // Reposition movable sections based on current PACS state
         repositionAnswerBox();
         repositionCorrections();
+
+        // Focus: if PACS was just populated, scroll there; else scroll to answer box
+        setTimeout(function() {
+            var os = document.getElementById('outputSection');
+            var pacsVisible = os && !os.classList.contains('d-none');
+            if (pacsVisible) {
+                os.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (!answerSection.classList.contains('d-none')) {
+                answerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 200);
     }
 
     function renderInsights() {
@@ -3656,24 +3815,41 @@ document.addEventListener('DOMContentLoaded', function() {
         repositionCorrections();
     }
 
+    // Correction logic:
+    // The AI finalized report ALREADY has corrections applied (original → suggested).
+    // So PACS (editorOutput) has the suggested text, Draft (editorInput) has the original text.
+    // Accept = apply original→suggested in Draft (PACS already correct)
+    // Reject = revert suggested→original in PACS (Draft already has original)
+    // Edit   = update suggested in PACS, apply new suggested in Draft
+
     window.acceptCorrection = function(index) {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
         if (c.editing) {
             const editInput = document.getElementById('correctionEdit_' + index);
-            if (editInput) c.suggested = editInput.value;
+            var newSuggested = editInput ? editInput.value : c.suggested;
+            // If user edited the suggestion, update PACS too (replace old suggested with new)
+            if (newSuggested !== c.suggested) {
+                var output = document.getElementById('editorOutput');
+                if (output && output.value) {
+                    _savePacsUndo(output);
+                    _replaceInBox('editorOutput', c.suggested, newSuggested);
+                    state.outputText = output.value;
+                    autoResizeTextarea(output);
+                }
+            }
+            c.suggested = newSuggested;
             c.editing = false;
         }
         c.status = 'accepted';
-        // Apply this single correction to both boxes
-        var output = document.getElementById('editorOutput');
+        // Apply to Draft only (PACS already has the suggested text from AI)
         var input = document.getElementById('editorInput');
-        if (output && output.value) _savePacsUndo(output);
-        if (input && input.value) _saveDraftUndo(input);
-        _applyInBox('editorOutput', c);
-        _applyInBox('editorInput', c);
-        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
-        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
+        if (input && input.value) {
+            _saveDraftUndo(input);
+            _replaceInBox('editorInput', c.original, c.suggested);
+            state.inputText = input.value;
+            autoResizeTextarea(input);
+        }
         renderAiAssistCorrections();
     };
 
@@ -3699,99 +3875,245 @@ document.addEventListener('DOMContentLoaded', function() {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
         c.status = 'rejected';
-        // Revert: the AI already applied this correction in the finalized report,
-        // so rejecting means replacing suggested text back with original
-        _revertCorrection(c);
+        // Revert PACS only (suggested → original), Draft already has original
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) {
+            _savePacsUndo(output);
+            _replaceInBox('editorOutput', c.suggested, c.original);
+            state.outputText = output.value;
+            autoResizeTextarea(output);
+        }
         renderAiAssistCorrections();
     };
 
     window.acceptAllCorrections = function() {
+        var input = document.getElementById('editorInput');
+        if (input && input.value) _saveDraftUndo(input);
         state.aiAssistCorrections.forEach(c => {
-            if (c.status === 'pending') c.status = 'accepted';
+            if (c.status === 'pending') {
+                c.status = 'accepted';
+                // Apply to Draft only
+                _replaceInBox('editorInput', c.original, c.suggested);
+            }
         });
-        _applyCorrections('accept');
+        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
         renderAiAssistCorrections();
     };
 
     window.rejectAllCorrections = function() {
-        // Save undo before batch revert
         var output = document.getElementById('editorOutput');
-        var input = document.getElementById('editorInput');
         if (output && output.value) _savePacsUndo(output);
-        if (input && input.value) _saveDraftUndo(input);
-
         state.aiAssistCorrections.forEach(c => {
             if (c.status === 'pending') {
                 c.status = 'rejected';
-                // Revert each in both boxes
-                _revertInBox('editorOutput', c);
-                _revertInBox('editorInput', c);
+                // Revert PACS only (suggested → original)
+                _replaceInBox('editorOutput', c.suggested, c.original);
             }
         });
-        // Sync state
-        if (output) state.outputText = output.value;
-        if (input) state.inputText = input.value;
+        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
         renderAiAssistCorrections();
         showToast('All corrections reverted.', 'info');
     };
 
-    // Revert a single correction (AI already applied it, so swap suggested → original)
-    function _revertCorrection(c) {
-        if (!c.original || !c.suggested) return;
-        var output = document.getElementById('editorOutput');
-        var input = document.getElementById('editorInput');
-        if (output && output.value) _savePacsUndo(output);
-        if (input && input.value) _saveDraftUndo(input);
-
-        _revertInBox('editorOutput', c);
-        _revertInBox('editorInput', c);
-
-        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
-        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
-    }
-
-    function _revertInBox(elId, c) {
+    // Generic helper: replace findStr with replaceStr in a textarea
+    function _replaceInBox(elId, findStr, replaceStr) {
         var el = document.getElementById(elId);
-        if (!el) return;
+        if (!el || !findStr) return;
         var text = el.value;
-        // Replace ALL occurrences (not just first)
-        if (text.indexOf(c.suggested) >= 0) {
-            el.value = text.split(c.suggested).join(c.original);
+        if (text.indexOf(findStr) >= 0) {
+            el.value = text.split(findStr).join(replaceStr);
         }
     }
 
-    // Apply accepted corrections to both PACS output and draft
-    function _applyCorrections(mode) {
-        var output = document.getElementById('editorOutput');
-        var input = document.getElementById('editorInput');
-        if (output && output.value) _savePacsUndo(output);
-        if (input && input.value) _saveDraftUndo(input);
+    // ==================== FILL-IN CHIPS ====================
 
-        state.aiAssistCorrections.forEach(c => {
-            if (c.status === 'accepted' && c.original && c.suggested) {
-                _applyInBox('editorOutput', c);
-                _applyInBox('editorInput', c);
+    function renderFillIns() {
+        const list = document.getElementById('aiAssistFillInsList');
+        if (!list) return;
+        // Save current input values before re-rendering so user doesn't lose typed text
+        var savedInputs = {};
+        state.aiAssistFillIns.forEach(function(fi, i) {
+            var inp = document.getElementById('fillInInput_' + i);
+            if (inp && inp.value) savedInputs[i] = inp.value;
+        });
+
+        let html = '';
+        var pendingCount = 0;
+        state.aiAssistFillIns.forEach((fi, i) => {
+            const isApplied = fi.status === 'applied';
+            if (!isApplied) pendingCount++;
+
+            html += '<div class="p-2 mb-2 rounded" style="background: #fff; border: 1px solid ' + (isApplied ? '#a8d5ba' : '#dee2e6') + ';">';
+            html += '<div class="d-flex align-items-center mb-1">';
+            html += '<span class="fw-semibold" style="font-size: 0.8rem; color: #1a3a4a;">' + escapeHtml(fi.label) + '</span>';
+            if (isApplied) {
+                html += '<span class="badge bg-success ms-2" style="font-size: 0.65rem;"><i class="fas fa-check me-1"></i>Inserted</span>';
+            }
+            html += '</div>';
+
+            if (isApplied) {
+                // Show what was inserted: placeholder → value
+                html += '<div class="mt-1">';
+                html += '<small class="d-block" style="font-size: 0.75rem;">';
+                html += '<span style="text-decoration: line-through; color: #999;">' + escapeHtml(fi.placeholder) + '</span>';
+                html += ' <i class="fas fa-arrow-right mx-1" style="font-size: 0.6rem; color: #999;"></i> ';
+                html += '<span style="background: #c8e6c9; padding: 1px 6px; border-radius: 3px; font-weight: 600;">' + escapeHtml(fi.appliedValue) + '</span>';
+                html += '</small>';
+                html += '</div>';
+            } else {
+                if (fi.hint) {
+                    html += '<small class="text-muted d-block mb-2" style="font-size: 0.7rem;"><i class="fas fa-lightbulb me-1" style="color: var(--brand-secondary);"></i>' + escapeHtml(fi.hint) + '</small>';
+                }
+                html += '<div class="mb-1"><code style="font-size: 0.7rem; background: #e8f4f8; padding: 2px 6px; border-radius: 3px;">' + escapeHtml(fi.placeholder) + '</code></div>';
+
+                if (fi.type === 'options' && fi.options) {
+                    html += '<div class="d-flex flex-wrap gap-1 mt-2">';
+                    fi.options.forEach(function(opt) {
+                        html += '<button class="btn btn-sm py-0 px-2 fill-in-chip" onclick="prefillFillIn(' + i + ', this.dataset.value)" data-value="' + escapeHtml(opt) + '" style="font-size: 0.75rem; border: 1px solid var(--brand-neutral); color: var(--brand-neutral); background: #fff; border-radius: 20px;">';
+                        html += escapeHtml(opt);
+                        html += '</button>';
+                    });
+                    html += '</div>';
+                }
+                // Editable input for both types (options get chip prefill, free_text types directly)
+                var placeholder = (fi.type === 'options') ? 'Click a chip or type custom value...' : 'Enter value...';
+                html += '<div class="input-group input-group-sm mt-2">';
+                html += '<input type="text" class="form-control" id="fillInInput_' + i + '" placeholder="' + placeholder + '" style="font-size: 0.8rem; border-radius: 20px 0 0 20px;" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyFillInFromInput(' + i + ')}">';
+                html += '<button class="btn btn-sm btn-brand-neutral" onclick="applyFillInFromInput(' + i + ')" style="font-size: 0.75rem; border-radius: 0 20px 20px 0;"><i class="fas fa-arrow-right me-1"></i>Insert</button>';
+                html += '</div>';
+            }
+            html += '</div>';
+        });
+
+        if (!html) {
+            html = '<div class="text-center py-2 text-muted"><small>No placeholders to fill.</small></div>';
+        }
+        list.innerHTML = html;
+
+        // Restore saved input values
+        Object.keys(savedInputs).forEach(function(i) {
+            var inp = document.getElementById('fillInInput_' + i);
+            if (inp) inp.value = savedInputs[i];
+        });
+
+        // Show/hide Insert All button based on pending count
+        var insertAllBtn = document.getElementById('fillInInsertAllBtn');
+        if (insertAllBtn) {
+            insertAllBtn.style.display = pendingCount > 0 ? '' : 'none';
+        }
+    }
+
+    window.applyFillIn = function(index, value) {
+        const fi = state.aiAssistFillIns[index];
+        if (!fi || fi.status === 'applied' || !value) return;
+
+        // Save undo state for PACS
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) _savePacsUndo(output);
+
+        // Replace placeholder in both PACS and Draft
+        _replaceInBox('editorOutput', fi.placeholder, value);
+        _replaceInBox('editorInput', fi.placeholder, value);
+
+        // Update state values
+        var outputEl = document.getElementById('editorOutput');
+        var inputEl = document.getElementById('editorInput');
+        if (outputEl) { state.outputText = outputEl.value; autoResizeTextarea(outputEl); }
+        if (inputEl) { state.inputText = inputEl.value; autoResizeTextarea(inputEl); }
+
+        // Mark as applied
+        fi.status = 'applied';
+        fi.appliedValue = value;
+        renderFillIns();
+        showToast('Inserted: ' + fi.label + ' \u2192 ' + value, 'success');
+
+        // Check if all fill-ins are applied
+        var allApplied = state.aiAssistFillIns.every(function(f) { return f.status === 'applied'; });
+        if (allApplied) {
+            setTimeout(function() {
+                showToast('All placeholders filled!', 'success');
+            }, 500);
+        }
+    };
+
+    window.prefillFillIn = function(index, value) {
+        var input = document.getElementById('fillInInput_' + index);
+        if (!input) return;
+        input.value = value;
+        input.focus();
+        input.select();
+    };
+
+    window.applyFillInFromInput = function(index) {
+        var input = document.getElementById('fillInInput_' + index);
+        if (!input) return;
+        var value = input.value.trim();
+        if (!value) {
+            showToast('Please enter a value.', 'warning');
+            input.focus();
+            return;
+        }
+        applyFillIn(index, value);
+    };
+
+    window.applyAllFillIns = function() {
+        // Collect values from all pending fill-in inputs
+        var pending = [];
+        var missing = [];
+        state.aiAssistFillIns.forEach(function(fi, i) {
+            if (fi.status === 'applied') return;
+            var input = document.getElementById('fillInInput_' + i);
+            var value = input ? input.value.trim() : '';
+            if (value) {
+                pending.push({ index: i, value: value });
+            } else {
+                missing.push(fi.label);
             }
         });
 
-        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
-        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
-    }
-
-    function _applyInBox(elId, c) {
-        var el = document.getElementById(elId);
-        if (!el) return;
-        var text = el.value;
-        // Replace ALL occurrences (not just first)
-        if (text.indexOf(c.original) >= 0) {
-            el.value = text.split(c.original).join(c.suggested);
+        if (pending.length === 0) {
+            showToast('Fill in values first, then click Insert All.', 'warning');
+            return;
         }
-    }
+
+        if (missing.length > 0) {
+            // Still insert what we have, just warn about the rest
+            showToast(missing.length + ' field(s) left empty — inserting the rest.', 'info');
+        }
+
+        // Single undo save before batch
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) _savePacsUndo(output);
+
+        // Apply all at once
+        pending.forEach(function(p) {
+            var fi = state.aiAssistFillIns[p.index];
+            _replaceInBox('editorOutput', fi.placeholder, p.value);
+            _replaceInBox('editorInput', fi.placeholder, p.value);
+            fi.status = 'applied';
+            fi.appliedValue = p.value;
+        });
+
+        // Update state
+        var outputEl = document.getElementById('editorOutput');
+        var inputEl = document.getElementById('editorInput');
+        if (outputEl) { state.outputText = outputEl.value; autoResizeTextarea(outputEl); }
+        if (inputEl) { state.inputText = inputEl.value; autoResizeTextarea(inputEl); }
+
+        renderFillIns();
+        showToast(pending.length + ' placeholder(s) filled.', 'success');
+
+        var allApplied = state.aiAssistFillIns.every(function(f) { return f.status === 'applied'; });
+        if (allApplied) {
+            setTimeout(function() { showToast('All placeholders filled!', 'success'); }, 500);
+        }
+    };
 
     window.dismissAiAssist = function() {
-        // Hide report preview, answer, and corrections — but NOT insights (they persist)
+        // Hide report preview, answer, fill-ins, and corrections — but NOT insights (they persist)
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistAnswerSection').classList.add('d-none');
+        document.getElementById('aiAssistFillInsSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
     };
 
@@ -4706,11 +5028,13 @@ document.addEventListener('DOMContentLoaded', function() {
             row.classList.add('sr-split-mode');
             // Move output to right column
             splitTarget.after(outputSection);
-            // Only show output if it has content
+            // Only show output if it has content (CSS uses .has-content)
             var textarea = document.getElementById('editorOutput');
             if (textarea && textarea.value.trim()) {
+                outputSection.classList.add('has-content');
                 outputSection.classList.remove('d-none');
             } else {
+                outputSection.classList.remove('has-content');
                 outputSection.classList.add('d-none');
             }
             // Update button
@@ -4740,6 +5064,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var textarea = document.getElementById('editorOutput');
         // Always clear and hide — no empty PACS panel in any mode
         if (textarea) textarea.value = '';
+        outputSection.classList.remove('has-content');
         outputSection.classList.add('d-none');
         repositionCorrections();
     }
@@ -4752,30 +5077,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var reportSection = document.getElementById('aiAssistResponse');
         if (!answerSection && !reportSection) return;
 
-        var pacsOutput = document.getElementById('editorOutput');
-        var pacsHasContent = pacsOutput && pacsOutput.value.trim();
-        var outputSection = document.getElementById('outputSection');
-        var pacsVisible = outputSection && !outputSection.classList.contains('d-none');
-
-        if (pacsHasContent && pacsVisible) {
-            // Move above PACS textarea (inside PACS card)
-            var anchor = document.getElementById('answerAnchorPacs');
-            if (anchor) {
-                if (reportSection) anchor.after(reportSection);
-                if (answerSection) {
-                    var target = reportSection || anchor;
-                    target.after(answerSection);
-                }
-            }
-        } else {
-            // Move to top of right col (after splitOutputTarget)
-            var splitTarget = document.getElementById('splitOutputTarget');
-            if (splitTarget) {
-                if (reportSection) splitTarget.after(reportSection);
-                if (answerSection) {
-                    var target = reportSection || splitTarget;
-                    target.after(answerSection);
-                }
+        // Always place in right column below RadInsight header
+        var anchor = document.getElementById('answerAnchorRight');
+        if (anchor) {
+            if (reportSection) anchor.after(reportSection);
+            if (answerSection) {
+                var target = reportSection || anchor;
+                target.after(answerSection);
             }
         }
     }
@@ -4783,21 +5091,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Move corrections near PACS (if has content) or near Draft card
     function repositionCorrections() {
         var section = document.getElementById('aiAssistCorrectionsSection');
-        if (!section || section.classList.contains('d-none')) return;
+        var toggleBtn = document.getElementById('btnCorrectionsToggleDraft');
+        var collapse = document.getElementById('draftCorrectionsCollapse');
 
-        var pacsOutput = document.getElementById('editorOutput');
-        var pacsHasContent = pacsOutput && pacsOutput.value.trim();
+        // Check if there are any pending corrections
+        var pendingCount = 0;
+        if (state.aiAssistCorrections) {
+            pendingCount = state.aiAssistCorrections.filter(function(c) { return c.status === 'pending'; }).length;
+        }
 
-        if (pacsHasContent) {
-            // Move into PACS card
-            var anchor = document.getElementById('correctionsAnchorPacs');
-            if (anchor) anchor.after(section);
-        } else {
-            // Move into Draft card
+        var hasCorrections = section && !section.classList.contains('d-none') && pendingCount > 0;
+
+        if (hasCorrections) {
+            // Move corrections into the draft card collapsible area
             var anchor = document.getElementById('correctionsAnchorDraft');
             if (anchor) anchor.after(section);
+            // Show the toggle button in draft header
+            if (toggleBtn) toggleBtn.classList.remove('d-none');
+            // Keep collapsed — user clicks button to expand
+            // Update badge count
+            var badge = document.getElementById('correctionsCountBadgeDraft');
+            if (badge) badge.textContent = pendingCount;
+        } else {
+            // Hide toggle button and collapse when no pending corrections
+            if (toggleBtn) toggleBtn.classList.add('d-none');
+            if (collapse) collapse.classList.add('d-none');
+            // Also hide the corrections section itself
+            if (section && pendingCount === 0 && state.aiAssistCorrections && state.aiAssistCorrections.length > 0) {
+                section.classList.add('d-none');
+            }
         }
     }
+
+    // Toggle corrections collapsible in draft header
+    window.toggleDraftCorrections = function() {
+        var collapse = document.getElementById('draftCorrectionsCollapse');
+        if (!collapse) return;
+        collapse.classList.toggle('d-none');
+    };
 
     // Toggle resource search overlay
     window.toggleResourceSearchOverlay = function() {
@@ -4806,6 +5137,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!overlay.classList.contains('d-none')) {
             document.getElementById('editorResourceSearch').focus();
         }
+    };
+
+    // Toolbar inline resource search — pipes query into the overlay search
+    window.toolbarResourceSearchGo = function() {
+        var input = document.getElementById('toolbarResourceSearch');
+        var query = input ? input.value.trim() : '';
+        if (!query) return;
+        // Open overlay and populate its input, then trigger search
+        var overlay = document.getElementById('resourceSearchOverlay');
+        if (overlay) overlay.classList.remove('d-none');
+        var overlayInput = document.getElementById('editorResourceSearch');
+        if (overlayInput) overlayInput.value = query;
+        searchEditorResources();
     };
 
     // ==================== SCENE EXTENSION ====================
@@ -5104,6 +5448,20 @@ document.addEventListener('DOMContentLoaded', function() {
 #upgradeModal.show { opacity:1; }
 #upgradeModal.show > div { transform:translateY(0); }
 #upgradeModal:not(.show) { opacity:0; }
+
+/* Fill-in chips */
+.fill-in-chip:hover {
+    background: var(--brand-neutral) !important;
+    color: #fff !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.fill-in-chip:active {
+    transform: translateY(0);
+}
+.fill-in-chip {
+    transition: all 0.15s ease;
+}
 </style>
 <script>
 function startCheckout(plan) {

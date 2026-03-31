@@ -6149,10 +6149,18 @@ body {
 .draft-insert-chip {
     font-size: 0.7rem !important;
     color: #6c757d;
+    border: none !important;
 }
 .draft-insert-chip:hover {
     color: #495057;
     background: #f8f9fa;
+}
+
+/* Draft card footer — no visible border */
+#editorInput ~ .card-footer,
+#editorInput + .card-footer,
+.card:has(#editorInput) > .card-footer {
+    border-top: none !important;
 }
 
 /* ==================== Smart Reporter End-of-Page Actions ==================== */
@@ -6241,32 +6249,34 @@ body {
     }
 }
 
-/* ==================== Smart Reporter Stack View (narrower columns) ==================== */
-@media (min-width: 992px) {
-    #editorMainRow:not(.sr-split-mode) {
-        max-width: 1400px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-}
+/* ==================== Smart Reporter Stack View (full width) ==================== */
+/* Stack view uses full viewport width — no max-width cap */
 
 /* ==================== Smart Reporter Split View ==================== */
-.sr-split-mode #editorLeftCol {
-    flex: 0 0 35%;
-    max-width: 35%;
-}
-.sr-split-mode #editorRightCol {
-    flex: 0 0 65%;
-    max-width: 65%;
-}
-.sr-split-mode #editorLeftCol,
-.sr-split-mode #editorRightCol {
-    max-height: calc(100vh - var(--navbar-height, 110px) - 60px);
-    overflow-y: auto;
-    position: sticky;
-    top: calc(var(--navbar-height, 110px) + 10px);
+@media (min-width: 992px) {
+    .sr-split-mode {
+        flex-wrap: nowrap !important;
+    }
+    .sr-split-mode #editorLeftCol {
+        flex: 0 0 40%;
+        max-width: 40%;
+    }
+    .sr-split-mode #editorRightCol {
+        flex: 0 0 60%;
+        max-width: 60%;
+    }
+    .sr-split-mode #editorLeftCol,
+    .sr-split-mode #editorRightCol {
+        max-height: calc(100vh - var(--navbar-height, 110px) - 60px);
+        overflow-y: auto;
+        position: sticky;
+        top: calc(var(--navbar-height, 110px) + 10px);
+    }
 }
 .sr-split-mode #outputSection {
+    display: none !important;
+}
+.sr-split-mode #outputSection.has-content {
     display: block !important;
 }
 .sr-split-mode #outputSection .card-body textarea {
@@ -6287,6 +6297,25 @@ body {
     .sr-split-mode #outputSection.has-content {
         display: block !important;
     }
+}
+
+/* Corrections panel inside PACS card (dark theme) */
+#pacsCorrectionsCollapse #aiAssistCorrectionsSection {
+    color: #c8d6e5;
+}
+#pacsCorrectionsCollapse #aiAssistCorrectionsSection .fw-semibold {
+    color: #c8d6e5 !important;
+}
+#pacsCorrectionsCollapse #aiAssistCorrectionsSection .text-muted {
+    color: #8899a6 !important;
+}
+#pacsCorrectionsCollapse .btn-outline-success {
+    border-color: #a8d5ba;
+    color: #a8d5ba;
+}
+#pacsCorrectionsCollapse .btn-outline-secondary {
+    border-color: rgba(255,255,255,0.25);
+    color: #c8d6e5;
 }
 
 /* Report Action Buttons */
