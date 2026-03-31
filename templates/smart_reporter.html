@@ -3825,24 +3825,38 @@ document.addEventListener('DOMContentLoaded', function() {
     window.acceptCorrection = function(index) {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
+        var output = document.getElementById('editorOutput');
         if (c.editing) {
             const editInput = document.getElementById('correctionEdit_' + index);
             var newSuggested = editInput ? editInput.value : c.suggested;
-            // If user edited the suggestion, update PACS too (replace old suggested with new)
-            if (newSuggested !== c.suggested) {
-                var output = document.getElementById('editorOutput');
-                if (output && output.value) {
+            // User edited the suggestion — update PACS with the edited value
+            if (output && output.value) {
+                _savePacsUndo(output);
+                // Try replacing the AI's pre-applied suggestion first
+                var replaced = _replaceInBox('editorOutput', c.suggested, newSuggested);
+                if (!replaced) {
+                    // Fallback: PACS may still have original text (AI didn't apply it verbatim)
+                    _replaceInBox('editorOutput', c.original, newSuggested);
+                }
+                state.outputText = output.value;
+                autoResizeTextarea(output);
+            }
+            c.suggested = newSuggested;
+            c.editing = false;
+        } else {
+            // Non-edit accept: PACS should already have c.suggested from AI.
+            // But if it doesn't (AI text didn't match exactly), apply it now.
+            if (output && output.value) {
+                if (output.value.indexOf(c.suggested) < 0 && output.value.indexOf(c.original) >= 0) {
                     _savePacsUndo(output);
-                    _replaceInBox('editorOutput', c.suggested, newSuggested);
+                    _replaceInBox('editorOutput', c.original, c.suggested);
                     state.outputText = output.value;
                     autoResizeTextarea(output);
                 }
             }
-            c.suggested = newSuggested;
-            c.editing = false;
         }
         c.status = 'accepted';
-        // Apply to Draft only (PACS already has the suggested text from AI)
+        // Apply to Draft (original → suggested)
         var input = document.getElementById('editorInput');
         if (input && input.value) {
             _saveDraftUndo(input);
@@ -3888,15 +3902,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.acceptAllCorrections = function() {
         var input = document.getElementById('editorInput');
+        var output = document.getElementById('editorOutput');
         if (input && input.value) _saveDraftUndo(input);
+        var pacsUndoSaved = false;
         state.aiAssistCorrections.forEach(c => {
             if (c.status === 'pending') {
                 c.status = 'accepted';
-                // Apply to Draft only
+                // Apply to Draft
                 _replaceInBox('editorInput', c.original, c.suggested);
+                // Also ensure PACS has the correction (fallback if AI didn't apply it verbatim)
+                if (output && output.value && output.value.indexOf(c.suggested) < 0 && output.value.indexOf(c.original) >= 0) {
+                    if (!pacsUndoSaved) { _savePacsUndo(output); pacsUndoSaved = true; }
+                    _replaceInBox('editorOutput', c.original, c.suggested);
+                }
             }
         });
         if (input) { state.inputText = input.value; autoResizeTextarea(input); }
+        if (pacsUndoSaved && output) { state.outputText = output.value; autoResizeTextarea(output); }
         renderAiAssistCorrections();
     };
 
@@ -3916,13 +3938,16 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Generic helper: replace findStr with replaceStr in a textarea
+    // Returns true if replacement was made, false if findStr not found
     function _replaceInBox(elId, findStr, replaceStr) {
         var el = document.getElementById(elId);
-        if (!el || !findStr) return;
+        if (!el || !findStr) return false;
         var text = el.value;
         if (text.indexOf(findStr) >= 0) {
             el.value = text.split(findStr).join(replaceStr);
+            return true;
         }
+        return false;
     }
 
     // ==================== FILL-IN CHIPS ====================
