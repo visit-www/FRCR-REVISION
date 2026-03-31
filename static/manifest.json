@@ -1,7 +1,7 @@
 {
   "name": "RadInsights",
   "short_name": "RadInsights",
-  "description": "Radiology reporting suite and education platform — AI-powered structured reporting, FRCR exam revision, TNM staging calculators, and clinical tools for radiologists.",
+  "description": "Your trusted radiology companion — AI reporting from shorthand, MDT prep, RadIQ for GP replies, incident reports, complaint responses, emails, 39 TNM calculators, on-call protocols, and continuous learning for radiologists and trainees.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
