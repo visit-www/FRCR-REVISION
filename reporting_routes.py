@@ -2938,38 +2938,80 @@ def _auto_link_content(html_content):
     """
     import re
 
+    _STRIP_PREFIXES = re.compile(
+        r'^(right|left|bilateral|rt|lt|bilat|large|small|acute|chronic|recurrent'
+        r'|suspected|possible|probable|severe|mild|moderate)\s+', re.IGNORECASE,
+    )
+
+    def _add_term(term, url, label):
+        """Add a term to linkable dict if long enough and not a stopword."""
+        term = term.strip().lower()
+        if len(term) >= 4 and term not in ('with', 'from', 'this', 'that', 'type', 'grade'):
+            if term not in linkable:  # first URL wins (don't overwrite)
+                linkable[term] = (url, label)
+
     # Build lookup: term → (url, label)
     linkable = {}
 
     try:
-        # Published cases by diagnosis
+        # Published cases by diagnosis — add full diagnosis + stripped core
         cases = Case.query.filter(
             Case.status == CaseStatus.PUBLISHED,
             Case.diagnosis.isnot(None),
         ).with_entities(Case.id, Case.diagnosis).all()
         for c in cases:
             diag = c.diagnosis.strip()
-            if len(diag) >= 4:
-                linkable[diag.lower()] = (f'/view-case/{c.id}', diag)
+            url = f'/view-case/{c.id}'
+            _add_term(diag, url, diag)
+            # Strip laterality/qualifier prefixes to get core condition
+            core = _STRIP_PREFIXES.sub('', diag).strip()
+            if core and core.lower() != diag.lower():
+                _add_term(core, url, diag)
+            # Also strip "of the ..." suffix (e.g. "fracture of the left humerus" → "fracture")
+            # but only if the core part before "of" is meaningful (>= 2 words)
+            of_idx = core.lower().find(' of the ')
+            if of_idx > 0:
+                short = core[:of_idx].strip()
+                if len(short.split()) >= 2 and len(short) >= 8:
+                    _add_term(short, url, diag)
 
-        # Reporting algorithms by title
+        # Reporting algorithms — add title + individual keywords
         algos = ReportingAlgorithm.query.filter(
             ReportingAlgorithm.is_available == True,
             ReportingAlgorithm.origin == 'admin',
-        ).with_entities(ReportingAlgorithm.slug, ReportingAlgorithm.title).all()
+        ).with_entities(
+            ReportingAlgorithm.slug, ReportingAlgorithm.title,
+            ReportingAlgorithm.keywords,
+        ).all()
         for a in algos:
-            title = a.title.strip()
-            if len(title) >= 4:
-                linkable[title.lower()] = (f'/reporting-template/{a.slug}?from=autolink', title)
+            url = f'/reporting-template/{a.slug}?from=autolink'
+            _add_term(a.title.strip(), url, a.title.strip())
+            # Add individual keywords (comma-separated)
+            if a.keywords:
+                for kw in a.keywords.split(','):
+                    kw = kw.strip()
+                    if len(kw) >= 5:
+                        _add_term(kw, url, a.title.strip())
 
-        # Incidental finding tools
+        # Incidental finding tools — add title + finding_name + keywords
         tools = IncidentalFindingCalculator.query.filter(
             IncidentalFindingCalculator.is_published == True,
-        ).with_entities(IncidentalFindingCalculator.slug, IncidentalFindingCalculator.title).all()
+        ).with_entities(
+            IncidentalFindingCalculator.slug,
+            IncidentalFindingCalculator.title,
+            IncidentalFindingCalculator.finding_name,
+            IncidentalFindingCalculator.keywords,
+        ).all()
         for t in tools:
-            title = t.title.strip()
-            if len(title) >= 4:
-                linkable[title.lower()] = (f'/incidental-findings/{t.slug}', title)
+            url = f'/incidental-findings/{t.slug}'
+            _add_term(t.title.strip(), url, t.title.strip())
+            if t.finding_name:
+                _add_term(t.finding_name.strip(), url, t.title.strip())
+            if t.keywords:
+                for kw in t.keywords.split(','):
+                    kw = kw.strip()
+                    if len(kw) >= 5:
+                        _add_term(kw, url, t.title.strip())
     except Exception:
         return html_content  # fail silently
 
@@ -2982,27 +3024,45 @@ def _auto_link_content(html_content):
     # Only link inside <details>...</details> blocks (answer/explanation sections)
     def _link_in_details(match):
         details_html = match.group(0)
+
+        # Protect existing <a> tags and HTML tags from being matched
+        placeholders = []
+        def _protect(m):
+            placeholders.append(m.group(0))
+            return f'\x00PH{len(placeholders) - 1}\x00'
+        safe_html = re.sub(r'<a\b[^>]*>.*?</a>|<[^>]+>', _protect, details_html, flags=re.DOTALL)
+
         linked_terms = set()
+        link_markers = []  # [(marker_id, url, display, matched_text)]
         for term in sorted_terms:
             if term in linked_terms:
                 continue
             url, display = linkable[term]
-            # Case-insensitive match, only first occurrence, skip if already inside an <a> tag
-            pattern = re.compile(
-                r'(?<!</a>)(?<!["\'/\w])(' + re.escape(term) + r')(?!["\'/\w>])',
-                re.IGNORECASE,
-            )
-            if pattern.search(details_html):
-                details_html = pattern.sub(
-                    lambda m: f'<a href="{url}" class="auto-link" target="_blank" '
-                              f'title="View: {display}">{m.group(1)}</a>',
-                    details_html,
-                    count=1,
-                )
+            pattern = re.compile(r'\b(' + re.escape(term) + r')\b', re.IGNORECASE)
+            m = pattern.search(safe_html)
+            if m:
+                mid = len(link_markers)
+                matched_text = m.group(1)
+                marker = f'\x00LK{mid}\x00'
+                link_markers.append((marker, url, display, matched_text))
+                safe_html = safe_html[:m.start()] + marker + safe_html[m.end():]
                 linked_terms.add(term)
-                if len(linked_terms) >= 5:
-                    break  # cap at 5 links per details block
-        return details_html
+                if len(linked_terms) >= 8:
+                    break  # cap at 8 links per details block
+
+        # Restore HTML placeholders
+        for i, ph in enumerate(placeholders):
+            safe_html = safe_html.replace(f'\x00PH{i}\x00', ph)
+
+        # Convert link markers to actual <a> tags
+        for marker, url, display, matched_text in link_markers:
+            safe_html = safe_html.replace(
+                marker,
+                f'<a href="{url}" class="auto-link" target="_blank" '
+                f'title="View: {display}">{matched_text}</a>',
+            )
+
+        return safe_html
 
     return re.sub(r'<details>.*?</details>', _link_in_details, html_content, flags=re.DOTALL)
 
