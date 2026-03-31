@@ -559,10 +559,6 @@
                             <div class="card-footer bg-white border-0 py-2 px-3">
                                 <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
                                     <div class="d-flex flex-wrap gap-1 align-items-center">
-                                        <button class="btn btn-sm btn-brand-primary" onclick="reviewReport()">
-                                            <i class="fas fa-spell-check me-1"></i>Quick Check
-                                        </button>
-                                        <div class="vr mx-1 d-none d-md-block" style="height: 18px; opacity: 0.3;"></div>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('Rest unremarkable.')" title="Append 'Rest unremarkable.' to draft">
                                             <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>Rest Normal
                                         </button>
@@ -681,6 +677,63 @@
                                         <p class="text-muted small mt-2 mb-0">Report looks good! No suggestions.</p>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Blank State Guidance (hidden when draft has content) -->
+                        <div id="blankStateGuide" class="mb-3">
+                            <div class="card border-0 shadow-sm" style="border-left: 3px solid var(--brand-primary) !important;">
+                                <div class="card-body py-3 px-3">
+                                    <small class="fw-semibold d-block mb-2" style="color: var(--brand-primary);">
+                                        <i class="fas fa-route me-1"></i>Getting Started
+                                    </small>
+                                    <div class="d-flex flex-column gap-2" style="font-size: 0.82rem;">
+                                        <div class="d-flex align-items-start">
+                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-primary); font-size: 0.7rem; min-width: 20px;">1</span>
+                                            <span><strong>Type or paste</strong> your report draft in the editor</span>
+                                        </div>
+                                        <div class="d-flex align-items-start">
+                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-neutral); font-size: 0.7rem; min-width: 20px;">2</span>
+                                            <span>Click <strong>Quick Check</strong> for spelling &amp; grammar, or <strong>Finalize</strong> for a consultant-grade report</span>
+                                        </div>
+                                        <div class="d-flex align-items-start">
+                                            <span class="badge rounded-pill me-2 flex-shrink-0" style="background: var(--brand-success); font-size: 0.7rem; min-width: 20px;">3</span>
+                                            <span>Copy the <strong>PACS-ready</strong> output and use AI actions (MDT, SBA, Viva)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search RadInsights Resources (MOVED UP for visibility) -->
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white border-0 py-2">
+                                <small class="fw-semibold"><i class="fas fa-search me-1" style="color: #6b46c1;"></i>Search Resources</small>
+                            </div>
+                            <div class="card-body py-2 px-3">
+                                <div class="input-group input-group-sm mb-2">
+                                    <input type="text" id="editorResourceSearch" class="form-control"
+                                           placeholder="Cases, calculators, protocols..."
+                                           autocomplete="off"
+                                           onkeydown="if(event.key==='Enter') searchEditorResources()">
+                                    <button class="btn btn-outline-secondary" onclick="searchEditorResources()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <div id="editorResourceResults" style="max-height: 250px; overflow-y: auto;"></div>
+                                <button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="autoSearchEditorResources()">
+                                    <i class="fas fa-magic me-1"></i>Auto-search from report
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Auto-fetched Related Resources (MOVED UP) -->
+                        <div id="relatedResourcesScene2" class="d-none mt-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <small class="fw-semibold"><i class="fas fa-link me-1" style="color: #a8d5ba;"></i>Related Resources</small>
+                                </div>
+                                <div class="card-body p-2" id="relatedContentScene2"></div>
                             </div>
                         </div>
 
@@ -908,38 +961,6 @@
                         <div class="alert alert-warning border-0 py-2 small">
                             <i class="fas fa-exclamation-triangle me-1"></i>
                             <strong>Do not enter</strong> patient names, dates of birth, hospital numbers, or other identifiable information.
-                        </div>
-
-                        <!-- Search RadInsights Resources -->
-                        <div class="card border-0 shadow-sm mb-3">
-                            <div class="card-header bg-white border-0 py-2">
-                                <small class="fw-semibold"><i class="fas fa-search me-1" style="color: #6b46c1;"></i>Search Resources</small>
-                            </div>
-                            <div class="card-body py-2 px-3">
-                                <div class="input-group input-group-sm mb-2">
-                                    <input type="text" id="editorResourceSearch" class="form-control"
-                                           placeholder="Cases, calculators, protocols..."
-                                           autocomplete="off"
-                                           onkeydown="if(event.key==='Enter') searchEditorResources()">
-                                    <button class="btn btn-outline-secondary" onclick="searchEditorResources()">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                                <div id="editorResourceResults" style="max-height: 250px; overflow-y: auto;"></div>
-                                <button class="btn btn-sm btn-outline-secondary w-100 mt-1" onclick="autoSearchEditorResources()">
-                                    <i class="fas fa-magic me-1"></i>Auto-search from report
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Auto-fetched Related Resources (hidden container for backward compat) -->
-                        <div id="relatedResourcesScene2" class="d-none mt-3">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-white border-0 py-2">
-                                    <small class="fw-semibold"><i class="fas fa-link me-1" style="color: #a8d5ba;"></i>Related Resources</small>
-                                </div>
-                                <div class="card-body p-2" id="relatedContentScene2"></div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1271,6 +1292,38 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     };
 
+    // ==================== GLOBAL SEARCH → SR FORMAT MAPPING ====================
+
+    var SR_TYPE_CONFIG = {
+        case:       { icon: 'fa-book-medical',   color: '#e96304' },
+        oncologic:  { icon: 'fa-dna',            color: '#6b46c1' },
+        incidental: { icon: 'fa-exclamation-triangle', color: '#dc3545' },
+        reporting:  { icon: 'fa-sitemap',        color: 'var(--brand-primary)' },
+        template:   { icon: 'fa-file-alt',       color: 'var(--brand-neutral)' },
+        anatomy:    { icon: 'fa-bone',           color: '#e96304' },
+        pearl:      { icon: 'fa-gem',            color: '#a8d5ba' },
+        learning:   { icon: 'fa-graduation-cap', color: '#198754' },
+        protocol:   { icon: 'fa-clipboard-list', color: '#0d6efd' },
+        tnm_case:   { icon: 'fa-dna',            color: '#6b46c1' }
+    };
+
+    function _mapGlobalResult(r) {
+        var cfg = SR_TYPE_CONFIG[r.type] || { icon: 'fa-link', color: '#6c757d' };
+        return {
+            type: r.type,
+            icon: cfg.icon,
+            color: cfg.color,
+            title: r.title || '',
+            subtitle: r.subtitle || r.body_section || '',
+            url: r.url || ''
+        };
+    }
+
+    function _mapGlobalResults(data) {
+        var raw = data.results || [];
+        return { results: raw.map(_mapGlobalResult) };
+    }
+
     // Landing page: template search (Card 1)
     window.searchLandingTemplates = function() {
         var input = document.getElementById('landingTemplateSearch');
@@ -1331,9 +1384,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var container = document.getElementById('landingResourceResults');
         container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm" style="color:#6b46c1;"></span></div>';
 
-        fetch('/api/smart-reporter/relevant-content?q=' + encodeURIComponent(query))
+        fetch('/api/algorithms/search?q=' + encodeURIComponent(query) + '&limit=12')
             .then(r => r.json())
-            .then(function(data) {
+            .then(function(raw) {
+                var data = _mapGlobalResults(raw);
                 if (!data.results || data.results.length === 0) {
                     container.innerHTML = '<div class="text-center py-2 text-muted"><small>No resources found for "' + escapeHtmlSafe(query) + '"</small></div>';
                     return;
@@ -1772,7 +1826,7 @@ document.addEventListener('DOMContentLoaded', function() {
         iframe.classList.add('d-none');
 
         // Search relevant content to find an embeddable tool (GET with query params)
-        fetch('/api/smart-reporter/relevant-content?q=' + encodeURIComponent(topic))
+        fetch('/api/algorithms/search?q=' + encodeURIComponent(topic) + '&limit=12')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             loading.classList.add('d-none');
@@ -1798,20 +1852,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     fullUrl = item.url;
                     toolTitle = item.title || 'IF Calculator';
                     break;
-                } else if (item.type === 'tnm' && item.url) {
+                } else if (item.type === 'oncologic' && item.url) {
                     // /tnm-calculator/slug → /tnm-calculator/embed/slug
                     var slug = item.url.replace('/tnm-calculator/', '');
                     embedUrl = '/tnm-calculator/embed/' + slug;
                     fullUrl = item.url;
                     toolTitle = item.title || 'TNM Calculator';
                     break;
-                } else if (item.type === 'template' && item.url) {
+                } else if (item.type === 'reporting' && item.url) {
                     // /reporting-template/slug → /reporting-template/embed/slug
                     var slug = item.url.replace('/reporting-template/', '');
                     embedUrl = '/reporting-template/embed/' + slug;
                     fullUrl = item.url;
-                    toolTitle = item.title || 'Reporting Template';
+                    toolTitle = item.title || 'Reporting Algorithm';
                     break;
+                } else if (item.type === 'template' && item.url) {
+                    // Radiology templates are not embeddable — skip
+                    continue;
                 }
             }
 
@@ -2235,6 +2292,36 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
         document.getElementById('reportActionResponse').classList.add('d-none');
         hideAllAdaptivePanels();
+        updateActionButtonState();
+    }
+
+    // Enable/disable action buttons + blank state guide based on draft length
+    function updateActionButtonState() {
+        var editor = document.getElementById('editorInput');
+        var hasContent = editor && editor.value.trim().length >= 20;
+        var guide = document.getElementById('blankStateGuide');
+
+        // Toggle blank-state guidance
+        if (guide) {
+            if (hasContent) {
+                guide.classList.add('d-none');
+            } else {
+                guide.classList.remove('d-none');
+            }
+        }
+
+        // Toggle action buttons (report actions + finalize)
+        document.querySelectorAll('.report-action-btn, #btnFinalizeToolbar').forEach(function(btn) {
+            if (hasContent) {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.pointerEvents = '';
+            } else {
+                btn.disabled = true;
+                btn.style.opacity = '0.4';
+                btn.style.pointerEvents = 'none';
+            }
+        });
     }
 
     function populateEditorInput() {
@@ -2244,6 +2331,7 @@ document.addEventListener('DOMContentLoaded', function() {
             autoResizeTextarea(el);
         }
         updateAskClaudeCounter();
+        updateActionButtonState();
     }
 
     function autoResizeTextarea(el) {
@@ -2320,9 +2408,10 @@ document.addEventListener('DOMContentLoaded', function() {
         var container = document.getElementById('editorResourceResults');
         container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm" style="color:#6b46c1;"></span></div>';
 
-        fetch('/api/smart-reporter/relevant-content?q=' + encodeURIComponent(query))
+        fetch('/api/algorithms/search?q=' + encodeURIComponent(query) + '&limit=12')
             .then(function(r) { return r.json(); })
-            .then(function(data) {
+            .then(function(raw) {
+                var data = _mapGlobalResults(raw);
                 if (!data.results || data.results.length === 0) {
                     container.innerHTML = '<div class="text-center py-2 text-muted"><small>No resources found</small></div>';
                     return;
@@ -3048,7 +3137,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (line.length > 5) { q = line.substring(0, 80); break; }
                 }
                 if (q) {
-                    fetch('/api/smart-reporter/relevant-content?q=' + encodeURIComponent(q))
+                    fetch('/api/algorithms/search?q=' + encodeURIComponent(q) + '&limit=8')
                         .then(r => r.json())
                         .then(relData => {
                             if (relData.results && relData.results.length > 0) {
@@ -4443,18 +4532,17 @@ document.addEventListener('DOMContentLoaded', function() {
     let relatedContentTimer = null;
 
     function fetchRelatedContent(query, bodySection, targetPanelId, targetContentId) {
-        const params = new URLSearchParams();
-        if (query) params.set('q', query);
-        if (bodySection) params.set('body_section', bodySection);
-
-        if (!query && !bodySection) {
+        // Use bodySection as search query if no explicit query provided
+        var searchQ = query || bodySection || '';
+        if (!searchQ) {
             document.getElementById(targetPanelId).classList.add('d-none');
             return;
         }
 
-        fetch('/api/smart-reporter/relevant-content?' + params.toString())
+        fetch('/api/algorithms/search?q=' + encodeURIComponent(searchQ) + '&limit=8')
             .then(r => r.json())
-            .then(data => {
+            .then(raw => {
+                var data = _mapGlobalResults(raw);
                 const panel = document.getElementById(targetPanelId);
                 const container = document.getElementById(targetContentId);
 
@@ -4514,6 +4602,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Hook into editor input for Scene 2
     document.getElementById('editorInput').addEventListener('input', fetchRelatedForScene2);
+    document.getElementById('editorInput').addEventListener('input', updateActionButtonState);
 
     // ==================== CONTENT REQUEST ====================
 
@@ -4621,11 +4710,12 @@ document.addEventListener('DOMContentLoaded', function() {
             row.classList.add('sr-split-mode');
             // Move output to right column
             splitTarget.after(outputSection);
-            // Show output with placeholder if empty
-            outputSection.classList.remove('d-none');
+            // Only show output if it has content
             var textarea = document.getElementById('editorOutput');
-            if (textarea && !textarea.value.trim()) {
-                textarea.placeholder = 'PACS-ready output will appear here after Quick Check or Finalize...';
+            if (textarea && textarea.value.trim()) {
+                outputSection.classList.remove('d-none');
+            } else {
+                outputSection.classList.add('d-none');
             }
             // Update button
             if (btnLabel) btnLabel.textContent = 'Stack View';
@@ -4649,17 +4739,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideOrClearOutput() {
         var outputSection = document.getElementById('outputSection');
         var textarea = document.getElementById('editorOutput');
-        if (getSavedViewMode() === 'split' && document.getElementById('editorMainRow').classList.contains('sr-split-mode')) {
-            // In split mode: clear content but keep section visible
-            if (textarea) {
-                textarea.value = '';
-                textarea.placeholder = 'PACS-ready output will appear here after Quick Check or Finalize...';
-            }
-        } else {
-            // In stack mode: hide the section
-            if (textarea) textarea.value = '';
-            outputSection.classList.add('d-none');
-        }
+        // Always clear and hide — no empty PACS panel in any mode
+        if (textarea) textarea.value = '';
+        outputSection.classList.add('d-none');
     }
 
     // ==================== SCENE EXTENSION ====================
