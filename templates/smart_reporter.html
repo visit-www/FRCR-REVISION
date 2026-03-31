@@ -501,6 +501,18 @@
                     </div>
                 </div>
 
+                <!-- AI Loading Indicator (shown inline under toolbar) -->
+                <div id="askClaudeLoading" class="d-none ai-loading-bar">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="ai-loading-pulse"></div>
+                        <small class="ai-loading-text">Analysing report and preparing response...</small>
+                        <button class="btn btn-sm btn-outline-secondary ms-auto ai-loading-cancel" type="button" onclick="cancelAIRequest()">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                    </div>
+                    <div class="ai-loading-progress"></div>
+                </div>
+
                 <!-- PII Warning Bar (hidden by default) -->
                 <div id="piiWarningBar" class="d-none" style="background:#fff3cd;border:1px solid #ffc107;border-radius:0.375rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;">
                     <div class="d-flex align-items-center gap-2" style="cursor:pointer;" onclick="showPIIDetails()">
@@ -579,19 +591,22 @@
                         <div id="stackOutputTarget"></div>
                         <!-- Output Box (shown after review) -->
                         <div id="outputSection" class="d-none">
-                            <div class="card border-0 shadow-sm mb-3">
-                                <div class="card-header bg-white border-0 py-2">
+                            <div class="card border-0 mb-3 pacs-output-card">
+                                <div class="card-header pacs-output-header py-2 px-3">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-file-alt me-1" style="color: #a8d5ba;"></i>PACS-Ready Report</small>
+                                        <span class="pacs-output-title"><i class="fas fa-file-medical-alt me-1"></i>PACS-Ready Report</span>
                                         <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-outline-success" onclick="copyFinalReport()" id="btnCopyReport">
+                                            <button class="btn btn-sm btn-outline-warning d-none" onclick="undoPacsInsert()" id="btnUndoPacs" title="Undo last insert (Ctrl+Z)">
+                                                <i class="fas fa-undo me-1"></i>Undo
+                                            </button>
+                                            <button class="btn btn-sm pacs-btn-copy" onclick="copyFinalReport()" id="btnCopyReport">
                                                 <i class="fas fa-copy me-1"></i>Copy
                                             </button>
                                             <button class="btn btn-sm btn-outline-secondary" onclick="printReport()">
                                                 <i class="fas fa-print me-1"></i>Print
                                             </button>
                                             <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                                     <i class="fas fa-bookmark me-1"></i>Save
                                                 </button>
                                                 <ul class="dropdown-menu dropdown-menu-end">
@@ -606,12 +621,11 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="card-body p-3">
-                                    <textarea class="form-control" id="editorOutput" rows="12"
-                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6; background-color: #f0f7f4; border-color: #c3e0d0;"></textarea>
-                                    <small class="text-muted mt-1 d-block">
-                                        <i class="fas fa-copy me-1"></i>Copy this to PACS. To change what RadInsight Intelligence analyses, update your working draft above.
-                                    </small>
+                                <div class="card-body p-0">
+                                    <textarea class="form-control pacs-output-textarea" id="editorOutput" rows="12"></textarea>
+                                </div>
+                                <div class="card-footer pacs-output-footer py-2 px-3">
+                                    <i class="fas fa-info-circle me-1"></i>Copy this to PACS. To change what AI analyses, update your working draft above.
                                 </div>
                             </div>
                         </div>
@@ -680,14 +694,8 @@
                                     </div>
                                 </div>
 
-                                <!-- Loading spinner -->
-                                <div id="askClaudeLoading" class="d-none text-center py-3">
-                                    <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                                    <small class="text-muted ms-2">Reviewing your report and preparing response...</small>
-                                    <button class="btn btn-sm btn-outline-secondary ms-3" onclick="cancelAIRequest()" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
-                                        <i class="fas fa-times me-1"></i>Cancel
-                                    </button>
-                                </div>
+                                <!-- Loading spinner (visual placeholder — actual spinner moved to toolbar area) -->
+                                <div id="askClaudeLoadingInPanel" class="d-none"></div>
 
                                 <!-- AI Assist Response (answer + report + corrections) -->
                                 <div id="aiAssistResponse" class="d-none">
@@ -719,14 +727,17 @@
                                     <div id="aiAssistReportSection" class="mb-3 d-none">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="fw-semibold text-muted">
-                                                <i class="fas fa-file-medical me-1"></i>Generated Report
+                                                <i class="fas fa-file-medical me-1"></i>New Finalized Report
                                             </small>
+                                        </div>
+                                        <div class="alert alert-info py-2 px-3 mb-2" style="font-size: 0.82rem;">
+                                            <i class="fas fa-info-circle me-1"></i>Your PACS box already has a report. Click <strong>Replace</strong> to use this new version (you can Undo).
                                         </div>
                                         <div class="p-2 rounded" style="background: #e8f5e9; border: 1px solid #81c784;">
                                             <pre id="aiAssistReportText" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
                                             <div class="d-flex flex-wrap gap-2 mt-2">
                                                 <button class="btn btn-sm btn-brand-primary" onclick="insertReportText()">
-                                                    <i class="fas fa-plus me-1"></i>Insert to PACS Ready Text Box
+                                                    <i class="fas fa-exchange-alt me-1"></i>Replace PACS Report
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
                                                     Dismiss
@@ -2188,11 +2199,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function autoResizeTextarea(el) {
-        // Preserve scroll position to prevent page jump when textarea resizes
-        var scrollY = window.pageYOffset;
-        el.style.height = 'auto';
+        // Lock the parent container height during resize to prevent layout shift
+        var parent = el.parentElement;
+        var parentHeight = parent.style.minHeight;
+        parent.style.minHeight = parent.offsetHeight + 'px';
+        el.style.height = '0';
         el.style.height = Math.max(el.scrollHeight, 60) + 'px';
-        window.scrollTo(0, scrollY);
+        parent.style.minHeight = parentHeight || '';
     }
 
     function getCurrentReportText(warnIfEmpty) {
@@ -2761,7 +2774,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const btn = document.getElementById('btnAskClaude');
         btn.disabled = true;
-        document.getElementById('askClaudeLoading').classList.remove('d-none');
+        var loadingEl = document.getElementById('askClaudeLoading');
+        // Reset progress bar animation by re-inserting the element
+        var progressBar = loadingEl.querySelector('.ai-loading-progress');
+        if (progressBar) { progressBar.style.animation = 'none'; progressBar.offsetHeight; progressBar.style.animation = ''; }
+        loadingEl.classList.remove('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
 
         const assistPayload = {
@@ -2875,7 +2892,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Disable all action buttons during request
         document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = true);
-        document.getElementById('askClaudeLoading').classList.remove('d-none');
+        var _loadEl = document.getElementById('askClaudeLoading');
+        var _progBar = _loadEl.querySelector('.ai-loading-progress');
+        if (_progBar) { _progBar.style.animation = 'none'; _progBar.offsetHeight; _progBar.style.animation = ''; }
+        _loadEl.classList.remove('d-none');
         document.getElementById('reportActionResponse').classList.add('d-none');
 
         const payload = {
@@ -3052,6 +3072,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Show output box without auto-populating from draft
         const output = ensureOutputBoxVisible(true);
+        _savePacsUndo(output);
         const current = output.value.trim();
         output.value = current ? current + '\n\n' + answer : answer;
 
@@ -3083,6 +3104,7 @@ document.addEventListener('DOMContentLoaded', function() {
         autoResizeTextarea(input);
         // Also populate PACS output
         const output = ensureOutputBoxVisible();
+        _savePacsUndo(output);
         output.value = reportText;
         state.outputText = reportText;
         autoResizeTextarea(output);
@@ -3094,29 +3116,44 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Draft and PACS report updated with finalized version.', 'success');
     };
 
+    // Undo stack for PACS output box (programmatic replacements only)
+    var _pacsUndoStack = [];
+
+    function _savePacsUndo(output) {
+        _pacsUndoStack.push(output.value);
+        var btn = document.getElementById('btnUndoPacs');
+        if (btn) btn.classList.remove('d-none');
+    }
+
+    window.undoPacsInsert = function() {
+        if (!_pacsUndoStack.length) return;
+        var output = document.getElementById('editorOutput');
+        output.value = _pacsUndoStack.pop();
+        state.outputText = output.value;
+        autoResizeTextarea(output);
+        showToast('PACS report restored.', 'info');
+        if (!_pacsUndoStack.length) {
+            var btn = document.getElementById('btnUndoPacs');
+            if (btn) btn.classList.add('d-none');
+        }
+    };
+
     window.insertReportText = function() {
         const reportText = state.aiAssistReportText;
         if (!reportText || !reportText.trim()) return;
-        // Append AI-generated report to PACS output
         const output = ensureOutputBoxVisible(true);
-        const current = output.value.trim();
-        output.value = current ? current + '\n\n' + reportText : reportText;
-
+        // Save current content for undo before replacing
+        _savePacsUndo(output);
+        output.value = reportText;
         state.outputText = output.value;
         autoResizeTextarea(output);
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
-        showToast('Report text appended.', 'success');
-        // Focus clinical insights section if visible, otherwise ask box
-        var insights = document.getElementById('aiAssistInsightsSection');
-        if (insights && !insights.classList.contains('d-none')) {
-            insights.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            var askInput = document.getElementById('askClaudeInput');
-            if (askInput) {
-                askInput.focus();
-                askInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+        showToast('Finalized report inserted into PACS box.', 'success');
+        // Scroll to PACS box so user can review
+        var outputSection = document.getElementById('outputSection');
+        if (outputSection) {
+            outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     };
 
@@ -3227,9 +3264,23 @@ document.addEventListener('DOMContentLoaded', function() {
             answerSection.classList.add('d-none');
         }
 
-        // Layer 2: Report text (shown separately when full_report mode)
+        // Layer 2: Report text — auto-insert if PACS box empty, else show preview
         const reportSection = document.getElementById('aiAssistReportSection');
-        if (state.aiAssistReportText) {
+        if (state.aiAssistReportText && isFullReport) {
+            const outputSection = document.getElementById('outputSection');
+            const output = document.getElementById('editorOutput');
+            const pacsHasContent = !outputSection.classList.contains('d-none') && (output.value || '').trim().length > 0;
+
+            if (!pacsHasContent) {
+                // PACS box empty — auto-insert directly, skip intermediate preview
+                reportSection.classList.add('d-none');
+                insertReportText();
+            } else {
+                // PACS box has content — show preview with replacement message
+                document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
+                reportSection.classList.remove('d-none');
+            }
+        } else if (state.aiAssistReportText) {
             document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
             reportSection.classList.remove('d-none');
         } else {
@@ -3684,6 +3735,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editorOutput').addEventListener('input', function() {
         state.outputText = this.value;
         autoResizeTextarea(this);
+    });
+
+    // Ctrl+Z in PACS output: use our undo stack first (for programmatic inserts)
+    document.getElementById('editorOutput').addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && _pacsUndoStack.length) {
+            e.preventDefault();
+            undoPacsInsert();
+        }
     });
 
 

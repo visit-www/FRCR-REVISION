@@ -5964,6 +5964,138 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.06);
 }
 
+/* ==================== PACS-Ready Report Output Box ==================== */
+/* Dark clinical look — mimics PACS terminal for radiologist familiarity */
+.pacs-output-card {
+    border: 1px solid #2c3e50;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.pacs-output-header {
+    background: #1a2332;
+    border-bottom: 2px solid #e96304;
+}
+.pacs-output-title {
+    color: #e0e6ed;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+.pacs-output-title i {
+    color: #e96304;
+}
+.pacs-output-header .btn {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.5rem;
+    border-color: rgba(255,255,255,0.25);
+    color: #c8d6e5;
+}
+.pacs-output-header .btn:hover {
+    border-color: rgba(255,255,255,0.5);
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+}
+.pacs-output-header .pacs-btn-copy {
+    border-color: #a8d5ba;
+    color: #a8d5ba;
+}
+.pacs-output-header .pacs-btn-copy:hover {
+    background: rgba(168,213,186,0.15);
+    border-color: #a8d5ba;
+    color: #c2f0d0;
+}
+.pacs-output-header #btnUndoPacs {
+    border-color: #ffc107;
+    color: #ffc107;
+}
+.pacs-output-header #btnUndoPacs:hover {
+    background: rgba(255,193,7,0.15);
+    color: #ffe066;
+}
+.pacs-output-header .dropdown-toggle {
+    border-color: rgba(255,255,255,0.25);
+    color: #c8d6e5;
+}
+.pacs-output-textarea {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    background: #0d1117;
+    color: #e6edf3;
+    border: none;
+    border-radius: 0;
+    padding: 1rem 1.25rem;
+    resize: none;
+    caret-color: #e96304;
+}
+.pacs-output-textarea:focus {
+    background: #0d1117;
+    color: #e6edf3;
+    box-shadow: none;
+    border: none;
+}
+.pacs-output-textarea::placeholder {
+    color: #484f58;
+}
+.pacs-output-textarea::selection {
+    background: #264f78;
+    color: #fff;
+}
+.pacs-output-footer {
+    background: #f6f8fa;
+    border-top: 1px solid #e1e4e8;
+    font-size: 0.75rem;
+    color: #6a737d;
+}
+
+/* ==================== AI Loading Bar (under toolbar) ==================== */
+.ai-loading-bar {
+    background: linear-gradient(135deg, #fff8f0, #fff3e0);
+    border: 1px solid #ffe0b2;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
+    position: relative;
+    overflow: hidden;
+}
+.ai-loading-pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e96304;
+    animation: ai-pulse 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes ai-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.1); }
+}
+.ai-loading-text {
+    font-size: 0.8rem;
+    color: #5a4a3a;
+    font-weight: 500;
+}
+.ai-loading-cancel {
+    font-size: 0.72rem !important;
+    padding: 0.15rem 0.5rem !important;
+}
+.ai-loading-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: #e96304;
+    animation: ai-progress 8s ease-out forwards;
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+@keyframes ai-progress {
+    0% { width: 0; }
+    50% { width: 60%; }
+    80% { width: 85%; }
+    100% { width: 95%; }
+}
+
 /* ==================== Smart Reporter Stack View (narrower columns) ==================== */
 @media (min-width: 992px) {
     #editorMainRow:not(.sr-split-mode) {
