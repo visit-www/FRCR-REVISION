@@ -881,37 +881,37 @@ showEditCaseForm = function(caseData) {
 </script>
 
 <!-- Image Viewer Modal for Manage Session -->
-<div id="imageModalManage" class="modal fade" tabindex="-1" aria-labelledby="imageModalManageLabel" aria-hidden="true">
+<div id="imageModalManage" class="modal fade app-content-modal" tabindex="-1" aria-labelledby="imageModalManageLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="imageModalManageLabel">Image Viewer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="imageModalManageLabel"><i class="fas fa-image me-2"></i>Image Viewer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
                 <img id="modalImageDisplayManage" src="" alt="Image" style="max-width: 100%; max-height: 50vh; object-fit: contain;">
                 <hr>
                 <div class="image-description-section">
                     <h6 class="text-start mb-2">Image Description</h6>
-                    <textarea id="imageDescriptionManage" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..." style="background-color: #2a2d35; color: #c8e6d9; border-color: #8bb8d9;"></textarea>
-                    <button class="btn btn-sm btn-success mt-2" onclick="saveImageDescriptionManage()">Save Description</button>
+                    <textarea id="imageDescriptionManage" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..."></textarea>
+                    <button class="btn btn-sm btn-brand-primary mt-2" onclick="saveImageDescriptionManage()">Save Description</button>
                 </div>
             </div>
             <div class="modal-footer">
                 <small id="imageInfoManage" class="me-auto text-muted"></small>
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-sm btn-modal-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Edit Case Modal - Unified with view_case.html -->
-<div class="modal fade" id="editCaseModalManage" tabindex="-1" aria-labelledby="editCaseLabelManage" aria-hidden="true">
+<div class="modal fade app-content-modal" id="editCaseModalManage" tabindex="-1" aria-labelledby="editCaseLabelManage" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-peachy-orange">
-                <h5 class="modal-title" id="editCaseLabelManage">Edit Case</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="editCaseLabelManage"><i class="fas fa-pencil-alt me-2"></i>Edit Case</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                 <form id="editCaseFormManage">
@@ -942,8 +942,8 @@ showEditCaseForm = function(caseData) {
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-warning" onclick="saveEditedCaseManage()">Save All Changes</button>
+                <button type="button" class="btn btn-sm btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-modal-primary" onclick="saveEditedCaseManage()"><i class="fas fa-save me-1"></i>Save All Changes</button>
             </div>
         </div>
     </div>
@@ -1060,30 +1060,30 @@ function editQAPairModalManage(questionId, answerId, pairNumber) {
 
 function createQAPairEditModalManage() {
     const modalHTML = `
-        <div class="modal fade" id="editQAPairModalInnerManage" tabindex="-1" aria-labelledby="editQAPairLabelManage" aria-hidden="true">
+        <div class="modal fade app-content-modal" id="editQAPairModalInnerManage" tabindex="-1" aria-labelledby="editQAPairLabelManage" aria-hidden="true">
             <div class="modal-dialog modal-xl">
                 <div class="modal-content">
-                    <div class="modal-header bg-info">
-                        <h5 class="modal-title" id="editQAPairLabelManage">Edit Q&A Pair <span id="editQAPairNumberManage">1</span></h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editQAPairLabelManage"><i class="fas fa-pencil-alt me-2"></i>Edit Q&A Pair <span id="editQAPairNumberManage">1</span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
                         <input type="hidden" id="editQAPairQuestionIdManage">
                         <input type="hidden" id="editQAPairAnswerIdManage">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label" style="color: #333;"><i class="fas fa-question-circle me-1" style="color: #8bb8d9;"></i>Question Text</label>
-                                <textarea class="form-control" id="editQAPairQuestionTextManage" rows="8" required style="background-color: #f8f9fa; color: #333; border-color: #ddd;"></textarea>
+                                <label class="form-label fw-semibold small"><i class="fas fa-question-circle me-1" style="color: var(--brand-neutral);"></i>Question Text</label>
+                                <textarea class="form-control" id="editQAPairQuestionTextManage" rows="8" required></textarea>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" style="color: #333;"><i class="fas fa-check-circle me-1" style="color: #c8e6d9;"></i>Answer Text</label>
-                                <textarea class="form-control" id="editQAPairAnswerTextManage" rows="8" required style="background-color: #f8f9fa; color: #333; border-color: #ddd;"></textarea>
+                                <label class="form-label fw-semibold small"><i class="fas fa-check-circle me-1" style="color: var(--brand-success);"></i>Answer Text</label>
+                                <textarea class="form-control" id="editQAPairAnswerTextManage" rows="8" required></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-info" onclick="saveQAPairEditManage()">Save Pair</button>
+                        <button type="button" class="btn btn-sm btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-sm btn-modal-primary" onclick="saveQAPairEditManage()"><i class="fas fa-save me-1"></i>Save Pair</button>
                     </div>
                 </div>
             </div>
