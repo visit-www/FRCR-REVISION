@@ -1,7 +1,7 @@
 {
   "name": "RadInsights",
   "short_name": "RadInsights",
-  "description": "Your companion for radiology learning, reporting, and exam preparation - practice cases, take notes, and build confidence.",
+  "description": "Radiology reporting suite and education platform — AI-powered structured reporting, FRCR exam revision, TNM staging calculators, and clinical tools for radiologists.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

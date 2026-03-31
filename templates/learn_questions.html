@@ -234,6 +234,16 @@
                         </select>
                     </div>
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold small">Tags <span class="text-muted">(comma-separated)</span></label>
+                        <input type="text" id="editQTags" class="form-control form-control-sm" placeholder="e.g. Thorax, CT, pneumothorax, emergency">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold small">Description <span class="text-muted">(short summary for search results)</span></label>
+                        <textarea id="editQDescription" class="form-control form-control-sm" rows="2" placeholder="Brief description of this question set..."></textarea>
+                    </div>
+                </div>
                 <!-- TinyMCE Editor -->
                 <label class="form-label fw-semibold small">HTML Content</label>
                 <textarea id="editQContent"></textarea>
@@ -420,9 +430,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 link_title: true,
                 link_assume_external_targets: true,
                 link_default_protocol: 'https',
-                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; } .sba-question { border-left: 3px solid #198754; padding: 0.75rem 1rem; margin-bottom: 1rem; background: #f8fdf9; } .viva-exchange { border-left: 3px solid #6b46c1; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: #faf8ff; } .sba-vignette { background: #f0f4f8; padding: 0.75rem; border-radius: 4px; margin-bottom: 0.5rem; }',
+                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; } .sba-question { border-left: 3px solid #198754; padding: 0.75rem 1rem; margin-bottom: 1rem; background: #f8fdf9; } .viva-exchange { border-left: 3px solid #6b46c1; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: #faf8ff; } .sba-vignette { background: #f0f4f8; padding: 0.75rem; border-radius: 4px; margin-bottom: 0.5rem; } details { display: block !important; border: 1px dashed #198754; padding: 0.5rem; margin: 0.5rem 0; border-radius: 4px; background: #f0faf3; } details[open] { display: block !important; } summary { display: block !important; font-weight: bold; color: #198754; cursor: default; padding: 0.25rem 0; } details > *:not(summary) { display: block !important; }',
                 setup: function(editor) {
                     editor.on('init', function() { _editTinyReady = true; });
+                    editor.on('SetContent', function() {
+                        editor.dom.select('details').forEach(function(d) { d.setAttribute('open', ''); });
+                    });
                 }
             });
         });
@@ -447,6 +460,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('editQSection').value = data.body_section || '';
                 document.getElementById('editQModality').value = data.modality || '';
                 document.getElementById('editQModule').value = data.module || '';
+                document.getElementById('editQTags').value = data.tags || '';
+                document.getElementById('editQDescription').value = data.description || '';
                 // Set content in textarea (TinyMCE will pick it up on init)
                 document.getElementById('editQContent').value = data.html_content || '';
                 _editRefs = data.references || [];
@@ -534,6 +549,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body_section: document.getElementById('editQSection').value,
                 modality: document.getElementById('editQModality').value,
                 module: document.getElementById('editQModule').value,
+                tags: document.getElementById('editQTags').value.trim(),
+                description: document.getElementById('editQDescription').value.trim(),
                 html_content: htmlContent
             })
         })

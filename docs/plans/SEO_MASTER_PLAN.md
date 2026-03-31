@@ -2,8 +2,8 @@
 
 > **Created:** March 30, 2026
 > **Last Updated:** March 31, 2026
-> **Status:** Phase 1 Done (Public Preview Pages), Phases 2-6 Planned
-> **Target:** Top 10 SERP for "radiology education platform", "FRCR revision", "TNM calculator", "AI radiology reporting"
+> **Status:** Phases 1-4 DONE, Phase 5 nearly done, Phase 6 partial, Phase 7 (keyword opt) DONE
+> **Target:** Top 10 SERP for "radiology reporting", "radiology education", "radiology suite", "FRCR revision", "TNM calculator", "AI radiology reporting"
 > **Keyword:** `RADINSIGHTS-SEO-2026`
 
 ---
@@ -892,56 +892,137 @@ TNM calculator pages should override with calculator-specific OG:
 - [x] Wrap auth-only template elements in `{% if current_user.is_authenticated %}` conditionals
 - [x] Server-side truncation for case discussion (150 chars) — no content leaks in HTML source
 
-### Phase 1 — Global Metadata
+### Phase 1 — Global Metadata (DONE)
 - [x] Add OG tags to `base.html` (og:type, og:title, og:description, og:image, og:url, og:site_name, og:locale)
 - [x] Add Twitter Card tags to `base.html`
-- [ ] Add OG + Twitter tags to `landing.html` (standalone template)
+- [x] Add OG + Twitter tags to `landing.html` (standalone template)
 - [x] Add `{% block canonical %}` to `base.html`
 - [x] Add `{% block robots_meta %}` to `base.html` with default `index, follow`
 - [x] Add `<meta name="author" content="RadInsights">` to `base.html`
-- [ ] Add `<link rel="preconnect">` hints for CDNs
+- [x] Add `<link rel="preconnect">` hints for CDNs (cdn.jsdelivr.net, cdnjs.cloudflare.com, res.cloudinary.com)
 - [x] Verify 512x512 icon URL is valid for OG image
 
-### Phase 2 — Structured Data
-- [ ] Add Organization JSON-LD to `base.html`
-- [ ] Add MedicalWebPage + SoftwareApplication JSON-LD to `landing.html`
-- [ ] Add MedicalWebPage JSON-LD to TNM calculator template
-- [ ] Add FAQPage JSON-LD to `pricing.html`
+### Phase 2 — Structured Data (DONE)
+- [x] Add Organization JSON-LD to `base.html` (lines 79-95)
+- [x] Add MedicalWebPage + SoftwareApplication JSON-LD to `landing.html` (lines 455-512)
+- [x] Add WebApplication JSON-LD to `landing.html` (lines 431-453) — "Radiology Reporting Suite"
+- [x] Add MedicalWebPage JSON-LD to TNM calculator template (calculator_wrapper.html lines 30-48)
+- [x] Add FAQPage JSON-LD to `pricing.html` (lines 737-768, 6 Q&A pairs)
 - [x] Add `{% block extra_schema %}` to `base.html` (used by public templates)
-- [ ] Add BreadcrumbList JSON-LD to TNM calculator pages
+- [x] Add BreadcrumbList JSON-LD to TNM calculator pages (calculator_wrapper.html lines 16-28)
 - [ ] Validate all structured data with Google Rich Results Test
 
-### Phase 3 — Landing Page
-- [ ] Update `<title>` to match SEO pattern
-- [ ] Update `<meta description>` with target keywords
-- [ ] Add `<meta name="keywords">` tag
-- [ ] Add "Beyond the Shorthand" AI reporting section
-- [ ] Ensure proper H1-H6 heading hierarchy
-- [ ] Verify all CTAs link to /register
+### Phase 3 — Landing Page (DONE)
+- [x] Update `<title>` — "RadInsights | Radiology Reporting Suite & Education Platform | AI-Powered Tools"
+- [x] Update `<meta description>` with target keywords (radiology reporting suite, education platform)
+- [x] Add `<meta name="keywords">` tag (20+ terms: radiology reporting, education, suite, structured reporting, etc.)
+- [x] Add "Beyond the Shorthand" AI reporting section (lines 688-729)
+- [x] Ensure proper H1-H6 heading hierarchy
+- [x] Verify all CTAs link to /register
 
-### Phase 4 — Per-Page SEO
-- [x] Override `{% block title %}` in all public templates (12+ pages)
-- [x] Override `{% block meta_description %}` in all public templates
+### Phase 4 — Per-Page SEO (DONE)
+- [x] Override `{% block title %}` in all public templates (12+ pages) — updated Mar 31 with keyword-rich titles
+- [x] Override `{% block meta_description %}` in all public templates — updated Mar 31 with "radiology reporting/education" terms
 - [x] Add `noindex, nofollow` to all authenticated-only templates (10+ pages)
-- [ ] Add canonical URLs to all pages via context processor
+- [x] Add canonical URLs to all pages via context processor (`canonical_url()` in app.py lines 1224-1229)
 - [x] Add OG overrides to key public pages (algorithms, templates, tools, protocols, knowledge hub, anatomy, cases)
 
-### Phase 5 — Technical SEO
+### Phase 5 — Technical SEO (MOSTLY DONE)
 - [x] Replace static sitemap.xml with dynamic Flask route
-- [x] Include TNM calculators, Knowledge Hub content in sitemap
-- [ ] Update robots.txt with crawl-delay for aggressive bots
-- [ ] Add canonical URL context processor
+- [x] Include TNM calculators, Knowledge Hub content, SBA/Viva questions in sitemap
+- [x] Update robots.txt with crawl-delay for aggressive bots (AhrefsBot, SemrushBot: 10s)
+- [x] Add canonical URL context processor
 - [ ] Run PageSpeed Insights and fix any Core Web Vitals issues
-- [ ] Submit updated sitemap to Google Search Console
+- [ ] Submit updated sitemap to Google Search Console (see GSC steps below)
+- [ ] Request re-indexing of key pages in Google Search Console
 
-### Phase 6 — Content Strategy
-- [ ] Ensure all 39 TNM calculator pages have unique titles and descriptions
-- [ ] Add internal links between related TNM calculators
+### Phase 6 — Content Strategy (PARTIALLY DONE)
+- [x] Ensure all 39 TNM calculator pages have unique titles and descriptions (dynamic generation)
+- [ ] Add internal links between related TNM calculators ("Related Calculators" section)
 - [ ] Create "Related Resources" component for public pages
-- [ ] Set up Google Analytics 4 (if not already)
+- [ ] Set up Google Analytics 4
 - [ ] Set up Bing Webmaster Tools
 - [ ] Monitor Search Console for indexing issues weekly
+- [ ] Create branded OG image (1200x630px) — currently using 512x512 icon
+
+### Phase 7 — Keyword Optimization (NEW — March 31, 2026)
+- [x] Update all page titles/descriptions to target "radiology reporting", "radiology education", "radiology suite"
+- [x] Add WebApplication schema with "Radiology Reporting Suite" name
+- [x] Update Organization schema description with reporting suite language
+- [x] Update PWA manifest description with reporting suite language
+- [x] Update landing.html OG/Twitter with "Radiology Reporting Suite & Education Platform"
+- [x] Update about.html, pricing.html with "radiology reporting suite" messaging
+- [x] Update browse page titles: algorithms, templates, tools, protocols, pearls, cases, knowledge hub, TNM index
 
 ---
 
-> **Phase 1 (Public Preview Pages) COMPLETE.** Next step: Phase 2 — add Organization JSON-LD to `base.html`, MedicalWebPage + SoftwareApplication to `landing.html`, FAQPage to `pricing.html`, and OG tags to `landing.html` (standalone template).
+## 19. Google Search Console — Post-Deploy Checklist
+
+> **Do these steps after deploying the metadata changes (March 31, 2026):**
+
+### Step 1: Resubmit Sitemap
+1. Go to [Google Search Console](https://search.google.com/search-console) → select `radinsights.xyz`
+2. Navigate to **Sitemaps** (left sidebar)
+3. If `https://www.radinsights.xyz/sitemap.xml` is already listed, click it → **Resubmit**
+4. If not listed, enter `sitemap.xml` in the "Add a new sitemap" field → Submit
+5. Wait for Google to re-process (usually 1-24 hours)
+
+### Step 2: Request Indexing of Key Pages
+Use **URL Inspection** tool (top search bar in GSC) for each high-priority URL:
+1. `https://www.radinsights.xyz/` (landing page — updated title/description/schema)
+2. `https://www.radinsights.xyz/reporting-algorithms` (updated title)
+3. `https://www.radinsights.xyz/reporting-templates` (updated title)
+4. `https://www.radinsights.xyz/case-library` (updated title)
+5. `https://www.radinsights.xyz/knowledge-hub` (updated title)
+6. `https://www.radinsights.xyz/tnm-calculator` (updated title)
+7. `https://www.radinsights.xyz/pricing` (updated title)
+8. `https://www.radinsights.xyz/about` (updated title)
+
+For each URL:
+- Paste URL → click **Request Indexing**
+- Google will re-crawl and pick up the new metadata within 1-7 days
+- **Daily limit:** ~10 requests per day — prioritise landing page and browse pages
+
+### Step 3: Validate Structured Data
+1. Go to [Google Rich Results Test](https://search.google.com/test/rich-results)
+2. Test these URLs after deploy:
+   - `https://www.radinsights.xyz/` → should show WebApplication + MedicalWebPage + Organization
+   - `https://www.radinsights.xyz/pricing` → should show FAQPage (6 results)
+   - `https://www.radinsights.xyz/tnm-calculator/lung` → should show MedicalWebPage + BreadcrumbList
+   - `https://www.radinsights.xyz/case-library` → should show CollectionPage
+3. Fix any errors/warnings flagged
+
+### Step 4: Check Index Coverage
+1. GSC → **Pages** (left sidebar) → review "Why pages aren't indexed"
+2. Ensure no public pages are accidentally marked `noindex`
+3. Check for crawl errors on new SBA/Viva URLs (`/learn/sba/<id>`, `/learn/viva/<id>`)
+
+### Step 5: Monitor Performance
+1. GSC → **Performance** → filter by query
+2. After 2-4 weeks, check impressions for:
+   - "radiology reporting" / "radiology reporting suite"
+   - "radiology education" / "radiology education platform"
+   - "radiology suite"
+   - "FRCR revision" / "FRCR exam preparation"
+   - "TNM staging calculator"
+3. If impressions appear but CTR is low, consider tweaking title/description for better click-through
+
+---
+
+## 20. Remaining Items (Prioritised)
+
+| # | Item | Effort | Impact | Notes |
+|---|------|--------|--------|-------|
+| 1 | **Submit sitemap + request indexing in GSC** | 15 min | Critical | Must do after every deploy with metadata changes |
+| 2 | **Validate structured data** via Rich Results Test | 15 min | High | Catches schema errors before Google processes them |
+| 3 | **Set up Google Analytics 4** | 30 min | High | No traffic analytics currently — flying blind |
+| 4 | **Create branded OG image (1200x630)** | 1 hour | Medium | Social shares currently show small 512x512 icon |
+| 5 | **Add "Related Calculators" to TNM pages** | 2 hours | Medium | Internal linking improves crawl depth + user engagement |
+| 6 | **Create "Related Resources" on public pages** | 2 hours | Medium | Cross-link cases ↔ algorithms ↔ templates ↔ pearls |
+| 7 | **Set up Bing Webmaster Tools** | 15 min | Low | Bing has ~5% search market share |
+| 8 | **Run PageSpeed Insights** | 30 min | Medium | Core Web Vitals affect ranking |
+| 9 | **Add hreflang tags** (en-GB / en-US) | 30 min | Low | Only if targeting US audience specifically |
+
+---
+
+> **Phases 1-4 COMPLETE. Phase 5 nearly done (GSC submission + PageSpeed remaining). Phase 6 partially done (GA4, Bing, internal linking remaining). Phase 7 (keyword optimisation) COMPLETE.**

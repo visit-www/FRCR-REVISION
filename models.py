@@ -2964,6 +2964,8 @@ class LearningQuestion(db.Model):
     title = db.Column(db.String(300))
     html_content = db.Column(db.Text, nullable=False)
     source_report_context = db.Column(db.Text)  # first 200 chars of source report
+    tags = db.Column(db.Text)           # comma-separated searchable tags
+    description = db.Column(db.Text)    # short description for search results
     content_hash = db.Column(db.String(64), unique=True, nullable=False)  # SHA-256 dedup
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

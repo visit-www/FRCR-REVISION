@@ -724,6 +724,45 @@ def unified_search():
                     'similarity': float(r.sim) if r.sim else 0,
                 })
 
+        # Search learning questions (SBA/Viva)
+        if filter_type in ('', 'learning'):
+            lq_sql = text("""
+                SELECT lq.id, lq.title, lq.question_type, lq.body_section, lq.modality,
+                       lq.tags, lq.description,
+                       GREATEST(
+                           similarity(lq.title, :query),
+                           COALESCE(similarity(lq.tags, :query), 0)
+                       ) AS sim
+                FROM learning_question lq
+                WHERE (
+                    similarity(lq.title, :query) > 0.1
+                    OR lq.title ILIKE :like_query
+                    OR lq.title ILIKE :like_raw
+                    OR similarity(lq.tags, :query) > 0.1
+                    OR lq.tags ILIKE :like_query
+                    OR lq.tags ILIKE :like_raw
+                )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            lq_results = db.session.execute(lq_sql, {
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
+            }).fetchall()
+
+            for r in lq_results:
+                route = 'sba' if r.question_type == 'sba' else 'viva'
+                subtitle = 'SBA Question' if r.question_type == 'sba' else 'Viva Question'
+                results.append({
+                    'type': 'learning',
+                    'id': r.id,
+                    'title': r.title or 'Untitled Question',
+                    'body_section': r.body_section or '',
+                    'description': r.description or r.modality or '',
+                    'subtitle': subtitle,
+                    'url': f'/learn/{route}/{r.id}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
         # Search clinical protocols
         if filter_type in ('', 'protocol'):
             proto_sql = text("""
@@ -1016,6 +1055,26 @@ def _fallback_search(query, filter_type, limit, raw_query=None):
                 'description': p.modality or '',
                 'subtitle': 'Radiology Pearl',
                 'url': '/radiology-pearls',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'learning'):
+        lqs = LearningQuestion.query.filter(
+            db.or_(
+                _or_ilike(LearningQuestion.title),
+                _or_ilike(LearningQuestion.tags),
+            ),
+        ).limit(limit).all()
+        for lq in lqs:
+            route = 'sba' if lq.question_type == 'sba' else 'viva'
+            subtitle = 'SBA Question' if lq.question_type == 'sba' else 'Viva Question'
+            results.append({
+                'type': 'learning', 'id': lq.id,
+                'title': lq.title or 'Untitled Question',
+                'body_section': lq.body_section or '',
+                'description': lq.description or lq.modality or '',
+                'subtitle': subtitle,
+                'url': f'/learn/{route}/{lq.id}',
                 'similarity': 0.5,
             })
 
@@ -2333,6 +2392,10 @@ def _do_backfill_intelligence():
         ('reporting_algorithm', ReportingAlgorithm, 'title', lambda c: (c.description or '') + ' ' + (c.keywords or ''),
          lambda c: c.body_section or '',
          db.and_(ReportingAlgorithm.is_available == True, ReportingAlgorithm.origin == 'admin')),
+        ('learning_question', LearningQuestion, 'title',
+         lambda c: (c.html_content or '')[:2000],
+         lambda c: c.body_section or '',
+         LearningQuestion.id > 0),
     ]
 
     processed_count = 0
@@ -2843,6 +2906,8 @@ def _capture_learning_question(question_type, html_content, body_section, modali
     # Auto-infer FRCR module from body section
     module = _infer_frcr_module(body_section)
 
+    auto_tags = ', '.join(filter(None, [body_section, modality, module]))
+
     q = LearningQuestion(
         question_type=question_type,
         body_section=body_section or None,
@@ -2851,6 +2916,7 @@ def _capture_learning_question(question_type, html_content, body_section, modali
         title=title,
         html_content=html_content,
         source_report_context=report_text[:200] if report_text else None,
+        tags=auto_tags if auto_tags else None,
         content_hash=content_hash,
         created_by_user_id=user_id,
     )

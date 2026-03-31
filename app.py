@@ -72,7 +72,7 @@ if _sentry_dsn:
 
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash, Response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash, Response, abort
 from models import UserRole
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
@@ -944,6 +944,8 @@ with app.app_context():
 
         # -- learning_question: FRCR module --
         _add_col_if_missing('learning_question', 'module', 'module VARCHAR(100)')
+        _add_col_if_missing('learning_question', 'tags', 'tags TEXT')
+        _add_col_if_missing('learning_question', 'description', 'description TEXT')
 
         # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --
         for _token_col in ['notion_access_token', 'anki_api_key']:
@@ -2648,6 +2650,67 @@ def learn_viva():
     return _learn_questions('viva')
 
 
+@app.route('/learn/sba/<int:question_id>')
+@login_required
+def learn_sba_single(question_id):
+    """View a single SBA question (linkable from search)."""
+    from models import LearningQuestion
+    q = LearningQuestion.query.get_or_404(question_id)
+    if q.question_type != 'sba':
+        abort(404)
+    return _learn_single_question(q)
+
+
+@app.route('/learn/viva/<int:question_id>')
+@login_required
+def learn_viva_single(question_id):
+    """View a single Viva question (linkable from search)."""
+    from models import LearningQuestion
+    q = LearningQuestion.query.get_or_404(question_id)
+    if q.question_type != 'viva':
+        abort(404)
+    return _learn_single_question(q)
+
+
+def _learn_single_question(q):
+    """Render a single learning question reusing the browse template."""
+    from models import LearningQuestionProgress, LearningQuestionReference
+
+    user_progress = {}
+    progress = LearningQuestionProgress.query.filter_by(
+        user_id=current_user.id, learning_question_id=q.id
+    ).first()
+    if progress:
+        user_progress[q.id] = {
+            'score': progress.score, 'best_score': progress.best_score,
+            'times_attempted': progress.times_attempted
+        }
+
+    refs = LearningQuestionReference.query.filter_by(
+        learning_question_id=q.id
+    ).order_by(LearningQuestionReference.ref_number).all()
+    question_refs = {q.id: refs} if refs else {}
+
+    is_admin = current_user.is_authenticated and hasattr(current_user, 'role') and str(current_user.role.value) == 'admin'
+
+    return render_template('learn_questions.html',
+                           question_type=q.question_type,
+                           questions=[q],
+                           body_sections=LEARNING_BODY_SECTIONS,
+                           modalities=LEARNING_MODALITIES,
+                           frcr_modules=FRCR_MODULES,
+                           section_counts={},
+                           module_counts={},
+                           selected_section='',
+                           selected_modality='',
+                           selected_module='',
+                           user_progress=user_progress,
+                           question_refs=question_refs,
+                           is_admin=is_admin,
+                           total_count=1,
+                           single_question=True)
+
+
 # --- Admin API: Learning Question CRUD ---
 
 @app.route('/api/learning/<int:question_id>', methods=['GET'])
@@ -2666,6 +2729,8 @@ def get_learning_question(question_id):
         'body_section': q.body_section,
         'modality': q.modality,
         'module': q.module,
+        'tags': q.tags,
+        'description': q.description,
         'html_content': q.html_content,
         'source_report_context': q.source_report_context,
         'created_at': q.created_at.isoformat() if q.created_at else None,
@@ -2692,6 +2757,10 @@ def update_learning_question(question_id):
         q.modality = (data['modality'] or '').strip() or None
     if 'module' in data:
         q.module = (data['module'] or '').strip() or None
+    if 'tags' in data:
+        q.tags = (data['tags'] or '').strip() or None
+    if 'description' in data:
+        q.description = (data['description'] or '').strip() or None
     if 'html_content' in data:
         new_html = (data['html_content'] or '').strip()
         if new_html:
@@ -6976,7 +7045,7 @@ Sitemap: https://www.radinsights.xyz/sitemap.xml
 @app.route('/sitemap.xml', methods=['GET'])
 def sitemap_xml():
     """Generate dynamic sitemap including all public content with <lastmod> dates."""
-    from models import TNMCalculatorContent, ReportingAlgorithm, RadiologyTemplate, IncidentalFindingCalculator, ClinicalProtocol, Case, CaseStatus, RadiologyPearl
+    from models import TNMCalculatorContent, ReportingAlgorithm, RadiologyTemplate, IncidentalFindingCalculator, ClinicalProtocol, Case, CaseStatus, RadiologyPearl, LearningQuestion
 
     def _lastmod(item):
         """Return best available timestamp as YYYY-MM-DD string, or None."""
@@ -7003,6 +7072,8 @@ def sitemap_xml():
         (f'{BASE}/incidental-findings', '0.8', 'weekly'),
         (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
         (f'{BASE}/radiology-pearls', '0.7', 'weekly'),
+        (f'{BASE}/learn/sba', '0.6', 'weekly'),
+        (f'{BASE}/learn/viva', '0.6', 'weekly'),
         (f'{BASE}/privacy-policy', '0.3', 'yearly'),
         (f'{BASE}/terms-of-use', '0.3', 'yearly'),
         (f'{BASE}/trust-and-accuracy', '0.4', 'monthly'),
@@ -7063,6 +7134,16 @@ def sitemap_xml():
         # Radiology Pearls (verified) — no individual URLs, just update browse page
         pearls = RadiologyPearl.query.filter_by(is_verified=True).all()
         _track_browse(f'{BASE}/radiology-pearls', pearls)
+
+        # Learning Questions (SBA/Viva)
+        lqs = LearningQuestion.query.all()
+        sba_lqs = [lq for lq in lqs if lq.question_type == 'sba']
+        viva_lqs = [lq for lq in lqs if lq.question_type == 'viva']
+        _track_browse(f'{BASE}/learn/sba', sba_lqs)
+        _track_browse(f'{BASE}/learn/viva', viva_lqs)
+        for lq in lqs:
+            route = 'sba' if lq.question_type == 'sba' else 'viva'
+            pages.append((f'{BASE}/learn/{route}/{lq.id}', '0.4', 'monthly', _lastmod(lq)))
     except Exception as e:
         logger.error(f"Sitemap DB query error: {e}")
 
