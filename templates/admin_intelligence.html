@@ -35,6 +35,9 @@
                     <button class="btn btn-brand-neutral btn-sm" onclick="backfillCI()" id="backfillBtn">
                         <i class="fas fa-database me-1"></i>Build Intelligence
                     </button>
+                    <button class="btn btn-brand-success btn-sm" onclick="autolinkLQ()" id="autolinkBtn">
+                        <i class="fas fa-link me-1"></i>Auto-Link SBA/Viva
+                    </button>
                 </div>
             </div>
 
@@ -255,6 +258,29 @@ function backfillCI() {
             alert('Backfill failed: ' + (err.message || 'Unknown error'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
+        });
+}
+
+function autolinkLQ() {
+    var btn = document.getElementById('autolinkBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Linking...';
+
+    fetch('/api/admin/autolink-learning-questions', { method: 'POST' })
+        .then(function(r) {
+            if (!r.ok) return r.text().then(function(t) { throw new Error('Server error (' + r.status + '): ' + t.substring(0, 200)); });
+            return r.json();
+        })
+        .then(function(d) {
+            alert(d.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-link me-1"></i>Auto-Link SBA/Viva';
+        })
+        .catch(function(err) {
+            console.error('autolinkLQ error:', err);
+            alert('Auto-link failed: ' + (err.message || 'Unknown error'));
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-link me-1"></i>Auto-Link SBA/Viva';
         });
 }
 </script>
