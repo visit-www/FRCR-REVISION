@@ -731,7 +731,8 @@ def unified_search():
                        lq.tags, lq.description,
                        GREATEST(
                            similarity(lq.title, :query),
-                           COALESCE(similarity(lq.tags, :query), 0)
+                           COALESCE(similarity(lq.tags, :query), 0),
+                           COALESCE(similarity(lq.description, :query), 0)
                        ) AS sim
                 FROM learning_question lq
                 WHERE (
@@ -741,6 +742,11 @@ def unified_search():
                     OR similarity(lq.tags, :query) > 0.1
                     OR lq.tags ILIKE :like_query
                     OR lq.tags ILIKE :like_raw
+                    OR lq.description ILIKE :like_query
+                    OR lq.description ILIKE :like_raw
+                    OR lq.html_content ILIKE :like_query
+                    OR lq.html_content ILIKE :like_raw
+                    OR lq.source_report_context ILIKE :like_query
                 )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -1063,6 +1069,9 @@ def _fallback_search(query, filter_type, limit, raw_query=None):
             db.or_(
                 _or_ilike(LearningQuestion.title),
                 _or_ilike(LearningQuestion.tags),
+                _or_ilike(LearningQuestion.description),
+                _or_ilike(LearningQuestion.html_content),
+                _or_ilike(LearningQuestion.source_report_context),
             ),
         ).limit(limit).all()
         for lq in lqs:
@@ -2463,6 +2472,29 @@ def _do_backfill_intelligence():
     })
 
 
+@reporting_bp.route('/api/admin/autolink-learning-questions', methods=['POST'])
+@login_required
+@require_admin
+def autolink_learning_questions():
+    """Retroactively apply auto-linking to all existing learning questions."""
+    try:
+        lqs = LearningQuestion.query.all()
+        updated = 0
+        for lq in lqs:
+            if not lq.html_content:
+                continue
+            linked = _auto_link_content(lq.html_content)
+            if linked != lq.html_content:
+                lq.html_content = linked
+                updated += 1
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Auto-linked {updated} of {len(lqs)} questions.', 'updated': updated})
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"autolink_learning_questions error: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+
 # ==================== SMART REPORTER ROUTES ====================
 
 
@@ -2897,10 +2929,91 @@ def _infer_frcr_module(body_section):
     return mapping.get(bs)
 
 
+def _auto_link_content(html_content):
+    """Auto-link medical terms in HTML to matching cases, algorithms, and tools.
+
+    Scans explanation/answer sections for known diagnoses, algorithm titles,
+    and tool names, then wraps the first occurrence of each in an <a> tag.
+    Only links inside <details> blocks (answer sections) to avoid cluttering questions.
+    """
+    import re
+
+    # Build lookup: term → (url, label)
+    linkable = {}
+
+    try:
+        # Published cases by diagnosis
+        cases = Case.query.filter(
+            Case.status == CaseStatus.PUBLISHED,
+            Case.diagnosis.isnot(None),
+        ).with_entities(Case.id, Case.diagnosis).all()
+        for c in cases:
+            diag = c.diagnosis.strip()
+            if len(diag) >= 4:
+                linkable[diag.lower()] = (f'/view-case/{c.id}', diag)
+
+        # Reporting algorithms by title
+        algos = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.origin == 'admin',
+        ).with_entities(ReportingAlgorithm.slug, ReportingAlgorithm.title).all()
+        for a in algos:
+            title = a.title.strip()
+            if len(title) >= 4:
+                linkable[title.lower()] = (f'/reporting-template/{a.slug}?from=autolink', title)
+
+        # Incidental finding tools
+        tools = IncidentalFindingCalculator.query.filter(
+            IncidentalFindingCalculator.is_published == True,
+        ).with_entities(IncidentalFindingCalculator.slug, IncidentalFindingCalculator.title).all()
+        for t in tools:
+            title = t.title.strip()
+            if len(title) >= 4:
+                linkable[title.lower()] = (f'/incidental-findings/{t.slug}', title)
+    except Exception:
+        return html_content  # fail silently
+
+    if not linkable:
+        return html_content
+
+    # Sort by term length descending so longer matches take priority
+    sorted_terms = sorted(linkable.keys(), key=len, reverse=True)
+
+    # Only link inside <details>...</details> blocks (answer/explanation sections)
+    def _link_in_details(match):
+        details_html = match.group(0)
+        linked_terms = set()
+        for term in sorted_terms:
+            if term in linked_terms:
+                continue
+            url, display = linkable[term]
+            # Case-insensitive match, only first occurrence, skip if already inside an <a> tag
+            pattern = re.compile(
+                r'(?<!</a>)(?<!["\'/\w])(' + re.escape(term) + r')(?!["\'/\w>])',
+                re.IGNORECASE,
+            )
+            if pattern.search(details_html):
+                details_html = pattern.sub(
+                    lambda m: f'<a href="{url}" class="auto-link" target="_blank" '
+                              f'title="View: {display}">{m.group(1)}</a>',
+                    details_html,
+                    count=1,
+                )
+                linked_terms.add(term)
+                if len(linked_terms) >= 5:
+                    break  # cap at 5 links per details block
+        return details_html
+
+    return re.sub(r'<details>.*?</details>', _link_in_details, html_content, flags=re.DOTALL)
+
+
 def _capture_learning_question(question_type, html_content, body_section, modality,
                                report_text, user_id):
     """Silently save an SBA or Viva question set to the learning_question table."""
     import hashlib
+
+    # Auto-link terms before saving
+    html_content = _auto_link_content(html_content)
 
     content_hash = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
 
