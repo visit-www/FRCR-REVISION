@@ -720,33 +720,8 @@
                                 <!-- Loading spinner (visual placeholder — actual spinner moved to toolbar area) -->
                                 <div id="askClaudeLoadingInPanel" class="d-none"></div>
 
-                                <!-- AI Assist Response (answer + report + corrections) -->
+                                <!-- AI Assist Response: Report preview (only shown when PACS already has content) -->
                                 <div id="aiAssistResponse" class="d-none">
-
-                                    <!-- Answer (advisory text) -->
-                                    <div id="aiAssistAnswerSection" class="mb-3 d-none">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <small class="fw-semibold text-muted">
-                                                <i class="fas fa-comment-medical me-1"></i>Answer
-                                            </small>
-                                        </div>
-                                        <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
-                                            <pre id="aiAssistAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
-                                            <div class="d-flex flex-wrap gap-2 mt-2">
-                                                <button class="btn btn-sm btn-brand-primary" onclick="insertIntoDraft()">
-                                                    <i class="fas fa-pencil-alt me-1"></i>Add to Draft
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
-                                                    <i class="fas fa-plus me-1"></i>Insert into PACS Report
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
-                                                    Dismiss
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Report Text (full report / section rewrite) -->
                                     <div id="aiAssistReportSection" class="mb-3 d-none">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="fw-semibold text-muted">
@@ -768,7 +743,21 @@
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
+                                <!-- Answer / Changes Rationale (outside aiAssistResponse so it persists after auto-insert) -->
+                                <div id="aiAssistAnswerSection" class="mb-3 d-none">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="fw-semibold text-muted">
+                                            <i class="fas fa-comment-medical me-1"></i>Changes Made
+                                        </small>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
+                                            <i class="fas fa-times me-1"></i>Dismiss
+                                        </button>
+                                    </div>
+                                    <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
+                                        <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
+                                    </div>
                                 </div>
 
                                 <!-- Corrections (outside aiAssistResponse so it persists after report auto-insert) -->
@@ -993,8 +982,8 @@
         <button class="sr-fab-item" onclick="pasteMyReport(); srFabClose();" title="Start a new blank report">
             <i class="fas fa-plus"></i><span>New Report</span>
         </button>
-        <button class="sr-fab-item" onclick="document.getElementById('editorToolbar').scrollIntoView({behavior:'smooth'}); srFabClose();" title="Scroll to toolbar">
-            <i class="fas fa-arrow-up"></i><span>Toolbar</span>
+        <button class="sr-fab-item" onclick="document.getElementById('sceneEditor').scrollIntoView({behavior:'smooth'}); srFabClose();" title="Scroll to top navigation">
+            <i class="fas fa-arrow-up"></i><span>Top</span>
         </button>
     </div>
     <button class="sr-fab-trigger" id="srFabTrigger" onclick="srFabToggle()" title="Quick actions">
@@ -2241,6 +2230,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
         document.getElementById('reportActionResponse').classList.add('d-none');
@@ -2854,6 +2844,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressBar) { progressBar.style.animation = 'none'; progressBar.offsetHeight; progressBar.style.animation = ''; }
         loadingEl.classList.remove('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
 
         const assistPayload = {
@@ -3188,8 +3179,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear stale corrections since they applied to old draft
         state.aiAssistCorrections = [];
         renderAiAssistCorrections();
-        // Hide answer, report and corrections — but keep insights
+        // Hide report preview, answer and corrections — but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         showToast('Draft and PACS report updated with finalized version.', 'success');
     };
@@ -3622,8 +3614,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.dismissAiAssist = function() {
-        // Hide answer, report, and corrections — but NOT insights (they persist)
+        // Hide report preview, answer, and corrections — but NOT insights (they persist)
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
     };
 
