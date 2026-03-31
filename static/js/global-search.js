@@ -15,7 +15,8 @@
         template:     { icon: 'fa-clipboard-list',  color: '#2e7d5e', bg: 'rgba(168,213,186,0.18)', label: 'Template' },
         anatomy:      { icon: 'fa-bone',            color: '#6b46c1', bg: 'rgba(107,70,193,0.12)',  label: 'Anatomy' },
         pearl:        { icon: 'fa-gem',             color: '#b8860b', bg: 'rgba(255,193,7,0.15)',   label: 'Pearl' },
-        intelligence: { icon: 'fa-lightbulb',       color: '#e96304', bg: 'rgba(233,99,4,0.10)',    label: 'RadInsight Note' }
+        intelligence: { icon: 'fa-lightbulb',       color: '#e96304', bg: 'rgba(233,99,4,0.10)',    label: 'RadInsight Note' },
+        learning:     { icon: 'fa-graduation-cap',  color: '#0d6efd', bg: 'rgba(13,110,253,0.12)',  label: 'SBA / Viva' }
     };
 
     function debounce(fn, ms) {

@@ -896,7 +896,7 @@ def unified_search():
     # Sort by similarity descending, with type priority as tiebreaker
     TYPE_PRIORITY = {
         'case': 0, 'protocol': 1, 'reporting': 2, 'template': 3,
-        'oncologic': 4, 'tnm_case': 5, 'incidental': 6, 'anatomy': 7, 'pearl': 8, 'intelligence': 9,
+        'oncologic': 4, 'tnm_case': 5, 'incidental': 6, 'anatomy': 7, 'pearl': 8, 'learning': 9, 'intelligence': 10,
     }
     results.sort(key=lambda r: (-r.get('similarity', 0), TYPE_PRIORITY.get(r.get('type'), 99)))
 
