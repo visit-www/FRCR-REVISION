@@ -6108,6 +6108,92 @@ body {
     background: #f8f9fa;
 }
 
+/* ==================== Smart Reporter End-of-Page Actions ==================== */
+.sr-end-actions {
+    padding: 1rem;
+    border-top: 1px dashed #dee2e6;
+    text-align: center;
+}
+
+/* ==================== Smart Reporter Floating Action Button ==================== */
+.sr-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+.sr-fab-trigger {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: var(--brand-primary, #e96304);
+    color: #fff;
+    font-size: 1.1rem;
+    box-shadow: 0 3px 12px rgba(233, 99, 4, 0.4);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.sr-fab-trigger:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(233, 99, 4, 0.5);
+}
+.sr-fab-trigger:active {
+    transform: scale(0.95);
+}
+.sr-fab-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-end;
+    animation: sr-fab-slide-up 0.15s ease-out;
+}
+@keyframes sr-fab-slide-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.sr-fab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: none;
+    border-radius: 20px;
+    background: #fff;
+    color: #333;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+.sr-fab-item:hover {
+    background: #f8f9fa;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.18);
+}
+.sr-fab-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--brand-primary, #e96304);
+    font-size: 0.8rem;
+}
+@media (max-width: 575.98px) {
+    .sr-fab {
+        bottom: 16px;
+        right: 16px;
+    }
+    .sr-fab-trigger {
+        width: 44px;
+        height: 44px;
+        font-size: 1rem;
+    }
+}
+
 /* ==================== Smart Reporter Stack View (narrower columns) ==================== */
 @media (min-width: 992px) {
     #editorMainRow:not(.sr-split-mode) {

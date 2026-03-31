@@ -951,10 +951,43 @@
                         This is a generated draft. Review and edit against actual imaging before signing.
                     </small>
                 </div>
+
+                <!-- End-of-page session actions -->
+                <div id="endOfPageActions" class="sr-end-actions mt-4 mb-2">
+                    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-center">
+                        <button class="btn btn-sm btn-outline-success" onclick="copyFinalReport()">
+                            <i class="fas fa-copy me-1"></i>Copy Report
+                        </button>
+                        <button class="btn btn-sm btn-brand-primary" onclick="pasteMyReport()">
+                            <i class="fas fa-plus me-1"></i>New Report
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+                            <i class="fas fa-arrow-up me-1"></i>Back to Top
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </div>
     </div>
+</div>
+
+<!-- Floating Action Button (visible when toolbar scrolled out of view) -->
+<div id="srFab" class="sr-fab d-none">
+    <div class="sr-fab-menu d-none" id="srFabMenu">
+        <button class="sr-fab-item" onclick="copyFinalReport(); srFabClose();" title="Copy PACS report">
+            <i class="fas fa-copy"></i><span>Copy Report</span>
+        </button>
+        <button class="sr-fab-item" onclick="pasteMyReport(); srFabClose();" title="Start a new blank report">
+            <i class="fas fa-plus"></i><span>New Report</span>
+        </button>
+        <button class="sr-fab-item" onclick="document.getElementById('editorToolbar').scrollIntoView({behavior:'smooth'}); srFabClose();" title="Scroll to toolbar">
+            <i class="fas fa-arrow-up"></i><span>Toolbar</span>
+        </button>
+    </div>
+    <button class="sr-fab-trigger" id="srFabTrigger" onclick="srFabToggle()" title="Quick actions">
+        <i class="fas fa-bolt" id="srFabIcon"></i>
+    </button>
 </div>
 
 <!-- Content Request Modal -->
@@ -3756,6 +3789,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }).catch(function() {});
         } catch(e) {}
     }
+
+    // ==================== FLOATING ACTION BUTTON ====================
+    var _fabVisible = false;
+    var _fabOpen = false;
+
+    window.srFabToggle = function() {
+        var menu = document.getElementById('srFabMenu');
+        var icon = document.getElementById('srFabIcon');
+        _fabOpen = !_fabOpen;
+        if (_fabOpen) {
+            menu.classList.remove('d-none');
+            icon.className = 'fas fa-times';
+        } else {
+            menu.classList.add('d-none');
+            icon.className = 'fas fa-bolt';
+        }
+    };
+    window.srFabClose = function() {
+        if (_fabOpen) srFabToggle();
+    };
+
+    // Show/hide FAB based on toolbar visibility
+    (function() {
+        var toolbar = document.getElementById('editorToolbar');
+        var fab = document.getElementById('srFab');
+        if (!toolbar || !fab) return;
+
+        var observer = new IntersectionObserver(function(entries) {
+            var toolbarHidden = !entries[0].isIntersecting;
+            // Only show FAB in editor scene
+            var inEditor = document.getElementById('sceneEditor') &&
+                           !document.getElementById('sceneEditor').classList.contains('d-none');
+            if (toolbarHidden && inEditor) {
+                fab.classList.remove('d-none');
+                _fabVisible = true;
+            } else {
+                fab.classList.add('d-none');
+                _fabVisible = false;
+                if (_fabOpen) srFabToggle();
+            }
+        }, { threshold: 0 });
+        observer.observe(toolbar);
+    })();
+
+    // Close FAB when clicking outside
+    document.addEventListener('click', function(e) {
+        if (_fabOpen && !e.target.closest('.sr-fab')) {
+            srFabClose();
+        }
+    });
 
     // Auto-resize on editor input changes
     document.getElementById('editorInput').addEventListener('input', function() {
