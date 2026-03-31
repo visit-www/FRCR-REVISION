@@ -6096,6 +6096,18 @@ body {
     100% { width: 95%; }
 }
 
+/* ==================== Draft Insert Chips ==================== */
+.draft-insert-chip {
+    font-size: 0.7rem !important;
+    border-style: dashed !important;
+    color: #6c757d;
+}
+.draft-insert-chip:hover {
+    border-style: solid !important;
+    color: #495057;
+    background: #f8f9fa;
+}
+
 /* ==================== Smart Reporter Stack View (narrower columns) ==================== */
 @media (min-width: 992px) {
     #editorMainRow:not(.sr-split-mode) {

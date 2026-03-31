@@ -541,18 +541,30 @@
                             </div>
                             <div class="card-body p-3">
                                 <div class="mb-2 px-1" style="font-size: 0.78rem; color: #5a6270; line-height: 1.5;">
-                                    <i class="fas fa-info-circle me-1" style="color: #5E899E;"></i>
-                                    Paste a full report or enter shorthand notes &mdash; RadInsight Intelligence will convert shorthand to a consultant-level report, review your text, and provide critical clinical insights.
+                                    <i class="fas fa-magic me-1" style="color: #5E899E;"></i>
+                                    <strong>Shorthand accepted</strong> &mdash; type abbreviated notes and click <em>Finalize</em> to auto-convert to a consultant-grade report.
                                 </div>
                                 <textarea class="form-control" id="editorInput" rows="12"
-                                          placeholder="Type or paste your report here — full text or shorthand notes...&#10;&#10;Examples:&#10;  Full report: FINDINGS: There is a 3cm hypodense lesion in segment VI of the liver...&#10;  Shorthand:   ct abdo contrast. 3cm hypo seg vi liver. kidneys ok. no ascites&#10;&#10;Click Finalize to convert to consultant-grade prose with teaching points."
+                                          placeholder="Type shorthand or paste a full report...&#10;&#10;Shorthand example:&#10;  ct abdo contrast. 3cm hypo seg vi liver. kidneys ok. no ascites.&#10;  rest normal&#10;&#10;Full report example:&#10;  FINDINGS: There is a 3cm hypodense lesion in segment VI...&#10;&#10;Click Finalize → AI converts to consultant-grade prose."
                                           style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
                             </div>
                             <div class="card-footer bg-white border-0 py-2 px-3">
                                 <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
-                                    <button class="btn btn-sm btn-brand-primary" onclick="reviewReport()">
-                                        <i class="fas fa-spell-check me-1"></i>Quick Check
-                                    </button>
+                                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                                        <button class="btn btn-sm btn-brand-primary" onclick="reviewReport()">
+                                            <i class="fas fa-spell-check me-1"></i>Quick Check
+                                        </button>
+                                        <div class="vr mx-1 d-none d-md-block" style="height: 18px; opacity: 0.3;"></div>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('Rest unremarkable.')" title="Append 'Rest unremarkable.' to draft">
+                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>Rest Normal
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('No significant abnormality.')" title="Append 'No significant abnormality.' to draft">
+                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>NSA
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('Clinical correlation recommended.')" title="Append to draft">
+                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>Correlate
+                                        </button>
+                                    </div>
                                     <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
                             </div>
@@ -2208,6 +2220,21 @@ document.addEventListener('DOMContentLoaded', function() {
         parent.style.minHeight = parentHeight || '';
     }
 
+    // Insert text snippet at end of draft (used by quick-insert chips)
+    window.insertDraftText = function(text) {
+        var input = document.getElementById('editorInput');
+        if (!input) return;
+        var current = input.value.trimEnd();
+        // Add on a new line if there's existing content
+        input.value = current ? current + '\n' + text : text;
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+        // Place cursor at the end
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        showToast('Added: ' + text, 'info', 2000);
+    };
+
     function getCurrentReportText(warnIfEmpty) {
         // Draft (editorInput) is the user's working document — always use it.
         // editorOutput is PACS-ready copy only — never used as AI input.
@@ -3325,6 +3352,13 @@ document.addEventListener('DOMContentLoaded', function() {
             renderInsight('insightQuality', 'insightQualityText', ins.quality_assessment);
             renderInsight('insightRecommendation', 'insightRecommendationText', ins.recommendation_check);
             renderInsight('insightTeaching', 'insightTeachingText', ins.teaching_point);
+
+            // Reset pearl save button when new teaching point arrives
+            var pearlBtn = document.getElementById('savePearlBtn');
+            if (pearlBtn && ins.teaching_point) {
+                pearlBtn.innerHTML = '<i class="fas fa-gem"></i>';
+                pearlBtn.disabled = false;
+            }
 
             // Differentials as comma-separated list
             const diffEl = document.getElementById('insightDifferentials');
