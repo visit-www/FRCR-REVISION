@@ -1,40 +1,107 @@
-{# AI Cross-Links partial — include on any content view page.
-   Expects: ai_cross_links (list of {type, id, title, url, relevance})
+{# AI Intelligence partial — include on any content view page.
+   Expects:
+     ai_summary (str|None) — AI-generated summary
+     ai_search_tags (str|None) — comma-separated keywords
+     ai_cross_links (list of {type, id, title, url, relevance})
+     ai_clinical_notes (list of {diagnosis, notes:[], pitfalls:[], differentials:[]})
 #}
-{% if ai_cross_links %}
-<div class="container-fluid py-2">
-    <div class="row">
-        <div class="col-12">
-            <div class="ai-cross-links-card p-3 rounded mb-3">
-                <div class="d-flex align-items-center mb-2">
-                    <i class="fas fa-project-diagram me-2" style="color: var(--brand-neutral);"></i>
-                    <strong class="small" style="color: var(--brand-text-primary);">Related Content (AI)</strong>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    {% for link in ai_cross_links %}
-                    {% set type_meta = {
-                        'case':                {'icon': 'fa-book-medical',    'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Case'},
-                        'protocol':            {'icon': 'fa-shield-alt',      'color': '#dc3545', 'bg': '#fce4e4', 'label': 'Protocol'},
-                        'reporting_algorithm': {'icon': 'fa-project-diagram', 'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Algorithm'},
-                        'radiology_template':  {'icon': 'fa-clipboard-list',  'color': '#2e7d5e', 'bg': '#e0f0e8', 'label': 'Template'},
-                        'radiology_tool':      {'icon': 'fa-tools',           'color': '#e96304', 'bg': '#fdeee4', 'label': 'Tool'},
-                        'radiology_pearl':     {'icon': 'fa-gem',             'color': '#b8860b', 'bg': '#fdf5e1', 'label': 'Pearl'},
-                        'anatomy_snippet':     {'icon': 'fa-bone',            'color': '#6b46c1', 'bg': '#ece4f6', 'label': 'Anatomy'},
-                    } %}
-                    {% set meta = type_meta.get(link.type, {'icon': 'fa-link', 'color': '#6c757d', 'bg': '#f0f1f3', 'label': link.type}) %}
-                    <a href="{{ link.url }}"
-                       class="ai-cross-link-badge text-decoration-none"
-                       style="background: {{ meta.bg }}; color: {{ meta.color }}; border: 1px solid {{ meta.color }}20;"
-                       title="{{ link.relevance or '' }}"
-                       data-bs-toggle="tooltip" data-bs-placement="top">
-                        <i class="fas {{ meta.icon }} me-1"></i>
-                        <span class="ai-cross-link-type">{{ meta.label }}</span>
-                        <span class="ai-cross-link-title">{{ link.title[:60] }}</span>
-                    </a>
-                    {% endfor %}
-                </div>
+{% if ai_summary or ai_cross_links or ai_clinical_notes %}
+<div class="detail-section ai-intelligence-section mb-4 p-3 rounded-3" style="background: linear-gradient(135deg, #fef9f4 0%, #fdf6ee 100%); border-left: 4px solid var(--brand-primary);">
+    <div class="d-flex align-items-center mb-2">
+        <i class="fas fa-lightbulb me-2" style="color: var(--brand-primary);"></i>
+        <strong style="color: var(--brand-text-primary);">AI Clinical Insights</strong>
+        <span class="badge ms-2" style="background: rgba(233,99,4,0.12); color: var(--brand-primary); font-size: 0.65rem;">Beta</span>
+    </div>
+
+    {# --- AI Summary --- #}
+    {% if ai_summary %}
+    <div class="mb-3 px-2">
+        <p class="mb-0" style="font-size: 0.9rem; line-height: 1.6; color: #333;">{{ ai_summary }}</p>
+    </div>
+    {% endif %}
+
+    {# --- Clinical Notes from Intelligence (UGI) --- #}
+    {% if ai_clinical_notes %}
+    {% for cn in ai_clinical_notes %}
+    <div class="mb-3 px-2">
+        {% if cn.notes %}
+        <div class="mb-2">
+            <small class="fw-semibold text-muted d-block mb-1"><i class="fas fa-clipboard-check me-1"></i>Key Points</small>
+            <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.7;">
+                {% for note in cn.notes[:5] %}
+                <li>{{ note }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% if cn.pitfalls %}
+        <div class="mb-2">
+            <small class="fw-semibold d-block mb-1" style="color: #dc3545;"><i class="fas fa-exclamation-triangle me-1"></i>Pitfalls</small>
+            <ul class="mb-0 ps-3" style="font-size: 0.85rem; line-height: 1.7;">
+                {% for pit in cn.pitfalls[:4] %}
+                <li>{{ pit }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% if cn.differentials %}
+        <div class="mb-2">
+            <small class="fw-semibold text-muted d-block mb-1"><i class="fas fa-random me-1"></i>Differentials</small>
+            <div class="d-flex flex-wrap gap-1">
+                {% for diff in cn.differentials[:6] %}
+                <span class="badge" style="background: #f0f1f3; color: #555; font-weight: 500; font-size: 0.75rem;"
+                      title="{{ diff.distinguishing_features if diff is mapping else '' }}"
+                      data-bs-toggle="tooltip" data-bs-placement="top">
+                    {{ diff.name if diff is mapping else diff }}
+                </span>
+                {% endfor %}
             </div>
         </div>
+        {% endif %}
     </div>
+    {% endfor %}
+    {% endif %}
+
+    {# --- Cross-Links --- #}
+    {% if ai_cross_links %}
+    <div class="px-2">
+        <small class="fw-semibold text-muted d-block mb-1"><i class="fas fa-project-diagram me-1"></i>Related Content</small>
+        <div class="d-flex flex-wrap gap-2">
+            {% for link in ai_cross_links %}
+            {% set type_meta = {
+                'case':                {'icon': 'fa-book-medical',    'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Case'},
+                'protocol':            {'icon': 'fa-shield-alt',      'color': '#dc3545', 'bg': '#fce4e4', 'label': 'Protocol'},
+                'reporting_algorithm': {'icon': 'fa-project-diagram', 'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Algorithm'},
+                'radiology_template':  {'icon': 'fa-clipboard-list',  'color': '#2e7d5e', 'bg': '#e0f0e8', 'label': 'Template'},
+                'radiology_tool':      {'icon': 'fa-tools',           'color': '#e96304', 'bg': '#fdeee4', 'label': 'Tool'},
+                'radiology_pearl':     {'icon': 'fa-gem',             'color': '#b8860b', 'bg': '#fdf5e1', 'label': 'Pearl'},
+                'anatomy_snippet':     {'icon': 'fa-bone',            'color': '#6b46c1', 'bg': '#ece4f6', 'label': 'Anatomy'},
+                'learning':            {'icon': 'fa-graduation-cap',  'color': '#0d6efd', 'bg': '#e7f0ff', 'label': 'SBA/Viva'},
+            } %}
+            {% set meta = type_meta.get(link.type, {'icon': 'fa-link', 'color': '#6c757d', 'bg': '#f0f1f3', 'label': link.type}) %}
+            <a href="{{ link.url }}"
+               class="ai-cross-link-badge text-decoration-none"
+               style="background: {{ meta.bg }}; color: {{ meta.color }}; border: 1px solid {{ meta.color }}20;"
+               title="{{ link.relevance or '' }}"
+               data-bs-toggle="tooltip" data-bs-placement="top">
+                <i class="fas {{ meta.icon }} me-1"></i>
+                <span class="ai-cross-link-type">{{ meta.label }}</span>
+                <span class="ai-cross-link-title">{{ link.title[:60] }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# --- Tags --- #}
+    {% if ai_search_tags %}
+    <div class="mt-2 px-2">
+        <div class="d-flex flex-wrap gap-1">
+            {% for tag in ai_search_tags.split(',')[:8] %}
+            <span class="badge" style="background: rgba(233,99,4,0.08); color: #999; font-size: 0.65rem; font-weight: 400;">{{ tag.strip() }}</span>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endif %}

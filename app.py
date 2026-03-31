@@ -86,7 +86,7 @@ from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Fe
 from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
 from models import ContentIntelligence, UserGeneratedIntelligence  # Intelligence layer
-from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, content_links  # Knowledge linking
+from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, case_learning_links, content_links  # Knowledge linking
 from models import PiiOverrideLog  # PII guard audit trail
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -2693,6 +2693,24 @@ def _learn_single_question(q):
 
     is_admin = current_user.is_authenticated and hasattr(current_user, 'role') and str(current_user.role.value) == 'admin'
 
+    # Load CI data for this learning question
+    ai_cross_links = []
+    ai_summary = None
+    ai_search_tags = None
+    try:
+        ci = ContentIntelligence.query.filter_by(
+            content_type='learning_question', content_id=q.id
+        ).first()
+        if ci:
+            ai_summary = ci.summary
+            ai_search_tags = ci.search_tags
+            if ci.cross_links_json:
+                import json as _json
+                _links = _json.loads(ci.cross_links_json)
+                ai_cross_links = [l for l in _links if l.get('url')]
+    except Exception:
+        pass
+
     return render_template('learn_questions.html',
                            question_type=q.question_type,
                            questions=[q],
@@ -2708,7 +2726,11 @@ def _learn_single_question(q):
                            question_refs=question_refs,
                            is_admin=is_admin,
                            total_count=1,
-                           single_question=True)
+                           single_question=True,
+                           ai_summary=ai_summary,
+                           ai_search_tags=ai_search_tags,
+                           ai_cross_links=ai_cross_links,
+                           ai_clinical_notes=[])
 
 
 # --- Admin API: Learning Question CRUD ---
@@ -3744,16 +3766,47 @@ def view_case(case_id):
     except Exception:
         pass
     
-    # Load AI cross-links
+    # Load AI cross-links and intelligence summary
     ai_cross_links = []
+    ai_summary = None
+    ai_search_tags = None
     try:
         ci = ContentIntelligence.query.filter_by(
             content_type='case', content_id=case_id
         ).first()
-        if ci and ci.cross_links_json:
-            import json as _json
-            _links = _json.loads(ci.cross_links_json)
-            ai_cross_links = [l for l in _links if l.get('url')]
+        if ci:
+            if ci.cross_links_json:
+                import json as _json
+                _links = _json.loads(ci.cross_links_json)
+                ai_cross_links = [l for l in _links if l.get('url')]
+            ai_summary = ci.summary
+            ai_search_tags = ci.search_tags
+    except Exception:
+        pass
+
+    # Load UGI notes matching this case's diagnosis (clinical knowledge from reporting)
+    ai_clinical_notes = []
+    try:
+        if case.diagnosis:
+            from models import UserGeneratedIntelligence
+            ugi_matches = UserGeneratedIntelligence.query.filter(
+                UserGeneratedIntelligence.processing_status == 'processed',
+                UserGeneratedIntelligence.diagnosis.ilike(f'%{case.diagnosis[:60]}%'),
+            ).limit(3).all()
+            for ugi in ugi_matches:
+                notes_data = {'diagnosis': ugi.diagnosis}
+                try:
+                    import json as _j
+                    if ugi.notes:
+                        notes_data['notes'] = _j.loads(ugi.notes)
+                    if ugi.pitfalls:
+                        notes_data['pitfalls'] = _j.loads(ugi.pitfalls)
+                    if ugi.enriched_differentials:
+                        notes_data['differentials'] = _j.loads(ugi.enriched_differentials)
+                except (ValueError, TypeError):
+                    pass
+                if notes_data.get('notes') or notes_data.get('pitfalls'):
+                    ai_clinical_notes.append(notes_data)
     except Exception:
         pass
 
@@ -3767,7 +3820,10 @@ def view_case(case_id):
                          nav_query_string=nav_query_string,
                          show_tnm_tab=show_tnm_tab,
                          tnm_staging_url=tnm_staging_url,
-                         ai_cross_links=ai_cross_links)
+                         ai_cross_links=ai_cross_links,
+                         ai_summary=ai_summary,
+                         ai_search_tags=ai_search_tags,
+                         ai_clinical_notes=ai_clinical_notes)
 
 
 # Body part groups for edit-case dropdown (group label -> enum names; must match models.BodyPart)
@@ -4620,6 +4676,26 @@ def get_related_cases(case_id):
                 'is_verified': pearl.is_verified,
             })
 
+    # 7) Case-to-learning-question links
+    from models import LearningQuestion
+    lq_rows = db.session.execute(
+        db.select(case_learning_links.c.learning_question_id).where(
+            case_learning_links.c.case_id == case_id
+        )
+    ).all()
+    for lrow in lq_rows:
+        lq = LearningQuestion.query.get(lrow.learning_question_id)
+        if lq:
+            route = 'sba' if lq.question_type == 'sba' else 'viva'
+            items.append({
+                'id': lq.id,
+                'link_type': 'learning',
+                'title': lq.title[:120] + '...' if len(lq.title or '') > 120 else lq.title,
+                'question_type': lq.question_type,
+                'body_section': lq.body_section,
+                'url': f'/learn/{route}/{lq.id}'
+            })
+
     return jsonify(items)
 
 
@@ -5274,6 +5350,35 @@ def add_related_case(case_id):
             'body_section': pearl.body_section,
         }})
 
+    elif link_type == 'learning':
+        from models import LearningQuestion
+        learning_id = data.get('learning_id')
+        if not learning_id:
+            return jsonify({'error': 'learning_id required'}), 400
+        lq = LearningQuestion.query.get(learning_id)
+        if not lq:
+            return jsonify({'error': 'Learning question not found'}), 404
+        existing = db.session.execute(
+            db.select(case_learning_links).where(
+                case_learning_links.c.case_id == case_id,
+                case_learning_links.c.learning_question_id == learning_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Learning question already linked'}), 400
+        db.session.execute(case_learning_links.insert().values(
+            case_id=case_id, learning_question_id=learning_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        route = 'sba' if lq.question_type == 'sba' else 'viva'
+        return jsonify({'success': True, 'message': 'Learning question linked', 'item': {
+            'id': lq.id, 'link_type': 'learning',
+            'title': lq.title[:120] + '...' if len(lq.title or '') > 120 else lq.title,
+            'question_type': lq.question_type,
+            'body_section': lq.body_section,
+            'url': f'/learn/{route}/{lq.id}'
+        }})
+
     else:
         # Default: case-to-case link
         related_case_id = data.get('related_case_id')
@@ -5349,6 +5454,13 @@ def remove_related_case(case_id, linked_id):
             case_pearl_links.delete().where(
                 case_pearl_links.c.case_id == case_id,
                 case_pearl_links.c.pearl_id == linked_id
+            )
+        )
+    elif link_type == 'learning':
+        db.session.execute(
+            case_learning_links.delete().where(
+                case_learning_links.c.case_id == case_id,
+                case_learning_links.c.learning_question_id == linked_id
             )
         )
     else:
@@ -5535,6 +5647,26 @@ def search_cases_for_linking():
                 'modality': p.modality,
                 'is_verified': p.is_verified,
                 'link_type': 'pearl',
+            })
+
+    # ── Learning Questions (SBA/Viva) ──
+    if search_type in ('all', 'learning'):
+        from models import LearningQuestion
+        for lq in LearningQuestion.query.filter(
+            db.or_(
+                LearningQuestion.title.ilike(f'%{query}%'),
+                LearningQuestion.tags.ilike(f'%{query}%'),
+                LearningQuestion.description.ilike(f'%{query}%'),
+                LearningQuestion.html_content.ilike(f'%{query}%'),
+            )
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': lq.id,
+                'title': lq.title[:120] + '...' if len(lq.title or '') > 120 else lq.title,
+                'question_type': lq.question_type,
+                'body_section': lq.body_section,
+                'modality': lq.modality,
+                'link_type': 'learning',
             })
 
     return jsonify(results[:limit])

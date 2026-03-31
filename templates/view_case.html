@@ -10417,6 +10417,16 @@
                             <span class="text-truncate" style="max-width:200px;">${item.title || 'Algorithm'}</span>
                         </a>
                     `;
+                } else if (item.link_type === 'learning') {
+                    const lqUrl = item.url || '#';
+                    const qType = (item.question_type || 'SBA').toUpperCase();
+                    return `
+                        <a href="${lqUrl}" target="_blank"
+                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span class="text-truncate" style="max-width:200px;">${qType}: ${(item.title || 'Question').substring(0, 60)}</span>
+                        </a>
+                    `;
                 } else {
                     const relType = item.relation_type || 'related';
                     const iconClass = relType === 'similar' ? 'fa-clone' : 'fa-file-medical';
@@ -10517,6 +10527,17 @@
                                         ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
                                     </button>
                                 `;
+                            } else if (item.link_type === 'learning') {
+                                const qType = (item.question_type || 'SBA').toUpperCase();
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('learning', ${item.id})">
+                                        <i class="fas fa-graduation-cap me-2" style="color:#0d6efd;"></i>
+                                        <span class="badge bg-primary me-1">${qType}</span>
+                                        <span class="text-truncate d-inline-block" style="max-width:300px;">${item.title}</span>
+                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
+                                    </button>
+                                `;
                             } else {
                                 return `
                                     <button type="button" class="list-group-item list-group-item-action"
@@ -10558,6 +10579,8 @@
             body.pearl_id = linkedId;
         } else if (linkType === 'reporting_algorithm') {
             body.algorithm_id = linkedId;
+        } else if (linkType === 'learning') {
+            body.learning_id = linkedId;
         } else {
             body.related_case_id = linkedId;
             body.relation_type = relationType;

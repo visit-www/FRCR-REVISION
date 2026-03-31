@@ -3453,8 +3453,8 @@ def smart_reporter_relevant_content():
     """Search across DB for content relevant to the current report context.
 
     Searches: Cases, TNM calculators, TNM cases (AJCC disease sites),
-    Radiology tools (IF calculators + clinical protocols), Anatomy references.
-    Does NOT include radiology templates or algorithms (those have dedicated cards).
+    Radiology tools (IF calculators + clinical protocols), Anatomy references,
+    Reporting algorithms, Radiology templates, Pearls, Learning questions.
     """
     q = request.args.get('q', '').strip()
     body_section = request.args.get('body_section', '').strip()
@@ -3465,14 +3465,14 @@ def smart_reporter_relevant_content():
     results = []
     search_terms = [t for t in q.lower().split() if len(t) > 2]
 
-    # --- Cases (published, matching diagnosis or body_part) ---
+    # --- Cases (published, matching diagnosis, discussion, or body_part) ---
     try:
         case_query = Case.query.filter(Case.status == CaseStatus.PUBLISHED)
         if q:
-            # body_part is an Enum — cast to text for ILIKE
             case_query = case_query.filter(
                 db.or_(
                     Case.diagnosis.ilike(f'%{q}%'),
+                    Case.discussion.ilike(f'%{q}%'),
                     db.cast(Case.body_part, db.String).ilike(f'%{q}%'),
                 )
             )
@@ -3556,6 +3556,9 @@ def smart_reporter_relevant_content():
                 db.or_(
                     IncidentalFindingCalculator.finding_name.ilike(f'%{q}%'),
                     IncidentalFindingCalculator.keywords.ilike(f'%{q}%'),
+                    IncidentalFindingCalculator.description.ilike(f'%{q}%'),
+                    IncidentalFindingCalculator.body_section.ilike(f'%{q}%'),
+                    IncidentalFindingCalculator.category.ilike(f'%{q}%'),
                 )
             )
         elif body_section:
@@ -3581,6 +3584,7 @@ def smart_reporter_relevant_content():
                 db.or_(
                     ClinicalProtocol.title.ilike(f'%{q}%'),
                     ClinicalProtocol.keywords.ilike(f'%{q}%'),
+                    ClinicalProtocol.body_section.ilike(f'%{q}%'),
                 )
             )
         elif body_section:
@@ -3624,6 +3628,90 @@ def smart_reporter_relevant_content():
                 'title': a.title,
                 'subtitle': 'Anatomy Snippet',
                 'url': f'/anatomy-snippets/{a.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Reporting Algorithms (non-anatomy, available) ---
+    try:
+        ra_query = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.origin != 'anatomy_cache',
+        )
+        if q:
+            ra_query = ra_query.filter(
+                db.or_(
+                    ReportingAlgorithm.title.ilike(f'%{q}%'),
+                    ReportingAlgorithm.keywords.ilike(f'%{q}%'),
+                    ReportingAlgorithm.body_section.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            ra_query = ra_query.filter(ReportingAlgorithm.body_section.ilike(f'%{body_section}%'))
+
+        for a in ra_query.limit(3).all():
+            results.append({
+                'type': 'algorithm',
+                'icon': 'fa-project-diagram',
+                'color': '#5E899E',
+                'title': a.title,
+                'subtitle': a.category or a.body_section or 'Algorithm',
+                'url': f'/reporting-template/{a.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Radiology Templates ---
+    try:
+        rt_query = RadiologyTemplate.query.filter(
+            RadiologyTemplate.is_available == True,
+            RadiologyTemplate.origin == 'admin',
+        )
+        if q:
+            rt_query = rt_query.filter(
+                db.or_(
+                    RadiologyTemplate.title.ilike(f'%{q}%'),
+                    RadiologyTemplate.keywords.ilike(f'%{q}%'),
+                    RadiologyTemplate.body_section.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            rt_query = rt_query.filter(RadiologyTemplate.body_section.ilike(f'%{body_section}%'))
+
+        for t in rt_query.limit(3).all():
+            results.append({
+                'type': 'template',
+                'icon': 'fa-clipboard-list',
+                'color': '#2e7d5e',
+                'title': t.title,
+                'subtitle': t.body_section or 'Template',
+                'url': f'/radiology-template/view/{t.id}',
+            })
+    except Exception:
+        pass
+
+    # --- Radiology Pearls ---
+    try:
+        pearl_query = RadiologyPearl.query.filter_by(is_verified=True)
+        if q:
+            pearl_query = pearl_query.filter(
+                db.or_(
+                    RadiologyPearl.pearl_text.ilike(f'%{q}%'),
+                    RadiologyPearl.tags.ilike(f'%{q}%'),
+                    RadiologyPearl.body_section.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            pearl_query = pearl_query.filter(RadiologyPearl.body_section.ilike(f'%{body_section}%'))
+
+        for p in pearl_query.limit(3).all():
+            results.append({
+                'type': 'pearl',
+                'icon': 'fa-gem',
+                'color': '#b8860b',
+                'title': p.pearl_text[:120] + '...' if len(p.pearl_text or '') > 120 else p.pearl_text,
+                'subtitle': p.body_section or 'Pearl',
+                'url': '/radiology-pearls',
             })
     except Exception:
         pass

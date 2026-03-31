@@ -114,6 +114,16 @@ case_pearl_links = db.Table('case_pearl_links',
     db.UniqueConstraint('case_id', 'pearl_id')
 )
 
+# ==================== CASE-LEARNING LINK TABLE ====================
+case_learning_links = db.Table('case_learning_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('learning_question_id', db.Integer, db.ForeignKey('learning_question.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'learning_question_id')
+)
+
 # ==================== UNIVERSAL CONTENT LINK TABLE ====================
 # Generic many-to-many for linking any content type to any other content type.
 # Stored in canonical order (source_type <= target_type alphabetically) to

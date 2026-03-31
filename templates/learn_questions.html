@@ -171,6 +171,11 @@
                     </div>
                 </div>
                 {% endfor %}
+
+                {# AI Insights for single-question view #}
+                {% if single_question is defined and single_question %}
+                {% include 'partials/_ai_cross_links.html' %}
+                {% endif %}
             </div>
             {% else %}
             <!-- Empty State -->
