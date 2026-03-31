@@ -1187,6 +1187,7 @@ def enforce_admin_2fa():
     # For API requests return JSON, for page requests redirect
     if request.is_json or request.headers.get('Accept', '').startswith('application/json'):
         return jsonify({'error': 'Two-factor authentication is required for admin accounts. Please set it up in your profile.', 'redirect': '/auth/profile'}), 403
+    flash('Two-factor authentication is required for admin accounts. Please set up 2FA below to continue.', 'warning')
     return redirect('/auth/profile')
 
 
