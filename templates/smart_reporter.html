@@ -446,6 +446,8 @@
                     </div>
                 </div>
 
+                <!-- Sentinel for FAB IntersectionObserver (toolbar is sticky so never leaves viewport) -->
+                <div id="editorToolbarSentinel" style="height: 0; overflow: hidden;"></div>
                 <!-- Sticky Action Toolbar -->
                 <div id="editorToolbar" class="sr-editor-toolbar">
                     <!-- Top row: AI tools -->
@@ -767,25 +769,26 @@
                                         </div>
                                     </div>
 
-                                    <!-- Corrections -->
-                                    <div id="aiAssistCorrectionsSection" class="mb-3 d-none">
-                                        <div id="aiAssistCorrectionsNote" class="d-none mb-2">
-                                            <small class="text-muted fst-italic">
-                                                <i class="fas fa-info-circle me-1"></i>These corrections were for your original draft. Since a finalized report is provided above, you may not need these.
-                                            </small>
+                                </div>
+
+                                <!-- Corrections (outside aiAssistResponse so it persists after report auto-insert) -->
+                                <div id="aiAssistCorrectionsSection" class="mb-3 d-none">
+                                    <div id="aiAssistCorrectionsNote" class="d-none mb-2">
+                                        <small class="text-muted fst-italic">
+                                            <i class="fas fa-info-circle me-1"></i>These corrections apply to your original draft and have been incorporated into the finalized report.
+                                        </small>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistCorrectionsBody')">
+                                            <i class="fas fa-chevron-down me-1" id="aiAssistCorrectionsChevron"></i>Corrections
+                                        </small>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-success py-0 px-1" onclick="acceptAllCorrections()" style="font-size: 0.7rem;">Accept All</button>
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="rejectAllCorrections()" style="font-size: 0.7rem;">Reject All</button>
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistCorrectionsBody')">
-                                                <i class="fas fa-chevron-down me-1" id="aiAssistCorrectionsChevron"></i>Corrections
-                                            </small>
-                                            <div>
-                                                <button class="btn btn-sm btn-outline-success py-0 px-1" onclick="acceptAllCorrections()" style="font-size: 0.7rem;">Accept All</button>
-                                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="rejectAllCorrections()" style="font-size: 0.7rem;">Reject All</button>
-                                            </div>
-                                        </div>
-                                        <div id="aiAssistCorrectionsBody" style="max-height: 300px; overflow-y: auto;">
-                                            <div id="aiAssistCorrectionsList"></div>
-                                        </div>
+                                    </div>
+                                    <div id="aiAssistCorrectionsBody" style="max-height: 300px; overflow-y: auto;">
+                                        <div id="aiAssistCorrectionsList"></div>
                                     </div>
                                 </div>
 
@@ -2238,6 +2241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
         document.getElementById('reportActionResponse').classList.add('d-none');
         hideAllAdaptivePanels();
@@ -2850,6 +2854,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (progressBar) { progressBar.style.animation = 'none'; progressBar.offsetHeight; progressBar.style.animation = ''; }
         loadingEl.classList.remove('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
 
         const assistPayload = {
             question: question,
@@ -3183,8 +3188,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear stale corrections since they applied to old draft
         state.aiAssistCorrections = [];
         renderAiAssistCorrections();
-        // Hide answer and report sections but keep insights
+        // Hide answer, report and corrections — but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         showToast('Draft and PACS report updated with finalized version.', 'success');
     };
 
@@ -3417,18 +3423,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (state.aiAssistCorrections.length > 0) {
             renderAiAssistCorrections();
             correctionsSection.classList.remove('d-none');
-            // In full_report mode, show note and collapse corrections by default
+            // Always show corrections expanded; add explanatory note in full_report mode
             if (isFullReport) {
                 correctionsNote.classList.remove('d-none');
-                document.getElementById('aiAssistCorrectionsBody').classList.add('d-none');
-                const chevron = document.getElementById('aiAssistCorrectionsChevron');
-                if (chevron) chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
             } else {
                 correctionsNote.classList.add('d-none');
-                document.getElementById('aiAssistCorrectionsBody').classList.remove('d-none');
-                const chevron = document.getElementById('aiAssistCorrectionsChevron');
-                if (chevron) chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
             }
+            document.getElementById('aiAssistCorrectionsBody').classList.remove('d-none');
+            const chevron = document.getElementById('aiAssistCorrectionsChevron');
+            if (chevron) chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
         } else {
             correctionsSection.classList.add('d-none');
         }
@@ -3621,6 +3624,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.dismissAiAssist = function() {
         // Hide answer, report, and corrections — but NOT insights (they persist)
         document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
     };
 
     window.toggleSection = function(bodyId) {
@@ -3875,17 +3879,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Show/hide FAB based on toolbar visibility
+    // We observe a zero-height sentinel ABOVE the sticky toolbar, because
+    // the toolbar itself never leaves the viewport (position: sticky).
     (function() {
-        var toolbar = document.getElementById('editorToolbar');
+        var sentinel = document.getElementById('editorToolbarSentinel');
         var fab = document.getElementById('srFab');
-        if (!toolbar || !fab) return;
+        if (!sentinel || !fab) return;
 
         var observer = new IntersectionObserver(function(entries) {
-            var toolbarHidden = !entries[0].isIntersecting;
+            var scrolledPast = !entries[0].isIntersecting;
             // Only show FAB in editor scene
             var inEditor = document.getElementById('sceneEditor') &&
                            !document.getElementById('sceneEditor').classList.contains('d-none');
-            if (toolbarHidden && inEditor) {
+            if (scrolledPast && inEditor) {
                 fab.classList.remove('d-none');
                 _fabVisible = true;
             } else {
@@ -3894,7 +3900,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (_fabOpen) srFabToggle();
             }
         }, { threshold: 0 });
-        observer.observe(toolbar);
+        observer.observe(sentinel);
     })();
 
     // Close FAB when clicking outside
