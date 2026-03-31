@@ -3568,6 +3568,35 @@ def smart_reporter_relevant_content():
     except Exception:
         pass
 
+    # --- Learning Questions (SBA/Viva matching report context) ---
+    try:
+        lq_query = LearningQuestion.query
+        if q:
+            lq_query = lq_query.filter(
+                db.or_(
+                    LearningQuestion.title.ilike(f'%{q}%'),
+                    LearningQuestion.tags.ilike(f'%{q}%'),
+                    LearningQuestion.html_content.ilike(f'%{q}%'),
+                    LearningQuestion.source_report_context.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            lq_query = lq_query.filter(LearningQuestion.body_section.ilike(f'%{body_section}%'))
+
+        lqs = lq_query.limit(4).all()
+        for lq in lqs:
+            route = 'sba' if lq.question_type == 'sba' else 'viva'
+            results.append({
+                'type': 'learning',
+                'icon': 'fa-graduation-cap',
+                'color': '#0d6efd',
+                'title': lq.title or ('SBA Set' if lq.question_type == 'sba' else 'Viva Scenario'),
+                'subtitle': 'SBA Question' if lq.question_type == 'sba' else 'Viva Question',
+                'url': f'/learn/{route}/{lq.id}',
+            })
+    except Exception:
+        pass
+
     return jsonify({'results': results[:20]})
 
 
