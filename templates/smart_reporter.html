@@ -3187,9 +3187,10 @@ document.addEventListener('DOMContentLoaded', function() {
             var actionHtml = data.html || '<p>No content generated.</p>';
             if (action === 'sba' || action === 'viva') {
                 var learnLink = action === 'sba' ? '/learn/sba' : '/learn/viva';
-                actionHtml += '<p style="font-size:0.62rem;color:#999;margin-top:0.5rem;margin-bottom:0;">' +
-                    '<i class="fas fa-database me-1"></i>Questions &amp; answers saved to the ' +
-                    '<a href="' + learnLink + '" style="color:#999;text-decoration:underline;">learning database</a>.</p>';
+                var practiceLabel = action === 'sba' ? 'SBA Practice' : 'Viva Practice';
+                actionHtml += '<p style="font-size:0.72rem;color:#666;margin-top:0.5rem;margin-bottom:0;background:#f0f7fa;padding:6px 10px;border-radius:4px;">' +
+                    '<i class="fas fa-bookmark me-1" style="color:var(--brand-neutral);"></i>' +
+                    'Saved! Access this anytime from <a href="' + learnLink + '" style="color:var(--brand-neutral);font-weight:600;">' + practiceLabel + '</a>.</p>';
             }
 
             // Push to history (newest first)
@@ -3209,8 +3210,9 @@ document.addEventListener('DOMContentLoaded', function() {
             var container = document.getElementById('reportActionResponse');
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-            // Fetch internal DB resources (only for SBA/Viva — skip for emails and MDT)
-            var skipLinkedResources = ['email_colleague', 'email_patient', 'mdt'];
+            // Fetch internal DB resources — skip for emails, MDT, SBA, and Viva
+            // (SBA/Viva already have AI-generated references via Further Reading)
+            var skipLinkedResources = ['email_colleague', 'email_patient', 'mdt', 'sba', 'viva'];
             try {
                 if (skipLinkedResources.indexOf(action) === -1) {
                 const reportText = getCurrentReportText();
