@@ -2975,6 +2975,7 @@ class LearningQuestion(db.Model):
     html_content = db.Column(db.Text, nullable=False)
     source_report_context = db.Column(db.Text)  # first 200 chars of source report
     tags = db.Column(db.Text)           # comma-separated searchable tags
+    search_tags = db.Column(db.Text)    # AI-generated search keywords for discovery
     description = db.Column(db.Text)    # short description for search results
     content_hash = db.Column(db.String(64), unique=True, nullable=False)  # SHA-256 dedup
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)

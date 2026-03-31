@@ -324,6 +324,98 @@ def cmd_process_ugi(args):
     session.close()
 
 
+def cmd_backfill_learning_tags(args):
+    """Backfill search_tags for LearningQuestion records via Haiku."""
+    import re
+    from sqlalchemy import text
+
+    session, engine = get_neon_session()
+    limit = args.limit or 500
+
+    rows = session.execute(text("""
+        SELECT id, title, tags, description, body_section, modality,
+               source_report_context, html_content
+        FROM learning_question
+        WHERE search_tags IS NULL OR search_tags = ''
+        ORDER BY id
+        LIMIT :limit
+    """), {'limit': limit}).fetchall()
+
+    if not rows:
+        print("  All learning questions already have search_tags.")
+        session.close()
+        return
+
+    print(f"\n  Backfilling search_tags for {len(rows)} learning questions...")
+
+    from ai_client import call_claude
+
+    processed = 0
+    failed = 0
+
+    for i, row in enumerate(rows, 1):
+        print(f"  [{i}/{len(rows)}] LQ:{row.id} — {(row.title or 'Untitled')[:50]}...", end=' ')
+
+        # Strip HTML from content for the prompt
+        plain_content = re.sub(r'<[^>]+>', ' ', (row.html_content or '')[:2000])
+        plain_content = re.sub(r'\s+', ' ', plain_content).strip()[:800]
+
+        prompt_text = (
+            f"Title: {row.title or 'N/A'}\n"
+            f"Body section: {row.body_section or 'N/A'}\n"
+            f"Modality: {row.modality or 'N/A'}\n"
+            f"Tags: {row.tags or 'N/A'}\n"
+            f"Description: {row.description or 'N/A'}\n"
+            f"Report context: {row.source_report_context or 'N/A'}\n"
+            f"Content excerpt: {plain_content}\n"
+        )
+
+        try:
+            response_text, model_used, tokens = call_claude(
+                system_prompt=(
+                    "Generate concise search tags for this radiology learning question. "
+                    "Return ONLY a comma-separated list of 10-15 tags. Include:\n"
+                    "- The primary diagnosis/condition (full name AND common abbreviations)\n"
+                    "- Key imaging findings mentioned\n"
+                    "- Relevant anatomy\n"
+                    "- Related differential diagnoses\n"
+                    "- Modality terms (e.g. CT, MRI, X-ray)\n"
+                    "Example: pulmonary embolism, PE, filling defect, pulmonary artery, "
+                    "CT pulmonary angiogram, CTPA, DVT, Hampton hump, Westermark sign\n"
+                    "Return ONLY the comma-separated tags, nothing else."
+                ),
+                user_prompt=prompt_text,
+                model='claude-haiku-4-5-20251001',
+                max_tokens=300,
+                temperature=0.2,
+                skip_preamble=True,
+            )
+
+            search_tags = response_text.strip()
+            if len(search_tags) > 1000:
+                search_tags = search_tags[:1000]
+
+            session.execute(text("""
+                UPDATE learning_question
+                SET search_tags = :search_tags
+                WHERE id = :id
+            """), {'search_tags': search_tags, 'id': row.id})
+            session.commit()
+            print(f"OK — {search_tags[:60]}...")
+            processed += 1
+
+        except Exception as exc:
+            session.rollback()
+            print(f"FAILED: {exc}")
+            failed += 1
+
+        if i < len(rows):
+            time.sleep(1)
+
+    print(f"\n  Done: {processed} processed, {failed} failed")
+    session.close()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='RadInsights Intelligence Batch Processor')
     subparsers = parser.add_subparsers(dest='command', help='Sub-command')
@@ -340,6 +432,11 @@ if __name__ == '__main__':
     ugi_parser = subparsers.add_parser('process-ugi', help='Process pending UGI records via Haiku')
     ugi_parser.add_argument('--limit', type=int, default=50, help='Max records to process')
 
+    # backfill-learning-tags
+    lt_parser = subparsers.add_parser('backfill-learning-tags',
+                                      help='Backfill search_tags for learning questions via Haiku')
+    lt_parser.add_argument('--limit', type=int, default=500, help='Max records to process')
+
     args = parser.parse_args()
 
     if args.command == 'list':
@@ -348,5 +445,7 @@ if __name__ == '__main__':
         cmd_backfill(args)
     elif args.command == 'process-ugi':
         cmd_process_ugi(args)
+    elif args.command == 'backfill-learning-tags':
+        cmd_backfill_learning_tags(args)
     else:
         parser.print_help()

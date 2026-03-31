@@ -732,6 +732,7 @@ def unified_search():
                        GREATEST(
                            similarity(lq.title, :query),
                            COALESCE(similarity(lq.tags, :query), 0),
+                           COALESCE(similarity(lq.search_tags, :query), 0),
                            COALESCE(similarity(lq.description, :query), 0)
                        ) AS sim
                 FROM learning_question lq
@@ -742,6 +743,9 @@ def unified_search():
                     OR similarity(lq.tags, :query) > 0.1
                     OR lq.tags ILIKE :like_query
                     OR lq.tags ILIKE :like_raw
+                    OR similarity(lq.search_tags, :query) > 0.1
+                    OR lq.search_tags ILIKE :like_query
+                    OR lq.search_tags ILIKE :like_raw
                     OR lq.description ILIKE :like_query
                     OR lq.description ILIKE :like_raw
                     OR lq.html_content ILIKE :like_query
@@ -902,7 +906,7 @@ def unified_search():
     # Sort by similarity descending, with type priority as tiebreaker
     TYPE_PRIORITY = {
         'case': 0, 'protocol': 1, 'reporting': 2, 'template': 3,
-        'oncologic': 4, 'tnm_case': 5, 'incidental': 6, 'anatomy': 7, 'pearl': 8, 'learning': 9, 'intelligence': 10,
+        'learning': 4, 'oncologic': 5, 'tnm_case': 6, 'incidental': 7, 'anatomy': 8, 'pearl': 9, 'intelligence': 10,
     }
     results.sort(key=lambda r: (-r.get('similarity', 0), TYPE_PRIORITY.get(r.get('type'), 99)))
 
@@ -1069,6 +1073,7 @@ def _fallback_search(query, filter_type, limit, raw_query=None):
             db.or_(
                 _or_ilike(LearningQuestion.title),
                 _or_ilike(LearningQuestion.tags),
+                _or_ilike(LearningQuestion.search_tags),
                 _or_ilike(LearningQuestion.description),
                 _or_ilike(LearningQuestion.html_content),
                 _or_ilike(LearningQuestion.source_report_context),
@@ -2454,6 +2459,8 @@ def _do_backfill_intelligence():
                 if ctype == 'learning_question' and result.get('search_tags'):
                     if not item.tags:
                         item.tags = result['search_tags']
+                    if not item.search_tags:
+                        item.search_tags = result['search_tags']
                     if not item.description and result.get('summary'):
                         item.description = result['summary'][:300]
 
@@ -3068,6 +3075,26 @@ def _auto_link_content(html_content):
     return re.sub(r'<details>.*?</details>', _link_in_details, html_content, flags=re.DOTALL)
 
 
+def _build_learning_search_tags(title, body_section, modality, report_text, html_content):
+    """Build search_tags string from learning question fields for search discovery."""
+    import re
+    parts = []
+    if title:
+        parts.append(title)
+    if body_section:
+        parts.append(body_section)
+    if modality:
+        parts.append(modality)
+    if report_text:
+        parts.append(report_text[:200])
+    # Extract plain text from HTML (first ~300 chars for key medical terms)
+    if html_content:
+        plain = re.sub(r'<[^>]+>', ' ', html_content[:600]).strip()
+        plain = re.sub(r'\s+', ' ', plain)[:300]
+        parts.append(plain)
+    return ' | '.join(filter(None, parts))[:1000]  # cap at 1000 chars
+
+
 def _capture_learning_question(question_type, html_content, body_section, modality,
                                report_text, user_id):
     """Silently save an SBA or Viva question set to the learning_question table."""
@@ -3090,6 +3117,11 @@ def _capture_learning_question(question_type, html_content, body_section, modali
 
     auto_tags = ', '.join(filter(None, [body_section, modality, module]))
 
+    # Build search_tags for improved discoverability
+    search_tags = _build_learning_search_tags(
+        title, body_section, modality, report_text, html_content
+    )
+
     q = LearningQuestion(
         question_type=question_type,
         body_section=body_section or None,
@@ -3099,6 +3131,7 @@ def _capture_learning_question(question_type, html_content, body_section, modali
         html_content=html_content,
         source_report_context=report_text[:200] if report_text else None,
         tags=auto_tags if auto_tags else None,
+        search_tags=search_tags or None,
         content_hash=content_hash,
         created_by_user_id=user_id,
     )
@@ -3725,6 +3758,7 @@ def smart_reporter_relevant_content():
                 db.or_(
                     LearningQuestion.title.ilike(f'%{q}%'),
                     LearningQuestion.tags.ilike(f'%{q}%'),
+                    LearningQuestion.search_tags.ilike(f'%{q}%'),
                     LearningQuestion.html_content.ilike(f'%{q}%'),
                     LearningQuestion.source_report_context.ilike(f'%{q}%'),
                 )

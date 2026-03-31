@@ -945,6 +945,7 @@ with app.app_context():
         # -- learning_question: FRCR module --
         _add_col_if_missing('learning_question', 'module', 'module VARCHAR(100)')
         _add_col_if_missing('learning_question', 'tags', 'tags TEXT')
+        _add_col_if_missing('learning_question', 'search_tags', 'search_tags TEXT')
         _add_col_if_missing('learning_question', 'description', 'description TEXT')
 
         # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --

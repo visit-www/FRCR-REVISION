@@ -645,6 +645,9 @@
                             </div>
                         </div>
 
+                        <!-- Anchor for fill-ins in split mode (below draft box, left panel) -->
+                        <div id="fillInsAnchorLeft"></div>
+
                         <!-- Save as Template Prompt (Gap 4) -->
                         <div id="saveTemplatePrompt" class="d-none mb-3">
                             <div class="card border-0" style="background: #f0f7ff; border: 1px solid #d0e3f0 !important;">
@@ -793,6 +796,8 @@
                             </div>
                         </div>
 
+                        <!-- Anchor for fill-ins in stack mode (right panel, below changes box) -->
+                        <div id="fillInsAnchorRight"></div>
                         <!-- Fill-in Chips (placeholders to complete) -->
                         <div id="aiAssistFillInsSection" class="mb-3 d-none">
                             <div class="card border-0 shadow-sm">
@@ -3190,7 +3195,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 var practiceLabel = action === 'sba' ? 'SBA Practice' : 'Viva Practice';
                 actionHtml += '<p style="font-size:0.72rem;color:#666;margin-top:0.5rem;margin-bottom:0;background:#f0f7fa;padding:6px 10px;border-radius:4px;">' +
                     '<i class="fas fa-bookmark me-1" style="color:var(--brand-neutral);"></i>' +
-                    'Saved! Access this anytime from <a href="' + learnLink + '" style="color:var(--brand-neutral);font-weight:600;">' + practiceLabel + '</a>.</p>';
+                    'Saved! Access this anytime from <a href="' + learnLink + '" target="_blank" style="color:var(--brand-neutral);font-weight:600;">' + practiceLabel + '</a>.</p>';
             }
 
             // Push to history (newest first)
@@ -3269,10 +3274,12 @@ document.addEventListener('DOMContentLoaded', function() {
     var _reportActionEditorId = null;
 
     function initReportActionEditor(elId) {
-        if (_reportActionEditorReady) return;
-        _reportActionEditorId = elId || 'reportActionContent_0';
+        var targetId = elId || 'reportActionContent_0';
+        // Skip if TinyMCE is already active on this element
+        if (tinymce.get(targetId)) return;
+        _reportActionEditorId = targetId;
         tinymce.init({
-            selector: '#' + _reportActionEditorId,
+            selector: '#' + targetId,
             inline: true,
             menubar: false,
             toolbar: 'undo redo | bold italic underline strikethrough',
@@ -3289,17 +3296,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function destroyReportActionEditor() {
-        if (_reportActionEditorId) {
-            var editor = tinymce.get(_reportActionEditorId);
+        // Destroy all report action editors and save their content
+        state.reportActionHistory.forEach(function(item, idx) {
+            var edId = 'reportActionContent_' + idx;
+            var editor = tinymce.get(edId);
             if (editor) {
-                // Save content back to history before destroying
-                var idx = parseInt((_reportActionEditorId || '').split('_').pop(), 10);
-                if (!isNaN(idx) && state.reportActionHistory[idx]) {
-                    state.reportActionHistory[idx].html = editor.getContent();
-                }
+                item.html = editor.getContent();
                 editor.destroy();
             }
-        }
+        });
         _reportActionEditorReady = false;
         _reportActionEditorId = null;
     }
@@ -3361,13 +3366,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.toggleReportAction = function(index) {
         var bodyId = 'reportActionBody_' + index;
+        var contentId = 'reportActionContent_' + index;
         var body = document.getElementById(bodyId);
         var chevron = document.getElementById('reportActionChevron_' + index);
         if (!body) return;
         if (body.classList.contains('d-none')) {
             body.classList.remove('d-none');
             if (chevron) { chevron.classList.replace('fa-chevron-down', 'fa-chevron-up'); }
+            // Re-init TinyMCE on expand if this item is editable and no editor active on it
+            var item = state.reportActionHistory[index];
+            if (item && item.editable && !tinymce.get(contentId)) {
+                _reportActionEditorReady = false;
+                _reportActionEditorId = null;
+                initReportActionEditor(contentId);
+            }
         } else {
+            // Save TinyMCE content before collapsing
+            var editor = tinymce.get(contentId);
+            if (editor) {
+                state.reportActionHistory[index].html = editor.getContent();
+                editor.destroy();
+                _reportActionEditorReady = false;
+                _reportActionEditorId = null;
+            }
             body.classList.add('d-none');
             if (chevron) { chevron.classList.replace('fa-chevron-up', 'fa-chevron-down'); }
         }
@@ -3379,7 +3400,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get content from TinyMCE if active on this element, otherwise from DOM
         var editor = tinymce.get(contentId);
         var text = '';
-        if (editor && _reportActionEditorReady && _reportActionEditorId === contentId) {
+        if (editor) {
             text = editor.getContent({ format: 'text' });
         } else {
             var content = document.getElementById(contentId);
@@ -3605,6 +3626,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var fillInsSection = document.getElementById('aiAssistFillInsSection');
             renderFillIns();
             fillInsSection.classList.remove('d-none');
+            repositionFillIns();
         }
         // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
@@ -3769,6 +3791,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (state.aiAssistFillIns.length > 0 && isFullReport) {
             renderFillIns();
             fillInsSection.classList.remove('d-none');
+            repositionFillIns();
         } else {
             fillInsSection.classList.add('d-none');
         }
@@ -5137,11 +5160,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!row || !outputSection) return;
 
+        var fillInsSection = document.getElementById('aiAssistFillInsSection');
+        var fillInsAnchorLeft = document.getElementById('fillInsAnchorLeft');
+        var fillInsAnchorRight = document.getElementById('fillInsAnchorRight');
+
         if (mode === 'split') {
             // Add split class
             row.classList.add('sr-split-mode');
             // Move output to right column
             splitTarget.after(outputSection);
+            // Move fill-ins below draft box in left panel
+            if (fillInsSection && fillInsAnchorLeft) {
+                fillInsAnchorLeft.after(fillInsSection);
+            }
             // Only show output if it has content (CSS uses .has-content)
             var textarea = document.getElementById('editorOutput');
             if (textarea && textarea.value.trim()) {
@@ -5159,6 +5190,10 @@ document.addEventListener('DOMContentLoaded', function() {
             row.classList.remove('sr-split-mode');
             // Move output back to left column
             stackTarget.after(outputSection);
+            // Move fill-ins back to right panel (below changes box)
+            if (fillInsSection && fillInsAnchorRight) {
+                fillInsAnchorRight.after(fillInsSection);
+            }
             // Hide output if empty
             var textarea = document.getElementById('editorOutput');
             if (!textarea || !textarea.value.trim()) {
@@ -5184,6 +5219,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ==================== REPOSITION HELPERS ====================
+
+    // Move fill-ins to left panel (below draft) in split view, or right panel in stack view
+    function repositionFillIns() {
+        var fillInsSection = document.getElementById('aiAssistFillInsSection');
+        if (!fillInsSection) return;
+        var mode = getSavedViewMode();
+        if (mode === 'split') {
+            var anchor = document.getElementById('fillInsAnchorLeft');
+            if (anchor) anchor.after(fillInsSection);
+        } else {
+            var anchor = document.getElementById('fillInsAnchorRight');
+            if (anchor) anchor.after(fillInsSection);
+        }
+    }
 
     // Move answer/changes box near PACS when visible, or top of right col
     function repositionAnswerBox() {
