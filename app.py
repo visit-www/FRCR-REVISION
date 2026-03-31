@@ -1498,7 +1498,7 @@ def cv():
 @app.route('/favicon.ico')
 def favicon():
     """Redirect /favicon.ico to Cloudinary-hosted favicon for consistent browser tab icons."""
-    return redirect('https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503549/frcr-rev-logo-solid_wnltqf.png', code=301)
+    return redirect('https://res.cloudinary.com/dx7b7chvn/image/upload/f_png,q_auto,w_32,h_32,c_fill/v1769503549/frcr-rev-logo-solid_wnltqf.png', code=301)
 
 
 @app.route('/manifest.json')
