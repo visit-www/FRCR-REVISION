@@ -2484,13 +2484,21 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Write or paste a report first.', 'warning');
             return;
         }
-        // Extract search query from report text (first meaningful line, max 80 chars)
+        // Extract meaningful search terms from report text
         var text = input.value.trim();
         var lines = text.split('\n');
+        // Regex to strip common radiology report section headers
+        var headerRe = /^(CLINICAL\s+INFORMATION|CLINICAL\s+HISTORY|CLINICAL\s+INDICATION|HISTORY|INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION|CONCLUSION|COMMENT|OPINION|REPORT|PROCEDURE|EXAM|EXAMINATION|STUDY|CONTRAST|DOSE)\s*:?\s*/i;
+        // Regex to detect lines that are ONLY a header (no content after stripping)
         var q = '';
         for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].replace(/^(INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):\s*/i, '').trim();
-            if (line.length > 5) { q = line.substring(0, 80); break; }
+            var line = lines[i].replace(headerRe, '').trim();
+            // Skip empty lines, pure headers, and very short fragments
+            if (line.length <= 5) continue;
+            // Skip lines that are all uppercase (likely another header)
+            if (line === line.toUpperCase() && !/\d/.test(line)) continue;
+            q = line.substring(0, 80);
+            break;
         }
         if (!q) { showToast('Could not extract a search query from your report.', 'warning'); return; }
         var searchInput = document.getElementById('editorResourceSearch');
