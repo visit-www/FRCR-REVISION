@@ -3555,12 +3555,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
         if (c.editing) {
-            const input = document.getElementById('correctionEdit_' + index);
-            if (input) c.suggested = input.value;
+            const editInput = document.getElementById('correctionEdit_' + index);
+            if (editInput) c.suggested = editInput.value;
             c.editing = false;
         }
         c.status = 'accepted';
-        applyAiAssistCorrections();
+        // Apply this single correction to both boxes
+        var output = document.getElementById('editorOutput');
+        var input = document.getElementById('editorInput');
+        if (output && output.value) _savePacsUndo(output);
+        if (input && input.value) _saveDraftUndo(input);
+        _applyInBox('editorOutput', c);
+        _applyInBox('editorInput', c);
+        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
+        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
         renderAiAssistCorrections();
     };
 
@@ -3586,6 +3594,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
         c.status = 'rejected';
+        // Revert: the AI already applied this correction in the finalized report,
+        // so rejecting means replacing suggested text back with original
+        _revertCorrection(c);
         renderAiAssistCorrections();
     };
 
@@ -3593,32 +3604,83 @@ document.addEventListener('DOMContentLoaded', function() {
         state.aiAssistCorrections.forEach(c => {
             if (c.status === 'pending') c.status = 'accepted';
         });
-        applyAiAssistCorrections();
+        _applyCorrections('accept');
         renderAiAssistCorrections();
     };
 
     window.rejectAllCorrections = function() {
-        state.aiAssistCorrections.forEach(c => {
-            if (c.status === 'pending') c.status = 'rejected';
-        });
-        renderAiAssistCorrections();
-    };
+        // Save undo before batch revert
+        var output = document.getElementById('editorOutput');
+        var input = document.getElementById('editorInput');
+        if (output && output.value) _savePacsUndo(output);
+        if (input && input.value) _saveDraftUndo(input);
 
-    function applyAiAssistCorrections() {
-        // Apply accepted corrections to the output box (never the draft)
-        const output = ensureOutputBoxVisible();
-        let text = output.value;
         state.aiAssistCorrections.forEach(c => {
-            if (c.status === 'accepted' && c.original && c.suggested) {
-                const idx = text.indexOf(c.original);
-                if (idx >= 0) {
-                    text = text.substring(0, idx) + c.suggested + text.substring(idx + c.original.length);
-                }
+            if (c.status === 'pending') {
+                c.status = 'rejected';
+                // Revert each in both boxes
+                _revertInBox('editorOutput', c);
+                _revertInBox('editorInput', c);
             }
         });
-        output.value = text;
-        state.outputText = text;
-        autoResizeTextarea(output);
+        // Sync state
+        if (output) state.outputText = output.value;
+        if (input) state.inputText = input.value;
+        renderAiAssistCorrections();
+        showToast('All corrections reverted.', 'info');
+    };
+
+    // Revert a single correction (AI already applied it, so swap suggested → original)
+    function _revertCorrection(c) {
+        if (!c.original || !c.suggested) return;
+        var output = document.getElementById('editorOutput');
+        var input = document.getElementById('editorInput');
+        if (output && output.value) _savePacsUndo(output);
+        if (input && input.value) _saveDraftUndo(input);
+
+        _revertInBox('editorOutput', c);
+        _revertInBox('editorInput', c);
+
+        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
+        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
+    }
+
+    function _revertInBox(elId, c) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        var text = el.value;
+        var idx = text.indexOf(c.suggested);
+        if (idx >= 0) {
+            el.value = text.substring(0, idx) + c.original + text.substring(idx + c.suggested.length);
+        }
+    }
+
+    // Apply accepted corrections to both PACS output and draft
+    function _applyCorrections(mode) {
+        var output = document.getElementById('editorOutput');
+        var input = document.getElementById('editorInput');
+        if (output && output.value) _savePacsUndo(output);
+        if (input && input.value) _saveDraftUndo(input);
+
+        state.aiAssistCorrections.forEach(c => {
+            if (c.status === 'accepted' && c.original && c.suggested) {
+                _applyInBox('editorOutput', c);
+                _applyInBox('editorInput', c);
+            }
+        });
+
+        if (output) { state.outputText = output.value; autoResizeTextarea(output); }
+        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
+    }
+
+    function _applyInBox(elId, c) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        var text = el.value;
+        var idx = text.indexOf(c.original);
+        if (idx >= 0) {
+            el.value = text.substring(0, idx) + c.suggested + text.substring(idx + c.original.length);
+        }
     }
 
     window.dismissAiAssist = function() {
