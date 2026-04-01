@@ -3441,6 +3441,198 @@ class RadIQQuery(db.Model):
         return f'<RadIQQuery {self.id} cat={self.category} user={self.user_id}>'
 
 
+# ==================== RADIQ FEEDBACK MODEL ====================
+
+class RadIQFeedback(db.Model):
+    """User feedback on RadIQ responses — flags incorrect/unhelpful answers."""
+    __tablename__ = 'radiq_feedback'
+
+    id = db.Column(db.Integer, primary_key=True)
+    query_id = db.Column(db.Integer, db.ForeignKey('radiq_query.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    reason = db.Column(db.String(50), nullable=False)  # incorrect, outdated, missing_info, inappropriate, other
+    details = db.Column(db.Text, nullable=True)
+
+    # Resolution tracking (admin)
+    is_resolved = db.Column(db.Boolean, default=False, index=True)
+    resolved_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolution_notes = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    query = db.relationship('RadIQQuery', backref=db.backref('feedback', lazy='dynamic'))
+    flagger = db.relationship('User', foreign_keys=[user_id], backref='radiq_feedback_given')
+    resolver = db.relationship('User', foreign_keys=[resolved_by_user_id])
+
+    __table_args__ = (
+        db.UniqueConstraint('query_id', 'user_id', name='uq_radiq_query_user_feedback'),
+        db.Index('idx_radiq_unresolved_feedback', 'is_resolved', 'created_at'),
+    )
+
+
+# ==================== IMAGING PROTOCOL MODEL (Vetting Tool) ====================
+
+class ImagingProtocol(db.Model):
+    """Imaging protocol library for the vetting workflow.
+
+    Stores both admin-curated and personal protocols with structured
+    validation config, indication lists, and search metadata.
+    """
+    __tablename__ = 'imaging_protocol'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(300), nullable=False)
+    slug = db.Column(db.String(300), nullable=True, index=True)
+    modality = db.Column(db.String(50), nullable=False, index=True)  # CT, MRI, US, XR, NM, Fluoro
+    body_section = db.Column(db.String(100), nullable=True, index=True)
+    keywords = db.Column(db.Text, nullable=True)  # comma-separated for search
+
+    # Protocol content
+    shorthand_text = db.Column(db.Text, nullable=True)  # consultant vetting-box style
+    detailed_protocol_html = db.Column(db.Text, nullable=True)  # HTML table/staged format
+    special_notes = db.Column(db.Text, nullable=True)
+
+    # Structured JSON data (stored as TEXT)
+    indication_json = db.Column(db.Text, nullable=True)   # JSON array of indication strings
+    validation_json = db.Column(db.Text, nullable=True)    # JSON: {requires_egfr, egfr_threshold, ...}
+    search_config_json = db.Column(db.Text, nullable=True) # JSON: {keywords, synonyms, ...}
+
+    # Ownership
+    origin = db.Column(db.String(20), nullable=False, default='admin')  # admin / personal
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    copied_from_id = db.Column(db.Integer, db.ForeignKey('imaging_protocol.id'), nullable=True)
+
+    # Verification & publishing
+    is_published = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    is_emergency = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Audit
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', foreign_keys=[user_id], backref=db.backref('imaging_protocols', lazy='dynamic'))
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id])
+    copied_from = db.relationship('ImagingProtocol', remote_side=[id])
+
+    def get_validation(self):
+        if self.validation_json:
+            try:
+                return json.loads(self.validation_json)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
+    def get_indications(self):
+        if self.indication_json:
+            try:
+                return json.loads(self.indication_json)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    def get_search_config(self):
+        if self.search_config_json:
+            try:
+                return json.loads(self.search_config_json)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'slug': self.slug,
+            'modality': self.modality,
+            'body_section': self.body_section,
+            'keywords': self.keywords,
+            'shorthand_text': self.shorthand_text,
+            'detailed_protocol_html': self.detailed_protocol_html,
+            'special_notes': self.special_notes,
+            'indication_json': self.get_indications(),
+            'validation_json': self.get_validation(),
+            'origin': self.origin,
+            'user_id': self.user_id,
+            'copied_from_id': self.copied_from_id,
+            'is_published': self.is_published,
+            'is_verified': self.is_verified,
+            'is_emergency': self.is_emergency,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ImagingProtocol {self.id}: {self.title} ({self.modality})>'
+
+
+# ==================== VETTING SESSION MODEL ====================
+
+class VettingSession(db.Model):
+    """Records a completed vetting workflow — clinical analysis + safety + protocol."""
+    __tablename__ = 'vetting_session'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    # Input
+    raw_clinical_text = db.Column(db.Text, nullable=False)
+    modality_hint = db.Column(db.String(50), nullable=True)
+
+    # AI output
+    cleaned_clinical_text = db.Column(db.Text, nullable=True)
+    study_type = db.Column(db.String(200), nullable=True)
+
+    # Safety
+    safety_checks_json = db.Column(db.Text, nullable=True)  # JSON: user responses to checks
+
+    # Protocol
+    protocol_source = db.Column(db.String(20), nullable=True)  # personal / admin / ai_generated
+    protocol_id = db.Column(db.Integer, db.ForeignKey('imaging_protocol.id'), nullable=True)
+
+    # Final output
+    final_clinical_details = db.Column(db.Text, nullable=True)
+    final_shorthand = db.Column(db.Text, nullable=True)
+    final_detailed_html = db.Column(db.Text, nullable=True)
+    final_special_notes = db.Column(db.Text, nullable=True)
+
+    # AI metadata
+    ai_model = db.Column(db.String(100), nullable=True)
+    ai_tokens_used = db.Column(db.Integer, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = db.relationship('User', backref=db.backref('vetting_sessions', lazy='dynamic'))
+    protocol = db.relationship('ImagingProtocol')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'raw_clinical_text': self.raw_clinical_text,
+            'modality_hint': self.modality_hint,
+            'cleaned_clinical_text': self.cleaned_clinical_text,
+            'study_type': self.study_type,
+            'safety_checks_json': json.loads(self.safety_checks_json) if self.safety_checks_json else None,
+            'protocol_source': self.protocol_source,
+            'protocol_id': self.protocol_id,
+            'final_clinical_details': self.final_clinical_details,
+            'final_shorthand': self.final_shorthand,
+            'final_detailed_html': self.final_detailed_html,
+            'final_special_notes': self.final_special_notes,
+            'ai_model': self.ai_model,
+            'ai_tokens_used': self.ai_tokens_used,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<VettingSession {self.id} user={self.user_id} study={self.study_type}>'
+
+
 class PiiOverrideLog(db.Model):
     """Audit trail for PII guard actions — overrides, dismissals, batch dismissals."""
     __tablename__ = 'pii_override_log'
@@ -3530,3 +3722,121 @@ def log_admin_action(user_id, action, target_type=None, target_id=None, details=
     except Exception as e:
         db.session.rollback()
         _models_logger.error(f"Failed to log admin action: {e}")
+
+
+# ==================== VETTING ALGORITHM ====================
+class VettingAlgorithm(db.Model):
+    """Clinical decision algorithm for imaging request vetting.
+
+    Maps clinical scenarios to imaging pathways (e.g. Suspected PE → Wells → D-dimer → CTPA).
+    Steps can reference ImagingProtocol slugs via linked_protocol_id in steps_json.
+    """
+    __tablename__ = 'vetting_algorithm'
+
+    id = db.Column(db.Integer, primary_key=True)
+    algorithm_key = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    slug = db.Column(db.String(300), nullable=False, index=True)
+    body_section = db.Column(db.String(100), nullable=True, index=True)
+    clinical_scenario = db.Column(db.String(500), nullable=False)
+
+    # Structured data stored as JSON text
+    entry_criteria_json = db.Column(db.Text, nullable=True)   # JSON array of strings
+    steps_json = db.Column(db.Text, nullable=False)            # JSON array of step objects
+    safety_json = db.Column(db.Text, nullable=True)            # JSON: {egfr_required, contrast_check, alternative}
+
+    # Search / categorisation
+    tags = db.Column(db.Text, nullable=True)        # Comma-separated
+    keywords = db.Column(db.Text, nullable=True)    # Extra search terms
+
+    # Admin management
+    origin = db.Column(db.String(20), nullable=False, default='admin')
+    is_published = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_verified = db.Column(db.Boolean, default=False, nullable=False)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id])
+
+    def get_steps(self):
+        try:
+            return json.loads(self.steps_json) if self.steps_json else []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def get_safety(self):
+        try:
+            return json.loads(self.safety_json) if self.safety_json else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    def get_entry_criteria(self):
+        try:
+            return json.loads(self.entry_criteria_json) if self.entry_criteria_json else []
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'algorithm_key': self.algorithm_key,
+            'title': self.title,
+            'slug': self.slug,
+            'body_section': self.body_section,
+            'clinical_scenario': self.clinical_scenario,
+            'entry_criteria': self.get_entry_criteria(),
+            'steps': self.get_steps(),
+            'safety': self.get_safety(),
+            'tags': self.tags,
+            'keywords': self.keywords,
+            'origin': self.origin,
+            'is_published': self.is_published,
+            'is_verified': self.is_verified,
+            'verified_at': self.verified_at.isoformat() if self.verified_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def to_ai_context(self):
+        """Compact ~200 token summary for injection into AI prompt."""
+        parts = [f"Algorithm: {self.title}"]
+        parts.append(f"Scenario: {self.clinical_scenario}")
+
+        criteria = self.get_entry_criteria()
+        if criteria:
+            parts.append(f"Entry criteria: {'; '.join(criteria)}")
+
+        for step in self.get_steps():
+            line = step.get('step') or step.get('condition', '')
+            rec = step.get('recommendation', '')
+            if line and rec:
+                parts.append(f"- {line}: {rec}")
+            elif line:
+                parts.append(f"- {line}")
+            branching = step.get('branching', [])
+            for branch in branching:
+                cond = branch.get('condition') or branch.get('scenario', '')
+                nxt = branch.get('next') or branch.get('recommendation', '')
+                if cond and nxt:
+                    parts.append(f"  → {cond}: {nxt}")
+
+        safety = self.get_safety()
+        if safety:
+            safety_notes = []
+            if safety.get('egfr_required') or safety.get('egfr_required_for_cta') or safety.get('egfr_check'):
+                safety_notes.append('eGFR check required')
+            if safety.get('contrast_check') or safety.get('contrast_allergy_check'):
+                safety_notes.append('contrast allergy check')
+            alt = safety.get('alternative') or safety.get('alternative_if_low_egfr')
+            if alt:
+                safety_notes.append(f'alternative: {alt}')
+            if safety_notes:
+                parts.append(f"Safety: {'; '.join(safety_notes)}")
+
+        return '\n'.join(parts)
+
+    def __repr__(self):
+        return f'<VettingAlgorithm {self.algorithm_key}>'

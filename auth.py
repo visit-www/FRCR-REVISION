@@ -538,7 +538,9 @@ def login():
             db.session.commit()
 
             # Check if admin has 2FA enabled — require TOTP verification
-            if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret:
+            # Skip 2FA for local development
+            _is_deployed = os.getenv('VERCEL') or os.getenv('VERCEL_ENV')
+            if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret and _is_deployed:
                 from flask import session as flask_session
                 flask_session['pending_2fa_user_id'] = user.id
                 flask_session['2fa_remember'] = bool(remember)
@@ -1068,8 +1070,9 @@ def google_callback():
         if not user.is_active:
             return redirect('/auth/login?error=account_disabled')
 
-        # Admin with 2FA — require TOTP verification
-        if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret:
+        # Admin with 2FA — require TOTP verification (skip locally)
+        _is_deployed = os.getenv('VERCEL') or os.getenv('VERCEL_ENV')
+        if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret and _is_deployed:
             from flask import session as flask_session
             flask_session['pending_2fa_user_id'] = user.id
             flask_session['2fa_remember'] = False

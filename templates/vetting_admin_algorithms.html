@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% block title %}Admin — Vetting Algorithms | RadInsights{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block tool_active_vetting %}active{% endblock %}
+{% block mobile_active_vetting %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/vetting" class="text-white text-decoration-none">Vetting Tool</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Admin Algorithms</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="/vetting" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-check-double me-1"></i>Vetting Tool
+        </a>
+        <a href="/vetting/admin/protocols" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-database me-1"></i>Imaging Protocols
+        </a>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-project-diagram me-2" style="color: #5E899E;"></i>Vetting Algorithms</h2>
+            <p class="text-muted mb-0">Manage clinical decision algorithms for imaging pathways</p>
+        </div>
+        <button class="btn btn-brand-neutral" data-bs-toggle="modal" data-bs-target="#algorithmModal" onclick="resetModal()">
+            <i class="fas fa-plus me-1"></i>Add Algorithm
+        </button>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="small text-muted me-2">Filter:</span>
+                <select id="bodySectionFilter" class="form-select form-select-sm" style="min-width: 160px; width: auto;" onchange="renderTable()">
+                    <option value="">All Body Sections</option>
+                    <option>Brain</option>
+                    <option>Chest</option>
+                    <option>Abdomen</option>
+                    <option>Pelvis</option>
+                    <option>Spine</option>
+                    <option>MSK</option>
+                    <option>Vascular</option>
+                    <option>Kidney</option>
+                    <option>Pancreas</option>
+                    <option>Oncology</option>
+                    <option>Paediatric</option>
+                </select>
+                <input type="text" id="searchInput" class="form-control form-control-sm" style="width: 200px;"
+                    placeholder="Search..." oninput="renderTable()">
+                <span id="algorithmCount" class="small text-muted ms-2"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Algorithms table -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle" id="algorithmsTable">
+            <thead class="table-light">
+                <tr>
+                    <th>Title</th>
+                    <th>Body Section</th>
+                    <th>Clinical Scenario</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="algorithmsBody">
+                <tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-secondary" role="status"></div></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Algorithm Modal -->
+<div class="modal fade app-content-modal" id="algorithmModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle"><i class="fas fa-project-diagram me-2"></i>Add Algorithm</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editingId" value="">
+
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                        <input type="text" id="formTitle" class="form-control" placeholder="e.g. Acute Stroke Imaging Pathway">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Algorithm Key <span class="text-danger">*</span></label>
+                        <input type="text" id="formAlgorithmKey" class="form-control" placeholder="e.g. ACUTE_STROKE_FULL">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Body Section</label>
+                        <select id="formBodySection" class="form-select">
+                            <option value="">Select...</option>
+                            <option>Brain</option>
+                            <option>Chest</option>
+                            <option>Abdomen</option>
+                            <option>Pelvis</option>
+                            <option>Spine</option>
+                            <option>MSK</option>
+                            <option>Vascular</option>
+                            <option>Kidney</option>
+                            <option>Pancreas</option>
+                            <option>Oncology</option>
+                            <option>Paediatric</option>
+                            <option>Thorax</option>
+                            <option>Head and Neck</option>
+                            <option>Cardiovascular</option>
+                            <option>Breast</option>
+                            <option>Multisystem</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-12">
+                        <label class="form-label fw-semibold">Clinical Scenario <span class="text-danger">*</span></label>
+                        <input type="text" id="formClinicalScenario" class="form-control" placeholder="e.g. Acute neurological deficit">
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Entry Criteria <small class="text-muted">(one per line)</small></label>
+                    <textarea id="formEntryCriteria" class="form-control" rows="3"
+                        placeholder="Focal neurological deficit&#10;Sudden onset symptoms"></textarea>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Steps (JSON) <span class="text-danger">*</span></label>
+                    <textarea id="formStepsJson" class="form-control font-monospace" rows="10"
+                        placeholder='[{"step": "Immediate imaging", "recommendation": "Non-contrast CT brain", "linked_protocol_id": "CT_BRAIN_PLAIN"}]'></textarea>
+                    <small class="text-muted">JSON array of step objects. Each step can have: step, condition, recommendation, linked_protocol_id, branching (array).</small>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Safety Config (JSON)</label>
+                    <textarea id="formSafetyJson" class="form-control font-monospace" rows="3"
+                        placeholder='{"egfr_required": true, "contrast_check": true, "alternative": "V/Q scan"}'></textarea>
+                </div>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tags <small class="text-muted">(comma-separated)</small></label>
+                        <input type="text" id="formTags" class="form-control" placeholder="stroke, emergency">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Keywords <small class="text-muted">(extra search terms)</small></label>
+                        <input type="text" id="formKeywords" class="form-control" placeholder="neurological, deficit, CVA">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveAlgorithm()">
+                    <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let _adminAlgorithms = [];
+
+async function loadAlgorithms() {
+    try {
+        const resp = await fetch('/api/vetting/admin/algorithms');
+        const data = await resp.json();
+        _adminAlgorithms = data.algorithms || [];
+        renderTable();
+    } catch (err) { console.error(err); }
+}
+
+function renderTable() {
+    const section = document.getElementById('bodySectionFilter').value;
+    const search = (document.getElementById('searchInput').value || '').toLowerCase();
+
+    const filtered = _adminAlgorithms.filter(a => {
+        if (section && (a.body_section || '') !== section) return false;
+        if (search && !a.title.toLowerCase().includes(search)
+            && !(a.clinical_scenario || '').toLowerCase().includes(search)
+            && !(a.tags || '').toLowerCase().includes(search)
+            && !(a.keywords || '').toLowerCase().includes(search)) return false;
+        return true;
+    });
+
+    document.getElementById('algorithmCount').textContent = `${filtered.length} algorithm${filtered.length !== 1 ? 's' : ''}`;
+
+    const tbody = document.getElementById('algorithmsBody');
+    if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No algorithms found.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(a => `
+        <tr>
+            <td>
+                <strong>${escapeHtml(a.title)}</strong>
+                <br><small class="text-muted font-monospace">${escapeHtml(a.algorithm_key)}</small>
+            </td>
+            <td>${escapeHtml(a.body_section || '\u2014')}</td>
+            <td><small>${escapeHtml(a.clinical_scenario)}</small></td>
+            <td>
+                ${a.is_published
+                    ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Published</span>'
+                    : '<span class="badge bg-warning text-dark">Draft</span>'}
+            </td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-secondary me-1" onclick="editAlgorithm(${a.id})" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                ${!a.is_published ? `<button class="btn btn-sm btn-outline-success me-1" onclick="verifyAlgorithm(${a.id})" title="Verify & Publish">
+                    <i class="fas fa-check-circle"></i>
+                </button>` : ''}
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteAlgorithm(${a.id})" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function resetModal() {
+    document.getElementById('editingId').value = '';
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-project-diagram me-2"></i>Add Algorithm';
+    document.getElementById('formTitle').value = '';
+    document.getElementById('formAlgorithmKey').value = '';
+    document.getElementById('formBodySection').value = '';
+    document.getElementById('formClinicalScenario').value = '';
+    document.getElementById('formEntryCriteria').value = '';
+    document.getElementById('formStepsJson').value = '';
+    document.getElementById('formSafetyJson').value = '';
+    document.getElementById('formTags').value = '';
+    document.getElementById('formKeywords').value = '';
+}
+
+function editAlgorithm(id) {
+    const a = _adminAlgorithms.find(x => x.id === id);
+    if (!a) return;
+
+    document.getElementById('editingId').value = a.id;
+    document.getElementById('modalTitle').innerHTML = '<i class="fas fa-project-diagram me-2"></i>Edit Algorithm';
+    document.getElementById('formTitle').value = a.title;
+    document.getElementById('formAlgorithmKey').value = a.algorithm_key;
+    document.getElementById('formBodySection').value = a.body_section || '';
+    document.getElementById('formClinicalScenario').value = a.clinical_scenario;
+    document.getElementById('formEntryCriteria').value = (a.entry_criteria || []).join('\n');
+    document.getElementById('formStepsJson').value = JSON.stringify(a.steps || [], null, 2);
+    document.getElementById('formSafetyJson').value = a.safety && Object.keys(a.safety).length ? JSON.stringify(a.safety, null, 2) : '';
+    document.getElementById('formTags').value = a.tags || '';
+    document.getElementById('formKeywords').value = a.keywords || '';
+
+    new bootstrap.Modal(document.getElementById('algorithmModal')).show();
+}
+
+async function saveAlgorithm() {
+    const id = document.getElementById('editingId').value;
+    const title = document.getElementById('formTitle').value.trim();
+    const algorithmKey = document.getElementById('formAlgorithmKey').value.trim();
+    const clinicalScenario = document.getElementById('formClinicalScenario').value.trim();
+    const stepsJson = document.getElementById('formStepsJson').value.trim();
+
+    if (!title || !algorithmKey || !clinicalScenario) {
+        alert('Title, algorithm key, and clinical scenario are required.');
+        return;
+    }
+
+    // Validate steps JSON
+    if (stepsJson) {
+        try { JSON.parse(stepsJson); }
+        catch (e) { alert('Steps JSON is invalid: ' + e.message); return; }
+    }
+
+    // Validate safety JSON
+    const safetyJson = document.getElementById('formSafetyJson').value.trim();
+    if (safetyJson) {
+        try { JSON.parse(safetyJson); }
+        catch (e) { alert('Safety JSON is invalid: ' + e.message); return; }
+    }
+
+    const payload = {
+        title: title,
+        algorithm_key: algorithmKey,
+        body_section: document.getElementById('formBodySection').value,
+        clinical_scenario: clinicalScenario,
+        entry_criteria: document.getElementById('formEntryCriteria').value,
+        steps_json: stepsJson || '[]',
+        safety_json: safetyJson,
+        tags: document.getElementById('formTags').value,
+        keywords: document.getElementById('formKeywords').value,
+    };
+
+    const url = id ? `/api/vetting/admin/algorithms/${id}` : '/api/vetting/admin/algorithms';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const resp = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('algorithmModal')).hide();
+            loadAlgorithms();
+        } else {
+            alert(data.error || 'Failed to save.');
+        }
+    } catch (err) { alert('Network error.'); }
+}
+
+async function verifyAlgorithm(id) {
+    if (!confirm('Verify and publish this algorithm?')) return;
+    try {
+        const resp = await fetch(`/api/vetting/admin/algorithms/${id}/verify`, { method: 'POST' });
+        if (resp.ok) loadAlgorithms();
+        else alert('Failed to verify.');
+    } catch (err) { alert('Network error.'); }
+}
+
+async function deleteAlgorithm(id) {
+    if (!confirm('Delete this algorithm permanently?')) return;
+    try {
+        const resp = await fetch(`/api/vetting/admin/algorithms/${id}`, { method: 'DELETE' });
+        if (resp.ok) loadAlgorithms();
+        else alert('Failed to delete.');
+    } catch (err) { alert('Network error.'); }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+loadAlgorithms();
+</script>
+{% endblock %}

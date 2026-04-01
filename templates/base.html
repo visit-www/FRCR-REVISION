@@ -187,6 +187,9 @@
                             <a href="/tnm-calculator" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_tnm %}{% endblock %}">
                                 <i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators
                             </a>
+                            <a href="/vetting" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_vetting %}{% endblock %}">
+                                <i class="fas fa-check-double me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Vetting Tool
+                            </a>
                         </div>
                     </div>
                     <hr class="my-2" style="border-color: rgba(255,255,255,0.2);">
@@ -308,14 +311,14 @@
     </div>
 
     <!-- Hidden block definitions for self.tool_active_*() lookups -->
-    <span class="d-none" aria-hidden="true">{% block tool_active_cases %}{% endblock %}{% block tool_active_tnm %}{% endblock %}{% block tool_active_tnm_staging %}{% endblock %}{% block tool_active_if %}{% endblock %}{% block tool_active_templates %}{% endblock %}{% block tool_active_algorithms %}{% endblock %}{% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}{% block tool_active_protocols %}{% endblock %}{% block tool_active_reporter %}{% endblock %}{% block tool_active_study %}{% endblock %}{% block tool_active_radiq %}{% endblock %}{% block tool_active_sba %}{% endblock %}{% block tool_active_viva %}{% endblock %}{% block tool_active_practice %}{% endblock %}</span>
+    <span class="d-none" aria-hidden="true">{% block tool_active_cases %}{% endblock %}{% block tool_active_tnm %}{% endblock %}{% block tool_active_tnm_staging %}{% endblock %}{% block tool_active_if %}{% endblock %}{% block tool_active_templates %}{% endblock %}{% block tool_active_algorithms %}{% endblock %}{% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}{% block tool_active_protocols %}{% endblock %}{% block tool_active_reporter %}{% endblock %}{% block tool_active_study %}{% endblock %}{% block tool_active_radiq %}{% endblock %}{% block tool_active_sba %}{% endblock %}{% block tool_active_viva %}{% endblock %}{% block tool_active_practice %}{% endblock %}{% block tool_active_vetting %}{% endblock %}</span>
 
     {% if current_user.is_authenticated %}
     {% set _practice_active = 'active' in (self.tool_active_practice() ~ self.tool_active_study() ~ self.tool_active_sba() ~ self.tool_active_viva()) %}
     {% set _learn_active = 'active' in (self.tool_active_cases() ~ self.tool_active_tnm_staging() ~ self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) %}
     {% set _report_active = 'active' in (self.tool_active_reporter() ~ self.tool_active_templates() ~ self.tool_active_algorithms()) %}
     {% set _radiq_active = 'active' in self.tool_active_radiq() %}
-    {% set _reference_active = 'active' in (self.tool_active_if() ~ self.tool_active_protocols() ~ self.tool_active_tnm()) %}
+    {% set _reference_active = 'active' in (self.tool_active_if() ~ self.tool_active_protocols() ~ self.tool_active_tnm() ~ self.tool_active_vetting()) %}
     <!-- Tool Navigation Bar -->
     <div class="tool-nav-bar">
         <div class="container-fluid">
@@ -358,6 +361,7 @@
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_if() }}" href="/incidental-findings"><i class="fas fa-tools me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Radiology Tools</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_protocols() }}" href="/radiology-protocols"><i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Clinical Guidelines & Safety</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm() }}" href="/tnm-calculator"><i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators</a></li>
+                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_vetting() }}" href="/vetting"><i class="fas fa-check-double me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Vetting Tool</a></li>
                     </ul>
                 </div>
 

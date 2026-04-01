@@ -1,0 +1,1020 @@
+{% extends 'base.html' %}
+{% block title %}Vetting Tool — Imaging Request Workflow | RadInsights{% endblock %}
+{% block meta_description %}AI-assisted imaging request vetting: clinical analysis, safety checks, and protocol generation for consultant radiologists.{% endblock %}
+{% block tool_active_vetting %}active{% endblock %}
+{% block mobile_active_vetting %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Vetting Tool</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="vettingContainer">
+
+    <!-- Disclaimer -->
+    <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+        <small class="text-muted">
+            <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+            <strong>Clinical Decision Support</strong> &mdash;
+            AI-assisted protocol suggestions require consultant verification. Do not enter patient-identifiable data.
+        </small>
+    </div>
+
+    <!-- Hero -->
+    <div class="text-center mb-4">
+        <i class="fas fa-check-double" style="font-size: 2.5rem; color: #5E899E;"></i>
+        <h2 class="mt-2 mb-1">Vetting Tool</h2>
+        <p class="text-muted mb-0">Structured Imaging Request Workflow</p>
+        <a href="/vetting/protocols" class="btn btn-sm btn-outline-secondary mt-2">
+            <i class="fas fa-book-medical me-1"></i>Protocol Library
+        </a>
+    </div>
+
+    <!-- ==================== SCENE 1: INPUT ==================== -->
+    <div id="scene1" class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card card-brand">
+                <div class="card-brand-header">
+                    <i class="fas fa-file-medical me-2"></i>Clinical Referral
+                </div>
+                <div class="card-brand-body">
+                    <div class="mb-3">
+                        <label for="referralText" class="form-label fw-semibold">Paste the clinical referral text</label>
+                        <textarea id="referralText" class="form-control" rows="6"
+                            placeholder="e.g. 65F, acute SOB, raised D-dimer 1.2, ?PE. PMH: asthma, no previous DVT/PE. O2 sats 92% on air."
+                            maxlength="5000"></textarea>
+                        <div class="form-text">Clinical details from the request form. No patient identifiers.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Modality hint <span class="text-muted fw-normal">(optional)</span></label>
+                        <div class="d-flex flex-wrap gap-2" id="modalityBtns">
+                            <button type="button" class="btn btn-sm btn-outline-secondary modality-btn" data-modality="CT">CT</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary modality-btn" data-modality="MRI">MRI</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary modality-btn" data-modality="US">US</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary modality-btn" data-modality="XR">XR</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary modality-btn" data-modality="">Other</button>
+                        </div>
+                    </div>
+
+                    <button id="analyseBtn" class="btn btn-brand-primary w-100" onclick="analyseReferral()">
+                        <i class="fas fa-search-plus me-2"></i>Analyse &amp; Vet
+                    </button>
+
+                    <!-- Spinner -->
+                    <div id="analyseSpinner" class="text-center mt-3 d-none">
+                        <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+                        <span class="text-muted">Analysing referral...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCENE 2: SAFETY CHECKS ==================== -->
+    <div id="scene2" class="row justify-content-center d-none">
+        <div class="col-lg-8">
+            <!-- Analysis summary card -->
+            <div class="card mb-3" style="border-left: 4px solid #5E899E;">
+                <div class="card-body">
+                    <h6 class="mb-2"><i class="fas fa-stethoscope me-2" style="color: #5E899E;"></i>Analysis Result</h6>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Study Identified</small>
+                            <strong id="studyNameDisplay" class="d-block mb-2"></strong>
+                        </div>
+                        <div class="col-sm-6">
+                            <small class="text-muted d-block">Modality</small>
+                            <strong id="modalityDisplay" class="d-block mb-2"></strong>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block">Cleaned Clinical Text</small>
+                    <div id="cleanedTextDisplay" class="border rounded p-2 bg-light small mb-2"></div>
+
+                    <!-- AI Flags -->
+                    <div id="aiFlagsContainer" class="d-none">
+                        <small class="text-muted d-block mb-1"><i class="fas fa-exclamation-triangle me-1" style="color: #e96304;"></i>Items to Confirm</small>
+                        <div id="aiFlagsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Safety checks card -->
+            <div class="card card-brand mb-3">
+                <div class="card-brand-header">
+                    <i class="fas fa-shield-alt me-2"></i>Safety Checks
+                </div>
+                <div class="card-brand-body">
+                    <div id="safetyChecksArea">
+                        <!-- eGFR row -->
+                        <div id="egfrRow" class="vetting-safety-row d-none">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="fw-semibold mb-0">
+                                    <i class="fas fa-tint me-1" style="color: #dc3545;"></i>eGFR
+                                    <span id="egfrThresholdLabel" class="text-muted fw-normal small"></span>
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary vetting-safety-skip" onclick="skipSafetyCheck('egfr')">N/A</button>
+                            </div>
+                            <input type="number" id="egfrInput" class="form-control form-control-sm mb-3" placeholder="Enter eGFR value" min="0" max="200">
+                        </div>
+
+                        <!-- Pregnancy row -->
+                        <div id="pregnancyRow" class="vetting-safety-row d-none">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="fw-semibold mb-0">
+                                    <i class="fas fa-baby me-1" style="color: #6b46c1;"></i>Pregnancy Status
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary vetting-safety-skip" onclick="skipSafetyCheck('pregnancy')">N/A</button>
+                            </div>
+                            <select id="pregnancyInput" class="form-select form-select-sm mb-3">
+                                <option value="">Select...</option>
+                                <option value="not_pregnant">Not pregnant / Not of childbearing age</option>
+                                <option value="possible">Possible pregnancy — discuss risk</option>
+                                <option value="pregnant">Pregnant</option>
+                            </select>
+                        </div>
+
+                        <!-- Allergy row -->
+                        <div id="allergyRow" class="vetting-safety-row d-none">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <label class="fw-semibold mb-0">
+                                    <i class="fas fa-allergies me-1" style="color: #e96304;"></i>Contrast Allergy
+                                </label>
+                                <button type="button" class="btn btn-sm btn-outline-secondary vetting-safety-skip" onclick="skipSafetyCheck('allergy')">N/A</button>
+                            </div>
+                            <select id="allergyInput" class="form-select form-select-sm mb-3">
+                                <option value="">Select...</option>
+                                <option value="none">No known allergy</option>
+                                <option value="mild">Mild previous reaction — premedicate</option>
+                                <option value="severe">Severe/anaphylaxis — avoid contrast</option>
+                            </select>
+                        </div>
+
+                        <!-- AI-flagged additional checks (dynamic) -->
+                        <div id="dynamicChecksArea"></div>
+                    </div>
+
+                    <!-- Protocol selection -->
+                    <div id="protocolMatchArea" class="mt-3 pt-3 border-top">
+                        <h6 class="mb-2"><i class="fas fa-book-medical me-2" style="color: #5E899E;"></i>Protocol Match</h6>
+                        <div id="protocolMatchList"></div>
+                        <div id="noProtocolMatch" class="d-none">
+                            <small class="text-muted">No library protocol matched. AI will generate one.</small>
+                        </div>
+                    </div>
+
+                    <!-- Algorithm match -->
+                    <div id="algorithmMatchArea" class="mt-3 d-none">
+                        <h6 class="mb-2"><i class="fas fa-project-diagram me-2" style="color: #5E899E;"></i>Clinical Algorithm</h6>
+                        <div id="algorithmMatchList"></div>
+                    </div>
+
+                    <button id="continueBtn" class="btn btn-brand-neutral w-100 mt-3" onclick="continueToProtocol()">
+                        <i class="fas fa-arrow-right me-2"></i>Continue with Protocol
+                    </button>
+
+                    <!-- Spinner -->
+                    <div id="protocolSpinner" class="text-center mt-3 d-none">
+                        <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+                        <span class="text-muted">Generating protocol...</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-sm btn-outline-secondary" onclick="backToScene1()">
+                <i class="fas fa-arrow-left me-1"></i>Back to Referral
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== SCENE 3: OUTPUT ==================== -->
+    <div id="scene3" class="row justify-content-center d-none">
+        <div class="col-lg-10">
+            <!-- Source banner -->
+            <div id="protocolSourceBanner" class="alert mb-3 d-flex align-items-center">
+                <span id="protocolSourceIcon" class="me-2"></span>
+                <span id="protocolSourceText"></span>
+                <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="changeProtocol()">
+                    <i class="fas fa-exchange-alt me-1"></i>Change Protocol
+                </button>
+            </div>
+
+            <!-- Change protocol dropdown (hidden by default) -->
+            <div id="changeProtocolArea" class="card mb-3 d-none">
+                <div class="card-body">
+                    <h6 class="mb-2">Select a different protocol</h6>
+                    <div class="input-group mb-2">
+                        <input type="text" id="protocolSearchInput" class="form-control form-control-sm" placeholder="Search protocols...">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="searchProtocols()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="protocolSearchResults"></div>
+                </div>
+            </div>
+
+            <!-- Output cards -->
+            <div class="row g-3 mb-4">
+                <!-- 1. Clinical Details -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
+                            <strong><i class="fas fa-file-medical-alt me-2" style="color: #5E899E;"></i>Clinical Details</strong>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('clinicalDetails')" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="clinicalDetailsOutput" class="vetting-output-section"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Shorthand Protocol -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
+                            <strong><i class="fas fa-align-left me-2" style="color: #5E899E;"></i>Shorthand Protocol</strong>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('shorthandOutput')" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <pre id="shorthandOutput" class="vetting-output-section mb-0" style="white-space: pre-wrap; font-family: inherit;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Detailed Protocol -->
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
+                            <strong><i class="fas fa-table me-2" style="color: #5E899E;"></i>Detailed Protocol</strong>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('detailedOutput')" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="detailedOutput" class="vetting-output-section"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Special Notes (optional) -->
+                <div id="specialNotesCard" class="col-12 d-none">
+                    <div class="card">
+                        <div class="card-header d-flex align-items-center justify-content-between" style="background: #fff8f0;">
+                            <strong><i class="fas fa-exclamation-circle me-2" style="color: #e96304;"></i>Special Notes</strong>
+                            <div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('specialNotesOutput')" title="Copy">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="specialNotesOutput" class="vetting-output-section"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="d-flex flex-wrap gap-2 justify-content-center mb-4">
+                <button class="btn btn-brand-primary" onclick="copyAllOutput()">
+                    <i class="fas fa-clipboard me-1"></i>Copy All
+                </button>
+                <button class="btn btn-brand-neutral" onclick="saveToLibrary()">
+                    <i class="fas fa-bookmark me-1"></i>Save Protocol to My Library
+                </button>
+                <button class="btn btn-outline-secondary" onclick="newVetting()">
+                    <i class="fas fa-plus me-1"></i>New Vetting
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+/* Vetting Tool custom styles */
+.vetting-safety-row {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+}
+.vetting-safety-row:last-child { border-bottom: none; }
+.vetting-safety-skip {
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+}
+.vetting-output-section {
+    min-height: 2rem;
+}
+.vetting-protocol-table {
+    font-size: 0.9rem;
+}
+.vetting-protocol-table th {
+    background: #f0f7fa;
+    color: #2c3e50;
+}
+.vetting-source-admin {
+    background: #d4edda; border-color: #c3e6cb; color: #155724;
+}
+.vetting-source-personal {
+    background: #d6eaf0; border-color: #b8daec; color: #1a5276;
+}
+.vetting-source-ai {
+    background: #fff3cd; border-color: #ffeeba; color: #856404;
+}
+.vetting-flag-item {
+    background: #fff8f0;
+    border: 1px solid #fde2c8;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+.protocol-match-option {
+    cursor: pointer;
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    transition: border-color 0.2s;
+}
+.protocol-match-option:hover,
+.protocol-match-option.selected {
+    border-color: #5E899E;
+    background: #f0f7fa;
+}
+.protocol-match-option .badge {
+    font-size: 0.7rem;
+}
+.modality-btn.active {
+    background: #5E899E;
+    border-color: #5E899E;
+    color: #fff;
+}
+</style>
+
+<script>
+// ── State ──
+let _analysisResult = null;
+let _matchedProtocols = [];
+let _matchedAlgorithms = [];
+let _selectedAlgorithmContext = null;
+let _selectedProtocol = null;
+let _selectedModalityHint = '';
+let _safetyResponses = {};
+let _protocolSource = null; // 'admin', 'personal', 'ai_generated'
+
+// ── Scene Management ──
+function showScene(n) {
+    document.getElementById('scene1').classList.toggle('d-none', n !== 1);
+    document.getElementById('scene2').classList.toggle('d-none', n !== 2);
+    document.getElementById('scene3').classList.toggle('d-none', n !== 3);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function backToScene1() {
+    showScene(1);
+}
+
+function newVetting() {
+    _analysisResult = null;
+    _matchedProtocols = [];
+    _matchedAlgorithms = [];
+    _selectedAlgorithmContext = null;
+    _selectedProtocol = null;
+    _selectedModalityHint = '';
+    _safetyResponses = {};
+    _protocolSource = null;
+    document.getElementById('referralText').value = '';
+    document.querySelectorAll('.modality-btn').forEach(b => b.classList.remove('active'));
+    showScene(1);
+}
+
+// ── Modality hint buttons ──
+document.querySelectorAll('.modality-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.modality-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        _selectedModalityHint = this.dataset.modality;
+    });
+});
+
+// ── Scene 1: Analyse ──
+async function analyseReferral() {
+    const text = document.getElementById('referralText').value.trim();
+    if (!text) { alert('Please enter the clinical referral text.'); return; }
+
+    const btn = document.getElementById('analyseBtn');
+    const spinner = document.getElementById('analyseSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        const resp = await fetch('/api/vetting/analyse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                referral_text: text,
+                modality_hint: _selectedModalityHint || null,
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            alert(data.error || 'Analysis failed.');
+            return;
+        }
+
+        _analysisResult = data.analysis;
+        _matchedProtocols = data.matched_protocols || [];
+        _matchedAlgorithms = data.matched_algorithms || [];
+        _selectedAlgorithmContext = null;
+        populateScene2();
+        showScene(2);
+    } catch (err) {
+        alert('Network error. Please try again.');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+// ── Scene 2: Safety Checks ──
+function populateScene2() {
+    const a = _analysisResult;
+
+    // Display analysis results
+    document.getElementById('studyNameDisplay').textContent = a.study_name_full || a.study_type;
+    document.getElementById('modalityDisplay').textContent = a.modality;
+    document.getElementById('cleanedTextDisplay').textContent = a.cleaned_clinical_text;
+
+    // AI flags
+    const flags = a.ai_flags || [];
+    const flagsContainer = document.getElementById('aiFlagsContainer');
+    const flagsList = document.getElementById('aiFlagsList');
+    flagsList.innerHTML = '';
+    if (flags.length > 0) {
+        flagsContainer.classList.remove('d-none');
+        flags.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'vetting-flag-item';
+            div.innerHTML = `<strong>${f.flag}</strong><br><small class="text-muted">${f.reason || ''}</small>`;
+            flagsList.appendChild(div);
+        });
+    } else {
+        flagsContainer.classList.add('d-none');
+    }
+
+    // Safety checks — from matched protocol validation or AI baseline
+    const checks = _getValidationConfig();
+    _safetyResponses = {};
+
+    // eGFR
+    const egfrRow = document.getElementById('egfrRow');
+    if (checks.requires_egfr) {
+        egfrRow.classList.remove('d-none');
+        document.getElementById('egfrInput').value = '';
+        const threshold = checks.egfr_threshold || 30;
+        document.getElementById('egfrThresholdLabel').textContent = `(threshold: ${threshold})`;
+    } else {
+        egfrRow.classList.add('d-none');
+    }
+
+    // Pregnancy
+    const pregnancyRow = document.getElementById('pregnancyRow');
+    if (checks.pregnancy_check_required) {
+        pregnancyRow.classList.remove('d-none');
+        document.getElementById('pregnancyInput').value = '';
+    } else {
+        pregnancyRow.classList.add('d-none');
+    }
+
+    // Allergy
+    const allergyRow = document.getElementById('allergyRow');
+    if (checks.allergy_check_required) {
+        allergyRow.classList.remove('d-none');
+        document.getElementById('allergyInput').value = '';
+    } else {
+        allergyRow.classList.add('d-none');
+    }
+
+    // Dynamic AI checks (flags that need input)
+    document.getElementById('dynamicChecksArea').innerHTML = '';
+
+    // Protocol matches
+    populateProtocolMatches();
+
+    // Algorithm matches
+    populateAlgorithmMatches();
+}
+
+function _getValidationConfig() {
+    // If a protocol is selected, use its validation config
+    if (_selectedProtocol && _selectedProtocol.validation_json) {
+        return _selectedProtocol.validation_json;
+    }
+    // Otherwise use AI baseline checks
+    return (_analysisResult && _analysisResult.baseline_checks) || {};
+}
+
+function populateProtocolMatches() {
+    const list = document.getElementById('protocolMatchList');
+    const noMatch = document.getElementById('noProtocolMatch');
+    list.innerHTML = '';
+
+    if (_matchedProtocols.length === 0) {
+        noMatch.classList.remove('d-none');
+        _selectedProtocol = null;
+        return;
+    }
+    noMatch.classList.add('d-none');
+
+    _matchedProtocols.forEach((p, i) => {
+        const div = document.createElement('div');
+        div.className = 'protocol-match-option' + (i === 0 ? ' selected' : '');
+        div.dataset.index = i;
+
+        const sourceBadge = p.origin === 'personal'
+            ? '<span class="badge bg-info">Personal</span>'
+            : '<span class="badge bg-success">Admin</span>';
+        const emergencyBadge = p.is_emergency
+            ? ' <span class="badge bg-danger">Emergency</span>'
+            : '';
+
+        div.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <strong>${p.title}</strong> ${sourceBadge}${emergencyBadge}
+                    <br><small class="text-muted">${p.modality} &middot; ${p.body_section || ''}</small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+            ${p.shorthand_text ? '<pre class="small text-muted mb-0 mt-1" style="white-space: pre-wrap; font-family: inherit;">' + _escapeHtml(p.shorthand_text) + '</pre>' : ''}
+        `;
+        div.addEventListener('click', () => selectProtocol(i));
+        list.appendChild(div);
+    });
+
+    // Auto-select first match
+    _selectedProtocol = _matchedProtocols[0];
+    _protocolSource = _selectedProtocol.origin;
+}
+
+function populateAlgorithmMatches() {
+    const area = document.getElementById('algorithmMatchArea');
+    const list = document.getElementById('algorithmMatchList');
+    list.innerHTML = '';
+    _selectedAlgorithmContext = null;
+
+    if (!_matchedAlgorithms || _matchedAlgorithms.length === 0) {
+        area.classList.add('d-none');
+        return;
+    }
+    area.classList.remove('d-none');
+
+    _matchedAlgorithms.forEach((alg, i) => {
+        const card = document.createElement('div');
+        card.className = 'card mb-2';
+        card.style.borderLeft = '4px solid #5E899E';
+
+        // Build steps HTML
+        let stepsHtml = '';
+        const steps = alg.steps || [];
+        if (steps.length > 0) {
+            stepsHtml = '<ol class="mb-1 ps-3 small">';
+            steps.forEach(s => {
+                const label = s.step || s.condition || '';
+                const rec = s.recommendation || '';
+                const linked = s.linked_protocol_id ? ` <span class="badge bg-light text-dark border">${_escapeHtml(s.linked_protocol_id)}</span>` : '';
+                stepsHtml += `<li>${_escapeHtml(label)}${rec ? ': <strong>' + _escapeHtml(rec) + '</strong>' : ''}${linked}`;
+
+                // Branching
+                if (s.branching && s.branching.length) {
+                    stepsHtml += '<ul class="mb-0">';
+                    s.branching.forEach(b => {
+                        const cond = b.condition || b.scenario || '';
+                        const nxt = b.next || b.recommendation || '';
+                        const bLinked = b.linked_protocol_id ? ` <span class="badge bg-light text-dark border">${_escapeHtml(b.linked_protocol_id)}</span>` : '';
+                        stepsHtml += `<li>${_escapeHtml(cond)}${nxt ? ': ' + _escapeHtml(nxt) : ''}${bLinked}</li>`;
+                    });
+                    stepsHtml += '</ul>';
+                }
+                stepsHtml += '</li>';
+            });
+            stepsHtml += '</ol>';
+        }
+
+        // Build AI context for this algorithm (matches to_ai_context() on server)
+        let aiContext = `Algorithm: ${alg.title}\nScenario: ${alg.clinical_scenario}`;
+        if (alg.entry_criteria && alg.entry_criteria.length) {
+            aiContext += `\nEntry criteria: ${alg.entry_criteria.join('; ')}`;
+        }
+        steps.forEach(s => {
+            const label = s.step || s.condition || '';
+            const rec = s.recommendation || '';
+            if (label && rec) aiContext += `\n- ${label}: ${rec}`;
+            else if (label) aiContext += `\n- ${label}`;
+            if (s.branching) {
+                s.branching.forEach(b => {
+                    const cond = b.condition || b.scenario || '';
+                    const nxt = b.next || b.recommendation || '';
+                    if (cond && nxt) aiContext += `\n  \u2192 ${cond}: ${nxt}`;
+                });
+            }
+        });
+
+        const isSelected = (i === 0);
+        if (isSelected) _selectedAlgorithmContext = aiContext;
+
+        card.innerHTML = `
+            <div class="card-body py-2 px-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <strong>${_escapeHtml(alg.title)}</strong>
+                        <br><small class="text-muted">${_escapeHtml(alg.clinical_scenario)}</small>
+                    </div>
+                    <button class="btn btn-sm ${isSelected ? 'btn-brand-neutral' : 'btn-outline-secondary'} algorithm-use-btn" data-index="${i}" onclick="selectAlgorithm(${i}, this)">
+                        <i class="fas fa-${isSelected ? 'check' : 'route'} me-1"></i>${isSelected ? 'Using' : 'Use pathway'}
+                    </button>
+                </div>
+                ${stepsHtml}
+            </div>
+        `;
+        card.dataset.aiContext = aiContext;
+        list.appendChild(card);
+    });
+}
+
+function selectAlgorithm(index, btn) {
+    // Toggle: if already selected, deselect
+    const cards = document.querySelectorAll('#algorithmMatchList .card');
+    const card = cards[index];
+    const isCurrentlySelected = btn.classList.contains('btn-brand-neutral');
+
+    // Reset all buttons
+    document.querySelectorAll('.algorithm-use-btn').forEach(b => {
+        b.classList.remove('btn-brand-neutral');
+        b.classList.add('btn-outline-secondary');
+        b.innerHTML = '<i class="fas fa-route me-1"></i>Use pathway';
+    });
+
+    if (isCurrentlySelected) {
+        _selectedAlgorithmContext = null;
+    } else {
+        _selectedAlgorithmContext = card.dataset.aiContext;
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-brand-neutral');
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Using';
+    }
+}
+
+function selectProtocol(index) {
+    _selectedProtocol = _matchedProtocols[index];
+    _protocolSource = _selectedProtocol.origin;
+
+    document.querySelectorAll('.protocol-match-option').forEach((el, i) => {
+        el.classList.toggle('selected', i === index);
+    });
+
+    // Re-apply safety checks from selected protocol's validation
+    const checks = _getValidationConfig();
+    const egfrRow = document.getElementById('egfrRow');
+    const pregnancyRow = document.getElementById('pregnancyRow');
+    const allergyRow = document.getElementById('allergyRow');
+
+    egfrRow.classList.toggle('d-none', !checks.requires_egfr);
+    pregnancyRow.classList.toggle('d-none', !checks.pregnancy_check_required);
+    allergyRow.classList.toggle('d-none', !checks.allergy_check_required);
+
+    if (checks.requires_egfr) {
+        document.getElementById('egfrThresholdLabel').textContent = `(threshold: ${checks.egfr_threshold || 30})`;
+    }
+}
+
+function skipSafetyCheck(checkName) {
+    _safetyResponses[checkName] = 'N/A';
+    const inputMap = { egfr: 'egfrInput', pregnancy: 'pregnancyInput', allergy: 'allergyInput' };
+    const el = document.getElementById(inputMap[checkName]);
+    if (el) {
+        el.value = '';
+        el.disabled = true;
+        el.classList.add('bg-light');
+    }
+    // Visual feedback on skip button
+    const row = document.getElementById(checkName + 'Row');
+    if (row) {
+        const btn = row.querySelector('.vetting-safety-skip');
+        if (btn) { btn.classList.add('btn-secondary'); btn.classList.remove('btn-outline-secondary'); }
+    }
+}
+
+function _collectSafetyResponses() {
+    const checks = _getValidationConfig();
+    const responses = { ..._safetyResponses };
+
+    if (checks.requires_egfr && !responses.egfr) {
+        const val = document.getElementById('egfrInput').value.trim();
+        responses.egfr = val ? parseFloat(val) : null;
+    }
+    if (checks.pregnancy_check_required && !responses.pregnancy) {
+        responses.pregnancy = document.getElementById('pregnancyInput').value || null;
+    }
+    if (checks.allergy_check_required && !responses.allergy) {
+        responses.allergy = document.getElementById('allergyInput').value || null;
+    }
+    return responses;
+}
+
+// ── Scene 2 → Scene 3 transition ──
+async function continueToProtocol() {
+    _safetyResponses = _collectSafetyResponses();
+
+    if (_selectedProtocol) {
+        // Use library protocol directly
+        renderScene3({
+            shorthand: _selectedProtocol.shorthand_text || '',
+            detailed_protocol_html: _selectedProtocol.detailed_protocol_html || '',
+            special_notes: _selectedProtocol.special_notes || '',
+        });
+        return;
+    }
+
+    // No library match — generate via AI
+    const btn = document.getElementById('continueBtn');
+    const spinner = document.getElementById('protocolSpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+
+    try {
+        const payload = {
+            study_type: _analysisResult.study_type,
+            modality: _analysisResult.modality,
+            clinical_context: _analysisResult.cleaned_clinical_text,
+        };
+        if (_selectedAlgorithmContext) {
+            payload.algorithm_context = _selectedAlgorithmContext;
+        }
+        const resp = await fetch('/api/vetting/generate-protocol', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            alert(data.error || 'Protocol generation failed.');
+            return;
+        }
+
+        _protocolSource = 'ai_generated';
+        renderScene3(data.protocol);
+    } catch (err) {
+        alert('Network error. Please try again.');
+        console.error(err);
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+// ── Scene 3: Output ──
+function renderScene3(protocol) {
+    // Source banner
+    const banner = document.getElementById('protocolSourceBanner');
+    const icon = document.getElementById('protocolSourceIcon');
+    const text = document.getElementById('protocolSourceText');
+    banner.className = 'alert mb-3 d-flex align-items-center';
+
+    if (_protocolSource === 'admin') {
+        banner.classList.add('vetting-source-admin');
+        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+        text.innerHTML = '<strong>Admin Protocol</strong> — Verified department protocol';
+    } else if (_protocolSource === 'personal') {
+        banner.classList.add('vetting-source-personal');
+        icon.innerHTML = '<i class="fas fa-user-circle"></i>';
+        text.innerHTML = '<strong>Personal Protocol</strong> — From your library';
+    } else {
+        banner.classList.add('vetting-source-ai');
+        icon.innerHTML = '<i class="fas fa-robot"></i>';
+        text.innerHTML = '<strong>AI Generated</strong> — Verify parameters for your department';
+    }
+
+    // Build clinical details (cleaned text + safety responses)
+    let clinicalHtml = '<div class="mb-2">' + _escapeHtml(_analysisResult.cleaned_clinical_text) + '</div>';
+    const sr = _safetyResponses;
+    const safetyParts = [];
+    if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
+    if (sr.pregnancy) safetyParts.push(`Pregnancy: ${sr.pregnancy}`);
+    if (sr.allergy) safetyParts.push(`Allergy: ${sr.allergy}`);
+    if (safetyParts.length) {
+        clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Safety Checks:</small><br>';
+        clinicalHtml += safetyParts.map(s => `<small>${_escapeHtml(s)}</small>`).join(' &middot; ');
+        clinicalHtml += '</div>';
+    }
+    document.getElementById('clinicalDetailsOutput').innerHTML = clinicalHtml;
+
+    // Shorthand
+    document.getElementById('shorthandOutput').textContent = protocol.shorthand || '';
+
+    // Detailed protocol
+    document.getElementById('detailedOutput').innerHTML = protocol.detailed_protocol_html || '<em class="text-muted">No detailed protocol available.</em>';
+
+    // Special notes
+    const notesCard = document.getElementById('specialNotesCard');
+    if (protocol.special_notes) {
+        notesCard.classList.remove('d-none');
+        document.getElementById('specialNotesOutput').innerHTML = _escapeHtml(protocol.special_notes);
+    } else {
+        notesCard.classList.add('d-none');
+    }
+
+    showScene(3);
+}
+
+// ── Change Protocol (in Scene 3) ──
+function changeProtocol() {
+    const area = document.getElementById('changeProtocolArea');
+    area.classList.toggle('d-none');
+    if (!area.classList.contains('d-none')) {
+        document.getElementById('protocolSearchInput').focus();
+    }
+}
+
+async function searchProtocols() {
+    const q = document.getElementById('protocolSearchInput').value.trim();
+    if (!q) return;
+
+    try {
+        const resp = await fetch(`/api/vetting/protocols/search?q=${encodeURIComponent(q)}&modality=${encodeURIComponent(_analysisResult?.modality || '')}`);
+        const data = await resp.json();
+        const results = data.protocols || [];
+        const container = document.getElementById('protocolSearchResults');
+        container.innerHTML = '';
+
+        if (results.length === 0) {
+            container.innerHTML = '<small class="text-muted">No protocols found.</small>';
+            return;
+        }
+
+        results.forEach(p => {
+            const div = document.createElement('div');
+            div.className = 'protocol-match-option';
+            div.innerHTML = `
+                <strong>${_escapeHtml(p.title)}</strong>
+                <span class="badge ${p.origin === 'personal' ? 'bg-info' : 'bg-success'}">${p.origin}</span>
+                <br><small class="text-muted">${p.modality}</small>
+            `;
+            div.addEventListener('click', () => {
+                _selectedProtocol = p;
+                _protocolSource = p.origin;
+                _matchedProtocols = [p];
+                renderScene3({
+                    shorthand: p.shorthand_text || '',
+                    detailed_protocol_html: p.detailed_protocol_html || '',
+                    special_notes: p.special_notes || '',
+                });
+                document.getElementById('changeProtocolArea').classList.add('d-none');
+            });
+            container.appendChild(div);
+        });
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// ── Copy functions ──
+function copySection(elementId) {
+    const el = document.getElementById(elementId);
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        _flashCopyBtn(el.closest('.card').querySelector('.fa-copy'));
+    });
+}
+
+function copyAllOutput() {
+    const parts = [];
+    const clinical = document.getElementById('clinicalDetailsOutput');
+    if (clinical) parts.push('CLINICAL DETAILS:\n' + (clinical.innerText || ''));
+
+    const shorthand = document.getElementById('shorthandOutput');
+    if (shorthand) parts.push('SHORTHAND PROTOCOL:\n' + (shorthand.innerText || shorthand.textContent || ''));
+
+    const detailed = document.getElementById('detailedOutput');
+    if (detailed) parts.push('DETAILED PROTOCOL:\n' + (detailed.innerText || ''));
+
+    const notes = document.getElementById('specialNotesOutput');
+    if (notes && !document.getElementById('specialNotesCard').classList.contains('d-none')) {
+        parts.push('SPECIAL NOTES:\n' + (notes.innerText || ''));
+    }
+
+    navigator.clipboard.writeText(parts.join('\n\n')).then(() => {
+        const btn = document.querySelector('[onclick="copyAllOutput()"]');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    });
+}
+
+function _flashCopyBtn(iconEl) {
+    if (!iconEl) return;
+    const btn = iconEl.closest('button') || iconEl.parentElement;
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-check"></i>';
+    setTimeout(() => { btn.innerHTML = orig; }, 1500);
+}
+
+// ── Save to Library ──
+async function saveToLibrary() {
+    if (!_analysisResult) return;
+
+    const payload = {
+        title: _analysisResult.study_name_full || _analysisResult.study_type,
+        modality: _analysisResult.modality,
+        shorthand_text: document.getElementById('shorthandOutput').textContent,
+        detailed_protocol_html: document.getElementById('detailedOutput').innerHTML,
+        special_notes: document.getElementById('specialNotesOutput')?.innerText || null,
+    };
+
+    if (_selectedProtocol) {
+        payload.body_section = _selectedProtocol.body_section;
+        payload.keywords = _selectedProtocol.keywords;
+        payload.validation_json = _selectedProtocol.validation_json;
+        payload.copied_from_id = _selectedProtocol.origin === 'admin' ? _selectedProtocol.id : null;
+    }
+
+    try {
+        const resp = await fetch('/api/vetting/protocols', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            const btn = document.querySelector('[onclick="saveToLibrary()"]');
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved!';
+            btn.disabled = true;
+            setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; }, 2000);
+        } else {
+            alert(data.error || 'Failed to save protocol.');
+        }
+    } catch (err) {
+        alert('Network error.');
+        console.error(err);
+    }
+
+    // Also save the vetting session
+    try {
+        await fetch('/api/vetting/save-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                raw_clinical_text: document.getElementById('referralText').value,
+                modality_hint: _selectedModalityHint || null,
+                cleaned_clinical_text: _analysisResult.cleaned_clinical_text,
+                study_type: _analysisResult.study_type,
+                safety_checks: _safetyResponses,
+                protocol_source: _protocolSource,
+                protocol_id: _selectedProtocol?.id || null,
+                final_clinical_details: document.getElementById('clinicalDetailsOutput').innerText,
+                final_shorthand: document.getElementById('shorthandOutput').textContent,
+                final_detailed_html: document.getElementById('detailedOutput').innerHTML,
+                final_special_notes: document.getElementById('specialNotesOutput')?.innerText || null,
+                ai_model: _analysisResult.model || null,
+                ai_tokens_used: _analysisResult.output_tokens || null,
+            }),
+        });
+    } catch (err) {
+        console.error('Session save failed (non-fatal):', err);
+    }
+}
+
+// ── Utility ──
+function _escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Enter key to trigger analysis
+document.getElementById('referralText').addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        analyseReferral();
+    }
+});
+
+// Enter key for protocol search
+document.getElementById('protocolSearchInput')?.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') searchProtocols();
+});
+</script>
+{% endblock %}

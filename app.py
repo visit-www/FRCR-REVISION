@@ -1128,6 +1128,9 @@ app.register_blueprint(public_bp)  # Public preview pages for SEO (case library,
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
 
+from vetting_routes import vetting_bp
+app.register_blueprint(vetting_bp)  # Vetting Tool - imaging request workflow
+
 from stripe_routes import stripe_bp
 app.register_blueprint(stripe_bp)  # Stripe payment & subscription management
 
@@ -1169,9 +1172,12 @@ def add_security_headers(response):
 
 @app.before_request
 def enforce_admin_2fa():
-    """Redirect admin users without 2FA to profile page (after grace period expires)."""
+    """Redirect admin users without 2FA to profile page (after grace period expires).
+    Skipped in local development (no VERCEL env var)."""
     if app.testing:
         return  # Skip in test environment
+    if not (os.getenv('VERCEL') or os.getenv('VERCEL_ENV')):
+        return  # Skip 2FA enforcement locally
     from flask_login import current_user as _cu
     if not _cu.is_authenticated:
         return

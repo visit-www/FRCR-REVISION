@@ -1,0 +1,239 @@
+{
+  "advanced_algorithms": [
+    {
+      "algorithm_id": "BONE_LESION_FULL",
+      "body_part": "MSK",
+      "clinical_scenario": "Bone lesion",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "X-ray"
+        },
+        {
+          "step": "Assess aggressiveness",
+          "branching": [
+            {
+              "condition": "Benign features",
+              "next": "Observe or follow-up"
+            },
+            {
+              "condition": "Aggressive features",
+              "next": "MRI + staging"
+            }
+          ]
+        },
+        {
+          "condition": "Aggressive lesion",
+          "recommendation": "MRI region",
+          "linked_protocol_id": "MRI_KNEE"
+        }
+      ],
+      "tags": [
+        "MSK",
+        "tumor"
+      ]
+    },
+    {
+      "algorithm_id": "MSK_INFECTION_FULL",
+      "body_part": "MSK",
+      "clinical_scenario": "Suspected osteomyelitis",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "X-ray"
+        },
+        {
+          "condition": "Early disease",
+          "recommendation": "MRI",
+          "linked_protocol_id": "MRI_KNEE"
+        },
+        {
+          "condition": "Contraindication to MRI",
+          "recommendation": "CT"
+        }
+      ],
+      "tags": [
+        "infection"
+      ]
+    },
+    {
+      "algorithm_id": "SPINE_DEGENERATIVE_FULL",
+      "body_part": "Spine",
+      "clinical_scenario": "Back pain",
+      "steps": [
+        {
+          "step": "Assess red flags",
+          "branching": [
+            {
+              "condition": "No red flags",
+              "next": "No imaging"
+            },
+            {
+              "condition": "Red flags",
+              "next": "MRI"
+            }
+          ]
+        },
+        {
+          "condition": "Persistent symptoms",
+          "recommendation": "MRI spine",
+          "linked_protocol_id": "MRI_LUMBAR_SPINE"
+        }
+      ],
+      "tags": [
+        "spine"
+      ]
+    },
+    {
+      "algorithm_id": "ADNEXAL_MASS_FULL",
+      "body_part": "Pelvis",
+      "clinical_scenario": "Adnexal mass",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "Ultrasound"
+        },
+        {
+          "condition": "Indeterminate",
+          "recommendation": "MRI pelvis",
+          "linked_protocol_id": "MRI_PELVIS_FEMALE"
+        }
+      ],
+      "tags": [
+        "gynae"
+      ]
+    },
+    {
+      "algorithm_id": "PROSTATE_STAGING_FULL",
+      "body_part": "Pelvis",
+      "clinical_scenario": "Known prostate cancer",
+      "steps": [
+        {
+          "step": "Local staging",
+          "recommendation": "mpMRI prostate",
+          "linked_protocol_id": "MRI_PROSTATE"
+        },
+        {
+          "step": "Metastatic workup",
+          "recommendation": "CT CAP",
+          "linked_protocol_id": "CT_CHEST_ABD_PELVIS"
+        }
+      ],
+      "tags": [
+        "oncology"
+      ]
+    },
+    {
+      "algorithm_id": "AORTIC_DISSECTION_FULL",
+      "body_part": "Vascular",
+      "clinical_scenario": "Acute chest pain – dissection",
+      "steps": [
+        {
+          "step": "Immediate imaging",
+          "recommendation": "CT aortic angiography",
+          "linked_protocol_id": "CT_AORTIC_ANGIO"
+        }
+      ],
+      "tags": [
+        "vascular",
+        "emergency"
+      ]
+    },
+    {
+      "algorithm_id": "PAD_FULL",
+      "body_part": "Vascular",
+      "clinical_scenario": "Peripheral arterial disease",
+      "steps": [
+        {
+          "step": "Initial test",
+          "recommendation": "Doppler ultrasound"
+        },
+        {
+          "condition": "Severe disease",
+          "recommendation": "MRA",
+          "linked_protocol_id": "MRI_MRA_PERIPHERAL"
+        }
+      ],
+      "tags": [
+        "vascular"
+      ]
+    },
+    {
+      "algorithm_id": "MESENTERIC_ISCHEMIA_FULL",
+      "body_part": "Abdomen",
+      "clinical_scenario": "Acute abdominal pain out of proportion",
+      "steps": [
+        {
+          "step": "Urgent imaging",
+          "recommendation": "CT angiography",
+          "linked_protocol_id": "CT_AORTIC_ANGIO"
+        }
+      ],
+      "tags": [
+        "emergency"
+      ]
+    },
+    {
+      "algorithm_id": "INTUSSUSCEPTION_FULL",
+      "body_part": "Paediatric",
+      "clinical_scenario": "Child with abdominal pain",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "Ultrasound"
+        },
+        {
+          "condition": "Confirmed",
+          "next": "Air enema reduction"
+        }
+      ],
+      "tags": [
+        "paediatric"
+      ]
+    },
+    {
+      "algorithm_id": "PYLORIC_STENOSIS_FULL",
+      "body_part": "Paediatric",
+      "clinical_scenario": "Projectile vomiting infant",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "Ultrasound"
+        }
+      ],
+      "tags": [
+        "paediatric"
+      ]
+    },
+    {
+      "algorithm_id": "ONCOLOGY_STAGING_GENERAL",
+      "body_part": "Oncology",
+      "clinical_scenario": "New cancer diagnosis",
+      "steps": [
+        {
+          "step": "Baseline staging",
+          "recommendation": "CT CAP",
+          "linked_protocol_id": "CT_CHEST_ABD_PELVIS"
+        },
+        {
+          "condition": "Specific tumor",
+          "branching": [
+            {
+              "scenario": "Liver involvement",
+              "recommendation": "MRI liver",
+              "linked_protocol_id": "MRI_LIVER_DYNAMIC"
+            },
+            {
+              "scenario": "Brain metastasis risk",
+              "recommendation": "MRI brain",
+              "linked_protocol_id": "MRI_BRAIN_CONTRAST"
+            }
+          ]
+        }
+      ],
+      "tags": [
+        "oncology"
+      ]
+    }
+  ]
+}

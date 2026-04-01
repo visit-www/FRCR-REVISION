@@ -1,0 +1,277 @@
+{
+  "advanced_algorithms": [
+    {
+      "algorithm_id": "ACUTE_STROKE_FULL",
+      "body_part": "Brain",
+      "clinical_scenario": "Acute neurological deficit",
+      "entry_criteria": [
+        "Focal neurological deficit",
+        "Sudden onset symptoms"
+      ],
+      "steps": [
+        {
+          "step": "Immediate imaging",
+          "recommendation": "Non-contrast CT brain",
+          "linked_protocol_id": "CT_BRAIN_PLAIN"
+        },
+        {
+          "step": "Assess for hemorrhage",
+          "branching": [
+            {
+              "condition": "Hemorrhage present",
+              "next": "Manage as hemorrhagic stroke"
+            },
+            {
+              "condition": "No hemorrhage",
+              "next": "Evaluate for ischemia"
+            }
+          ]
+        },
+        {
+          "step": "Large vessel occlusion assessment",
+          "condition": "If NIHSS high / cortical signs",
+          "recommendation": "CTA",
+          "linked_protocol_id": "CT_STROKE_ANGIO"
+        },
+        {
+          "step": "Further evaluation",
+          "condition": "If CT negative but suspicion persists",
+          "recommendation": "MRI stroke protocol",
+          "linked_protocol_id": "MRI_STROKE_FAST"
+        }
+      ],
+      "safety": {
+        "contrast_check": true,
+        "egfr_required_for_cta": true,
+        "alternative_if_low_egfr": "Non-contrast MRI"
+      },
+      "tags": [
+        "stroke",
+        "emergency"
+      ]
+    },
+    {
+      "algorithm_id": "HEADACHE_WORKFLOW_FULL",
+      "body_part": "Brain",
+      "clinical_scenario": "Headache",
+      "steps": [
+        {
+          "step": "Assess red flags",
+          "branching": [
+            {
+              "condition": "Red flags present",
+              "next": "Imaging required"
+            },
+            {
+              "condition": "No red flags",
+              "next": "No imaging"
+            }
+          ]
+        },
+        {
+          "condition": "Thunderclap headache",
+          "recommendation": "CT brain",
+          "linked_protocol_id": "CT_BRAIN_PLAIN"
+        },
+        {
+          "condition": "If CT negative",
+          "recommendation": "CTA or MRI",
+          "linked_protocol_id": "CT_STROKE_ANGIO"
+        },
+        {
+          "condition": "Chronic headache",
+          "recommendation": "MRI brain",
+          "linked_protocol_id": "MRI_BRAIN_ROUTINE"
+        }
+      ],
+      "tags": [
+        "neuro"
+      ]
+    },
+    {
+      "algorithm_id": "PE_FULL_WORKFLOW",
+      "body_part": "Chest",
+      "clinical_scenario": "Suspected pulmonary embolism",
+      "steps": [
+        {
+          "step": "Clinical probability",
+          "recommendation": "Calculate Wells score"
+        },
+        {
+          "condition": "Low probability",
+          "recommendation": "D-dimer"
+        },
+        {
+          "condition": "Positive D-dimer or high probability",
+          "recommendation": "CTPA",
+          "linked_protocol_id": "CT_CTPA"
+        },
+        {
+          "condition": "Pregnant patient",
+          "recommendation": "V/Q scan"
+        }
+      ],
+      "safety": {
+        "egfr_required": true,
+        "contrast_allergy_check": true,
+        "alternative": "V/Q scan"
+      },
+      "tags": [
+        "PE",
+        "emergency"
+      ]
+    },
+    {
+      "algorithm_id": "PULMONARY_NODULE_FLEISCHNER",
+      "body_part": "Chest",
+      "clinical_scenario": "Pulmonary nodule",
+      "steps": [
+        {
+          "step": "Assess size and risk",
+          "branching": [
+            {
+              "condition": "<6 mm low risk",
+              "next": "No follow-up"
+            },
+            {
+              "condition": ">8 mm",
+              "next": "CT follow-up or PET-CT"
+            }
+          ]
+        },
+        {
+          "condition": "Intermediate risk",
+          "recommendation": "CT follow-up",
+          "linked_protocol_id": "CT_CHEST_PLAIN"
+        }
+      ],
+      "tags": [
+        "lung"
+      ]
+    },
+    {
+      "algorithm_id": "ACUTE_ABDOMEN_FULL",
+      "body_part": "Abdomen",
+      "clinical_scenario": "Acute abdominal pain",
+      "steps": [
+        {
+          "step": "Initial assessment",
+          "recommendation": "Ultrasound (if RUQ/pelvis)"
+        },
+        {
+          "condition": "Generalised pain",
+          "recommendation": "CT abdomen portal phase",
+          "linked_protocol_id": "CT_ABDOMEN_PORTAL"
+        },
+        {
+          "condition": "Suspected perforation",
+          "recommendation": "CT abdomen with air assessment"
+        }
+      ],
+      "tags": [
+        "abdomen",
+        "emergency"
+      ]
+    },
+    {
+      "algorithm_id": "APPENDICITIS_WORKFLOW",
+      "body_part": "Abdomen",
+      "clinical_scenario": "Right lower quadrant pain",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "Ultrasound"
+        },
+        {
+          "condition": "Equivocal ultrasound",
+          "recommendation": "CT abdomen",
+          "linked_protocol_id": "CT_ABDOMEN_PORTAL"
+        },
+        {
+          "condition": "Pregnancy",
+          "recommendation": "MRI abdomen"
+        }
+      ],
+      "tags": [
+        "appendix"
+      ]
+    },
+    {
+      "algorithm_id": "JAUNDICE_FULL",
+      "body_part": "Abdomen",
+      "clinical_scenario": "Obstructive jaundice",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "Ultrasound"
+        },
+        {
+          "condition": "Dilated ducts",
+          "branching": [
+            {
+              "scenario": "No mass",
+              "recommendation": "MRCP",
+              "linked_protocol_id": "MRI_MRCP"
+            },
+            {
+              "scenario": "Mass suspected",
+              "recommendation": "CT pancreas",
+              "linked_protocol_id": "CT_PANCREAS_PROTOCOL"
+            }
+          ]
+        }
+      ],
+      "safety": {
+        "egfr_check": true,
+        "alternative": "MRCP preferred in renal impairment"
+      },
+      "tags": [
+        "hepatobiliary"
+      ]
+    },
+    {
+      "algorithm_id": "PANCREAS_ONCOLOGY_FULL",
+      "body_part": "Pancreas",
+      "clinical_scenario": "Pancreatic mass",
+      "steps": [
+        {
+          "step": "Primary imaging",
+          "recommendation": "CT pancreas",
+          "linked_protocol_id": "CT_PANCREAS_PROTOCOL"
+        },
+        {
+          "step": "Staging",
+          "recommendation": "CT CAP",
+          "linked_protocol_id": "CT_CHEST_ABD_PELVIS"
+        },
+        {
+          "step": "Liver evaluation",
+          "recommendation": "MRI liver",
+          "linked_protocol_id": "MRI_LIVER_DYNAMIC"
+        }
+      ],
+      "tags": [
+        "oncology"
+      ]
+    },
+    {
+      "algorithm_id": "RENAL_MASS_FULL",
+      "body_part": "Kidney",
+      "clinical_scenario": "Renal mass",
+      "steps": [
+        {
+          "step": "Initial imaging",
+          "recommendation": "CT renal protocol",
+          "linked_protocol_id": "CT_UROGRAM"
+        },
+        {
+          "condition": "Indeterminate lesion",
+          "recommendation": "MRI kidney"
+        }
+      ],
+      "tags": [
+        "renal"
+      ]
+    }
+  ]
+}

@@ -12,8 +12,8 @@ from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
 from models import (
-    db, RadIQQuery, ClinicalProtocol, ReportingAlgorithm,
-    IncidentalFindingCalculator, log_ai_usage, UserRole,
+    db, RadIQQuery, RadIQFeedback, ClinicalProtocol, ReportingAlgorithm,
+    IncidentalFindingCalculator, RadiologyPearl, log_ai_usage, UserRole,
 )
 from ai_radiq import generate_radiq_response, RADIQ_CATEGORIES, RadIQError
 
@@ -261,6 +261,74 @@ def _find_relevant_db_content(question, category):
                 'color': '#198754',
             })
 
+        # 4. Radiology Pearls (verified only)
+        pearls = RadiologyPearl.query.filter_by(is_verified=True).filter(
+            db.or_(
+                RadiologyPearl.pearl_text.ilike(f'%{q[:80]}%'),
+                RadiologyPearl.tags.ilike(f'%{q[:80]}%'),
+            )
+        ).limit(2).all()
+
+        if not pearls:
+            words = [w for w in q.split() if len(w) >= 3]
+            for word in words[:5]:
+                found = RadiologyPearl.query.filter_by(is_verified=True).filter(
+                    db.or_(
+                        RadiologyPearl.pearl_text.ilike(f'%{word}%'),
+                        RadiologyPearl.tags.ilike(f'%{word}%'),
+                    )
+                ).limit(2).all()
+                for p in found:
+                    if p not in pearls:
+                        pearls.append(p)
+                if len(pearls) >= 2:
+                    break
+
+        for p in pearls[:2]:
+            prompt_parts.append(
+                f"[PEARL] {(p.pearl_text or '')[:300]}"
+            )
+            links.append({
+                'type': 'Pearl',
+                'title': (p.pearl_text or '')[:60] + ('...' if len(p.pearl_text or '') > 60 else ''),
+                'url': '/radiology-pearls',
+                'icon': 'fa-gem',
+                'color': '#e96304',
+            })
+
+        # 5. Anatomy Snippets / Knowledge Hub (origin='anatomy_cache')
+        snippets = ReportingAlgorithm.query.filter_by(
+            is_available=True, origin='anatomy_cache'
+        ).filter(
+            ReportingAlgorithm.title.ilike(f'%{q[:80]}%')
+        ).limit(2).all()
+
+        if not snippets:
+            words = [w for w in q.split() if len(w) >= 3]
+            for word in words[:5]:
+                found = ReportingAlgorithm.query.filter_by(
+                    is_available=True, origin='anatomy_cache'
+                ).filter(
+                    ReportingAlgorithm.title.ilike(f'%{word}%')
+                ).limit(2).all()
+                for s in found:
+                    if s not in snippets:
+                        snippets.append(s)
+                if len(snippets) >= 2:
+                    break
+
+        for s in snippets[:2]:
+            prompt_parts.append(
+                f"[ANATOMY] {s.title} — {(s.description or '')[:300]}"
+            )
+            links.append({
+                'type': 'Anatomy',
+                'title': s.title,
+                'url': f'/anatomy-snippets/{s.slug}' if s.slug else '#',
+                'icon': 'fa-brain',
+                'color': '#6b46c1',
+            })
+
     except Exception as e:
         logger.warning(f"DB content lookup for RadIQ failed (non-fatal): {e}")
 
@@ -392,4 +460,54 @@ def radiq_history_delete(query_id):
         db.session.rollback()
         logger.error("Failed to delete RadIQ query %d: %s", query_id, e)
         return jsonify({'error': 'Failed to delete query.'}), 500
+    return jsonify({'success': True})
+
+
+# ==================== FEEDBACK ====================
+
+ALLOWED_FEEDBACK_REASONS = {'incorrect', 'outdated', 'missing_info', 'inappropriate', 'other'}
+
+
+@radiq_bp.route('/api/radiq/feedback', methods=['POST'])
+@login_required
+def radiq_feedback():
+    """Flag a RadIQ response as incorrect/unhelpful."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request.'}), 400
+
+    query_id = data.get('query_id')
+    reason = (data.get('reason') or '').strip()
+    details = (data.get('details') or '').strip() or None
+
+    if not query_id or not reason:
+        return jsonify({'error': 'query_id and reason are required.'}), 400
+    if reason not in ALLOWED_FEEDBACK_REASONS:
+        return jsonify({'error': f'Invalid reason. Must be one of: {", ".join(sorted(ALLOWED_FEEDBACK_REASONS))}'}), 400
+
+    # Verify query belongs to current user
+    query_record = RadIQQuery.query.filter_by(id=query_id, user_id=current_user.id).first()
+    if not query_record:
+        return jsonify({'error': 'Query not found.'}), 404
+
+    # Check for duplicate
+    existing = RadIQFeedback.query.filter_by(query_id=query_id, user_id=current_user.id).first()
+    if existing:
+        return jsonify({'error': 'You have already flagged this response.'}), 409
+
+    feedback = RadIQFeedback(
+        query_id=query_id,
+        user_id=current_user.id,
+        reason=reason,
+        details=details,
+    )
+    db.session.add(feedback)
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Failed to save RadIQ feedback: %s", e)
+        return jsonify({'error': 'Failed to save feedback.'}), 500
+
+    logger.info("RadIQ feedback submitted: query_id=%d reason=%s user=%d", query_id, reason, current_user.id)
     return jsonify({'success': True})

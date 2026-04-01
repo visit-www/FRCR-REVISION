@@ -74,6 +74,16 @@
             </a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" href="/vetting/admin/protocols">
+                <i class="fas fa-check-double"></i> Imaging Protocols
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="/vetting/admin/algorithms">
+                <i class="fas fa-project-diagram"></i> Vetting Algorithms
+            </a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" href="/admin/intelligence">
                 <i class="fas fa-lightbulb"></i> Intelligence
             </a>
@@ -91,6 +101,11 @@
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring-content" type="button" role="tab" aria-controls="monitoring-content" aria-selected="false">
                 <i class="fas fa-heartbeat"></i> Monitoring
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="radiq-flags-tab" data-bs-toggle="tab" data-bs-target="#radiq-flags-content" type="button" role="tab" aria-controls="radiq-flags-content" aria-selected="false">
+                <i class="fas fa-robot"></i> RadIQ Flags <span id="radiqFlagCountBadge" class="badge bg-warning text-dark ms-1" style="display: none;">0</span>
             </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -664,6 +679,17 @@
         <!-- End Monitoring Tab -->
 
         <!-- Audit Log Tab -->
+        <!-- RadIQ Flags Tab -->
+        <div class="tab-pane fade" id="radiq-flags-content" role="tabpanel" aria-labelledby="radiq-flags-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-robot"></i> RadIQ Flagged Responses</h2>
+            <p class="text-muted mb-3">User-flagged AI responses that may contain errors. Review and resolve.</p>
+            <div id="radiqFlagsList">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>
+                </div>
+            </div>
+        </div>
+
         <div class="tab-pane fade" id="audit-content" role="tabpanel" aria-labelledby="audit-tab">
             <h2 class="mb-4 admin-section-title"><i class="fas fa-clipboard-list"></i> Admin Audit Log</h2>
 
@@ -2731,6 +2757,109 @@
         // Load badge count immediately
         loadModCounts();
     })();
+
+    // ── RadIQ Flags ──
+    var radiqFlagsLoaded = false;
+
+    // Load badge count on page load
+    fetch('/api/admin/radiq/flagged/count', {credentials: 'include'})
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var badge = document.getElementById('radiqFlagCountBadge');
+            if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.style.display = 'inline';
+            }
+        }).catch(function() {});
+
+    document.getElementById('radiq-flags-tab').addEventListener('shown.bs.tab', function() {
+        if (!radiqFlagsLoaded) { loadRadiqFlags(); radiqFlagsLoaded = true; }
+    });
+
+    function loadRadiqFlags() {
+        fetch('/api/admin/radiq/flagged', {credentials: 'include'})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var container = document.getElementById('radiqFlagsList');
+                if (!data.flagged || data.flagged.length === 0) {
+                    container.innerHTML = '<div class="text-center py-5 text-muted"><i class="fas fa-check-circle" style="font-size:2rem;opacity:0.4;"></i><p class="mt-2">No unresolved flags.</p></div>';
+                    return;
+                }
+                var reasonLabels = {
+                    incorrect: 'Clinically incorrect',
+                    outdated: 'Outdated guideline',
+                    missing_info: 'Missing info',
+                    inappropriate: 'Inappropriate',
+                    other: 'Other'
+                };
+                var catColors = {
+                    gp_reply: '#5E899E', complaint: '#dc3545', incident: '#e96304',
+                    radiographer: '#6b46c1', general: '#198754'
+                };
+                var html = '';
+                data.flagged.forEach(function(f) {
+                    var catColor = catColors[f.category] || '#6c757d';
+                    var reasonLabel = reasonLabels[f.reason] || f.reason;
+                    html += '<div class="card mb-3" id="radiqFlag-' + f.id + '">'
+                        + '<div class="card-body">'
+                        + '<div class="d-flex justify-content-between align-items-start mb-2">'
+                        + '<div>'
+                        + '<span class="badge me-1" style="background:' + catColor + ';font-size:0.7rem;">' + (f.category || '').replace('_', ' ') + '</span>'
+                        + '<span class="badge bg-warning text-dark" style="font-size:0.7rem;">' + reasonLabel + '</span>'
+                        + '</div>'
+                        + '<small class="text-muted">' + (f.created_at ? new Date(f.created_at + 'Z').toLocaleDateString() : '') + '</small>'
+                        + '</div>'
+                        + '<p class="mb-1" style="font-size:0.9rem;"><strong>Q:</strong> ' + escapeHtmlAdmin(f.question || '') + '</p>';
+                    if (f.details) {
+                        html += '<p class="mb-1 text-danger" style="font-size:0.85rem;"><i class="fas fa-comment me-1"></i>' + escapeHtmlAdmin(f.details) + '</p>';
+                    }
+                    html += '<p class="text-muted mb-2" style="font-size:0.75rem;">Flagged by: ' + escapeHtmlAdmin(f.flagger_email) + '</p>'
+                        + '<details class="mb-2"><summary class="small text-muted" style="cursor:pointer;">View Full Response</summary>'
+                        + '<div class="mt-2 p-2 border rounded" style="max-height:300px;overflow-y:auto;font-size:0.85rem;">' + (f.full_response || '') + '</div>'
+                        + '</details>'
+                        + '<div class="d-flex gap-2 align-items-center">'
+                        + '<textarea class="form-control form-control-sm flex-grow-1" id="resolveNotes-' + f.id + '" rows="1" placeholder="Resolution notes (optional)..." style="font-size:0.8rem;"></textarea>'
+                        + '<button class="btn btn-sm btn-success" onclick="resolveRadiqFlag(' + f.id + ')"><i class="fas fa-check me-1"></i>Resolve</button>'
+                        + '</div>'
+                        + '</div></div>';
+                });
+                container.innerHTML = html;
+            })
+            .catch(function(err) {
+                document.getElementById('radiqFlagsList').innerHTML = '<div class="text-center py-3 text-danger">Failed to load flags.</div>';
+            });
+    }
+
+    function resolveRadiqFlag(id) {
+        var notes = document.getElementById('resolveNotes-' + id).value.trim();
+        fetch('/api/admin/radiq/feedback/' + id + '/resolve', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({notes: notes || null})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                var el = document.getElementById('radiqFlag-' + id);
+                if (el) el.remove();
+                // Update badge
+                var badge = document.getElementById('radiqFlagCountBadge');
+                var cur = parseInt(badge.textContent) || 0;
+                if (cur > 1) { badge.textContent = cur - 1; }
+                else { badge.style.display = 'none'; }
+            } else {
+                alert(data.error || 'Failed to resolve.');
+            }
+        })
+        .catch(function() { alert('Network error.'); });
+    }
+
+    function escapeHtmlAdmin(str) {
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
 
     // ── Audit Log ──
     var auditLoaded = false;

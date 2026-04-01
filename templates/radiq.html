@@ -130,8 +130,34 @@
                     </div>
                     <div id="dbLinksArea" class="d-none px-3 pb-3" style="background: #fdfdfb;">
                     </div>
-                    <div class="card-footer text-muted small" style="background: #f8f9fa;">
+                    <div class="card-footer text-muted small d-flex justify-content-between align-items-center" style="background: #f8f9fa;">
                         <span id="remainingCounter"></span>
+                        <button id="flagResponseBtn" class="btn btn-sm btn-outline-secondary radiq-flag-btn" onclick="showFeedbackForm()" title="Flag as incorrect">
+                            <i class="fas fa-flag me-1"></i>Flag
+                        </button>
+                    </div>
+                    <!-- Inline feedback form (hidden by default) -->
+                    <div id="feedbackFormArea" class="d-none px-3 pb-3" style="background: #f8f9fa; border-top: 1px solid #e9ecef;">
+                        <div class="mt-2">
+                            <label class="form-label small fw-bold mb-1">Why are you flagging this response?</label>
+                            <select id="feedbackReason" class="form-select form-select-sm mb-2">
+                                <option value="">Select a reason...</option>
+                                <option value="incorrect">Clinically incorrect</option>
+                                <option value="outdated">Outdated guideline cited</option>
+                                <option value="missing_info">Missing key information</option>
+                                <option value="inappropriate">Inappropriate recommendation</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <textarea id="feedbackDetails" class="form-control form-control-sm mb-2" rows="2"
+                                      placeholder="Optional: describe what's wrong..."></textarea>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-warning" onclick="submitFeedback()">
+                                    <i class="fas fa-paper-plane me-1"></i>Submit Flag
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="hideFeedbackForm()">Cancel</button>
+                            </div>
+                            <div id="feedbackMessage" class="small mt-1 d-none"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -255,10 +281,25 @@
     #responseContent a:hover {
         color: #0a58ca;
     }
+    /* Clinical disclaimer banner */
+    .radiq-disclaimer {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 6px;
+        padding: 8px 12px;
+        margin-bottom: 12px;
+        font-size: 0.82rem;
+        color: #664d03;
+    }
+    .radiq-disclaimer a { color: #664d03; font-weight: 600; }
     /* Sticky response panel on desktop */
     @media (min-width: 992px) {
         #responseCol > div { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
     }
+    /* Flag button */
+    .radiq-flag-btn { font-size: 0.75rem; padding: 2px 8px; }
+    .radiq-flag-btn:hover { color: #dc3545; border-color: #dc3545; }
+    .radiq-flag-btn.flagged { color: #dc3545; border-color: #dc3545; pointer-events: none; opacity: 0.7; }
     /* History chevron rotation */
     .radiq-chevron { transition: transform 0.2s; }
     [aria-expanded="true"] .radiq-chevron { transform: rotate(180deg); }
@@ -274,6 +315,7 @@ const CATEGORY_META = {
 };
 
 let selectedCategory = null;
+let currentQueryId = null;
 
 // ── Category Selection ──
 document.querySelectorAll('.radiq-category-card').forEach(card => {
@@ -383,6 +425,7 @@ async function submitQuery() {
             alert(data.error || 'Request failed. Please try again.');
             return;
         }
+        currentQueryId = data.query_id || null;
         showResponse(data.response_html, data.remaining_requests, data.db_links || []);
         loadHistory();
     } catch (err) {
@@ -413,7 +456,14 @@ function showResponse(html, remaining, dbLinks) {
     html = linkifyUrls(html);
     // Fix any double-wrapped links from linkify running on already-linked URLs
     html = html.replace(/<a [^>]*>(<a [^>]*>.*?<\/a>)<\/a>/g, '$1');
-    document.getElementById('responseContent').innerHTML = html;
+    // Prepend clinical disclaimer banner
+    var disclaimer = '<div class="radiq-disclaimer">'
+        + '<i class="fas fa-exclamation-triangle me-1"></i>'
+        + '<strong>AI-generated advisory</strong> — verify against local protocols, '
+        + '<a href="https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Appropriateness-Criteria" target="_blank" rel="noopener noreferrer">ACR Appropriateness Criteria</a>, and '
+        + '<a href="https://gravitas.acr.org/acportal" target="_blank" rel="noopener noreferrer">ACR AC Portal</a> '
+        + 'before clinical use.</div>';
+    document.getElementById('responseContent').innerHTML = disclaimer + html;
 
     // Render DB resource links if any
     var linksEl = document.getElementById('dbLinksArea');
@@ -444,6 +494,10 @@ function showResponse(html, remaining, dbLinks) {
         window._radiqUsage.remaining_requests = remaining;
         updateRadiqCounter(window._radiqUsage);
     }
+    // Reset flag button state
+    var flagBtn = document.getElementById('flagResponseBtn');
+    if (flagBtn) { flagBtn.classList.remove('flagged'); flagBtn.disabled = false; flagBtn.innerHTML = '<i class="fas fa-flag me-1"></i>Flag'; }
+    hideFeedbackForm();
     document.getElementById('responseArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -463,6 +517,55 @@ function newQuery() {
     document.getElementById('responseArea').classList.add('d-none');
     document.getElementById('responsePlaceholder').classList.remove('d-none');
     document.getElementById('queryInput').focus();
+}
+
+// ── Feedback / Flag ──
+function showFeedbackForm() {
+    document.getElementById('feedbackFormArea').classList.remove('d-none');
+    document.getElementById('feedbackReason').value = '';
+    document.getElementById('feedbackDetails').value = '';
+    document.getElementById('feedbackMessage').classList.add('d-none');
+}
+
+function hideFeedbackForm() {
+    document.getElementById('feedbackFormArea').classList.add('d-none');
+}
+
+async function submitFeedback() {
+    var reason = document.getElementById('feedbackReason').value;
+    if (!reason) { alert('Please select a reason.'); return; }
+    if (!currentQueryId) { alert('No query to flag.'); return; }
+
+    var details = document.getElementById('feedbackDetails').value.trim();
+    var msgEl = document.getElementById('feedbackMessage');
+
+    try {
+        var res = await fetch('/api/radiq/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query_id: currentQueryId, reason: reason, details: details || null }),
+        });
+        var data = await res.json();
+        if (!res.ok) {
+            msgEl.className = 'small mt-1 text-danger';
+            msgEl.textContent = data.error || 'Failed to submit feedback.';
+            msgEl.classList.remove('d-none');
+            return;
+        }
+        // Success
+        msgEl.className = 'small mt-1 text-success';
+        msgEl.textContent = 'Thank you — your feedback has been recorded.';
+        msgEl.classList.remove('d-none');
+        var flagBtn = document.getElementById('flagResponseBtn');
+        flagBtn.classList.add('flagged');
+        flagBtn.disabled = true;
+        flagBtn.innerHTML = '<i class="fas fa-flag me-1"></i>Flagged';
+        setTimeout(hideFeedbackForm, 2000);
+    } catch (err) {
+        msgEl.className = 'small mt-1 text-danger';
+        msgEl.textContent = 'Network error. Please try again.';
+        msgEl.classList.remove('d-none');
+    }
 }
 
 // ── History ──
@@ -519,6 +622,7 @@ async function showHistoryItem(id) {
         const res = await fetch(`/api/radiq/history/${id}`);
         const q = await res.json();
         if (q.error) return;
+        currentQueryId = q.id || null;
         selectCategory(q.category);
         document.getElementById('queryInput').value = q.question;
         showResponse(q.response_text, null);

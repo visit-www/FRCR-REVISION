@@ -2735,6 +2735,77 @@ def get_audit_log():
 
 
 # ============================================================================
+# RADIQ FLAGGED RESPONSES
+# ============================================================================
+
+@admin_bp.route('/radiq/flagged', methods=['GET'])
+@require_admin
+def list_radiq_flagged():
+    """List unresolved flagged RadIQ responses."""
+    from models import RadIQFeedback, RadIQQuery
+    feedbacks = (
+        db.session.query(RadIQFeedback)
+        .join(RadIQQuery, RadIQFeedback.query_id == RadIQQuery.id)
+        .filter(RadIQFeedback.is_resolved == False)
+        .order_by(RadIQFeedback.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    results = []
+    for f in feedbacks:
+        q = f.query
+        flagger = User.query.get(f.user_id)
+        results.append({
+            'id': f.id,
+            'query_id': f.query_id,
+            'category': q.category if q else '',
+            'question': (q.question[:200] + '...') if q and len(q.question) > 200 else (q.question if q else ''),
+            'response_excerpt': (q.response_text[:300] + '...') if q and q.response_text and len(q.response_text) > 300 else (q.response_text if q else ''),
+            'full_response': q.response_text if q else '',
+            'reason': f.reason,
+            'details': f.details,
+            'flagger_email': flagger.email if flagger else 'Unknown',
+            'created_at': f.created_at.isoformat() if f.created_at else None,
+        })
+    return jsonify({'flagged': results, 'count': len(results)}), 200
+
+
+@admin_bp.route('/radiq/feedback/<int:feedback_id>/resolve', methods=['POST'])
+@require_admin
+def resolve_radiq_feedback(feedback_id):
+    """Resolve a flagged RadIQ response."""
+    from models import RadIQFeedback
+    feedback = RadIQFeedback.query.get_or_404(feedback_id)
+    if feedback.is_resolved:
+        return jsonify({'error': 'Already resolved.'}), 400
+
+    data = request.get_json() or {}
+    feedback.is_resolved = True
+    feedback.resolved_by_user_id = current_user.id
+    feedback.resolved_at = datetime.utcnow()
+    feedback.resolution_notes = (data.get('notes') or '').strip() or None
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Failed to resolve RadIQ feedback %d: %s", feedback_id, e)
+        return jsonify({'error': 'Failed to resolve.'}), 500
+
+    logger.info("Admin %s resolved RadIQ feedback #%d", current_user.email, feedback_id)
+    return jsonify({'success': True}), 200
+
+
+@admin_bp.route('/radiq/flagged/count', methods=['GET'])
+@require_admin
+def radiq_flagged_count():
+    """Return count of unresolved RadIQ flags."""
+    from models import RadIQFeedback
+    count = RadIQFeedback.query.filter_by(is_resolved=False).count()
+    return jsonify({'count': count}), 200
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
