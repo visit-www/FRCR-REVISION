@@ -521,6 +521,10 @@ def unified_search():
 
             for r in if_results:
                 desc = r.ci_summary if r.ci_summary else (r.description or '')
+                # guideline_source may contain JSON — use category as subtitle instead
+                subtitle = r.category or ''
+                if r.guideline_source and not r.guideline_source.strip().startswith(('{', '[')):
+                    subtitle = r.guideline_source
                 results.append({
                     'type': 'incidental',
                     'id': r.id,
@@ -528,7 +532,7 @@ def unified_search():
                     'title': r.finding_name,
                     'body_section': r.body_section,
                     'description': desc,
-                    'subtitle': r.guideline_source or r.category,
+                    'subtitle': subtitle,
                     'url': f'/incidental-findings/{r.slug}',
                     'similarity': float(r.sim) if r.sim else 0,
                 })
@@ -981,11 +985,15 @@ def _fallback_search(query, filter_type, limit, raw_query=None):
             ),
         ).limit(limit).all()
         for f in ifs:
+            # guideline_source may contain JSON — use category as subtitle instead
+            subtitle = f.category or ''
+            if f.guideline_source and not f.guideline_source.strip().startswith(('{', '[')):
+                subtitle = f.guideline_source
             results.append({
                 'type': 'incidental', 'id': f.id, 'slug': f.slug,
                 'title': f.finding_name, 'body_section': f.body_section,
                 'description': f.description,
-                'subtitle': f.guideline_source or f.category,
+                'subtitle': subtitle,
                 'url': f'/incidental-findings/{f.slug}',
                 'similarity': 0.5,
             })
@@ -3600,12 +3608,16 @@ def smart_reporter_relevant_content():
 
         ifs = if_query.limit(3).all()
         for f in ifs:
+            # guideline_source may contain JSON — use body_section as subtitle instead
+            subtitle = f.body_section or ''
+            if f.guideline_source and not f.guideline_source.strip().startswith(('{', '[')):
+                subtitle = f.guideline_source
             results.append({
                 'type': 'radiology_tool',
                 'icon': 'fa-tools',
                 'color': '#5E899E',
                 'title': f.finding_name,
-                'subtitle': f.guideline_source or f.body_section or '',
+                'subtitle': subtitle,
                 'url': f'/incidental-findings/{f.slug}',
             })
     except Exception:

@@ -57,7 +57,7 @@ import logging
 
 import requests
 
-from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw, AIClientError
+from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw, AIClientError, strip_markdown_fences
 from clinical_tool_generator import format_resources_for_prompt
 
 logger = logging.getLogger(__name__)
@@ -1558,6 +1558,9 @@ def generate_report_action(report_text, action, clinical_question='',
         temperature=0.4,
         timeout=60,
     )
+
+    # Strip markdown fences if Claude wrapped HTML in ```html ... ```
+    html_text = strip_markdown_fences(html_text)
 
     return html_text, model_used, tokens
 
