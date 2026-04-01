@@ -1,0 +1,317 @@
+{
+  "protocols": [
+    {
+      "id": "CT_BRAIN_PLAIN",
+      "name": "CT Brain Plain",
+      "modality": "CT",
+      "body_part": "Brain",
+      "indication": [
+        "Stroke",
+        "Trauma",
+        "Headache"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "CT Brain Plain",
+        "coverage": "Skull base to vertex",
+        "key_instructions": [
+          "No contrast",
+          "Urgent in stroke"
+        ],
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "position": "Supine",
+        "contrast": null,
+        "ct_phases": [
+          {
+            "name": "Non-contrast",
+            "timing_sec": 0,
+            "coverage": "Brain",
+            "kVp": 120,
+            "mAs": "auto",
+            "slice_mm": 3,
+            "interval_mm": 2,
+            "notes": "Brain + bone recon"
+          }
+        ],
+        "reconstruction": {
+          "kernel": "Brain FC68, Bone FC30",
+          "algorithm": "Standard"
+        }
+      },
+      "validation": {
+        "requires_egfr": false,
+        "pregnancy_check_required": true,
+        "allergy_check_required": false,
+        "guideline_source": [
+          "RCR",
+          "ACR"
+        ]
+      },
+      "smart_tags": [
+        "brain",
+        "emergency",
+        "stroke"
+      ],
+      "search_index": {
+        "keywords": [
+          "CT brain"
+        ],
+        "synonyms": [
+          "CT head"
+        ],
+        "priority_score": 10
+      }
+    },
+    {
+      "id": "CT_BRAIN_CONTRAST",
+      "name": "CT Brain with Contrast",
+      "modality": "CT",
+      "body_part": "Brain",
+      "indication": [
+        "Tumor",
+        "Infection"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "CT Brain Contrast",
+        "coverage": "Whole brain",
+        "key_instructions": [
+          "Check eGFR"
+        ],
+        "contrast_summary": "IV contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Iodinated",
+          "volume_ml": 70,
+          "rate_ml_s": 3,
+          "timing": "70 sec"
+        },
+        "ct_phases": [
+          {
+            "name": "Pre",
+            "timing_sec": 0
+          },
+          {
+            "name": "Post",
+            "timing_sec": 70
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": true,
+        "egfr_threshold": 30,
+        "allergy_check_required": true
+      },
+      "smart_tags": [
+        "brain",
+        "contrast"
+      ]
+    },
+    {
+      "id": "CT_STROKE_ANGIO",
+      "name": "CT Stroke Protocol (NCCT + CTA ± CTP)",
+      "modality": "CT",
+      "body_part": "Brain",
+      "indication": [
+        "Acute stroke"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "Stroke CT Protocol",
+        "coverage": "Brain + neck vessels",
+        "key_instructions": [
+          "Do immediately"
+        ],
+        "contrast_summary": "CTA ± perfusion"
+      },
+      "detailed_layer": {
+        "ct_phases": [
+          {
+            "name": "NCCT"
+          },
+          {
+            "name": "CTA arch to vertex"
+          },
+          {
+            "name": "Perfusion (optional)"
+          }
+        ]
+      },
+      "smart_tags": [
+        "stroke",
+        "emergency",
+        "vascular"
+      ]
+    },
+    {
+      "id": "CT_TEMPORAL_BONE",
+      "name": "CT Temporal Bone",
+      "modality": "CT",
+      "body_part": "Head/Neck",
+      "indication": [
+        "Hearing loss",
+        "Cholesteatoma"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "Temporal Bone CT",
+        "coverage": "Petrous temporal bones",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "ct_phases": [
+          {
+            "slice_mm": 0.5,
+            "notes": "High resolution"
+          }
+        ],
+        "reconstruction": {
+          "kernel": "Bone algorithm"
+        }
+      },
+      "smart_tags": [
+        "ENT",
+        "HRCT"
+      ]
+    },
+    {
+      "id": "CT_SINUS",
+      "name": "CT Paranasal Sinuses",
+      "modality": "CT",
+      "body_part": "Head/Neck",
+      "indication": [
+        "Sinusitis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "CT Sinus",
+        "coverage": "Sinuses",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "ct_phases": [
+          {
+            "slice_mm": 0.6
+          }
+        ]
+      },
+      "smart_tags": [
+        "ENT"
+      ]
+    },
+    {
+      "id": "CT_CHEST_PLAIN",
+      "name": "CT Chest Plain",
+      "modality": "CT",
+      "body_part": "Chest",
+      "indication": [
+        "Infection",
+        "ILD"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "CT Chest Plain",
+        "coverage": "Apices to bases",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "ct_phases": [
+          {
+            "name": "Plain"
+          }
+        ],
+        "reconstruction": {
+          "kernel": "Lung + mediastinal"
+        }
+      },
+      "smart_tags": [
+        "chest"
+      ]
+    },
+    {
+      "id": "CT_HRCT_CHEST",
+      "name": "HRCT Chest",
+      "modality": "CT",
+      "body_part": "Chest",
+      "indication": [
+        "ILD"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "HRCT",
+        "coverage": "Whole lung",
+        "key_instructions": [
+          "Inspiratory ± expiratory"
+        ],
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "ct_phases": [
+          {
+            "slice_mm": 1,
+            "notes": "High resolution lung"
+          }
+        ]
+      },
+      "smart_tags": [
+        "HRCT"
+      ]
+    },
+    {
+      "id": "CT_CTPA",
+      "name": "CT Pulmonary Angiography",
+      "modality": "CT",
+      "body_part": "Chest",
+      "indication": [
+        "Pulmonary embolism"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "CTPA",
+        "coverage": "Pulmonary arteries",
+        "contrast_summary": "Arterial contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "rate_ml_s": 4,
+          "timing": "Bolus tracking"
+        }
+      },
+      "validation": {
+        "requires_egfr": true,
+        "egfr_threshold": 30
+      },
+      "smart_tags": [
+        "PE",
+        "emergency"
+      ]
+    },
+    {
+      "id": "CT_CHEST_ABD_PELVIS",
+      "name": "CT CAP (Staging)",
+      "modality": "CT",
+      "body_part": "Chest/Abdomen/Pelvis",
+      "indication": [
+        "Cancer staging"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "CT CAP",
+        "coverage": "Apices to pelvis",
+        "contrast_summary": "Dual phase"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "volume_ml": 100,
+          "timing": "30s + 60s"
+        }
+      },
+      "smart_tags": [
+        "oncology"
+      ]
+    }
+  ]
+}

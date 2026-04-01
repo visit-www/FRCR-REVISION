@@ -1,0 +1,404 @@
+{
+  "protocols": [
+    {
+      "id": "MRI_LIVER_ROUTINE",
+      "name": "MRI Liver Routine",
+      "modality": "MRI",
+      "body_part": "Liver",
+      "indication": [
+        "Liver lesion"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Liver",
+        "coverage": "Liver",
+        "key_instructions": [
+          "Breath hold sequences"
+        ],
+        "contrast_summary": "Optional"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "plane": "Axial",
+            "name": "T2 TSE FS"
+          },
+          {
+            "plane": "Axial",
+            "name": "T1 in/out phase"
+          },
+          {
+            "plane": "Axial",
+            "name": "DWI + ADC"
+          }
+        ]
+      },
+      "smart_tags": [
+        "liver"
+      ]
+    },
+    {
+      "id": "MRI_LIVER_DYNAMIC",
+      "name": "MRI Liver Dynamic Contrast",
+      "modality": "MRI",
+      "body_part": "Liver",
+      "indication": [
+        "HCC",
+        "Metastasis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "Dynamic Liver MRI",
+        "coverage": "Liver",
+        "contrast_summary": "Multiphasic gadolinium"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium",
+          "timing": "Arterial, portal, delayed"
+        },
+        "mri_sequences": [
+          {
+            "name": "T1 3D dynamic"
+          },
+          {
+            "name": "T2 FS"
+          },
+          {
+            "name": "DWI"
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": true,
+        "egfr_threshold": 30
+      },
+      "smart_tags": [
+        "liver",
+        "oncology"
+      ]
+    },
+    {
+      "id": "MRI_MRCP",
+      "name": "MRI MRCP",
+      "modality": "MRI",
+      "body_part": "Biliary",
+      "indication": [
+        "Biliary obstruction"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRCP",
+        "coverage": "Biliary tree",
+        "contrast_summary": "Non-contrast heavily T2"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "3D MRCP"
+          },
+          {
+            "name": "Thick slab MRCP"
+          },
+          {
+            "name": "Axial T2"
+          }
+        ]
+      },
+      "smart_tags": [
+        "MRCP",
+        "biliary"
+      ]
+    },
+    {
+      "id": "MRI_ENTEROGRAPHY",
+      "name": "MRI Enterography",
+      "modality": "MRI",
+      "body_part": "Bowel",
+      "indication": [
+        "Crohn’s disease"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MR Enterography",
+        "coverage": "Small bowel",
+        "key_instructions": [
+          "Oral contrast + Buscopan"
+        ],
+        "contrast_summary": "Dynamic contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "name": "TrueFISP"
+          },
+          {
+            "name": "T2 FS"
+          },
+          {
+            "name": "DWI"
+          },
+          {
+            "name": "Post contrast T1 FS"
+          }
+        ]
+      },
+      "smart_tags": [
+        "bowel",
+        "IBD"
+      ]
+    },
+    {
+      "id": "MRI_PROSTATE",
+      "name": "MRI Prostate (Multiparametric)",
+      "modality": "MRI",
+      "body_part": "Pelvis",
+      "indication": [
+        "Prostate cancer"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "mpMRI Prostate",
+        "coverage": "Prostate",
+        "contrast_summary": "Multiparametric ± contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "name": "T2 high resolution"
+          },
+          {
+            "name": "DWI + ADC"
+          },
+          {
+            "name": "Dynamic contrast (DCE)"
+          }
+        ]
+      },
+      "smart_tags": [
+        "prostate",
+        "PI-RADS"
+      ]
+    },
+    {
+      "id": "MRI_PELVIS_FEMALE",
+      "name": "MRI Pelvis Female",
+      "modality": "MRI",
+      "body_part": "Pelvis",
+      "indication": [
+        "Adnexal mass",
+        "Endometriosis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Female Pelvis",
+        "coverage": "Pelvic organs",
+        "contrast_summary": "Optional"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "Sagittal T2"
+          },
+          {
+            "name": "Axial T2 FS"
+          },
+          {
+            "name": "T1 ± FS"
+          }
+        ]
+      },
+      "smart_tags": [
+        "gynae"
+      ]
+    },
+    {
+      "id": "MRI_ENDOMETRIOSIS",
+      "name": "MRI Endometriosis Protocol",
+      "modality": "MRI",
+      "body_part": "Pelvis",
+      "indication": [
+        "Deep infiltrating endometriosis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "Endometriosis MRI",
+        "coverage": "Pelvis",
+        "contrast_summary": "Optional"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "T2 high resolution"
+          },
+          {
+            "name": "T1 FS"
+          }
+        ]
+      },
+      "smart_tags": [
+        "endometriosis"
+      ]
+    },
+    {
+      "id": "MRI_KNEE",
+      "name": "MRI Knee",
+      "modality": "MRI",
+      "body_part": "Knee",
+      "indication": [
+        "Ligament injury"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Knee",
+        "coverage": "Knee joint",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "Sagittal PD FS"
+          },
+          {
+            "name": "Coronal T2 FS"
+          },
+          {
+            "name": "Axial T1"
+          }
+        ]
+      },
+      "smart_tags": [
+        "MSK"
+      ]
+    },
+    {
+      "id": "MRI_SHOULDER",
+      "name": "MRI Shoulder",
+      "modality": "MRI",
+      "body_part": "Shoulder",
+      "indication": [
+        "Rotator cuff tear"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Shoulder",
+        "coverage": "Shoulder",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "Coronal PD FS"
+          },
+          {
+            "name": "Sagittal T2"
+          },
+          {
+            "name": "Axial T1"
+          }
+        ]
+      },
+      "smart_tags": [
+        "MSK"
+      ]
+    },
+    {
+      "id": "MRI_BREAST",
+      "name": "MRI Breast",
+      "modality": "MRI",
+      "body_part": "Breast",
+      "indication": [
+        "Breast cancer"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Breast",
+        "coverage": "Both breasts",
+        "contrast_summary": "Dynamic contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "name": "T2"
+          },
+          {
+            "name": "DWI"
+          },
+          {
+            "name": "Dynamic contrast series"
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": true
+      },
+      "smart_tags": [
+        "breast",
+        "oncology"
+      ]
+    },
+    {
+      "id": "MRI_MRA_BRAIN",
+      "name": "MRI MRA Brain",
+      "modality": "MRI",
+      "body_part": "Brain vessels",
+      "indication": [
+        "Aneurysm",
+        "Stenosis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRA Brain",
+        "coverage": "Intracranial vessels",
+        "contrast_summary": "TOF non-contrast"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "TOF MRA"
+          }
+        ]
+      },
+      "smart_tags": [
+        "vascular"
+      ]
+    },
+    {
+      "id": "MRI_MRA_PERIPHERAL",
+      "name": "MRI Peripheral Angiography",
+      "modality": "MRI",
+      "body_part": "Peripheral vessels",
+      "indication": [
+        "Peripheral arterial disease"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "Peripheral MRA",
+        "coverage": "Lower limb vessels",
+        "contrast_summary": "Contrast MRA"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "name": "Contrast MRA"
+          }
+        ]
+      },
+      "smart_tags": [
+        "vascular"
+      ]
+    }
+  ]
+}

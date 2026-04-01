@@ -1,0 +1,356 @@
+{
+  "protocols": [
+    {
+      "id": "MRI_BRAIN_ROUTINE",
+      "name": "MRI Brain Routine",
+      "modality": "MRI",
+      "body_part": "Brain",
+      "indication": [
+        "Headache",
+        "Seizure",
+        "Neurological deficit"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Brain Routine",
+        "coverage": "Whole brain",
+        "key_instructions": [
+          "Standard protocol"
+        ],
+        "contrast_summary": "Optional contrast"
+      },
+      "detailed_layer": {
+        "position": "Supine",
+        "contrast": null,
+        "mri_sequences": [
+          {
+            "plane": "Axial",
+            "name": "T1"
+          },
+          {
+            "plane": "Axial",
+            "name": "T2"
+          },
+          {
+            "plane": "Axial",
+            "name": "FLAIR"
+          },
+          {
+            "plane": "Axial",
+            "name": "DWI + ADC"
+          },
+          {
+            "plane": "Axial",
+            "name": "SWI/GRE"
+          },
+          {
+            "plane": "Coronal",
+            "name": "T2"
+          },
+          {
+            "plane": "Sagittal",
+            "name": "T1"
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": false,
+        "pregnancy_check_required": true
+      },
+      "smart_tags": [
+        "brain",
+        "routine"
+      ]
+    },
+    {
+      "id": "MRI_BRAIN_CONTRAST",
+      "name": "MRI Brain with Contrast",
+      "modality": "MRI",
+      "body_part": "Brain",
+      "indication": [
+        "Tumor",
+        "Infection",
+        "Metastasis"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Brain Contrast",
+        "coverage": "Whole brain",
+        "contrast_summary": "Gadolinium"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium",
+          "volume_ml": "weight-based"
+        },
+        "mri_sequences": [
+          {
+            "plane": "Axial",
+            "name": "T1 pre"
+          },
+          {
+            "plane": "Axial",
+            "name": "T1 post"
+          },
+          {
+            "plane": "Coronal",
+            "name": "T1 post"
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": true,
+        "egfr_threshold": 30
+      },
+      "smart_tags": [
+        "contrast",
+        "oncology"
+      ]
+    },
+    {
+      "id": "MRI_STROKE_FAST",
+      "name": "MRI Stroke Fast Protocol",
+      "modality": "MRI",
+      "body_part": "Brain",
+      "indication": [
+        "Acute stroke"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "MRI Stroke Fast",
+        "coverage": "Brain",
+        "key_instructions": [
+          "Rapid protocol"
+        ],
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "plane": "Axial",
+            "name": "DWI"
+          },
+          {
+            "plane": "Axial",
+            "name": "FLAIR"
+          },
+          {
+            "plane": "Axial",
+            "name": "GRE/SWI"
+          }
+        ]
+      },
+      "smart_tags": [
+        "stroke",
+        "emergency"
+      ]
+    },
+    {
+      "id": "MRI_STROKE_FULL",
+      "name": "MRI Stroke Full Protocol",
+      "modality": "MRI",
+      "body_part": "Brain",
+      "indication": [
+        "Stroke/TIA"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "MRI Stroke Full",
+        "coverage": "Brain + vessels",
+        "contrast_summary": "Optional MRA"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "DWI + ADC"
+          },
+          {
+            "name": "FLAIR"
+          },
+          {
+            "name": "SWI"
+          },
+          {
+            "name": "TOF MRA brain"
+          },
+          {
+            "name": "TOF MRA neck"
+          }
+        ]
+      },
+      "smart_tags": [
+        "stroke",
+        "vascular"
+      ]
+    },
+    {
+      "id": "MRI_PITUITARY_DYNAMIC",
+      "name": "MRI Pituitary Dynamic",
+      "modality": "MRI",
+      "body_part": "Pituitary",
+      "indication": [
+        "Microadenoma"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "Pituitary MRI",
+        "coverage": "Sella",
+        "contrast_summary": "Dynamic contrast"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "plane": "Coronal",
+            "name": "T1 dynamic"
+          },
+          {
+            "plane": "Sagittal",
+            "name": "T1"
+          },
+          {
+            "plane": "Coronal",
+            "name": "T2"
+          }
+        ]
+      },
+      "smart_tags": [
+        "pituitary"
+      ]
+    },
+    {
+      "id": "MRI_IAC",
+      "name": "MRI Internal Auditory Canal",
+      "modality": "MRI",
+      "body_part": "IAC",
+      "indication": [
+        "Hearing loss",
+        "Vestibular schwannoma"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI IAC",
+        "coverage": "IAC + CPA",
+        "contrast_summary": "Contrast required"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "3D CISS/FIESTA"
+          },
+          {
+            "name": "T1 pre/post contrast"
+          }
+        ]
+      },
+      "smart_tags": [
+        "ENT",
+        "CPA"
+      ]
+    },
+    {
+      "id": "MRI_LUMBAR_SPINE",
+      "name": "MRI Lumbar Spine",
+      "modality": "MRI",
+      "body_part": "Spine",
+      "indication": [
+        "Back pain",
+        "Disc disease"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Lumbar Spine",
+        "coverage": "L1 to sacrum",
+        "contrast_summary": "Non-contrast"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "plane": "Sagittal",
+            "name": "T1"
+          },
+          {
+            "plane": "Sagittal",
+            "name": "T2"
+          },
+          {
+            "plane": "Axial",
+            "name": "T2"
+          }
+        ]
+      },
+      "smart_tags": [
+        "spine"
+      ]
+    },
+    {
+      "id": "MRI_SPINE_CONTRAST",
+      "name": "MRI Spine with Contrast",
+      "modality": "MRI",
+      "body_part": "Spine",
+      "indication": [
+        "Infection",
+        "Tumor"
+      ],
+      "is_emergency": false,
+      "basic_layer": {
+        "study_name": "MRI Spine Contrast",
+        "coverage": "Targeted spine",
+        "contrast_summary": "Gadolinium"
+      },
+      "detailed_layer": {
+        "contrast": {
+          "type": "Gadolinium"
+        },
+        "mri_sequences": [
+          {
+            "name": "T1 pre/post"
+          },
+          {
+            "name": "STIR"
+          }
+        ]
+      },
+      "validation": {
+        "requires_egfr": true
+      },
+      "smart_tags": [
+        "contrast"
+      ]
+    },
+    {
+      "id": "MRI_CORD_COMPRESSION",
+      "name": "MRI Cord Compression Protocol",
+      "modality": "MRI",
+      "body_part": "Spine",
+      "indication": [
+        "Cord compression"
+      ],
+      "is_emergency": true,
+      "basic_layer": {
+        "study_name": "Cord Compression MRI",
+        "coverage": "Whole spine",
+        "contrast_summary": "Contrast recommended"
+      },
+      "detailed_layer": {
+        "mri_sequences": [
+          {
+            "name": "Sagittal T2 whole spine"
+          },
+          {
+            "name": "Axial T2 at levels"
+          },
+          {
+            "name": "Post contrast T1"
+          }
+        ]
+      },
+      "smart_tags": [
+        "emergency",
+        "oncology"
+      ]
+    }
+  ]
+}
