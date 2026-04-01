@@ -2,7 +2,7 @@
 
 > **Last Updated:** April 1, 2026
 > **Status:** Active Development
-> **Total Plans:** 17 Feature Areas
+> **Total Plans:** 18 Feature Areas
 
 ---
 
@@ -31,6 +31,7 @@ This document serves as the master index for all planned features and enhancemen
 | 13 | PHI/PII Protection (5-Layer) | High | Critical | **P0 Done** |
 | 14 | SEO & Architecture | Medium-High | High | **Phase 1 Done** |
 | 17 | RadInsight Intelligence (User Prefs) | Medium | High | Planned |
+| 18 | Vetting Tool (Imaging Protocols) | High | Very High | Planned |
 
 ---
 
@@ -712,6 +713,7 @@ Phase 4: AI Transformation (Week 10-20)
 | AI Reporting Assistant | - | `docs/plans/AI_REPORTING_ASSISTANT_PLAN.md` |
 | TNM Prompt Engineering | - | `docs/plans/TNM_PROMPT_ENGINEERING_PLAN.md` |
 | RadInsight Intelligence | - | `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md` |
+| Vetting Tool | - | `docs/plans/VETTING_TOOL_PLAN.md` |
 
 ---
 
@@ -739,4 +741,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-03-30 | Added PHI Protection (Plan 13), SEO (Plan 14), Stripe Testing (Plan 15), RadIQ Custom Protocols idea (Plan 16) | AI Assistant |
 | 2026-03-31 | SEO Plan 14 Phase 1 complete: public preview pages for all content types, Schema.org macros, dynamic sitemap expansion, content gating | AI Assistant |
 | 2026-04-01 | Added RadInsight Intelligence plan (Plan 17); user reporting preference learning for Smart Reporter | AI Assistant |
+| 2026-04-01 | Added Vetting Tool plan (Plan 18); structured imaging protocol vetting workflow with safety checklist and protocol library | AI Assistant |
 
