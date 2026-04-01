@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** March 30, 2026
+> **Last Updated:** April 1, 2026
 > **Status:** Active Development
-> **Total Plans:** 16 Feature Areas
+> **Total Plans:** 17 Feature Areas
 
 ---
 
@@ -30,6 +30,7 @@ This document serves as the master index for all planned features and enhancemen
 | 12 | TNM Prompt Engineering | Medium | High | Ready to Implement |
 | 13 | PHI/PII Protection (5-Layer) | High | Critical | **P0 Done** |
 | 14 | SEO & Architecture | Medium-High | High | **Phase 1 Done** |
+| 17 | RadInsight Intelligence (User Prefs) | Medium | High | Planned |
 
 ---
 
@@ -606,6 +607,43 @@ Currently RadIQ provides **general best practice** only — all protocols are ad
 
 ---
 
+## Plan 17: RadInsight Intelligence — User Reporting Preferences
+
+**Priority:** 17 (Smart Reporter Enhancement)
+**Complexity:** Medium
+**Estimated Effort:** Phase 1 ~5.5 hours, Phase 2 ~4 hours
+**Dependencies:** Smart Reporter (already built)
+**Status:** Planned
+
+### Summary
+Track user editing patterns (rejected placeholders, correction rejections, fill-in defaults, language edits) and inject them as preference rules into future Smart Reporter prompts. Reports progressively align with the user's reporting style without compromising clinical quality.
+
+### Architecture
+- **Storage:** `reporting_preferences` JSONB column on User model (no new tables)
+- **Injection:** ~200 token preference section appended to `unified_ai_assist()` prompt
+- **Signals:** Placeholder rejections, correction rejections, fill-in chip defaults (Phase 1); manual text-diff edits (Phase 2)
+- **Activation threshold:** 3 occurrences before a rule becomes active
+- **Guardrails:** Style/phrasing only (never clinical), 20-rule cap, 60-day staleness decay
+
+### Phases
+| Phase | Scope | Effort |
+|-------|-------|--------|
+| Phase 1 | Explicit signals (button clicks), API endpoint, prompt injection, settings UI | ~5.5 hours |
+| Phase 2 | Silent text-diff tracking for language preferences | ~4 hours |
+
+### Files Affected
+- `models.py` — Add `reporting_preferences` column
+- `app.py` — Migration block
+- `ai_smart_reporter.py` — `build_preference_section()`, inject into prompt
+- `reporting_routes.py` — `/api/smart-reporter/preferences` endpoint
+- `templates/smart_reporter.html` — JS signal capture, opt-in toast
+- `templates/settings.html` — Preferences management UI
+
+### Plan Document
+📄 **Location:** [docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md](RADINSIGHT_INTELLIGENCE_PLAN.md)
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -673,6 +711,7 @@ Phase 4: AI Transformation (Week 10-20)
 | Railway Migration | - | `docs/plans/RAILWAY_MIGRATION_PLAN.md` |
 | AI Reporting Assistant | - | `docs/plans/AI_REPORTING_ASSISTANT_PLAN.md` |
 | TNM Prompt Engineering | - | `docs/plans/TNM_PROMPT_ENGINEERING_PLAN.md` |
+| RadInsight Intelligence | - | `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md` |
 
 ---
 
@@ -699,4 +738,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-02-05 | Added TNM Prompt Engineering plan (Plan 12); fix AI workflow to produce oropharynx-quality calculators | AI Assistant |
 | 2026-03-30 | Added PHI Protection (Plan 13), SEO (Plan 14), Stripe Testing (Plan 15), RadIQ Custom Protocols idea (Plan 16) | AI Assistant |
 | 2026-03-31 | SEO Plan 14 Phase 1 complete: public preview pages for all content types, Schema.org macros, dynamic sitemap expansion, content gating | AI Assistant |
+| 2026-04-01 | Added RadInsight Intelligence plan (Plan 17); user reporting preference learning for Smart Reporter | AI Assistant |
 

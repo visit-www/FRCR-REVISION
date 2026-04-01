@@ -810,6 +810,9 @@
                                             <button class="btn btn-sm py-0 px-2" id="fillInInsertAllBtn" onclick="applyAllFillIns()" style="font-size: 0.7rem; background: var(--brand-secondary); color: #1a3a4a; font-weight: 600;">
                                                 <i class="fas fa-check-double me-1"></i>Insert All
                                             </button>
+                                            <button class="btn btn-sm py-0 px-2" id="fillInRemoveAllBtn" onclick="rejectAllFillIns()" style="font-size: 0.7rem; background: transparent; border: 1px solid #dc3545; color: #dc3545; font-weight: 600;">
+                                                <i class="fas fa-trash-alt me-1"></i>Remove All
+                                            </button>
                                             <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="document.getElementById('aiAssistFillInsSection').classList.add('d-none');" style="font-size: 0.7rem;">
                                                 <i class="fas fa-times me-1"></i>Dismiss
                                             </button>
@@ -4078,13 +4081,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var pendingCount = 0;
         state.aiAssistFillIns.forEach((fi, i) => {
             const isApplied = fi.status === 'applied';
-            if (!isApplied) pendingCount++;
+            const isRejected = fi.status === 'rejected';
+            if (!isApplied && !isRejected) pendingCount++;
 
-            html += '<div class="p-2 mb-2 rounded" style="background: #fff; border: 1px solid ' + (isApplied ? '#a8d5ba' : '#dee2e6') + ';">';
+            var borderColor = isApplied ? '#a8d5ba' : isRejected ? '#f5c6cb' : '#dee2e6';
+            html += '<div class="p-2 mb-2 rounded" style="background: #fff; border: 1px solid ' + borderColor + ';">';
             html += '<div class="d-flex align-items-center mb-1">';
             html += '<span class="fw-semibold" style="font-size: 0.8rem; color: #1a3a4a;">' + escapeHtml(fi.label) + '</span>';
             if (isApplied) {
                 html += '<span class="badge bg-success ms-2" style="font-size: 0.65rem;"><i class="fas fa-check me-1"></i>Inserted</span>';
+            } else if (isRejected) {
+                html += '<span class="badge bg-danger ms-2" style="font-size: 0.65rem;"><i class="fas fa-trash-alt me-1"></i>Removed</span>';
             }
             html += '</div>';
 
@@ -4095,6 +4102,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += '<span style="text-decoration: line-through; color: #999;">' + escapeHtml(fi.placeholder) + '</span>';
                 html += ' <i class="fas fa-arrow-right mx-1" style="font-size: 0.6rem; color: #999;"></i> ';
                 html += '<span style="background: #c8e6c9; padding: 1px 6px; border-radius: 3px; font-weight: 600;">' + escapeHtml(fi.appliedValue) + '</span>';
+                html += '</small>';
+                html += '</div>';
+            } else if (isRejected) {
+                // Show strikethrough placeholder
+                html += '<div class="mt-1">';
+                html += '<small class="d-block" style="font-size: 0.75rem;">';
+                html += '<span style="text-decoration: line-through; color: #999;">' + escapeHtml(fi.placeholder) + '</span>';
+                html += ' <i class="fas fa-arrow-right mx-1" style="font-size: 0.6rem; color: #999;"></i> ';
+                html += '<span style="color: #dc3545; font-style: italic;">removed from report</span>';
                 html += '</small>';
                 html += '</div>';
             } else {
@@ -4118,6 +4134,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += '<input type="text" class="form-control" id="fillInInput_' + i + '" placeholder="' + placeholder + '" style="font-size: 0.8rem; border-radius: 20px 0 0 20px;" onkeydown="if(event.key===\'Enter\'){event.preventDefault();applyFillInFromInput(' + i + ')}">';
                 html += '<button class="btn btn-sm btn-brand-neutral" onclick="applyFillInFromInput(' + i + ')" style="font-size: 0.75rem; border-radius: 0 20px 20px 0;"><i class="fas fa-arrow-right me-1"></i>Insert</button>';
                 html += '</div>';
+                // Remove button
+                html += '<div class="mt-2 text-end">';
+                html += '<button class="btn btn-sm py-0 px-2" onclick="rejectFillIn(' + i + ')" style="font-size: 0.7rem; color: #dc3545; border: 1px solid #dc3545; background: transparent; border-radius: 20px;"><i class="fas fa-trash-alt me-1"></i>Remove from report</button>';
+                html += '</div>';
             }
             html += '</div>';
         });
@@ -4133,16 +4153,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (inp) inp.value = savedInputs[i];
         });
 
-        // Show/hide Insert All button based on pending count
+        // Show/hide Insert All / Remove All buttons based on pending count
         var insertAllBtn = document.getElementById('fillInInsertAllBtn');
         if (insertAllBtn) {
             insertAllBtn.style.display = pendingCount > 0 ? '' : 'none';
+        }
+        var removeAllBtn = document.getElementById('fillInRemoveAllBtn');
+        if (removeAllBtn) {
+            removeAllBtn.style.display = pendingCount > 0 ? '' : 'none';
         }
     }
 
     window.applyFillIn = function(index, value) {
         const fi = state.aiAssistFillIns[index];
-        if (!fi || fi.status === 'applied' || !value) return;
+        if (!fi || fi.status === 'applied' || fi.status === 'rejected' || !value) return;
 
         // Save undo state for PACS
         var output = document.getElementById('editorOutput');
@@ -4164,11 +4188,11 @@ document.addEventListener('DOMContentLoaded', function() {
         renderFillIns();
         showToast('Inserted: ' + fi.label + ' \u2192 ' + value, 'success');
 
-        // Check if all fill-ins are applied
-        var allApplied = state.aiAssistFillIns.every(function(f) { return f.status === 'applied'; });
-        if (allApplied) {
+        // Check if all fill-ins are resolved
+        var allDone = state.aiAssistFillIns.every(function(f) { return f.status === 'applied' || f.status === 'rejected'; });
+        if (allDone) {
             setTimeout(function() {
-                showToast('All placeholders filled!', 'success');
+                showToast('All placeholders resolved!', 'success');
             }, 500);
         }
     };
@@ -4198,7 +4222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var pending = [];
         var missing = [];
         state.aiAssistFillIns.forEach(function(fi, i) {
-            if (fi.status === 'applied') return;
+            if (fi.status === 'applied' || fi.status === 'rejected') return;
             var input = document.getElementById('fillInInput_' + i);
             var value = input ? input.value.trim() : '';
             if (value) {
@@ -4240,10 +4264,100 @@ document.addEventListener('DOMContentLoaded', function() {
         renderFillIns();
         showToast(pending.length + ' placeholder(s) filled.', 'success');
 
-        var allApplied = state.aiAssistFillIns.every(function(f) { return f.status === 'applied'; });
-        if (allApplied) {
-            setTimeout(function() { showToast('All placeholders filled!', 'success'); }, 500);
+        var allDone = state.aiAssistFillIns.every(function(f) { return f.status === 'applied' || f.status === 'rejected'; });
+        if (allDone) {
+            setTimeout(function() { showToast('All placeholders resolved!', 'success'); }, 500);
         }
+    };
+
+    // Remove a placeholder from text, cleaning up surrounding measurement context
+    // e.g. "perforation measuring [___ mm] is noted." → "perforation is noted."
+    function _removePlaceholderCleanly(elId, placeholder) {
+        var el = document.getElementById(elId);
+        if (!el || !placeholder) return false;
+        var text = el.value;
+        if (text.indexOf(placeholder) < 0) return false;
+
+        // Escape placeholder for regex use
+        var escaped = placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Try removing with a preceding measurement verb (measuring, measures, etc.)
+        var pattern = new RegExp('\\s*(?:measuring|measures|of approximately|approximately)\\s+' + escaped, 'g');
+        var newText = text.replace(pattern, '');
+
+        if (newText === text) {
+            // No contextual match — just remove the placeholder itself
+            newText = text.split(placeholder).join('');
+        }
+
+        // Clean up whitespace and punctuation artefacts
+        newText = newText.replace(/  +/g, ' ');       // double spaces → single
+        newText = newText.replace(/ ([.,;:)"])/g, '$1'); // space before punctuation
+        newText = newText.replace(/\(\s*\)/g, '');     // empty parentheses
+        newText = newText.replace(/ +$/gm, '');        // trailing spaces on lines
+
+        el.value = newText;
+        return true;
+    }
+
+    window.rejectFillIn = function(index) {
+        var fi = state.aiAssistFillIns[index];
+        if (!fi || fi.status === 'applied' || fi.status === 'rejected') return;
+
+        // Save undo state
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) _savePacsUndo(output);
+        var input = document.getElementById('editorInput');
+        if (input && input.value) _saveDraftUndo(input);
+
+        // Remove placeholder cleanly from both textareas
+        _removePlaceholderCleanly('editorOutput', fi.placeholder);
+        _removePlaceholderCleanly('editorInput', fi.placeholder);
+
+        // Update state
+        var outputEl = document.getElementById('editorOutput');
+        var inputEl = document.getElementById('editorInput');
+        if (outputEl) { state.outputText = outputEl.value; autoResizeTextarea(outputEl); }
+        if (inputEl) { state.inputText = inputEl.value; autoResizeTextarea(inputEl); }
+
+        fi.status = 'rejected';
+        renderFillIns();
+        showToast('Removed: ' + fi.label, 'info');
+
+        var allDone = state.aiAssistFillIns.every(function(f) { return f.status === 'applied' || f.status === 'rejected'; });
+        if (allDone) {
+            setTimeout(function() { showToast('All placeholders resolved!', 'success'); }, 500);
+        }
+    };
+
+    window.rejectAllFillIns = function() {
+        var pending = state.aiAssistFillIns.filter(function(fi) { return fi.status !== 'applied' && fi.status !== 'rejected'; });
+        if (pending.length === 0) {
+            showToast('No pending placeholders to remove.', 'info');
+            return;
+        }
+
+        // Single undo save before batch
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) _savePacsUndo(output);
+        var input = document.getElementById('editorInput');
+        if (input && input.value) _saveDraftUndo(input);
+
+        // Remove all pending placeholders
+        pending.forEach(function(fi) {
+            _removePlaceholderCleanly('editorOutput', fi.placeholder);
+            _removePlaceholderCleanly('editorInput', fi.placeholder);
+            fi.status = 'rejected';
+        });
+
+        // Update state
+        var outputEl = document.getElementById('editorOutput');
+        var inputEl = document.getElementById('editorInput');
+        if (outputEl) { state.outputText = outputEl.value; autoResizeTextarea(outputEl); }
+        if (inputEl) { state.inputText = inputEl.value; autoResizeTextarea(inputEl); }
+
+        renderFillIns();
+        showToast(pending.length + ' placeholder(s) removed from report.', 'info');
     };
 
     window.dismissAiAssist = function() {

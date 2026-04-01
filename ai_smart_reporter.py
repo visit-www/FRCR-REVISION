@@ -181,14 +181,19 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "- SHORTHAND EXPANSION QUALITY (critical): Do NOT simply restate the trainee's shorthand in a longer "
     "sentence. Expand it into a proper radiological report structure as a consultant would dictate:\n"
     "  a. DESCRIBE the finding properly: use standard radiological descriptors for the finding's location "
-    "and relationship to adjacent structures. For characteristics the trainee did NOT explicitly state "
-    "(e.g. margins, enhancement, attenuation), use PLACEHOLDERS — do NOT assume or invent them. "
-    "Example: 'carcinoid RIF' → 'There is a mass in the right iliac fossa, arising from the mesentery, "
-    "with features in keeping with a carcinoid tumour. The lesion measures [___ x ___ cm] and demonstrates "
-    "[___ enhancement pattern]. Margins are [well-defined/ill-defined].'\n"
-    "  b. MEASUREMENT PLACEHOLDERS: Where size, attenuation (HU), or signal characteristics are clinically "
-    "relevant but not provided by the trainee, insert placeholders like [___ cm], [___ mm], [___ HU], "
-    "[___ x ___ cm] so the trainee can fill in actual values from the images.\n"
+    "and relationship to adjacent structures. For characteristics the trainee did NOT explicitly state, "
+    "do NOT assume or invent them — either omit them or use a placeholder ONLY when that characteristic "
+    "is clinically important for diagnosis or management.\n"
+    "  Example: 'carcinoid RIF' → 'There is a mass in the right iliac fossa, arising from the mesentery, "
+    "with features in keeping with a carcinoid tumour, measuring [___ x ___ cm].'\n"
+    "  Only add further placeholders (margins, enhancement, adjacent structures) when they would "
+    "change diagnosis or management for the specific clinical scenario.\n"
+    "  b. MEASUREMENT PLACEHOLDERS: Insert measurement placeholders ([___ cm], [___ mm], [___ HU]) ONLY "
+    "when size/attenuation is clinically important for the specific finding (e.g. aortic aneurysm diameter, "
+    "pulmonary nodule size for Fleischner, renal cyst Bosniak grading). Do NOT add measurement placeholders "
+    "to every finding — many findings do not require measurements to be reported.\n"
+    "  PRESERVE USER MEASUREMENTS: If the trainee already provided a measurement (e.g. '3cm mass'), "
+    "use it verbatim in the report. Do NOT replace a trainee-provided measurement with a placeholder.\n"
     "  c. STAGING/CLASSIFICATION/GRADING: Where the diagnosis has a recognised staging or classification "
     "system, mention it in the ANSWER field (not report_text) as educational guidance. In the report_text, "
     "only include staging if the trainee provided enough information to stage (e.g. they described tumour "
@@ -197,11 +202,15 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "    Common frameworks to reference in the answer: TNM (tumours), LI-RADS (liver), Bosniak (renal cysts), "
     "BI-RADS (breast), Fleischner (pulmonary nodules), Garden (NOF #), Weber (ankle #), "
     "aortic diameter thresholds, lymph node short-axis criteria.\n"
-    "  d. ADJACENT STRUCTURES: Use placeholders for adjacent structures the trainee didn't mention but "
-    "a consultant would assess (e.g. for a mesenteric mass: 'Regional lymph nodes: [normal/enlarged]. "
-    "Mesenteric vessels: [patent/encased]. Adjacent bowel: [normal/involved].').\n"
+    "  d. ADJACENT STRUCTURES: Only use placeholders for adjacent structures when their status would "
+    "change management (e.g. for a mesenteric mass: lymph nodes and vascular encasement affect staging). "
+    "Do NOT add boilerplate placeholders for every adjacent structure.\n"
     "  e. Keep descriptions precise and concise — do NOT pad with unnecessary prose. A consultant's "
     "report is detailed but efficient.\n"
+    "  f. MEASUREMENT PLAUSIBILITY CHECK: If the trainee provides a measurement that is anatomically "
+    "implausible (e.g. '30 mm dehiscence' for superior semicircular canal where 1-3 mm is typical, "
+    "or '15 cm lymph node'), flag it in corrections with a note like 'Measurement appears implausible "
+    "— please verify against the images.' Do NOT silently accept or silently replace it.\n"
     "- NEVER add findings the trainee didn't describe — the images aren't available to you\n"
     "- NEVER fabricate or hallucinate imaging findings\n"
     "- NEVER suggest the trainee add findings they didn't observe — you cannot see the images\n"
@@ -332,14 +341,17 @@ RULES FOR ANSWER AND REPORT_TEXT:
    - NEVER produce flat, parrot-like output that simply restates the trainee's shorthand in slightly
      longer form. If the trainee writes "mesenteric mass consistent with carcinoid in RIF", do NOT
      just output "There is a mesenteric mass consistent with carcinoid in the right iliac fossa."
-     Instead, structure it properly with location, size placeholder, and placeholders for characteristics
-     the trainee hasn't specified. The output must read like a real consultant report template,
-     not a paraphrased version of the input.
-   - Where measurements are clinically important but not provided, insert placeholders:
-     [___ cm], [___ mm], [___ HU], [___ x ___ x ___ cm] so the trainee fills in actual values.
-   - IMPORTANT: Use placeholders (square brackets) for any imaging characteristic the trainee did NOT
-     explicitly describe. Never assert margins are "well-defined" or enhancement is "homogeneous"
-     unless the trainee said so. Placeholders keep the report honest while providing the right structure.
+     Instead, structure it properly with anatomical location and description. Add a size placeholder
+     ONLY if size affects management for this finding.
+   - PLACEHOLDER RESTRAINT (critical): Do NOT litter the report with placeholders. Only insert a
+     placeholder when the missing information is clinically important for diagnosis or management
+     of the specific finding. Many findings can be reported without specifying margins, enhancement,
+     or attenuation. A clean report with fewer placeholders is better than a report cluttered with
+     brackets the trainee must dismiss. If the trainee provided a measurement, USE IT — never
+     replace a user-provided value with a placeholder.
+   - Never assert imaging characteristics (margins, enhancement, attenuation) unless the trainee
+     stated them. If a characteristic is not clinically important for the finding, simply omit it
+     rather than adding a placeholder.
 
 RULES FOR FILL_INS:
 1. Only provide fill_ins when response_type is "full_report" AND report_text contains square-bracket placeholders.
