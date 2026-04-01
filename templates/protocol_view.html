@@ -2,13 +2,13 @@
 {% from 'partials/_schema_medical.html' import educational_content %}
 
 {% block title %}{{ protocol.title }} - RadInsights{% endblock %}
-{% block meta_description %}{{ protocol.title }} — Evidence-based clinical protocol for radiology practice. {% if protocol.category %}Category: {{ protocol.category }}.{% endif %}{% endblock %}
+{% block meta_description %}{{ protocol.title }} — Evidence-based clinical guideline for radiology practice. {% if protocol.category %}Category: {{ protocol.category }}.{% endif %}{% endblock %}
 
 {% block og_title %}{{ protocol.title }} - RadInsights{% endblock %}
-{% block og_description %}Evidence-based clinical protocol: {{ protocol.title }}. Guideline-based reference for safe radiology practice.{% endblock %}
+{% block og_description %}Evidence-based clinical guideline: {{ protocol.title }}. Guideline-based reference for safe radiology practice.{% endblock %}
 
 {% block extra_schema %}
-{{ educational_content(protocol.title, 'Evidence-based clinical protocol for radiology practice', 'https://www.radinsights.xyz/radiology-protocols/view/' ~ protocol.id) }}
+{{ educational_content(protocol.title, 'Evidence-based clinical guideline for radiology practice', 'https://www.radinsights.xyz/radiology-protocols/view/' ~ protocol.id) }}
 {% endblock %}
 
 {% block tool_active_protocols %}active{% endblock %}

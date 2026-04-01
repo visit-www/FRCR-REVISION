@@ -3421,7 +3421,7 @@ class RadIQQuery(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    category = db.Column(db.String(50), nullable=False)  # gp_reply, complaint, incident, radiographer, imaging_protocol, general
+    category = db.Column(db.String(50), nullable=False)  # gp_reply, complaint, incident, radiographer, general
     question = db.Column(db.Text, nullable=False)
     response_text = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -2,7 +2,7 @@
 RadIQ AI Module — Consultant-level intelligence for radiologists.
 
 Handles GP replies, complaint responses, incident reports, radiographer
-requests, imaging protocol advice, and general clinical queries.
+requests, and general clinical queries.
 Uses shared ai_client.call_claude() for API calls.
 
 Model: Sonnet (default) — best balance of quality, speed, and cost for
@@ -23,7 +23,7 @@ class RadIQError(AIClientError):
 
 RADIQ_CATEGORIES = {
     'gp_reply', 'complaint', 'incident',
-    'radiographer', 'imaging_protocol', 'general',
+    'radiographer', 'general',
 }
 
 # ── System Prompt ──────────────────────────────────────────────────────
@@ -183,43 +183,17 @@ CATEGORY_PROMPTS = {
         "Cite RCR, NPSA, NHS Improvement, ACR, or ESUR guidelines as appropriate. "
         "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
-    'imaging_protocol': (
-        "TASK: Provide a practical, copy-ready imaging protocol suitable for daily consultant vetting.\n"
-        "STYLE: Concise, actionable, radiographer-ready. Written as a consultant would brief a "
-        "radiographer — not a textbook chapter. No padding or filler text.\n\n"
-        "CRITICAL: If the user mentions a NAMED protocol (e.g. Camp Bastion, Fleischner, "
-        "polytrauma, triple-rule-out, CTPA), provide the ACTUAL published protocol parameters — "
-        "not a generic approximation. Include the original source and year.\n\n"
-        "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Justification</h5> — 1-2 sentences: why this modality and protocol. "
-        "Reference iRefer code if applicable.\n"
-        "2. <h5>Protocol</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Present as a concise table or bullet list a radiographer can follow directly:\n"
-        "   • Coverage, kVp, mAs, pitch, slice thickness, reconstructions\n"
-        "   • Sequences (MRI) with plane, weighting, fat-sat\n"
-        "   • Contrast: agent, volume, rate, delay (seconds), phases\n"
-        "   • Reformats required\n"
-        "   If a named protocol is requested, give its EXACT published parameters.\n"
-        "3. <h5>Key Points</h5> — 3-5 bullet points: practical tips, common pitfalls, "
-        "contraindications, patient prep if non-standard. Only what matters clinically.\n"
-        "4. <h5>References</h5> — Cite specific publications with year (e.g. "
-        "'RCR iRefer 9th edition, 2024', 'ACR Appropriateness Criteria: Blunt Chest Trauma, "
-        "2022', 'ESUR Contrast Media Guidelines v10.0, 2018'). "
-        "If the protocol has a seminal publication, cite it with journal and year.\n"
-    ),
     'radiographer': (
-        "TASK: Respond to a radiographer's clinical or protocol query.\n"
-        "STYLE: Collegial, technically precise, and educational. "
-        "Tone of a supportive consultant colleague, not directive. "
-        "Acknowledge the radiographer's clinical expertise and scope of practice.\n\n"
+        "TASK: Answer a radiographer's query concisely.\n"
+        "STYLE: Brief and direct — like a quick corridor conversation with a consultant. "
+        "Collegial tone. 2-3 short paragraphs max for the answer. "
+        "Do NOT over-explain or lecture.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Clinical Context</h5> — Brief background and clinical relevance.\n"
-        "2. <h5>Rationale</h5> — Clinical reasoning so the radiographer understands the 'why'. "
-        "Reference IR(ME)R regulations and employer's procedures where relevant.\n"
-        "3. <h5>Practical Guidance</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Actionable protocol parameters, technique guidance, or decision support.\n"
-        "4. <h5>References</h5> — 2-4 guideline-level references. "
-        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
+        "1. <h5>Answer</h5> — Wrap in <div class='radiq-suggested-response'>. "
+        "Direct answer with a short, plain-language rationale (the 'why' in 1-2 sentences). "
+        "Include any actionable guidance (parameters, technique tips, decision thresholds) inline.\n"
+        "2. <h5>References</h5> — 1-2 references only. "
+        "Cite specific publications with author/org, title, year. Include clickable URLs where known.\n"
     ),
     'general': (
         "TASK: Provide balanced clinical advisory on a radiology question.\n"

@@ -1,16 +1,16 @@
 {% extends 'base.html' %}
 {% from 'partials/_schema_medical.html' import collection_page %}
 
-{% block title %}Radiology Protocols — Safety, Quality & Clinical Guidelines | RadInsights{% endblock %}
-{% block meta_description %}Evidence-based clinical protocols for radiology practice. Contrast safety, emergency imaging, MRI protocols, and post-procedural guidelines — essential radiology education resources.{% endblock %}
+{% block title %}Clinical Guidelines & Safety — Radiology Reference | RadInsights{% endblock %}
+{% block meta_description %}Evidence-based clinical guidelines for radiology practice. Contrast safety, emergency imaging pathways, MRI safety, radiation protection, and procedural checklists.{% endblock %}
 
-{% block og_title %}Radiology Protocols & Safety Guidelines | RadInsights{% endblock %}
-{% block og_description %}Evidence-based clinical protocols covering contrast safety, emergency imaging, MRI protocols, radiation protection — essential for radiology education and safe practice.{% endblock %}
+{% block og_title %}Clinical Guidelines & Safety | RadInsights{% endblock %}
+{% block og_description %}Evidence-based clinical guidelines covering contrast safety, emergency imaging, MRI safety, radiation protection — essential for radiology education and safe practice.{% endblock %}
 
 {% block extra_schema %}
 {{ collection_page(
-    'Radiology Protocols, Safety & Quality',
-    'Evidence-based clinical protocols for radiologists covering safety, emergency imaging, and procedures.',
+    'Clinical Guidelines, Safety & Quality',
+    'Evidence-based clinical guidelines for radiologists covering safety, emergency imaging, and procedures.',
     'https://www.radinsights.xyz/radiology-protocols',
     protocols|length
 ) }}
@@ -20,7 +20,7 @@
 {% block mobile_active_protocols %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
-<li class="breadcrumb-item active text-white-50">Protocols & Safety</li>
+<li class="breadcrumb-item active text-white-50">Clinical Guidelines & Safety</li>
 {% endblock %}
 
 {% block content %}
@@ -58,8 +58,8 @@
 
             <div class="text-center mb-4">
                 <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: #5E899E;"></i>
-                <h2 class="mt-2 mb-1">Radiology Protocols, Safety & Quality</h2>
-                <p class="text-muted">Evidence-based protocols covering emergency pathways, contrast and MRI safety, radiation protection, interventional procedures, and special populations</p>
+                <h2 class="mt-2 mb-1">Clinical Guidelines, Safety & Quality</h2>
+                <p class="text-muted">Evidence-based guidelines covering emergency pathways, contrast and MRI safety, radiation protection, interventional procedures, and special populations</p>
             </div>
 
             <!-- Clinical Disclaimer -->
