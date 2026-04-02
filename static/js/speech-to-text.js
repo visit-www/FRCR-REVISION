@@ -142,6 +142,7 @@
         // "scratch that" / "delete" — remove last inserted text, or selected text
         if (text === 'scratch that' || text === 'delete' || text === 'undo'
             || text === 'delete that' || text === 'remove that') {
+            textarea.focus();
             // If there's a selection, remove it
             var selStart = textarea.selectionStart;
             var selEnd = textarea.selectionEnd;
@@ -221,6 +222,9 @@
      * @param {boolean} raw - if true, insert exactly (no trimming/separator)
      */
     function _insertAtCursor(textarea, text, raw) {
+        // Safari requires focus for programmatic value changes to be visible
+        textarea.focus();
+
         var pos = _cursorPos !== null ? _cursorPos : textarea.value.length;
         // Clamp to current length (in case text was edited externally)
         if (pos > textarea.value.length) pos = textarea.value.length;
@@ -303,7 +307,7 @@
 
         // Save cursor position at the moment dictation starts
         _activeTextarea = textarea;
-        _cursorPos = textarea.selectionStart || textarea.value.length;
+        _cursorPos = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
 
         var interimDiv = null;
 
