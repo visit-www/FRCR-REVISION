@@ -416,9 +416,19 @@
         recognition.interimResults = true;
         recognition.lang = 'en-GB';
 
-        // Save cursor position at the moment dictation starts
+        // Save cursor position and track it live during dictation
         _activeTextarea = textarea;
         _cursorPos = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
+
+        // Update _cursorPos when user clicks or arrow-keys inside textarea
+        function _trackCursor() {
+            if (_activeTextarea === textarea) {
+                _cursorPos = textarea.selectionStart;
+            }
+        }
+        textarea.addEventListener('click', _trackCursor);
+        textarea.addEventListener('keyup', _trackCursor);
+        textarea._dictationTracker = _trackCursor;
 
         var interimDiv = null;
         var currentInterim = ''; // Track current interim text
@@ -597,6 +607,12 @@
             _activeBtn.classList.remove('dictation-active');
             _activeBtn.title = 'Click to dictate';
             _activeBtn = null;
+        }
+        // Remove cursor tracking listener
+        if (_activeTextarea && _activeTextarea._dictationTracker) {
+            _activeTextarea.removeEventListener('click', _activeTextarea._dictationTracker);
+            _activeTextarea.removeEventListener('keyup', _activeTextarea._dictationTracker);
+            delete _activeTextarea._dictationTracker;
         }
         _activeTextarea = null;
         _cursorPos = null;
