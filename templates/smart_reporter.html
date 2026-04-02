@@ -3756,12 +3756,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 goToBtn.classList.add('d-none');
             }
-            // Auto-scroll to answer box so user sees the response
-            setTimeout(function() {
-                var rect = answerSection.getBoundingClientRect();
-                var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                window.scrollTo({ top: rect.top + scrollTop - 20, behavior: 'smooth' });
-            }, 100);
         } else {
             answerSection.classList.add('d-none');
         }
@@ -3825,16 +3819,22 @@ document.addEventListener('DOMContentLoaded', function() {
         repositionAnswerBox();
         repositionCorrections();
 
-        // Focus: if PACS was just populated, scroll there; else scroll to answer box
+        // Focus: scroll to answer box after DOM fully settles
         setTimeout(function() {
+            var target = null;
             var os = document.getElementById('outputSection');
             var pacsVisible = os && !os.classList.contains('d-none');
             if (pacsVisible) {
-                os.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target = os;
             } else if (!answerSection.classList.contains('d-none')) {
-                answerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target = answerSection;
             }
-        }, 200);
+            if (target) {
+                var rect = target.getBoundingClientRect();
+                var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                window.scrollTo({ top: rect.top + scrollTop - 20, behavior: 'smooth' });
+            }
+        }, 500);
     }
 
     function renderInsights() {
