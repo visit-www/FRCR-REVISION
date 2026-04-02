@@ -235,16 +235,22 @@ def vetting_analyse():
                  input_summary=referral_text[:500],
                  output_tokens=result.get('output_tokens'))
 
-    # Search for matching protocols in library
-    study_type = result.get('study_type', '')
-    modality = result.get('modality', '')
-    body_section = result.get('body_section') or None
-    matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
-                                          body_section=body_section)
+    # Quick clean mode: skip protocol/algorithm search (saves DB queries)
+    quick_clean = data.get('quick_clean', False)
+    matched_protocols = []
+    matched_algorithms = []
 
-    # Search for matching clinical algorithms
-    cleaned_text = result.get('cleaned_clinical_text', '')
-    matched_algorithms = _search_algorithms(cleaned_text, body_section=body_section)
+    if not quick_clean:
+        # Search for matching protocols in library
+        study_type = result.get('study_type', '')
+        modality = result.get('modality', '')
+        body_section = result.get('body_section') or None
+        matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
+                                              body_section=body_section)
+
+        # Search for matching clinical algorithms
+        cleaned_text = result.get('cleaned_clinical_text', '')
+        matched_algorithms = _search_algorithms(cleaned_text, body_section=body_section)
 
     return jsonify({
         'success': True,

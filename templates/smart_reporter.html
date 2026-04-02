@@ -515,7 +515,7 @@
                             <button class="btn btn-sm report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
                                 <i class="fas fa-envelope me-1"></i>Email Pt
                             </button>
-                            <button class="btn btn-sm report-action-btn" onclick="openVettingModal()" style="border-color:#dc3545;color:#dc3545;">
+                            <button class="btn btn-sm report-action-btn" data-action="vetting" onclick="openVettingModal()" style="border-color:#dc3545;color:#dc3545;">
                                 <i class="fas fa-clipboard-check me-1"></i>Vet
                             </button>
                         </div>
@@ -2378,8 +2378,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Toggle action buttons (report actions + finalize)
+        // Toggle action buttons (report actions + finalize) — skip vetting btn
         document.querySelectorAll('.report-action-btn, #btnFinalizeToolbar').forEach(function(btn) {
+            if (btn.dataset.action === 'vetting') return;
             if (hasContent) {
                 btn.disabled = false;
                 btn.style.opacity = '';
@@ -3146,8 +3147,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const meta = REPORT_ACTION_META[action];
         if (!meta) return;
 
-        // Disable all action buttons during request
-        document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = true);
+        // Disable all action buttons during request (skip vetting)
+        document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = true; });
         var _loadEl = document.getElementById('askClaudeLoading');
         var _progBar = _loadEl.querySelector('.ai-loading-progress');
         if (_progBar) { _progBar.style.animation = 'none'; _progBar.offsetHeight; _progBar.style.animation = ''; }
@@ -3179,7 +3180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             activeAIController = null;
-            document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = false);
+            document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = false; });
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
             if (data.upgrade_required) {
@@ -3271,7 +3272,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             activeAIController = null;
-            document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = false);
+            document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = false; });
             document.getElementById('askClaudeLoading').classList.add('d-none');
             if (err.name === 'AbortError') {
                 showToast('Request cancelled.', 'info');
@@ -4519,8 +4520,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('btnReviewReport2'),
             document.getElementById('btnAskClaude'),
         ];
-        // Also get all mirror Ask Claude buttons and report action buttons
+        // Also get all mirror Ask Claude buttons and report action buttons (skip vetting)
         document.querySelectorAll('.sr-ask-mirror-btn, .report-action-btn, #btnFinalizeToolbar').forEach(function(b) {
+            if (b.dataset && b.dataset.action === 'vetting') return;
             btns.push(b);
         });
         var askInput = document.getElementById('askClaudeInput');

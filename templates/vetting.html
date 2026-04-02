@@ -64,9 +64,15 @@
                         </div>
                     </div>
 
-                    <button id="analyseBtn" class="btn btn-brand-primary w-100" onclick="analyseReferral()">
-                        <i class="fas fa-search-plus me-2"></i>Analyse &amp; Vet
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button id="analyseBtn" class="btn btn-brand-primary flex-grow-1" onclick="analyseReferral()">
+                            <i class="fas fa-search-plus me-2"></i>Analyse &amp; Vet
+                        </button>
+                        <button id="quickCleanBtn" class="btn btn-brand-neutral flex-grow-1" onclick="analyseReferral(true)">
+                            <i class="fas fa-broom me-2"></i>Quick Clean
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1"><strong>Analyse &amp; Vet</strong> — full protocol matching. <strong>Quick Clean</strong> — clean request + safety checks only.</small>
 
                     <!-- Spinner -->
                     <div id="analyseSpinner" class="text-center mt-3 d-none">
@@ -188,6 +194,19 @@
                 </div>
             </div>
 
+            <!-- Quick Clean output (shown only in quick clean mode) -->
+            <div id="quickCleanOutput" class="card mb-3 d-none" style="border-left: 4px solid #5E899E;">
+                <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
+                    <strong><i class="fas fa-clipboard-check me-2" style="color: #5E899E;"></i>Cleaned Request</strong>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyQuickClean()" title="Copy">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="quickCleanText" class="mb-0" style="white-space: pre-wrap;"></div>
+                </div>
+            </div>
+
             <button class="btn btn-sm btn-outline-secondary" onclick="backToScene1()">
                 <i class="fas fa-arrow-left me-1"></i>Back to Referral
             </button>
@@ -228,7 +247,7 @@
                         <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
                             <strong><i class="fas fa-file-medical-alt me-2" style="color: #5E899E;"></i>Clinical Details</strong>
                             <div>
-                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('clinicalDetails')" title="Copy">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copySection('clinicalDetailsOutput')" title="Copy">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -400,6 +419,7 @@ let _selectedModalityHint = '';
 let _safetyResponses = {};
 let _protocolSource = null; // 'admin', 'personal', 'ai_generated'
 let _flagResponses = {}; // {index: {status: 'dismissed'|'resolved', note: ''}}
+let _quickCleanMode = false;
 
 // Friendly labels for safety check display
 const _PREGNANCY_LABELS = { 'not_pregnant': 'Not applicable', 'possible': 'Possible pregnancy', 'pregnant': 'Pregnant', 'N/A': 'N/A' };
@@ -410,7 +430,13 @@ function showScene(n) {
     document.getElementById('scene1').classList.toggle('d-none', n !== 1);
     document.getElementById('scene2').classList.toggle('d-none', n !== 2);
     document.getElementById('scene3').classList.toggle('d-none', n !== 3);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll to the scene element itself (not page top)
+    var target = document.getElementById('scene' + n);
+    if (target) {
+        setTimeout(function() {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+    }
 }
 
 function backToScene1() {
@@ -427,6 +453,7 @@ function newVetting() {
     _safetyResponses = {};
     _flagResponses = {};
     _protocolSource = null;
+    _quickCleanMode = false;
     document.getElementById('referralText').value = '';
     document.querySelectorAll('.modality-btn').forEach(b => b.classList.remove('active'));
     showScene(1);
@@ -442,13 +469,17 @@ document.querySelectorAll('.modality-btn').forEach(btn => {
 });
 
 // ── Scene 1: Analyse ──
-async function analyseReferral() {
+async function analyseReferral(quickClean) {
     const text = document.getElementById('referralText').value.trim();
     if (!text) { alert('Please enter the clinical referral text.'); return; }
 
+    _quickCleanMode = !!quickClean;
+
     const btn = document.getElementById('analyseBtn');
+    const btn2 = document.getElementById('quickCleanBtn');
     const spinner = document.getElementById('analyseSpinner');
     btn.disabled = true;
+    btn2.disabled = true;
     spinner.classList.remove('d-none');
 
     try {
@@ -458,6 +489,7 @@ async function analyseReferral() {
             body: JSON.stringify({
                 referral_text: text,
                 modality_hint: _selectedModalityHint || null,
+                quick_clean: _quickCleanMode,
             }),
         });
         const data = await resp.json();
@@ -477,6 +509,7 @@ async function analyseReferral() {
         console.error(err);
     } finally {
         btn.disabled = false;
+        btn2.disabled = false;
         spinner.classList.add('d-none');
     }
 }
@@ -556,11 +589,31 @@ function populateScene2() {
     // Dynamic AI checks (flags that need input)
     document.getElementById('dynamicChecksArea').innerHTML = '';
 
-    // Protocol matches
-    populateProtocolMatches();
+    // Quick clean mode: hide protocol/algorithm sections, show output area
+    document.getElementById('protocolMatchArea').classList.toggle('d-none', _quickCleanMode);
+    document.getElementById('algorithmMatchArea').classList.toggle('d-none', _quickCleanMode);
+    document.getElementById('continueBtn').classList.toggle('d-none', _quickCleanMode);
+    document.getElementById('quickCleanOutput').classList.toggle('d-none', !_quickCleanMode);
 
-    // Algorithm matches
-    populateAlgorithmMatches();
+    if (_quickCleanMode) {
+        _selectedProtocol = null;
+        _protocolSource = null;
+        updateQuickCleanOutput();
+        // Live-update output when safety inputs change
+        ['egfrInput', 'pregnancyInput', 'allergyInput'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('change', updateQuickCleanOutput);
+                el.addEventListener('input', updateQuickCleanOutput);
+            }
+        });
+    } else {
+        // Protocol matches
+        populateProtocolMatches();
+
+        // Algorithm matches
+        populateAlgorithmMatches();
+    }
 }
 
 function _getValidationConfig() {
@@ -812,6 +865,7 @@ function skipSafetyCheck(checkName) {
         const btn = row.querySelector('.vetting-safety-skip');
         if (btn) { btn.classList.add('btn-secondary'); btn.classList.remove('btn-outline-secondary'); }
     }
+    updateQuickCleanOutput();
 }
 
 // ── Flag interaction ──
@@ -826,6 +880,7 @@ function dismissFlag(idx) {
             <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="undismissFlag(${idx})" title="Undo"><i class="fas fa-undo"></i></button>
         </div>
     `;
+    updateQuickCleanOutput();
 }
 
 function undismissFlag(idx) {
@@ -847,6 +902,7 @@ function undismissFlag(idx) {
             <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="resolveFlag(${idx})"><i class="fas fa-check me-1"></i>Confirm</button>
         </div>
     `;
+    updateQuickCleanOutput();
 }
 
 function resolveFlag(idx) {
@@ -867,6 +923,35 @@ function resolveFlag(idx) {
             <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="undismissFlag(${idx})" title="Edit"><i class="fas fa-pen"></i></button>
         </div>
     `;
+    updateQuickCleanOutput();
+}
+
+// ── Quick Clean output ──
+function updateQuickCleanOutput() {
+    if (!_quickCleanMode || !_analysisResult) return;
+    const enriched = _buildEnrichedClinicalText();
+    const sr = _collectSafetyResponses();
+    let parts = [];
+    parts.push(enriched);
+
+    // Safety summary line
+    const safetyBits = [];
+    if (sr.egfr !== undefined && sr.egfr !== null) safetyBits.push(`eGFR: ${sr.egfr}`);
+    if (sr.pregnancy) safetyBits.push(`Pregnancy: ${_PREGNANCY_LABELS[sr.pregnancy] || sr.pregnancy}`);
+    if (sr.allergy) safetyBits.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
+    if (safetyBits.length) parts.push('Safety: ' + safetyBits.join(', '));
+
+    document.getElementById('quickCleanText').textContent = parts.join('\n');
+}
+
+function copyQuickClean() {
+    const text = document.getElementById('quickCleanText').textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('[onclick="copyQuickClean()"]');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    });
 }
 
 function _collectSafetyResponses() {
@@ -884,6 +969,23 @@ function _collectSafetyResponses() {
         responses.allergy = document.getElementById('allergyInput').value || null;
     }
     return responses;
+}
+
+// ── Build enriched clinical text (original + resolved flag responses) ──
+function _buildEnrichedClinicalText() {
+    let text = _analysisResult.cleaned_clinical_text || '';
+    const aiFlags = (_analysisResult && _analysisResult.ai_flags) || [];
+    const additions = [];
+    Object.keys(_flagResponses).forEach(idx => {
+        const resp = _flagResponses[idx];
+        if (resp.status === 'resolved' && resp.note && aiFlags[idx]) {
+            additions.push(resp.note);
+        }
+    });
+    if (additions.length) {
+        text = text.replace(/\.\s*$/, '') + '. ' + additions.join('. ') + '.';
+    }
+    return text;
 }
 
 // ── Scene 2 → Scene 3 transition ──
@@ -910,7 +1012,7 @@ async function continueToProtocol() {
         const payload = {
             study_type: _analysisResult.study_type,
             modality: _analysisResult.modality,
-            clinical_context: _analysisResult.cleaned_clinical_text,
+            clinical_context: _buildEnrichedClinicalText(),
         };
         if (_selectedAlgorithmContext) {
             payload.algorithm_context = _selectedAlgorithmContext;
@@ -959,8 +1061,8 @@ function renderScene3(protocol) {
         text.innerHTML = '<strong>AI Generated</strong> — Verify parameters for your department';
     }
 
-    // Build clinical details (cleaned text + safety responses)
-    let clinicalHtml = '<div class="mb-2">' + _escapeHtml(_analysisResult.cleaned_clinical_text) + '</div>';
+    // Build clinical details (enriched text + safety responses + confirmed findings)
+    let clinicalHtml = '<div class="mb-2">' + _escapeHtml(_buildEnrichedClinicalText()) + '</div>';
     const sr = _safetyResponses;
     const safetyParts = [];
     if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
@@ -972,7 +1074,7 @@ function renderScene3(protocol) {
         clinicalHtml += '</div>';
     }
 
-    // Append resolved AI flags as confirmed findings
+    // Confirmed findings from resolved AI flags
     const resolvedFlags = [];
     const aiFlags = (_analysisResult && _analysisResult.ai_flags) || [];
     Object.keys(_flagResponses).forEach(idx => {
@@ -1011,6 +1113,7 @@ function changeProtocol() {
     const area = document.getElementById('changeProtocolArea');
     area.classList.toggle('d-none');
     if (!area.classList.contains('d-none')) {
+        area.scrollIntoView({ behavior: 'smooth', block: 'center' });
         document.getElementById('protocolSearchInput').focus();
     }
 }
@@ -1149,7 +1252,7 @@ async function saveToLibrary() {
             body: JSON.stringify({
                 raw_clinical_text: document.getElementById('referralText').value,
                 modality_hint: _selectedModalityHint || null,
-                cleaned_clinical_text: _analysisResult.cleaned_clinical_text,
+                cleaned_clinical_text: _buildEnrichedClinicalText(),
                 study_type: _analysisResult.study_type,
                 safety_checks: _safetyResponses,
                 protocol_source: _protocolSource,

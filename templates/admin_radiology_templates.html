@@ -271,16 +271,23 @@
 <script>
 // ==================== RADIOLOGY TEMPLATE CRUD ====================
 
+var _genController = null;
+
 function generateTemplate() {
     var btn = document.getElementById('genBtn');
     var status = document.getElementById('genStatus');
     var scenario = document.getElementById('genScenario').value.trim();
     if (!scenario) { alert('Please enter a clinical scenario.'); return; }
 
+    // Cancel any in-flight request
+    if (_genController) { _genController.abort(); _genController = null; }
+    _genController = new AbortController();
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
     status.classList.remove('d-none');
-    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating template... this may take up to 60 seconds.</div>';
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating template... this may take up to 60 seconds.' +
+        ' <button type="button" class="btn btn-sm btn-outline-danger ms-2 py-0" onclick="cancelTemplateGeneration()"><i class="fas fa-times me-1"></i>Cancel</button></div>';
 
     var resources = typeof collectResources === 'function' ? collectResources('gen') : {};
 
@@ -294,9 +301,11 @@ function generateTemplate() {
             source_citation: JSON.stringify(resources),
             additional_context: document.getElementById('genContext').value,
         }),
+        signal: _genController.signal,
     })
     .then(function(r) { return r.json(); })
     .then(function(result) {
+        _genController = null;
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
         if (result.success) {
@@ -307,10 +316,22 @@ function generateTemplate() {
         }
     })
     .catch(function(err) {
+        _genController = null;
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
-        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed: ' + err + '</div>';
+        if (err.name === 'AbortError') {
+            status.innerHTML = '<div class="alert alert-warning py-2"><i class="fas fa-times-circle me-1"></i>Generation cancelled.</div>';
+        } else {
+            status.innerHTML = '<div class="alert alert-danger py-2">Generation failed: ' + err + '</div>';
+        }
     });
+}
+
+function cancelTemplateGeneration() {
+    if (_genController) {
+        _genController.abort();
+        _genController = null;
+    }
 }
 
 function viewTemplate(id) {
@@ -391,5 +412,15 @@ function deleteTemplate(id, title) {
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }
+
+// Abort generation if modal is dismissed mid-flight
+document.getElementById('generateModal').addEventListener('hidden.bs.modal', function() {
+    if (_genController) {
+        cancelTemplateGeneration();
+        var btn = document.getElementById('genBtn');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+    }
+});
 </script>
 {% endblock %}
