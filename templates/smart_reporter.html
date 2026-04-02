@@ -5839,4 +5839,31 @@ document.getElementById('vettingModal').addEventListener('hidden.bs.modal', func
 });
 </script>
 
+<!-- Voice commands for Smart Reporter -->
+<script>
+if (window.registerVoiceCommands) {
+    registerVoiceCommands({
+        'finalise':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'Finalise Report' },
+        'finalize':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'Finalise Report' },
+        'generate':     { fn: function() { if (typeof generateFullReportDirectly === 'function') generateFullReportDirectly(); }, label: 'Generate Report' },
+        'generate report': { fn: function() { if (typeof generateFullReportDirectly === 'function') generateFullReportDirectly(); }, label: 'Generate Report' },
+        'copy':         { fn: function() { if (typeof copyFinalReport === 'function') copyFinalReport(); }, label: 'Copy Report' },
+        'copy report':  { fn: function() { if (typeof copyFinalReport === 'function') copyFinalReport(); }, label: 'Copy Report' },
+        'review':       { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Quick Check' },
+        'check':        { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Quick Check' },
+        'mdt':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('mdt'); }, label: 'MDT Prep' },
+        'discuss':      { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('mdt'); }, label: 'MDT Prep' },
+        'discussion':   { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('mdt'); }, label: 'MDT Prep' },
+        'email patient':{ fn: function() { if (typeof submitReportAction === 'function') submitReportAction('email_patient'); }, label: 'Email Patient' },
+        'email doctor': { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('email_colleague'); }, label: 'Email Doctor' },
+        'vetting':      { fn: function() { if (typeof openVettingModal === 'function') openVettingModal(); }, label: 'Vetting Tool' },
+        'vet':          { fn: function() { if (typeof openVettingModal === 'function') openVettingModal(); }, label: 'Vetting Tool' },
+        'sba':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('sba'); }, label: 'SBA Question' },
+        'viva':         { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('viva'); }, label: 'Viva Question' },
+        'new report':   { fn: function() { if (typeof pasteMyReport === 'function') pasteMyReport(); }, label: 'New Report' },
+        'clear':        { fn: function() { var t = document.getElementById('editorInput'); if (t) { t.value = ''; t.dispatchEvent(new Event('input', {bubbles:true})); } }, label: 'Clear Draft' }
+    });
+}
+</script>
+
 {% endblock %}
