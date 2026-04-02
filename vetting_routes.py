@@ -36,17 +36,20 @@ def _check_vetting_rate_limit():
     return _check_ai_rate_limit('radiq')
 
 
-def _search_protocols(study_type, modality, user_id=None):
+def _search_protocols(study_type, modality, user_id=None, body_section=None):
     """Search ImagingProtocol by title/keywords/shorthand/indications/modality.
 
-    Returns personal matches first, then admin published.
-    Searches the original query as-is (e.g. "CTPA") AND individual words.
+    Returns personal matches first, then admin published, scored by relevance.
+    When body_section is available, uses it as a hard filter to narrow results.
+    Individual-word ILIKE is only used when body_section constrains or query is single-word.
     """
     results = []
 
     # Normalise search terms
     raw_query = study_type.replace('_', ' ').strip() if study_type else ''
     words = [w for w in raw_query.split() if len(w) >= 2]
+    # Only do individual word matching when body_section constrains results or single-word query
+    use_word_matching = bool(body_section) or len(words) <= 1
 
     if not raw_query and not modality:
         return results
@@ -55,6 +58,9 @@ def _search_protocols(study_type, modality, user_id=None):
         """Apply ILIKE filters across all searchable text columns."""
         if modality:
             query_obj = query_obj.filter(model_cls.modality.ilike(modality))
+
+        if body_section:
+            query_obj = query_obj.filter(model_cls.body_section.ilike(f'%{body_section}%'))
 
         text_filters = []
 
@@ -65,12 +71,13 @@ def _search_protocols(study_type, modality, user_id=None):
             text_filters.append(model_cls.shorthand_text.ilike(f'%{raw_query}%'))
             text_filters.append(model_cls.indication_json.ilike(f'%{raw_query}%'))
 
-        # Also match individual words (catches multi-word queries)
-        for word in words[:5]:
-            text_filters.append(model_cls.title.ilike(f'%{word}%'))
-            text_filters.append(model_cls.keywords.ilike(f'%{word}%'))
-            text_filters.append(model_cls.shorthand_text.ilike(f'%{word}%'))
-            text_filters.append(model_cls.indication_json.ilike(f'%{word}%'))
+        # Individual word matching only when constrained by body_section or single word
+        if use_word_matching:
+            for word in words[:5]:
+                text_filters.append(model_cls.title.ilike(f'%{word}%'))
+                text_filters.append(model_cls.keywords.ilike(f'%{word}%'))
+                text_filters.append(model_cls.shorthand_text.ilike(f'%{word}%'))
+                text_filters.append(model_cls.indication_json.ilike(f'%{word}%'))
 
         if text_filters:
             query_obj = query_obj.filter(db.or_(*text_filters))
@@ -93,6 +100,21 @@ def _search_protocols(study_type, modality, user_id=None):
         if p.id not in seen_ids:
             results.append(p)
 
+    # Score and sort by relevance
+    def _score(p):
+        s = 0
+        title_lower = (p.title or '').lower()
+        query_lower = raw_query.lower()
+        if query_lower and query_lower in title_lower:
+            s += 10  # Full phrase title match
+        for w in words:
+            if w.lower() in title_lower:
+                s += 2  # Per-word title match
+        if p.is_emergency:
+            s += 1
+        return s
+
+    results.sort(key=lambda p: _score(p), reverse=True)
     return results[:10]
 
 
@@ -148,7 +170,8 @@ def _search_algorithms(text, body_section=None):
 @login_required
 def vetting_page():
     """Main vetting workflow page."""
-    return render_template('vetting.html')
+    is_embed = request.args.get('embed') == '1'
+    return render_template('vetting.html', is_embed=is_embed)
 
 
 @vetting_bp.route('/vetting/protocols')
@@ -215,11 +238,13 @@ def vetting_analyse():
     # Search for matching protocols in library
     study_type = result.get('study_type', '')
     modality = result.get('modality', '')
-    matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id)
+    body_section = result.get('body_section') or None
+    matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
+                                          body_section=body_section)
 
     # Search for matching clinical algorithms
     cleaned_text = result.get('cleaned_clinical_text', '')
-    matched_algorithms = _search_algorithms(cleaned_text)
+    matched_algorithms = _search_algorithms(cleaned_text, body_section=body_section)
 
     return jsonify({
         'success': True,

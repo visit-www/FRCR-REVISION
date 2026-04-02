@@ -5,12 +5,18 @@
 {% block mobile_active_vetting %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
+{% if not is_embed %}
 <li class="breadcrumb-item active text-white-50">Vetting Tool</li>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="container py-4" id="vettingContainer">
+{% if is_embed %}
+<style>.navbar, .offcanvas, .mobile-breadcrumb-nav, footer { display: none !important; }</style>
+{% endif %}
+<div class="container {{ 'py-2' if is_embed else 'py-4' }}" id="vettingContainer">
 
+    {% if not is_embed %}
     <!-- Disclaimer -->
     <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
         <small class="text-muted">
@@ -29,6 +35,7 @@
             <i class="fas fa-book-medical me-1"></i>Protocol Library
         </a>
     </div>
+    {% endif %}
 
     <!-- ==================== SCENE 1: INPUT ==================== -->
     <div id="scene1" class="row justify-content-center">
@@ -355,6 +362,26 @@
 .protocol-match-option .badge {
     font-size: 0.7rem;
 }
+.vetting-flag-dismissed {
+    opacity: 0.5;
+    background: #f8f9fa;
+    border-color: #dee2e6;
+}
+.vetting-flag-resolved {
+    background: #d4edda;
+    border-color: #c3e6cb;
+}
+.protocol-admin { border-left: 4px solid #5E899E !important; }
+.protocol-personal { border-left: 4px solid #0d6efd !important; }
+.vetting-safety-highlight {
+    animation: safetyPulse 0.6s ease-in-out 2;
+    border-color: #e96304 !important;
+    box-shadow: 0 0 0 2px rgba(233, 99, 4, 0.25);
+}
+@keyframes safetyPulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(233, 99, 4, 0.25); }
+    50% { box-shadow: 0 0 0 4px rgba(233, 99, 4, 0.4); }
+}
 .modality-btn.active {
     background: #5E899E;
     border-color: #5E899E;
@@ -372,6 +399,11 @@ let _selectedProtocol = null;
 let _selectedModalityHint = '';
 let _safetyResponses = {};
 let _protocolSource = null; // 'admin', 'personal', 'ai_generated'
+let _flagResponses = {}; // {index: {status: 'dismissed'|'resolved', note: ''}}
+
+// Friendly labels for safety check display
+const _PREGNANCY_LABELS = { 'not_pregnant': 'Not applicable', 'possible': 'Possible pregnancy', 'pregnant': 'Pregnant', 'N/A': 'N/A' };
+const _ALLERGY_LABELS = { 'none': 'Unknown', 'mild': 'Mild reaction — premedicate', 'severe': 'Severe — avoid contrast', 'N/A': 'N/A' };
 
 // ── Scene Management ──
 function showScene(n) {
@@ -393,6 +425,7 @@ function newVetting() {
     _selectedProtocol = null;
     _selectedModalityHint = '';
     _safetyResponses = {};
+    _flagResponses = {};
     _protocolSource = null;
     document.getElementById('referralText').value = '';
     document.querySelectorAll('.modality-btn').forEach(b => b.classList.remove('active'));
@@ -457,17 +490,30 @@ function populateScene2() {
     document.getElementById('modalityDisplay').textContent = a.modality;
     document.getElementById('cleanedTextDisplay').textContent = a.cleaned_clinical_text;
 
-    // AI flags
+    // AI flags — interactive dismiss / resolve
     const flags = a.ai_flags || [];
     const flagsContainer = document.getElementById('aiFlagsContainer');
     const flagsList = document.getElementById('aiFlagsList');
     flagsList.innerHTML = '';
+    _flagResponses = {};
     if (flags.length > 0) {
         flagsContainer.classList.remove('d-none');
-        flags.forEach(f => {
+        flags.forEach((f, idx) => {
             const div = document.createElement('div');
             div.className = 'vetting-flag-item';
-            div.innerHTML = `<strong>${f.flag}</strong><br><small class="text-muted">${f.reason || ''}</small>`;
+            div.id = `aiFlag${idx}`;
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <strong>${_escapeHtml(f.flag)}</strong><br><small class="text-muted">${_escapeHtml(f.reason || '')}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary ms-2 py-0 px-1" onclick="dismissFlag(${idx})" title="Dismiss"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="mt-2 d-flex gap-1">
+                    <input type="text" class="form-control form-control-sm flex-grow-1" id="flagInput${idx}" placeholder="Enter finding / note...">
+                    <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="resolveFlag(${idx})"><i class="fas fa-check me-1"></i>Confirm</button>
+                </div>
+            `;
             flagsList.appendChild(div);
         });
     } else {
@@ -540,12 +586,13 @@ function populateProtocolMatches() {
 
     _matchedProtocols.forEach((p, i) => {
         const div = document.createElement('div');
-        div.className = 'protocol-match-option' + (i === 0 ? ' selected' : '');
+        const originClass = p.origin === 'personal' ? 'protocol-personal' : 'protocol-admin';
+        div.className = 'protocol-match-option ' + originClass + (i === 0 ? ' selected' : '');
         div.dataset.index = i;
 
         const sourceBadge = p.origin === 'personal'
-            ? '<span class="badge bg-info">Personal</span>'
-            : '<span class="badge bg-success">Admin</span>';
+            ? '<span class="badge bg-info"><i class="fas fa-user me-1"></i>My Protocol</span>'
+            : '<span class="badge" style="background:#5E899E;color:#fff;"><i class="fas fa-check-circle me-1"></i>Verified</span>';
         const emergencyBadge = p.is_emergency
             ? ' <span class="badge bg-danger">Emergency</span>'
             : '';
@@ -698,6 +745,56 @@ function selectProtocol(index) {
     if (checks.requires_egfr) {
         document.getElementById('egfrThresholdLabel').textContent = `(threshold: ${checks.egfr_threshold || 30})`;
     }
+
+    // Auto-proceed if all safety checks are filled
+    if (_allSafetyChecksFilled()) {
+        continueToProtocol();
+    } else {
+        _highlightUnfilledSafety();
+    }
+}
+
+function _allSafetyChecksFilled() {
+    const checks = _getValidationConfig();
+    if (checks.requires_egfr) {
+        const val = document.getElementById('egfrInput').value.trim();
+        if (!val && _safetyResponses.egfr !== 'N/A') return false;
+    }
+    if (checks.pregnancy_check_required) {
+        const val = document.getElementById('pregnancyInput').value;
+        if (!val && _safetyResponses.pregnancy !== 'N/A') return false;
+    }
+    if (checks.allergy_check_required) {
+        const val = document.getElementById('allergyInput').value;
+        if (!val && _safetyResponses.allergy !== 'N/A') return false;
+    }
+    return true;
+}
+
+function _highlightUnfilledSafety() {
+    const checks = _getValidationConfig();
+    const fields = [];
+    if (checks.requires_egfr && !document.getElementById('egfrInput').value.trim() && _safetyResponses.egfr !== 'N/A') {
+        fields.push(document.getElementById('egfrInput'));
+    }
+    if (checks.pregnancy_check_required && !document.getElementById('pregnancyInput').value && _safetyResponses.pregnancy !== 'N/A') {
+        fields.push(document.getElementById('pregnancyInput'));
+    }
+    if (checks.allergy_check_required && !document.getElementById('allergyInput').value && _safetyResponses.allergy !== 'N/A') {
+        fields.push(document.getElementById('allergyInput'));
+    }
+    fields.forEach(el => {
+        el.classList.add('vetting-safety-highlight');
+        el.addEventListener('change', function handler() {
+            el.classList.remove('vetting-safety-highlight');
+            el.removeEventListener('change', handler);
+        });
+        el.addEventListener('input', function handler() {
+            el.classList.remove('vetting-safety-highlight');
+            el.removeEventListener('input', handler);
+        });
+    });
+    if (fields.length) fields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function skipSafetyCheck(checkName) {
@@ -715,6 +812,61 @@ function skipSafetyCheck(checkName) {
         const btn = row.querySelector('.vetting-safety-skip');
         if (btn) { btn.classList.add('btn-secondary'); btn.classList.remove('btn-outline-secondary'); }
     }
+}
+
+// ── Flag interaction ──
+function dismissFlag(idx) {
+    _flagResponses[idx] = { status: 'dismissed' };
+    const el = document.getElementById(`aiFlag${idx}`);
+    if (!el) return;
+    el.className = 'vetting-flag-item vetting-flag-dismissed';
+    el.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="text-muted"><s>${_escapeHtml((_analysisResult.ai_flags[idx] || {}).flag || '')}</s></span>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="undismissFlag(${idx})" title="Undo"><i class="fas fa-undo"></i></button>
+        </div>
+    `;
+}
+
+function undismissFlag(idx) {
+    delete _flagResponses[idx];
+    const f = (_analysisResult.ai_flags || [])[idx];
+    if (!f) return;
+    const el = document.getElementById(`aiFlag${idx}`);
+    if (!el) return;
+    el.className = 'vetting-flag-item';
+    el.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <strong>${_escapeHtml(f.flag)}</strong><br><small class="text-muted">${_escapeHtml(f.reason || '')}</small>
+            </div>
+            <button class="btn btn-sm btn-outline-secondary ms-2 py-0 px-1" onclick="dismissFlag(${idx})" title="Dismiss"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="mt-2 d-flex gap-1">
+            <input type="text" class="form-control form-control-sm flex-grow-1" id="flagInput${idx}" placeholder="Enter finding / note...">
+            <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="resolveFlag(${idx})"><i class="fas fa-check me-1"></i>Confirm</button>
+        </div>
+    `;
+}
+
+function resolveFlag(idx) {
+    const input = document.getElementById(`flagInput${idx}`);
+    const note = input ? input.value.trim() : '';
+    if (!note) { input && input.focus(); return; }
+    _flagResponses[idx] = { status: 'resolved', note: note };
+    const f = (_analysisResult.ai_flags || [])[idx];
+    const el = document.getElementById(`aiFlag${idx}`);
+    if (!el) return;
+    el.className = 'vetting-flag-item vetting-flag-resolved';
+    el.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-check-circle text-success me-1"></i>
+                <strong>${_escapeHtml((f || {}).flag || '')}</strong>: ${_escapeHtml(note)}
+            </div>
+            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="undismissFlag(${idx})" title="Edit"><i class="fas fa-pen"></i></button>
+        </div>
+    `;
 }
 
 function _collectSafetyResponses() {
@@ -812,11 +964,26 @@ function renderScene3(protocol) {
     const sr = _safetyResponses;
     const safetyParts = [];
     if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
-    if (sr.pregnancy) safetyParts.push(`Pregnancy: ${sr.pregnancy}`);
-    if (sr.allergy) safetyParts.push(`Allergy: ${sr.allergy}`);
+    if (sr.pregnancy) safetyParts.push(`Pregnancy: ${_PREGNANCY_LABELS[sr.pregnancy] || sr.pregnancy}`);
+    if (sr.allergy) safetyParts.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
     if (safetyParts.length) {
         clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Safety Checks:</small><br>';
         clinicalHtml += safetyParts.map(s => `<small>${_escapeHtml(s)}</small>`).join(' &middot; ');
+        clinicalHtml += '</div>';
+    }
+
+    // Append resolved AI flags as confirmed findings
+    const resolvedFlags = [];
+    const aiFlags = (_analysisResult && _analysisResult.ai_flags) || [];
+    Object.keys(_flagResponses).forEach(idx => {
+        const resp = _flagResponses[idx];
+        if (resp.status === 'resolved' && aiFlags[idx]) {
+            resolvedFlags.push(`${aiFlags[idx].flag}: ${resp.note}`);
+        }
+    });
+    if (resolvedFlags.length) {
+        clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Confirmed Findings:</small><br>';
+        clinicalHtml += resolvedFlags.map(f => `<small class="d-block"><i class="fas fa-check-circle text-success me-1"></i>${_escapeHtml(f)}</small>`).join('');
         clinicalHtml += '</div>';
     }
     document.getElementById('clinicalDetailsOutput').innerHTML = clinicalHtml;
@@ -866,11 +1033,14 @@ async function searchProtocols() {
 
         results.forEach(p => {
             const div = document.createElement('div');
-            div.className = 'protocol-match-option';
+            const originClass = p.origin === 'personal' ? 'protocol-personal' : 'protocol-admin';
+            div.className = 'protocol-match-option ' + originClass;
+            const badge = p.origin === 'personal'
+                ? '<span class="badge bg-info"><i class="fas fa-user me-1"></i>My Protocol</span>'
+                : '<span class="badge" style="background:#5E899E;color:#fff;"><i class="fas fa-check-circle me-1"></i>Verified</span>';
             div.innerHTML = `
-                <strong>${_escapeHtml(p.title)}</strong>
-                <span class="badge ${p.origin === 'personal' ? 'bg-info' : 'bg-success'}">${p.origin}</span>
-                <br><small class="text-muted">${p.modality}</small>
+                <strong>${_escapeHtml(p.title)}</strong> ${badge}
+                <br><small class="text-muted">${p.modality}${p.body_section ? ' &middot; ' + _escapeHtml(p.body_section) : ''}</small>
             `;
             div.addEventListener('click', () => {
                 _selectedProtocol = p;
@@ -1016,5 +1186,14 @@ document.getElementById('referralText').addEventListener('keydown', function(e) 
 document.getElementById('protocolSearchInput')?.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') searchProtocols();
 });
+
+// Embed mode: prefill from query param
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const prefill = params.get('prefill');
+    if (prefill) {
+        document.getElementById('referralText').value = prefill;
+    }
+})();
 </script>
 {% endblock %}

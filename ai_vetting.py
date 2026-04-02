@@ -133,6 +133,7 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         '  "study_name_special": "special study name e.g. 4D CT for parathryoid adenoma",\n'
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
+        '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem",\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
         '    "egfr_threshold": 30 or 45 or null,\n'
