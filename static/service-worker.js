@@ -4,7 +4,7 @@
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v14';
 const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
 const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;

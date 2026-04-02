@@ -221,25 +221,129 @@
      * Insert text at cursor position in textarea (or append if no saved position).
      * @param {boolean} raw - if true, insert exactly (no trimming/separator)
      */
+    // ── Word correction learning (localStorage) ──
+    var _CORRECTIONS_KEY = 'dictation_corrections';
+    function _getCorrections() {
+        try { return JSON.parse(localStorage.getItem(_CORRECTIONS_KEY)) || {}; } catch(e) { return {}; }
+    }
+    function _saveCorrection(wrong, correct) {
+        var map = _getCorrections();
+        map[wrong.toLowerCase()] = correct;
+        localStorage.setItem(_CORRECTIONS_KEY, JSON.stringify(map));
+    }
+    function _applyCorrections(text) {
+        var map = _getCorrections();
+        if (!Object.keys(map).length) return text;
+        // Replace whole words only (case-insensitive)
+        for (var wrong in map) {
+            var re = new RegExp('\\b' + wrong.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+            text = text.replace(re, map[wrong]);
+        }
+        return text;
+    }
+
+    /**
+     * Show correction context menu on right-click of a dictation-enabled textarea
+     */
+    function _attachCorrectionMenu(textarea) {
+        textarea.addEventListener('contextmenu', function(e) {
+            var selStart = textarea.selectionStart;
+            var selEnd = textarea.selectionEnd;
+            if (selStart === selEnd) return; // No selection, use default menu
+            var selectedText = textarea.value.substring(selStart, selEnd).trim();
+            if (!selectedText || selectedText.indexOf(' ') !== -1) return; // Only single words
+
+            e.preventDefault();
+            _showCorrectionMenu(e.clientX, e.clientY, selectedText, textarea, selStart, selEnd);
+        });
+    }
+
+    var _correctionMenu = null;
+    function _showCorrectionMenu(x, y, word, textarea, selStart, selEnd) {
+        if (_correctionMenu) _correctionMenu.remove();
+        _correctionMenu = document.createElement('div');
+        _correctionMenu.className = 'dictation-correction-menu';
+        _correctionMenu.innerHTML =
+            '<div class="dictation-correction-label">Correct "<strong>' + word + '</strong>" to:</div>' +
+            '<input type="text" class="dictation-correction-input" placeholder="Type correct word" autofocus>' +
+            '<div class="dictation-correction-actions">' +
+                '<button type="button" class="dictation-correction-save">Save</button>' +
+                '<button type="button" class="dictation-correction-cancel">Cancel</button>' +
+            '</div>';
+        _correctionMenu.style.left = x + 'px';
+        _correctionMenu.style.top = y + 'px';
+        document.body.appendChild(_correctionMenu);
+
+        var input = _correctionMenu.querySelector('.dictation-correction-input');
+        setTimeout(function() { input.focus(); }, 50);
+
+        function doSave() {
+            var correct = input.value.trim();
+            if (!correct) return;
+            // Replace in textarea
+            textarea.focus();
+            var before = textarea.value.substring(0, selStart);
+            var after = textarea.value.substring(selEnd);
+            textarea.value = before + correct + after;
+            textarea.selectionStart = textarea.selectionEnd = selStart + correct.length;
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // Learn the correction
+            _saveCorrection(word, correct);
+            _correctionMenu.remove();
+            _correctionMenu = null;
+        }
+
+        _correctionMenu.querySelector('.dictation-correction-save').addEventListener('click', doSave);
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') doSave();
+            if (e.key === 'Escape') { _correctionMenu.remove(); _correctionMenu = null; }
+        });
+        _correctionMenu.querySelector('.dictation-correction-cancel').addEventListener('click', function() {
+            _correctionMenu.remove();
+            _correctionMenu = null;
+        });
+
+        // Close on outside click
+        setTimeout(function() {
+            document.addEventListener('click', function handler(e) {
+                if (_correctionMenu && !_correctionMenu.contains(e.target)) {
+                    _correctionMenu.remove();
+                    _correctionMenu = null;
+                    document.removeEventListener('click', handler);
+                }
+            });
+        }, 100);
+    }
+
     function _insertAtCursor(textarea, text, raw) {
         // Safari requires focus for programmatic value changes to be visible
         textarea.focus();
 
-        var pos = _cursorPos !== null ? _cursorPos : textarea.value.length;
-        // Clamp to current length (in case text was edited externally)
+        // If there's a selection, replace it (don't insert after it)
+        var selStart = textarea.selectionStart;
+        var selEnd = textarea.selectionEnd;
+        var hasSelection = (selStart !== selEnd);
+
+        var pos;
+        if (hasSelection) {
+            pos = selStart; // Replace starts at selection start
+        } else {
+            pos = _cursorPos !== null ? _cursorPos : textarea.value.length;
+        }
+        // Clamp to current length
         if (pos > textarea.value.length) pos = textarea.value.length;
 
         var before = textarea.value.substring(0, pos);
-        var after = textarea.value.substring(pos);
+        var after = hasSelection ? textarea.value.substring(selEnd) : textarea.value.substring(pos);
 
         var insertText;
         if (raw) {
-            // Raw mode: insert exactly as given (punctuation, newlines)
             insertText = text;
         } else {
-            // Normal mode: trim and add separator
+            // Apply learned corrections
+            var corrected = _applyCorrections(text.trim());
             var sep = before.length > 0 && !before.match(/[\s\n]$/) ? ' ' : '';
-            insertText = sep + text.trim();
+            insertText = sep + corrected;
         }
 
         textarea.value = before + insertText + after;
@@ -269,6 +373,13 @@
             btn.disabled = true;
             btn.style.opacity = '0.4';
             return;
+        }
+
+        // Attach right-click correction menu to the target textarea
+        var ta = document.getElementById(targetId);
+        if (ta && !ta._correctionAttached) {
+            _attachCorrectionMenu(ta);
+            ta._correctionAttached = true;
         }
 
         btn.addEventListener('click', function() {
@@ -310,18 +421,54 @@
         _cursorPos = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : textarea.value.length;
 
         var interimDiv = null;
+        var currentInterim = ''; // Track current interim text
+        var interimTimer = null; // Safari fallback: auto-commit after pause
 
         // Create interim display below textarea
         interimDiv = document.createElement('div');
         interimDiv.className = 'dictation-interim';
-        interimDiv.innerHTML = '<i class="fas fa-microphone me-1"></i><span class="dictation-interim-text">Listening...</span>';
+        interimDiv.innerHTML =
+            '<i class="fas fa-microphone me-1"></i>' +
+            '<span class="dictation-interim-text">Listening...</span>' +
+            '<button type="button" class="dictation-interim-insert" title="Insert text into box">Insert</button>';
         textarea.parentNode.insertBefore(interimDiv, textarea.nextSibling);
+
+        // Manual insert button — click to push interim text into textarea
+        var insertBtn = interimDiv.querySelector('.dictation-interim-insert');
+        insertBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (currentInterim) {
+                _commitInterimText(currentInterim, textarea);
+                currentInterim = '';
+                var span = interimDiv.querySelector('.dictation-interim-text');
+                if (span) span.textContent = 'Listening...';
+                insertBtn.classList.remove('has-text');
+            }
+        });
+
+        // Helper: commit interim text (used by insert button and Safari fallback)
+        function _commitInterimText(text, ta) {
+            if (interimTimer) { clearTimeout(interimTimer); interimTimer = null; }
+            var builtin = _processBuiltInCommands(text, ta);
+            if (builtin.handled) return;
+            var cmd = _matchCommand(text);
+            if (cmd) {
+                _showCommandToast(cmd.label);
+                try { cmd.fn(); } catch (e) { console.warn('Voice command error:', e); }
+                return;
+            }
+            _insertAtCursor(ta, builtin.text);
+        }
 
         recognition.onresult = function(event) {
             var interim = '';
             for (var i = event.resultIndex; i < event.results.length; i++) {
                 var transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
+                    // Clear any pending Safari fallback timer
+                    if (interimTimer) { clearTimeout(interimTimer); interimTimer = null; }
+                    currentInterim = '';
+
                     // 1. Check built-in dictation commands (stop, new line, delete, punctuation)
                     var builtin = _processBuiltInCommands(transcript, textarea);
                     if (builtin.handled) continue;
@@ -338,12 +485,31 @@
 
                     // 3. Normal text — insert at cursor position
                     _insertAtCursor(textarea, builtin.text);
+                    insertBtn.classList.remove('has-text');
                 } else {
                     interim += transcript;
                 }
             }
             var span = interimDiv.querySelector('.dictation-interim-text');
             if (span) span.textContent = interim || 'Listening...';
+
+            // Track interim text and show insert button highlight
+            if (interim) {
+                currentInterim = interim;
+                insertBtn.classList.add('has-text');
+
+                // Safari fallback: if interim text stops changing for 2s, auto-commit
+                // (Safari often doesn't fire isFinal in continuous mode)
+                if (interimTimer) clearTimeout(interimTimer);
+                interimTimer = setTimeout(function() {
+                    if (currentInterim && _activeBtn === btn) {
+                        _commitInterimText(currentInterim, textarea);
+                        currentInterim = '';
+                        insertBtn.classList.remove('has-text');
+                        if (span) span.textContent = 'Listening...';
+                    }
+                }, 2000);
+            }
         };
 
         recognition.onerror = function(event) {

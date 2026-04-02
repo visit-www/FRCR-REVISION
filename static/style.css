@@ -6700,8 +6700,36 @@ body {
     background: #fff5f5;
     border-radius: 4px;
     border: 1px solid #f5c6cb;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
-.dictation-interim i { color: #dc3545; }
+.dictation-interim i { color: #dc3545; flex-shrink: 0; }
+.dictation-interim-text { flex: 1; min-width: 0; }
+.dictation-interim-insert {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 1px 8px;
+    font-size: 0.68rem;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.5;
+    pointer-events: none;
+}
+.dictation-interim-insert.has-text {
+    opacity: 1;
+    pointer-events: auto;
+    color: #dc3545;
+    border-color: #dc3545;
+    font-weight: 600;
+}
+.dictation-interim-insert.has-text:hover {
+    background: #dc3545;
+    color: #fff;
+}
 
 /* Dictation toast messages */
 .dictation-toast {
@@ -6820,3 +6848,61 @@ body {
     border-bottom: 1px solid #e9ecef;
     font-family: inherit !important;
 }
+
+/* Right-click word correction menu */
+.dictation-correction-menu {
+    position: fixed;
+    z-index: 10000;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.2);
+    border: 1px solid #dee2e6;
+    padding: 10px 12px;
+    width: 240px;
+    animation: dictationToastIn 0.15s ease;
+}
+.dictation-correction-label {
+    font-size: 0.76rem;
+    color: #495057;
+    margin-bottom: 6px;
+}
+.dictation-correction-input {
+    width: 100%;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    margin-bottom: 8px;
+    outline: none;
+}
+.dictation-correction-input:focus {
+    border-color: #5E899E;
+    box-shadow: 0 0 0 2px rgba(94,137,158,0.2);
+}
+.dictation-correction-actions {
+    display: flex;
+    gap: 6px;
+}
+.dictation-correction-save {
+    flex: 1;
+    background: #5E899E;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 3px 0;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.dictation-correction-save:hover { background: #4D7A8D; }
+.dictation-correction-cancel {
+    flex: 1;
+    background: none;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 3px 0;
+    font-size: 0.74rem;
+    color: #6c757d;
+    cursor: pointer;
+}
+.dictation-correction-cancel:hover { background: #f8f9fa; }
