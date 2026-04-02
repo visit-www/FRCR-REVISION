@@ -46,8 +46,11 @@
                 </div>
                 <div class="card-brand-body">
                     <div class="mb-3">
-                        <label for="referralText" class="form-label fw-semibold">Paste the clinical referral text</label>
-                        <textarea id="referralText" class="form-control" rows="6"
+                        <div class="d-flex align-items-center justify-content-between">
+                            <label for="referralText" class="form-label fw-semibold mb-0">Paste the clinical referral text</label>
+                            <button type="button" class="btn-dictate" data-target="referralText" title="Click to dictate"><i class="fas fa-microphone"></i></button>
+                        </div>
+                        <textarea id="referralText" class="form-control mt-1" rows="6"
                             placeholder="e.g. 65F, acute SOB, raised D-dimer 1.2, ?PE. PMH: asthma, no previous DVT/PE. O2 sats 92% on air."
                             maxlength="5000"></textarea>
                         <div class="form-text">Clinical details from the request form. No patient identifiers.</div>

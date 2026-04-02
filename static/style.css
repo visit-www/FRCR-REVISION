@@ -6664,3 +6664,41 @@ body {
     color: #b0b8c0;
     font-size: 2.5rem;
 }
+
+/* ── Speech-to-Text Dictation ── */
+.btn-dictate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 50%;
+    background: #fff;
+    color: #6c757d;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-dictate:hover { border-color: #dc3545; color: #dc3545; }
+.btn-dictate.dictation-active {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+    animation: dictationPulse 1.2s ease-in-out infinite;
+}
+@keyframes dictationPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+}
+.dictation-interim {
+    font-size: 0.78rem;
+    color: #dc3545;
+    padding: 4px 8px;
+    margin-top: 2px;
+    background: #fff5f5;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+}
+.dictation-interim i { color: #dc3545; }
