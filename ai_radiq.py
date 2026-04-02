@@ -107,6 +107,9 @@ RADIQ_SYSTEM_PROMPT = (
     "- NEVER write 'Based on general radiology consensus' or similar vague attributions.\n"
     "- Every reference MUST be a specific, real publication with: Author(s)/Organisation, "
     "Title, Journal/Publisher, Year. Include DOI or URL when you know it.\n"
+    "- NEVER fabricate or guess a reference. If you cannot confidently recall the exact "
+    "author, title, year, or URL, omit that reference entirely. Fewer real references "
+    "are better than fabricated ones.\n"
     "- Preferred sources: RCR iRefer, NICE guidelines, ACR Appropriateness Criteria, "
     "ESUR guidelines, Fleischner Society, RSNA RadPrimer, Radiopaedia, AJR, Radiology, "
     "European Radiology, BJR.\n"
@@ -207,16 +210,19 @@ CATEGORY_PROMPTS = {
         "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
     'radiographer': (
-        "TASK: Answer a radiographer's query concisely.\n"
-        "STYLE: Brief and direct — like a quick corridor conversation with a consultant. "
-        "Collegial tone. 2-3 short paragraphs max for the answer. "
-        "Do NOT over-explain or lecture.\n\n"
+        "TASK: Answer a radiographer's clinical query.\n"
+        "STYLE: Direct and collegial — like a consultant answering at the scanner. "
+        "Concise but NEVER at the expense of clinical accuracy. If the topic requires "
+        "nuance (e.g. contrast selection, patient safety), include the necessary detail.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
         "1. <h5>Answer</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Direct answer with a short, plain-language rationale (the 'why' in 1-2 sentences). "
-        "Include any actionable guidance (parameters, technique tips, decision thresholds) inline.\n"
-        "2. <h5>References</h5> — 1-2 references only. "
-        "Cite specific publications with author/org, title, year. Include clickable URLs where known.\n"
+        "Direct answer with clinical rationale. Include actionable guidance "
+        "(parameters, technique tips, decision thresholds, agent selection) inline. "
+        "If the question involves contrast agents or drug selection, specify the exact "
+        "agent class and why alternatives are inappropriate.\n"
+        "2. <h5>References</h5> — 2-4 references. "
+        "Cite specific publications with author/org, title, year. Include clickable URLs where known. "
+        "If you cannot confidently recall a specific citation, provide fewer references rather than fabricating.\n"
     ),
     'general': (
         "TASK: Provide balanced clinical advisory on a radiology question.\n"
@@ -270,7 +276,7 @@ def generate_radiq_response(question, category, db_context=''):
         system_prompt=RADIQ_SYSTEM_PROMPT,
         user_prompt=user_prompt,
         max_tokens=3000,
-        temperature=0.3,
+        temperature=0.15,
         timeout=60,
         error_class=RadIQError,
     )
