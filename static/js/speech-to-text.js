@@ -70,7 +70,7 @@
             }
         }
         // Also match bare "stop listening" / "stop dictation" without prefix
-        if (text === 'stop listening' || text === 'stop dictation' || text === 'stop') {
+        if (text === 'stop listening' || text === 'stop dictation') {
             return { fn: stopDictation, label: 'Stop Dictation' };
         }
         return null;
@@ -133,8 +133,8 @@
     function _processBuiltInCommands(transcript, textarea) {
         var text = transcript.trim().toLowerCase();
 
-        // "stop" / "stop listening" / "stop dictation"
-        if (text === 'stop' || text === 'stop listening' || text === 'stop dictation') {
+        // "stop listening" / "stop dictation" — end mic
+        if (text === 'stop listening' || text === 'stop dictation') {
             stopDictation();
             return { handled: true };
         }
@@ -182,9 +182,8 @@
             return { handled: true };
         }
 
-        // "full stop" / "period" / "stop" at the end of a phrase → insert "."
-        // Note: bare "stop" is caught above. "full stop" is punctuation.
-        if (text === 'full stop' || text === 'period') {
+        // "full stop" / "stop" / "period" → insert "."
+        if (text === 'full stop' || text === 'stop' || text === 'period') {
             _insertAtCursor(textarea, '.', true);
             return { handled: true };
         }
