@@ -6733,3 +6733,90 @@ body {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Dictation help icon */
+.dictation-help-btn {
+    background: none;
+    border: none;
+    padding: 0 3px;
+    cursor: pointer;
+    color: #adb5bd;
+    font-size: 0.72rem;
+    vertical-align: middle;
+    transition: color 0.15s;
+}
+.dictation-help-btn:hover { color: #5E899E; }
+
+/* Dictation help popup */
+.dictation-help-popup {
+    display: none;
+    position: absolute;
+    z-index: 9999;
+    width: 320px;
+    max-height: 420px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    border: 1px solid #dee2e6;
+    overflow: hidden;
+}
+.dictation-help-popup.show { display: block; animation: dictationToastIn 0.2s ease; }
+
+.dictation-help-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #5E899E;
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+.dictation-help-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0.8;
+}
+.dictation-help-close:hover { opacity: 1; }
+
+.dictation-help-body {
+    padding: 6px 0;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.dictation-help-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.74rem;
+}
+.dictation-help-body tr td {
+    padding: 3px 12px;
+    vertical-align: top;
+}
+.dictation-help-body tr td:first-child {
+    white-space: nowrap;
+    color: #495057;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
+    width: 55%;
+}
+.dictation-help-body tr td:last-child {
+    color: #6c757d;
+}
+.dictation-help-body tr:hover {
+    background: #f8f9fa;
+}
+.dictation-help-section td {
+    font-weight: 700;
+    color: #5E899E !important;
+    font-size: 0.72rem !important;
+    padding-top: 8px !important;
+    padding-bottom: 4px !important;
+    border-bottom: 1px solid #e9ecef;
+    font-family: inherit !important;
+}

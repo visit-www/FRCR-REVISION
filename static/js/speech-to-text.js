@@ -434,11 +434,100 @@
     }
 
     /**
+     * Build the help popup HTML. Called once, shared across all help icons.
+     */
+    var _helpPopup = null;
+    function _getHelpPopup() {
+        if (_helpPopup) return _helpPopup;
+        _helpPopup = document.createElement('div');
+        _helpPopup.className = 'dictation-help-popup';
+        _helpPopup.innerHTML =
+            '<div class="dictation-help-header">' +
+                '<span><i class="fas fa-microphone me-1"></i>Voice Commands</span>' +
+                '<button class="dictation-help-close" onclick="this.closest(\'.dictation-help-popup\').classList.remove(\'show\')">&times;</button>' +
+            '</div>' +
+            '<div class="dictation-help-body">' +
+                '<table>' +
+                '<tr class="dictation-help-section"><td colspan="2">Dictation Controls</td></tr>' +
+                '<tr><td>"stop"</td><td>Insert full stop (.)</td></tr>' +
+                '<tr><td>"full stop"</td><td>Insert full stop (.)</td></tr>' +
+                '<tr><td>"comma"</td><td>Insert comma (,)</td></tr>' +
+                '<tr><td>"question mark"</td><td>Insert question mark (?)</td></tr>' +
+                '<tr><td>"colon" / "semicolon"</td><td>Insert : or ;</td></tr>' +
+                '<tr><td>"dash"</td><td>Insert dash ( - )</td></tr>' +
+                '<tr><td>"new line"</td><td>Start a new line</td></tr>' +
+                '<tr><td>"new paragraph"</td><td>Start a new paragraph</td></tr>' +
+                '<tr><td>"scratch that" / "delete"</td><td>Remove last phrase or selection</td></tr>' +
+                '<tr><td>"stop listening"</td><td>Turn off microphone</td></tr>' +
+                '<tr class="dictation-help-section"><td colspan="2">Page Actions <span style="font-weight:400;opacity:0.7">(say "command" + action)</span></td></tr>' +
+                '<tbody class="dictation-help-commands"></tbody>' +
+                '</table>' +
+            '</div>';
+        document.body.appendChild(_helpPopup);
+
+        // Close on outside click
+        document.addEventListener('click', function(e) {
+            if (_helpPopup.classList.contains('show') && !_helpPopup.contains(e.target) && !e.target.closest('.dictation-help-btn')) {
+                _helpPopup.classList.remove('show');
+            }
+        });
+        return _helpPopup;
+    }
+
+    /**
+     * Refresh the page-specific commands section in help popup
+     */
+    function _refreshHelpCommands() {
+        var popup = _getHelpPopup();
+        var tbody = popup.querySelector('.dictation-help-commands');
+        if (!tbody) return;
+        var html = '';
+        var seen = {};
+        for (var key in _voiceCommands) {
+            var label = _voiceCommands[key].label;
+            if (seen[label]) continue; // skip duplicates (finalize/finalise)
+            seen[label] = true;
+            html += '<tr><td>"command ' + key + '"</td><td>' + label + '</td></tr>';
+        }
+        tbody.innerHTML = html;
+        // Hide section header if no page commands
+        var section = popup.querySelector('.dictation-help-section:last-of-type');
+        if (section) section.style.display = html ? '' : 'none';
+    }
+
+    /**
+     * Add a small help icon next to a mic button
+     */
+    function _addHelpIcon(btn) {
+        if (!SpeechRecognition) return; // No mic, no help needed
+        var helpBtn = document.createElement('button');
+        helpBtn.type = 'button';
+        helpBtn.className = 'dictation-help-btn';
+        helpBtn.title = 'Voice command help';
+        helpBtn.innerHTML = '<i class="fas fa-question-circle"></i>';
+        helpBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var popup = _getHelpPopup();
+            _refreshHelpCommands();
+            // Position near the button
+            var rect = helpBtn.getBoundingClientRect();
+            var popW = 320;
+            var left = rect.left + window.scrollX - popW + rect.width;
+            if (left < 8) left = 8;
+            popup.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+            popup.style.left = left + 'px';
+            popup.classList.toggle('show');
+        });
+        btn.parentNode.insertBefore(helpBtn, btn.nextSibling);
+    }
+
+    /**
      * Auto-init: find all buttons with class="btn-dictate" and data-target="elementId"
      */
     function initDictation() {
         document.querySelectorAll('.btn-dictate[data-target]').forEach(function(btn) {
             attachDictation(btn.dataset.target, btn);
+            _addHelpIcon(btn);
         });
     }
 
