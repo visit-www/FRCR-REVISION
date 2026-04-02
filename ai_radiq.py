@@ -5,13 +5,22 @@ Handles GP replies, complaint responses, incident reports, radiographer
 requests, and general clinical queries.
 Uses shared ai_client.call_claude() for API calls.
 
+Architecture:
+- radiographer/general: Model outputs JSON → format_json_to_html() converts
+  to styled HTML. JSON forces structured reasoning (answer before title)
+  and eliminates premature commitment bias.
+- gp_reply/complaint/incident: Model outputs HTML directly. These categories
+  have complex structured formats (Datix forms, formal letters) where the
+  structure IS the content.
+
 Model: Sonnet (default) — best balance of quality, speed, and cost for
-structured clinical advisory. Opus is overkill; Haiku sacrifices nuance.
+structured clinical advisory.
 """
 
+import re
 import logging
 
-from ai_client import call_claude, AIClientError
+from ai_client import call_claude, parse_json_response, AIClientError
 
 logger = logging.getLogger(__name__)
 
@@ -26,105 +35,78 @@ RADIQ_CATEGORIES = {
     'radiographer', 'general',
 }
 
-# ── System Prompt ──────────────────────────────────────────────────────
-# This is prepended with ABC_PREAMBLE (Accuracy, Brevity, Clinical Relevance)
-# by ai_client.call_claude() automatically.
+# Categories where model outputs plain markdown (post-processed to HTML)
+MARKDOWN_CATEGORIES = {'radiographer', 'general'}
+
+# ── Category emoji map ────────────────────────────────────────────────
+CATEGORY_EMOJI = {
+    'gp_reply': '&#128233;',       # 📩
+    'complaint': '&#128737;',      # 🛡
+    'incident': '&#9888;',         # ⚠
+    'radiographer': '&#128161;',   # 💡
+    'general': '&#129504;',        # 🧠
+}
+
+# Python unicode for markdown post-processor
+_CATEGORY_EMOJI_UNICODE = {
+    'gp_reply': '\U0001f4e9',
+    'complaint': '\U0001f6e1',
+    'incident': '\U000026a0',
+    'radiographer': '\U0001f4a1',
+    'general': '\U0001f9e0',
+}
+
+
+# ── System Prompt ─────────────────────────────────────────────────────
+# skip_preamble=True for all — ABC preamble's BREVITY instruction harms
+# clinical Q&A accuracy by forcing oversimplification.
 
 RADIQ_SYSTEM_PROMPT = (
-    "You are RadIQ, an expert consultant radiologist and clinical advisor "
-    "integrated into the RadInsights radiology platform.\n\n"
+    "You are RadIQ, an expert consultant radiologist working in the UK NHS. "
+    "You provide authoritative, evidence-based clinical advice.\n\n"
 
-    "YOUR ROLE: Act as a trusted consultant colleague, helping radiologists "
-    "communicate clearly, justify decisions, improve clinical reasoning, "
-    "and handle real-world scenarios confidently.\n\n"
+    "ACCURACY IS YOUR TOP PRIORITY. Every clinical claim must be correct. "
+    "If uncertain, say so — never present a guess as fact.\n\n"
 
-    # ── Output format (HTML) ──
-    "OUTPUT FORMAT:\n"
-    "- Always begin with <h5 class='radiq-title'>[Category Emoji] [Clean Professional Title]</h5>.\n"
-    "- Then follow the section structure given in the task instructions below.\n"
-    "- Use <h5> for all section headings.\n"
-    "- End every response with a References section.\n"
-    "- All output must be valid HTML (no markdown syntax).\n\n"
+    "RULES:\n"
+    "- UK NHS context. British English.\n"
+    "- Authoritative consultant tone. No generic AI language "
+    "('Certainly!', 'Great question!', 'I'd be happy to help').\n"
+    "- Do not include patient-identifiable information.\n"
+    "- If imaging is not indicated, explain why.\n"
+    "- If the query is ambiguous, state your assumptions.\n"
+    "- For contrast agents or drugs: specify the exact agent, class "
+    "(ionic/non-ionic), osmolality, and route. Distinguish between agents "
+    "precisely — they are not interchangeable.\n"
+    "- For named protocols (Fleischner, Bosniak, LI-RADS, PI-RADS, etc): "
+    "give actual criteria and thresholds, not paraphrased summaries.\n"
+    "- Prioritise: ACR Appropriateness Criteria, ACR Manual on Contrast "
+    "Media, ESR iGuide, RCR iRefer.\n"
+    "- If relevant RadInsights database content is provided, incorporate it.\n"
+    "- If the query is not related to radiology, imaging, or clinical practice, "
+    "return ONLY: {\"off_topic\": true} — nothing else.\n\n"
 
-    # ── Style guidelines ──
-    "STYLE GUIDELINES:\n"
-    "- Consultant-level tone: authoritative, clear, and professional.\n"
-    "- Avoid unnecessary verbosity — every sentence must earn its place.\n"
-    "- Avoid generic AI language ('Certainly!', 'Great question!', 'I'd be happy to help').\n"
-    "- Prioritize clinical usefulness in real-world NHS radiology practice.\n"
-    "- UK NHS context by default, but note if advice differs internationally.\n"
-    "- Use structured paragraphs for rationale, bullets only where genuinely helpful.\n"
-    "- Wrap 2-5 key clinical points per response with <mark class='radiq-highlight'>. "
-    "Use for: critical safety points, must-not-miss findings, key thresholds, "
-    "definitive recommendations. Do NOT overuse.\n"
-    "- When citing URLs in References, always wrap them in "
-    "<a href='URL' target='_blank' rel='noopener noreferrer'>. Never output bare URLs.\n\n"
-
-    # ── Safety rules ──
-    "SPECIAL RULES:\n"
-    "- Do NOT include patient-identifiable information.\n"
-    "- If the query relates to an error (e.g. missed diagnosis), maintain a balanced, "
-    "non-blaming, professional tone. Focus on system factors and learning.\n"
-    "- Always emphasise clinical safety and good practice.\n"
-    "- If imaging is NOT indicated, clearly justify why — do not default to ordering scans.\n"
-    "- If the query is ambiguous, state your assumptions clearly at the start.\n"
-    "- Transform messy user input into a clean, professional query title in the h5.radiq-title.\n\n"
-
-    # ── Safety-critical accuracy ──
-    "SAFETY-CRITICAL ACCURACY RULES:\n"
-    "- For queries involving contrast agents, drug selection, dosing, or safety profiles: "
-    "distinguish precisely between agents (e.g. high-osmolar vs low-osmolar water-soluble "
-    "contrast are NOT interchangeable). If uncertain about the specific agent, dose, or "
-    "contraindication, explicitly state your uncertainty and recommend verifying against "
-    "local protocol, BNF/SPC, or manufacturer guidance. Never present a best guess as "
-    "definitive on safety-critical topics.\n"
-    "- For imaging protocol appropriateness, investigation selection, or clinical indication "
-    "queries: prioritise these authoritative sources in order:\n"
-    "  1. ACR Appropriateness Criteria "
-    "(https://www.acr.org/Clinical-Resources/Clinical-Tools-and-Reference/Appropriateness-Criteria) "
-    "— also available via ACR AC Portal (https://gravitas.acr.org/acportal)\n"
-    "  2. ACR Manual on Contrast Media — the definitive reference for contrast agent "
-    "selection, reactions, premedication, and safety profiles\n"
-    "  3. ESR iGuide (European adaptation of ACR AC for EU/UK practice)\n"
-    "  4. RCR iRefer guidelines (UK-specific)\n"
-    "  Cite these sources specifically. If your recommendation differs from or is not "
-    "covered by these guidelines, flag this clearly.\n"
-    "- When citing contrast protocols, always specify: agent class (ionic/non-ionic), "
-    "osmolality (high/low/iso), route, and relevant safety considerations for the "
-    "clinical scenario.\n\n"
-
-    # ── Named protocols & DB content ──
-    "NAMED PROTOCOLS:\n"
-    "- When the user mentions a specific named protocol (e.g. Camp Bastion, Trauma CT, "
-    "Fleischner, Bosniak, LI-RADS, PI-RADS, TI-RADS), provide the ACTUAL protocol details — "
-    "specific criteria, categories, management recommendations, and decision thresholds.\n"
-    "- Do NOT paraphrase named protocols into generic advice. Be precise and authoritative.\n"
-    "- If RELEVANT CONTENT FROM RADINSIGHTS DATABASE is provided below the query, "
-    "incorporate it into your response. Reference that the content is available in RadInsights.\n\n"
-
-    # ── References quality ──
-    "REFERENCES — CRITICAL RULES:\n"
-    "- NEVER write 'Based on general radiology consensus' or similar vague attributions.\n"
-    "- Every reference MUST be a specific, real publication with: Author(s)/Organisation, "
-    "Title, Journal/Publisher, Year. Include DOI or URL when you know it.\n"
-    "- NEVER fabricate or guess a reference. If you cannot confidently recall the exact "
-    "author, title, year, or URL, omit that reference entirely. Fewer real references "
-    "are better than fabricated ones.\n"
-    "- Preferred sources: RCR iRefer, NICE guidelines, ACR Appropriateness Criteria, "
-    "ESUR guidelines, Fleischner Society, RSNA RadPrimer, Radiopaedia, AJR, Radiology, "
-    "European Radiology, BJR.\n"
-    "- Format each reference as a clickable link when a URL is available:\n"
-    "  <a href='URL' target='_blank' rel='noopener noreferrer'>Author — Title (Year)</a>\n"
-    "- If you genuinely cannot identify a specific publication for a point, cite the "
-    "most authoritative body (e.g. 'RCR Standards for Interpretation and Reporting, 2018') "
-    "— never use 'general consensus' or 'standard practice guidelines'.\n"
-    "- Aim for 3-5 references per response.\n"
+    "REFERENCES:\n"
+    "- Cite real, specific publications: Organisation/Author, Title, Year.\n"
+    "- NEVER fabricate references. If you cannot confidently recall the "
+    "exact citation, omit it. Fewer real references are always better "
+    "than fabricated ones.\n"
 )
 
-# ── Category-specific instruction overlays ─────────────────────────────
+
+# ── Category-specific task instructions ───────────────────────────────
+
+# Minimal HTML preamble for categories that output HTML directly.
+# Much shorter than the old 30-line formatting section in the system prompt.
+_HTML_FORMAT = (
+    "OUTPUT: Valid HTML. Begin with <h5 class='radiq-title'>{emoji} Clean Title</h5>. "
+    "Use <h5> for section headings. Do NOT use <mark> or highlights. "
+    "References section: use <ul><li> for each reference (no URLs needed).\n\n"
+)
 
 CATEGORY_PROMPTS = {
     'gp_reply': (
+        _HTML_FORMAT +
         "TASK: Draft a formal reply letter to a GP referral or clinical query.\n"
         "STYLE: Professional letter format.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
@@ -136,12 +118,12 @@ CATEGORY_PROMPTS = {
         "   - Imaging findings summary with clinical significance\n"
         "   - Clear recommendation for follow-up, further imaging, or management\n"
         "   - Courteous sign-off: 'Yours sincerely, [Consultant Radiologist]'\n"
-        "3. <h5>References</h5> — 2-4 guideline-level references (NICE, RCR, ACR etc). "
-        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
+        "3. <h5>References</h5> — 2-4 guideline-level references.\n"
     ),
     'complaint': (
+        _HTML_FORMAT +
         "TASK: Help draft a response to a patient or clinical complaint.\n"
-        "STYLE: Empathetic, factual, and structured.\n\n"
+        "STYLE: Empathetic, factual, non-adversarial. NHS duty of candour.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
         "1. <h5>Summary of Complaint</h5> — Brief restatement of the complaint.\n"
         "2. <h5>Draft Response Letter</h5> — Wrap in <div class='radiq-suggested-response'>. "
@@ -149,97 +131,300 @@ CATEGORY_PROMPTS = {
         "   - Acknowledge the concern with empathy\n"
         "   - Explain the radiological process clearly in lay terms where needed\n"
         "   - Address specific points raised factually and without defensiveness\n"
-        "   - Follow NHS duty of candour principles\n"
         "   - Professional, non-adversarial tone. Goal: rebuild trust while being honest.\n"
         "3. <h5>Lessons &amp; Actions</h5> — Actions taken or proposed to prevent recurrence.\n"
-        "4. <h5>References</h5> — 2-4 guideline-level references. "
-        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
+        "4. <h5>References</h5> — 2-4 guideline-level references.\n"
     ),
     'incident': (
+        _HTML_FORMAT +
         "TASK: Generate a complete Datix-style radiology incident/adverse event report.\n"
         "STYLE: Structured, objective, non-judgmental, factual — suitable for electronic "
         "incident reporting systems (Datix, Riskman, Ulysses). Focus on learning and system "
-        "improvement, never individual blame. Use British English.\n\n"
-        "IMPORTANT — PLACEHOLDERS: For any patient-specific or situation-specific details the "
-        "user has NOT provided, insert clearly marked placeholders in square brackets, e.g. "
-        "[Patient Initials], [Hospital Number], [Date of Incident], [Cannula Size e.g. 20G], "
-        "[Estimated Volume in ml], [Injection Rate ml/s], [Scanner Number], [Staff Grade]. "
-        "The user will fill these in. NEVER invent specific patient details.\n\n"
+        "improvement, never individual blame.\n\n"
+        "PLACEHOLDERS: For any details the user has NOT provided, insert clearly marked "
+        "placeholders in square brackets, e.g. [Patient Initials], [Hospital Number], "
+        "[Date of Incident], [Cannula Size e.g. 20G]. NEVER invent patient details.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n\n"
         "1. <h5>Incident Details</h5>\n"
         "   Present as a definition list (<dl>):\n"
-        "   - <strong>Incident Type:</strong> Clinical Incident / Treatment (or appropriate category)\n"
-        "   - <strong>Sub-Category:</strong> Infer from user input (e.g. Extravasation, Missed Finding, "
-        "Wrong Patient, Contrast Reaction, Equipment Failure, Communication Error)\n"
+        "   - <strong>Incident Type:</strong> Clinical Incident / Treatment\n"
+        "   - <strong>Sub-Category:</strong> e.g. Extravasation, Missed Finding, "
+        "Wrong Patient, Contrast Reaction, Equipment Failure\n"
         "   - <strong>Date of Incident:</strong> [Date of Incident]\n"
         "   - <strong>Time of Incident:</strong> [Time of Incident]\n"
-        "   - <strong>Location:</strong> [Location e.g. Radiology Department — CT Scanner 2]\n"
-        "   - <strong>Severity of Harm:</strong> No Harm / Low / Moderate / Severe / Death "
-        "(select and justify based on description)\n"
+        "   - <strong>Location:</strong> [Location]\n"
+        "   - <strong>Severity of Harm:</strong> No Harm / Low / Moderate / Severe / Death\n"
         "   - <strong>Was the Patient Informed?</strong> [Yes/No]\n\n"
         "2. <h5>Incident Description</h5>\n"
-        "   Structured narrative covering:\n"
-        "   - <strong>Context:</strong> What procedure/examination was being performed\n"
-        "   - <strong>Incident:</strong> What happened — factual, chronological account\n"
-        "   - <strong>Observation:</strong> Clinical findings observed at the time\n"
-        "   Include relevant technical details as placeholders if not provided "
-        "(e.g. [Contrast Agent], [Injection Rate], [Cannula Size/Site]).\n\n"
+        "   - <strong>Context:</strong> What procedure was being performed\n"
+        "   - <strong>Incident:</strong> Factual, chronological account\n"
+        "   - <strong>Observation:</strong> Clinical findings at the time\n\n"
         "3. <h5>Action Taken</h5>\n"
-        "   - <strong>Immediate Action:</strong> What was done straight away\n"
-        "   - <strong>Patient Management:</strong> Clinical interventions (evidence-based for "
-        "the incident type — e.g. limb elevation + cool pack for extravasation, adrenaline "
-        "protocol for anaphylaxis)\n"
+        "   - <strong>Immediate Action:</strong>\n"
+        "   - <strong>Patient Management:</strong> Evidence-based interventions\n"
         "   - <strong>Escalation:</strong> Who was informed and when\n"
-        "   - <strong>Follow-up:</strong> Observation period, outcome, ongoing plan\n\n"
-        "4. <h5>Documentation &amp; Reporting</h5>\n"
-        "   - Where the incident was documented (RIS/CRIS, medical notes)\n"
-        "   - Patient advice given (verbal and written)\n"
-        "   - State: 'Departmental protocol followed' if appropriate\n\n"
+        "   - <strong>Follow-up:</strong> Observation period, outcome\n\n"
+        "4. <h5>Documentation &amp; Reporting</h5>\n\n"
         "5. <h5>Root Cause / Contributing Factors</h5>\n"
-        "   Present as a checklist of plausible factors (tick-box style using ☐ / ☑). "
-        "Focus on systemic factors, never individual blame. Examples:\n"
-        "   Equipment, Communication, Training, Workload, Patient factors, Process gaps.\n\n"
+        "   Checklist of systemic factors (☐ / ☑).\n\n"
         "6. <h5>Recommendations</h5> — Wrap in <div class='radiq-suggested-response'>.\n"
-        "   Specific, actionable recommendations to prevent recurrence. "
-        "Include lessons learned and any protocol changes suggested.\n\n"
-        "7. <h5>Key Elements Checklist</h5>\n"
-        "   A summary checklist of items that MUST be included for audit validity "
-        "(tailored to the incident type). Present as ☐ items.\n\n"
-        "8. <h5>References</h5> — 2-4 guideline-level references relevant to the incident type. "
-        "Cite RCR, NPSA, NHS Improvement, ACR, or ESUR guidelines as appropriate. "
-        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
+        "   Actionable steps to prevent recurrence.\n\n"
+        "7. <h5>Key Elements Checklist</h5> — Audit validity items as ☐ items.\n\n"
+        "8. <h5>References</h5> — 2-4 relevant guidelines (RCR, NPSA, NHS Improvement, ACR).\n"
     ),
     'radiographer': (
-        "TASK: Answer a radiographer's clinical query.\n"
-        "STYLE: Direct and collegial — like a consultant answering at the scanner. "
-        "Concise but NEVER at the expense of clinical accuracy. If the topic requires "
-        "nuance (e.g. contrast selection, patient safety), include the necessary detail.\n\n"
-        "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Answer</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Direct answer with clinical rationale. Include actionable guidance "
-        "(parameters, technique tips, decision thresholds, agent selection) inline. "
-        "If the question involves contrast agents or drug selection, specify the exact "
-        "agent class and why alternatives are inappropriate.\n"
-        "2. <h5>References</h5> — 2-4 references. "
-        "Cite specific publications with author/org, title, year. Include clickable URLs where known. "
-        "If you cannot confidently recall a specific citation, provide fewer references rather than fabricating.\n"
+        "TASK: Answer this query.\n"
+        "TONE: Practical, direct, conversational — like a quick corridor chat. "
+        "Briefly explain WHY. Use 'you' and 'we' naturally.\n\n"
+        "Return ONLY valid JSON with these fields IN THIS ORDER:\n"
+        "{\n"
+        '  "answer": "Your practical answer. Use plain text with '
+        "paragraph breaks (\\\\n\\\\n). Be thorough on safety-critical points "
+        "but keep the tone conversational.\",\n"
+        '  "key_points": ["2-5 critical practical takeaways"],\n'
+        '  "references": [\n'
+        '    {"text": "Author/Org, Title, Year", "known_source": "acr_contrast_manual or rcr_irefer or acr_ac or null"}\n'
+        "  ],\n"
+        '  "title": "Clean professional title for the query"\n'
+        "}\n\n"
+        "IMPORTANT: Write the answer field FIRST, title field LAST.\n"
     ),
     'general': (
-        "TASK: Provide balanced clinical advisory on a radiology question.\n"
-        "STYLE: Evidence-based, balanced, and practical.\n\n"
-        "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Indication</h5> — Restate the query professionally.\n"
-        "2. <h5>Clinical Rationale</h5> — Concise, high-yield explanation. "
-        "Focus on WHY decisions are made. Consider multiple angles, "
-        "note controversies or practice variation.\n"
-        "3. <h5>Recommendation</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Clear, actionable guidance: what to do (and what not to), "
-        "red flags, escalation triggers, practical workflow advice.\n"
-        "4. <h5>References</h5> — 2-4 guideline-level references (NICE, RCR, RSNA, ACR etc). "
-        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
+        "TASK: Answer this query.\n\n"
+        "Return ONLY valid JSON with these fields IN THIS ORDER:\n"
+        "{\n"
+        '  "indication": "One-line restatement of the query",\n'
+        '  "rationale": "Clinical rationale — high-yield explanation. Focus on WHY.",\n'
+        '  "recommendation": "Clear, actionable guidance.",\n'
+        '  "key_points": ["2-5 critical clinical points to highlight"],\n'
+        '  "references": [\n'
+        '    {"text": "Author/Org, Title, Year", "known_source": "acr_contrast_manual or rcr_irefer or acr_ac or null"}\n'
+        "  ],\n"
+        '  "title": "Clean professional title for the query"\n'
+        "}\n\n"
+        "IMPORTANT: Write fields in the order shown. Title LAST.\n"
     ),
 }
 
+
+# ── Known reference URLs (verified, never hallucinated) ───────────────
+# Post-processor auto-links these. Model never sees URLs in its prompt.
+
+_REFERENCE_URLS = {
+    # ACR resources — match on organisation name, not topic keywords
+    'acr appropriateness criteria': 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
+    'acr manual on contrast media': 'https://www.acr.org/Clinical-Resources/Contrast-Manual',
+    'acr contrast manual': 'https://www.acr.org/Clinical-Resources/Contrast-Manual',
+    'acr ac portal': 'https://acsearch.acr.org/list',
+    'acr manual on mr safety': 'https://www.acr.org/Clinical-Resources/Radiology-Safety/MR-Safety',
+    'acr mr safety': 'https://www.acr.org/Clinical-Resources/Radiology-Safety/MR-Safety',
+    # UK guidelines
+    'rcr irefer': 'https://www.irefer.org.uk/',
+    'irefer': 'https://www.irefer.org.uk/',
+    'nice': 'https://www.nice.org.uk/guidance',
+    'nhs improvement': 'https://www.england.nhs.uk/patient-safety/',
+    'npsa': 'https://www.england.nhs.uk/patient-safety/',
+    # Radiology resources
+    'radiopaedia': 'https://radiopaedia.org/',
+    'radiology assistant': 'https://radiologyassistant.nl/',
+    'fleischner society': 'https://fleischner.org/',
+    'esur guidelines': 'https://www.esur.org/esur-guidelines/',
+    'esur contrast media': 'https://www.esur.org/esur-guidelines/',
+    'shellock': 'http://www.mrisafety.com/',
+    # NOTE: Classification names (Bosniak, LI-RADS, PI-RADS etc.) deliberately
+    # excluded — they match topic keywords in paper titles, causing wrong links.
+    # Those references fall through to Google Scholar instead.
+}
+
+
+# ── Post-processor: JSON → Styled HTML ────────────────────────────────
+# Only used for MARKDOWN_CATEGORIES (radiographer, general).
+
+def format_json_to_html(data, category='general'):
+    """
+    Convert model's JSON output to styled HTML for the RadIQ frontend.
+
+    For 'radiographer': title + answer + key_points + references
+    For 'general': title + indication + rationale + recommendation + key_points + references
+    """
+    if not data or not isinstance(data, dict):
+        return ''
+
+    emoji = _CATEGORY_EMOJI_UNICODE.get(category, '')
+    parts = []
+
+    # Title
+    title = data.get('title', 'Response')
+    parts.append(
+        f"<h5 class='radiq-title'>{emoji} {_esc(title)}</h5>" if emoji
+        else f"<h5 class='radiq-title'>{_esc(title)}</h5>"
+    )
+
+    key_points = data.get('key_points', [])
+
+    if category == 'general':
+        if data.get('indication'):
+            parts.append("<h5>Indication</h5>")
+            parts.append(f"<p>{_esc(data['indication'])}</p>")
+        if data.get('rationale'):
+            parts.append("<h5>Clinical Rationale</h5>")
+            parts.append(_text_to_html(data['rationale']))
+        if data.get('recommendation'):
+            parts.append("<h5>Recommendation</h5>")
+            parts.append("<div class='radiq-suggested-response'>")
+            parts.append(_text_to_html(data['recommendation']))
+            parts.append("</div>")
+    else:
+        if data.get('answer'):
+            parts.append("<h5>Answer</h5>")
+            parts.append("<div class='radiq-suggested-response'>")
+            parts.append(_text_to_html(data['answer']))
+            parts.append("</div>")
+
+    # Key points — teal left-border card
+    if key_points:
+        parts.append("<div class='radiq-key-points-card'>")
+        parts.append("<h5>Key Points</h5>")
+        parts.append("<ul>")
+        for kp in key_points:
+            parts.append(f"<li>{_esc(kp)}</li>")
+        parts.append("</ul>")
+        parts.append("</div>")
+
+    # References
+    refs = data.get('references', [])
+    if refs:
+        parts.append(f"<h5>References</h5>")
+        parts.append("<ul>")
+        for ref in refs:
+            if isinstance(ref, dict):
+                ref_text = _esc(ref.get('text', ''))
+                source = ref.get('known_source', '') or ''
+                url = _SOURCE_TO_URL.get(source)
+                if url:
+                    parts.append(
+                        f"<li><a href='{url}' target='_blank' "
+                        f"rel='noopener noreferrer'>{ref_text}</a></li>"
+                    )
+                else:
+                    # Try keyword matching as fallback
+                    linked = _linkify_reference(ref_text)
+                    parts.append(f"<li>{linked}</li>")
+            else:
+                linked = _linkify_reference(_esc(str(ref)))
+                parts.append(f"<li>{linked}</li>")
+        parts.append("</ul>")
+
+    return '\n'.join(parts)
+
+
+# ── Source key → URL mapping ──────────────────────────────────────────
+_SOURCE_TO_URL = {
+    'acr_contrast_manual': 'https://www.acr.org/Clinical-Resources/Contrast-Manual',
+    'acr_contrast': 'https://www.acr.org/Clinical-Resources/Contrast-Manual',
+    'acr_ac': 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
+    'acr_appropriateness': 'https://www.acr.org/Clinical-Resources/ACR-Appropriateness-Criteria',
+    'rcr_irefer': 'https://www.irefer.org.uk/',
+    'irefer': 'https://www.irefer.org.uk/',
+    'nice': 'https://www.nice.org.uk/guidance',
+    'radiopaedia': 'https://radiopaedia.org/',
+    'fleischner': 'https://fleischner.org/',
+    'esur': 'https://www.esur.org/esur-guidelines/',
+    'nhs_improvement': 'https://www.england.nhs.uk/patient-safety/',
+}
+
+
+def _linkify_reference(text):
+    """Auto-link known sources by keyword, fall back to Google Scholar search."""
+    text_lower = text.lower()
+    for keyword, url in _REFERENCE_URLS.items():
+        if keyword in text_lower:
+            return (
+                f"<a href='{url}' target='_blank' "
+                f"rel='noopener noreferrer'>{text}</a>"
+            )
+    # Fallback: Google Scholar search with quoted title for exact match
+    from urllib.parse import quote_plus
+    scholar_url = f"https://scholar.google.com/scholar?q=%22{quote_plus(text)}%22"
+    return (
+        f"<a href='{scholar_url}' target='_blank' "
+        f"rel='noopener noreferrer'>{text}</a>"
+    )
+
+
+def _linkify_html_references(html):
+    """Auto-link plain-text references in HTML output (gp_reply, complaint, incident).
+
+    Finds <li> items that don't already contain <a> tags and applies
+    the same keyword → known URL / Google Scholar fallback logic.
+    """
+    def _replace_li(match):
+        inner = match.group(1)
+        if '<a ' in inner:
+            return match.group(0)  # already linked
+        linked = _linkify_reference(inner)
+        return f'<li>{linked}</li>'
+
+    return re.sub(r'<li>((?:(?!</li>).)+)</li>', _replace_li, html)
+
+
+def _fix_letter_formatting(html):
+    """Convert bare newlines inside radiq-suggested-response divs to <br> tags.
+
+    The model outputs letters with plain newlines. CSS white-space:pre-line
+    displays them, but copy-paste loses them. Converting to <br> ensures
+    formatting survives in Word/Docs/email.
+    """
+    def _convert(match):
+        content = match.group(1)
+        content = content.replace('\n\n', '<br><br>')
+        content = content.replace('\n', '<br>')
+        return f"<div class='radiq-suggested-response'>{content}</div>"
+
+    return re.sub(
+        r"<div class='radiq-suggested-response'>(.*?)</div>",
+        _convert, html, flags=re.DOTALL,
+    )
+
+
+def _esc(text):
+    """Escape HTML entities in text."""
+    return (text or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+
+def _text_to_html(text):
+    """Convert plain text with paragraph breaks to HTML paragraphs."""
+    if not text:
+        return ''
+
+    paragraphs = re.split(r'\n\n+', text.strip())
+    parts = []
+
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+
+        lines = para.split('\n')
+        if all(l.strip().startswith(('- ', '* ')) for l in lines if l.strip()):
+            parts.append('<ul>')
+            for line in lines:
+                item = line.strip().lstrip('-* ').strip()
+                parts.append(f'<li>{_esc(item)}</li>')
+            parts.append('</ul>')
+        elif all(re.match(r'^\d+\.', l.strip()) for l in lines if l.strip()):
+            parts.append('<ul>')
+            for line in lines:
+                item = re.sub(r'^\d+\.\s*', '', line.strip())
+                parts.append(f'<li>{_esc(item)}</li>')
+            parts.append('</ul>')
+        else:
+            parts.append(f'<p>{_esc(para.replace(chr(10), " "))}</p>')
+
+    return '\n'.join(parts)
+
+
+# ── Main generation function ──────────────────────────────────────────
 
 def generate_radiq_response(question, category, db_context=''):
     """
@@ -262,15 +447,21 @@ def generate_radiq_response(question, category, db_context=''):
     if not question or not question.strip():
         raise RadIQError("Question cannot be empty.")
 
+    # Build category prompt — HTML categories get emoji inserted into format preamble
     category_instruction = CATEGORY_PROMPTS.get(category, CATEGORY_PROMPTS['general'])
+    if category not in MARKDOWN_CATEGORIES:
+        emoji = CATEGORY_EMOJI.get(category, '')
+        category_instruction = category_instruction.replace('{emoji}', emoji)
 
     user_prompt = (
         f"{category_instruction}\n"
-        f"QUERY:\n{question.strip()}\n\n"
-        f"{db_context}\n\n"
-        "Transform the above input into a clean professional query title, "
-        "then respond using the section structure described in the task instructions above."
+        f"QUERY:\n{question.strip()}\n"
     )
+
+    if db_context:
+        user_prompt += (
+            f"\nRELEVANT RADINSIGHTS CONTENT:\n{db_context}\n"
+        )
 
     text, model_used, tokens = call_claude(
         system_prompt=RADIQ_SYSTEM_PROMPT,
@@ -279,13 +470,35 @@ def generate_radiq_response(question, category, db_context=''):
         temperature=0.15,
         timeout=60,
         error_class=RadIQError,
+        skip_preamble=True,
     )
+
+    # Check for off-topic short-circuit (any category)
+    if '"off_topic"' in text and 'true' in text:
+        html = ("<p><strong>This query is outside the scope of RadIQ.</strong> "
+                "Please ask radiology, imaging, or clinical practice related questions.</p>")
+        logger.info("RadIQ off-topic query detected, category=%s", category)
+        return {'html': html, 'model': model_used, 'output_tokens': tokens}
+
+    # JSON categories: parse structured output → styled HTML
+    # HTML categories: return model output as-is
+    if category in MARKDOWN_CATEGORIES:
+        try:
+            data = parse_json_response(text, error_class=RadIQError)
+            html = format_json_to_html(data, category=category)
+        except (RadIQError, Exception) as exc:
+            logger.warning("JSON parse failed for RadIQ %s, using raw text: %s",
+                           category, exc)
+            html = f"<div class='radiq-suggested-response'>{_esc(text)}</div>"
+    else:
+        html = _linkify_html_references(text)
+        html = _fix_letter_formatting(html)
 
     logger.info("RadIQ response generated: category=%s model=%s tokens=%d",
                 category, model_used, tokens)
 
     return {
-        'html': text,
+        'html': html,
         'model': model_used,
         'output_tokens': tokens,
     }

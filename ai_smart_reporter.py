@@ -98,7 +98,10 @@ ASK_CLAUDE_SYSTEM_PROMPT = (
     "Answer their question concisely using standard radiology phrasing. "
     "While responding, keep the entire report findings, clinical context, and patient demographic factors in mind. "
     "If suggesting report text, make it ready to paste directly into a PACS report. "
-    "Keep answers under 200 words. Plain text only — no markdown or HTML."
+    "Keep answers under 200 words. Plain text only — no markdown or HTML. "
+    "If the question is not related to radiology, imaging, or clinical practice, "
+    "reply with only: 'This query is outside the scope of RadInsights Intelligence. "
+    "Please ask radiology or clinical practice related questions.'"
 )
 
 REVIEW_REPORT_SYSTEM_PROMPT = (
@@ -223,6 +226,9 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "expected organs/structures appropriate to the modality and body region. This IS the trainee "
     "describing their findings via shorthand, not the AI inventing them. Keep each normal statement "
     "to one concise sentence (e.g. 'The kidneys are unremarkable.' not a detailed description).\n\n"
+    "If the trainee's question is not related to radiology, imaging, or clinical practice, "
+    "set the answer field to: 'This query is outside the scope of RadInsights Intelligence. "
+    "Please ask radiology or clinical practice related questions.' and return empty corrections and insights.\n\n"
     "Output valid JSON only. No markdown fences. No text outside the JSON object."
 )
 
