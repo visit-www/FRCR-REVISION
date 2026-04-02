@@ -12,10 +12,50 @@
 
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    // Detect standalone PWA mode
+    var _isStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+
     // Track active recognition instance globally (only one mic at a time)
     var _activeRecognition = null;
     var _activeBtn = null;
     var _restartTimer = null;
+    var _micPermissionGranted = false;
+
+    /**
+     * Show a temporary toast message near the button
+     */
+    function _showToast(btn, message, isError) {
+        var toast = document.createElement('div');
+        toast.className = 'dictation-toast' + (isError ? ' dictation-toast-error' : '');
+        toast.textContent = message;
+        // Position near the button
+        btn.parentNode.style.position = btn.parentNode.style.position || 'relative';
+        btn.parentNode.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 4000);
+    }
+
+    /**
+     * Request microphone permission explicitly.
+     * In standalone PWAs, the Speech API often fails silently without this.
+     */
+    function _requestMicPermission() {
+        if (_micPermissionGranted) return Promise.resolve(true);
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return Promise.resolve(true); // Can't pre-request, let Speech API try
+        }
+        return navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function(stream) {
+                // Stop the stream immediately — we just needed the permission
+                stream.getTracks().forEach(function(t) { t.stop(); });
+                _micPermissionGranted = true;
+                return true;
+            })
+            .catch(function(err) {
+                console.warn('Microphone permission denied:', err.name);
+                return false;
+            });
+    }
 
     /**
      * Attach dictation to a button → textarea pair.
@@ -25,6 +65,10 @@
             btn.title = 'Speech recognition not supported in this browser';
             btn.disabled = true;
             btn.style.opacity = '0.4';
+            // In standalone PWA on iOS, show why it's disabled
+            if (_isStandalone) {
+                btn.title = 'Dictation not available in installed app — open in browser';
+            }
             return;
         }
 
@@ -38,7 +82,15 @@
             if (_activeRecognition) {
                 stopDictation();
             }
-            startDictation(targetId, btn);
+
+            // Request mic permission first, then start
+            _requestMicPermission().then(function(granted) {
+                if (!granted) {
+                    _showToast(btn, 'Microphone permission denied — check browser settings', true);
+                    return;
+                }
+                startDictation(targetId, btn);
+            });
         });
     }
 
@@ -46,7 +98,13 @@
         var textarea = document.getElementById(targetId);
         if (!textarea) return;
 
-        var recognition = new SpeechRecognition();
+        var recognition;
+        try {
+            recognition = new SpeechRecognition();
+        } catch (e) {
+            _showToast(btn, 'Speech recognition unavailable — try opening in browser', true);
+            return;
+        }
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.lang = 'en-GB';
@@ -89,7 +147,18 @@
                 return;
             }
             if (event.error === 'aborted') return; // Manual stop
+            if (event.error === 'not-allowed') {
+                _showToast(btn, 'Microphone access blocked — check app permissions', true);
+                stopDictation();
+                return;
+            }
+            if (event.error === 'service-not-allowed' || event.error === 'network') {
+                _showToast(btn, 'Speech service unavailable — try opening in browser', true);
+                stopDictation();
+                return;
+            }
             console.warn('Speech recognition error:', event.error);
+            _showToast(btn, 'Dictation error: ' + event.error, true);
             stopDictation();
         };
 
@@ -100,7 +169,15 @@
             }
         };
 
-        recognition.start();
+        try {
+            recognition.start();
+        } catch (e) {
+            console.warn('Failed to start speech recognition:', e);
+            _showToast(btn, 'Could not start dictation — try opening in browser', true);
+            if (interimDiv) interimDiv.remove();
+            return;
+        }
+
         _activeRecognition = recognition;
         _activeBtn = btn;
 
