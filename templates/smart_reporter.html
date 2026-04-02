@@ -793,7 +793,7 @@
                                 </div>
                                 <div class="card-body p-3" style="background: #0d2230 !important; color: #e0e8ef !important;">
                                     <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; margin: 0; color: #e0e8ef !important; background: transparent !important;"></pre>
-                                    <button id="goToReportBtn" class="btn btn-sm mt-2 d-none" onclick="scrollToReport()" style="background: #e96304; color: #fff; font-size: 0.75rem; border-radius: 12px;">
+                                    <button id="goToReportBtn" class="btn mt-2 d-none" style="background: #e96304; color: #fff; font-size: 0.68rem; border-radius: 10px; padding: 2px 10px; line-height: 1.4;">
                                         <i class="fas fa-arrow-down me-1"></i>Go to PACS Report
                                     </button>
                                 </div>
@@ -3754,6 +3754,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 goToBtn.classList.add('d-none');
             }
+            // Auto-scroll to answer box so user sees the response
+            setTimeout(function() {
+                answerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         } else {
             answerSection.classList.add('d-none');
         }
@@ -5360,13 +5364,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Move answer/changes box near PACS when visible, or top of right col
-    function scrollToReport() {
-        var outputSection = document.getElementById('outputSection');
-        var editorOutput = document.getElementById('editorOutput');
-        if (outputSection && !outputSection.classList.contains('d-none')) {
-            outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(function() { editorOutput.focus(); }, 400);
-        }
+    // "Go to PACS Report" button — scroll to PACS box and focus
+    var goToBtn = document.getElementById('goToReportBtn');
+    if (goToBtn) {
+        goToBtn.addEventListener('click', function() {
+            var outputSection = document.getElementById('outputSection');
+            var editorOutput = document.getElementById('editorOutput');
+            if (outputSection && !outputSection.classList.contains('d-none')) {
+                outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(function() { editorOutput.focus(); }, 400);
+            }
+        });
     }
 
     function repositionAnswerBox() {
