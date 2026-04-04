@@ -4832,6 +4832,7 @@ document.addEventListener('DOMContentLoaded', function() {
         input.value = output.value;
         state.inputText = input.value;
         autoResizeTextarea(input);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         showToast('Draft updated from PACS report.', 'success');
     };
 

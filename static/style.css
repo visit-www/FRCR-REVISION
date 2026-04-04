@@ -6069,8 +6069,6 @@ body {
     background: #fff;
     border: 1px solid #dee2e6;
     border-radius: 0.375rem;
-    max-height: 500px;
-    overflow-y: auto;
 }
 .diff-action-popup {
     display: inline-flex;
