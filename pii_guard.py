@@ -2,15 +2,41 @@
 PII Guard — Server-side Patient Data Detection Middleware
 Dual-layer protection: this file (server) + static/pii-guard.js (client)
 
+L1: Regex patterns for structured identifiers (NHS, MRN, DOB, postcodes, etc.)
+L2: spaCy NER for free-text name detection (PERSON entities)
+
 Intercepts POST/PUT requests with JSON bodies and rejects any containing
-patient-identifiable information (NHS numbers, MRNs, DOBs, etc.).
+patient-identifiable information.
 """
 
 import re
 import logging
+import os
 from flask import request, jsonify
 
 logger = logging.getLogger(__name__)
+
+# ======================== spaCy NER (L2) ========================
+# Lazy-loaded on first use to avoid cold-start penalty on every request.
+
+_nlp = None
+_nlp_loaded = False
+
+
+def _get_nlp():
+    """Lazy-load the spaCy NER model. Returns None if unavailable."""
+    global _nlp, _nlp_loaded
+    if _nlp_loaded:
+        return _nlp
+    _nlp_loaded = True
+    try:
+        import spacy
+        _nlp = spacy.load('en_core_web_sm', disable=['parser', 'lemmatizer', 'tagger', 'attribute_ruler'])
+        logger.info('PII Guard L2: spaCy en_core_web_sm loaded (NER only)')
+    except Exception as exc:
+        logger.warning(f'PII Guard L2: spaCy unavailable, falling back to regex only — {exc}')
+        _nlp = None
+    return _nlp
 
 # ======================== PII PATTERNS ========================
 
@@ -95,11 +121,11 @@ PII_PATTERNS = [
     )),
     # Doctor / clinician name with context keyword
     ('Doctor / Clinician Name', re.compile(
-        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){0,3}',
+        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z]\.?[a-zA-Z\'-]*){0,3}',
         re.IGNORECASE)),
-    # Doctor name with Dr. title (requires 2+ name words)
+    # Doctor name with Dr. title (requires 2+ name segments, supports initials like "Dr Gaurav G")
     ('Doctor / Clinician Name', re.compile(
-        r'\bDr\.?\s+[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){1,3}\b')),
+        r'\bDr\.?\s+[A-Z][a-zA-Z\'-]+(?:\s+[A-Z]\.?[a-zA-Z\'-]*){1,3}\b')),
     # Bare 7-10 digit number on its own line (likely hospital number / MRN / NHS number)
     ('Possible Patient ID', re.compile(r'^\d{7,10}$', re.MULTILINE)),
     # Patient age
@@ -158,6 +184,14 @@ MEDICAL_ALLOWLIST = frozenset({
     'SA NODE','AV NODE','SI JOINT','SI JOINTS',
 })
 
+# Imaging modality terms that should never be treated as part of a person's name.
+# Prevents false positives like "Pt CT Facial Bones" being flagged as a patient name.
+IMAGING_MODALITY_TERMS = frozenset({
+    'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
+    'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
+    'XR','CXR','AXR','USS','HRCT','CECT','NCCT','MRE','MRCP',
+})
+
 
 def _is_medical_term(match_text):
     """Check if matched text is a known medical/radiology term (false positive suppression)."""
@@ -195,22 +229,77 @@ SKIP_ROUTE_PREFIXES = (
     '/vetting/admin/',
     '/api/vetting/admin/',
     '/stripe/webhook',
+    # Smart Reporter has its own PII checking (livePIIScan + checkEditorPII)
+    '/api/smart-reporter/',
 )
+
+
+def _spacy_scan(text):
+    """L2: Use spaCy NER to detect PERSON entities in free text.
+    Returns list of (pattern_type, matched_text) tuples.
+    Only flags entities NOT already in the medical allowlist."""
+    nlp = _get_nlp()
+    if nlp is None:
+        return []
+
+    try:
+        doc = nlp(text)
+    except Exception:
+        return []
+
+    matches = []
+    for ent in doc.ents:
+        if ent.label_ != 'PERSON':
+            continue
+        name = ent.text.strip()
+        if len(name) < 2:
+            continue
+        if _is_medical_term(name):
+            continue
+        # Skip if all words are imaging modality terms (e.g. "Dr CR")
+        words = [w for w in re.split(r'[\s.]+', name) if w]
+        if all(w.upper() in IMAGING_MODALITY_TERMS for w in words):
+            continue
+        matches.append(('Person Name (NER)', name))
+
+    return matches
 
 
 def check_pii(text):
     """
     Scan text for PII patterns.
+    L1: Regex patterns for structured identifiers.
+    L2: spaCy NER for free-text name detection.
     Returns list of (pattern_type, matched_text) tuples.
     """
     if not text or not isinstance(text, str) or len(text) < 5:
         return []
 
     matches = []
+
+    # L1: Regex scan
     for pattern_type, regex in PII_PATTERNS:
         for match in regex.finditer(text):
             if not _is_medical_term(match.group()):
                 matches.append((pattern_type, match.group()))
+
+    # Filter out Patient/Doctor Name matches containing imaging modality terms
+    # e.g. "Pt CT Facial Bones" — "CT" is an imaging modality, not a person's name
+    matches = [
+        (ptype, ptext) for ptype, ptext in matches
+        if ptype not in ('Patient Name', 'Doctor / Clinician Name')
+        or not any(w.upper() in IMAGING_MODALITY_TERMS
+                   for w in re.split(r'[\s:=\-]+', ptext) if w)
+    ]
+
+    # L2: spaCy NER scan — catches names that regex misses
+    ner_matches = _spacy_scan(text)
+    # Only add NER matches that aren't already covered by regex
+    regex_texts = {ptext.lower() for _, ptext in matches}
+    for ptype, ptext in ner_matches:
+        if ptext.lower() not in regex_texts:
+            matches.append((ptype, ptext))
+
     return matches
 
 

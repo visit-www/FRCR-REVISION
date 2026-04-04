@@ -29,3 +29,5 @@ sentry-sdk[flask]>=2.0.0
 pyotp>=2.9.0
 qrcode>=7.4.0
 stripe>=8.0.0
+spacy>=3.7.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl

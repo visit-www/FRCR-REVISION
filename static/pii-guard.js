@@ -42,6 +42,14 @@
         'SA NODE','AV NODE','SI JOINT','SI JOINTS',
     ]);
 
+    // Imaging modality terms that should never be treated as part of a person's name.
+    // Prevents false positives like "Pt CT Facial Bones" being flagged as a patient name.
+    const IMAGING_MODALITY_TERMS = new Set([
+        'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
+        'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
+        'XR','CXR','AXR','USS','HRCT','CECT','NCCT','MRE','MRCP',
+    ]);
+
     function _isMedicalTerm(matchText) {
         if (!matchText) return false;
         var upper = matchText.trim().toUpperCase();
@@ -179,12 +187,12 @@
         },
         {
             type: 'Doctor / Clinician Name',
-            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){0,3}/gi,
+            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){0,3}/gi,
             description: 'Referring/reporting clinician name detected'
         },
         {
             type: 'Doctor / Clinician Name',
-            regex: /\bDr\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3}\b/g,
+            regex: /\bDr\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){1,3}\b/g,
             description: 'Doctor name detected'
         },
         {
@@ -261,6 +269,19 @@
 
         // Filter out known medical/radiology terms (false positive suppression)
         var filtered = matches.filter(function(m) { return !_isMedicalTerm(m.match); });
+
+        // Filter out Patient/Doctor Name matches containing imaging modality terms
+        // e.g. "Pt CT Facial Bones" — "CT" is an imaging modality, not a person's name
+        filtered = filtered.filter(function(m) {
+            if (m.type === 'Patient Name' || m.type === 'Doctor / Clinician Name') {
+                var words = m.match.split(/[\s:=\-]+/);
+                for (var i = 0; i < words.length; i++) {
+                    if (words[i] && IMAGING_MODALITY_TERMS.has(words[i].toUpperCase())) return false;
+                }
+            }
+            return true;
+        });
+
         return { hasPII: filtered.length > 0, matches: filtered };
     }
 
@@ -777,11 +798,12 @@
             // Skip auth/admin/backup routes and Smart Reporter AI routes
             // (Smart Reporter has its own checkEditorPII pre-check that cleans the textarea)
             const urlStr = typeof url === 'string' ? url : url.toString();
+            // Smart Reporter has its own PII checking (livePIIScan + checkEditorPII)
+            // so skip all its routes in the global interceptor
             const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
                 '/api/pii-override-log',
                 '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/',
-                '/api/smart-reporter/ai-assist', '/api/smart-reporter/quick-review',
-                '/api/smart-reporter/generate-tree', '/api/smart-reporter/anatomy'];
+                '/api/smart-reporter/'];
             if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
                 return originalFetch.call(this, url, options);
             }
@@ -861,6 +883,7 @@
         clearDismissals: clearDismissals,
         PII_PATTERNS: PII_PATTERNS,
         MEDICAL_ALLOWLIST: MEDICAL_ALLOWLIST,
+        IMAGING_MODALITY_TERMS: IMAGING_MODALITY_TERMS,
         isMedicalTerm: _isMedicalTerm
     };
 
