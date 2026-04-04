@@ -884,7 +884,8 @@
         PII_PATTERNS: PII_PATTERNS,
         MEDICAL_ALLOWLIST: MEDICAL_ALLOWLIST,
         IMAGING_MODALITY_TERMS: IMAGING_MODALITY_TERMS,
-        isMedicalTerm: _isMedicalTerm
+        isMedicalTerm: _isMedicalTerm,
+        TYPE_COLORS: TYPE_COLORS
     };
 
 })();

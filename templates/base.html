@@ -637,6 +637,7 @@
     <!-- Global PII Guard — intercepts all fetch POST/PUT for patient data -->
     {% if current_user.is_authenticated %}
     <script src="{{ url_for('static', filename='pii-guard.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='pii-guard-ui.js') }}?v=1"></script>
     <script>
         if (window.PIIGuard) { PIIGuard.attachToFetch(); }
     </script>

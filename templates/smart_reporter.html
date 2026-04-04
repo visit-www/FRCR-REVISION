@@ -567,16 +567,6 @@
                     </button>
                 </div>
 
-                <!-- PII Warning Bar (hidden by default) -->
-                <div id="piiWarningBar" class="d-none" style="background:#fff3cd;border:1px solid #ffc107;border-radius:0.375rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;">
-                    <div class="d-flex align-items-center gap-2" style="cursor:pointer;" onclick="showPIIDetails()">
-                        <i class="fas fa-exclamation-triangle" style="color:#dc3545;"></i>
-                        <span style="font-size:0.82rem;color:#856404;"><strong>Patient data detected</strong> — redact, remove, or dismiss items below.</span>
-                        <span class="ms-auto badge bg-danger" id="piiMatchCount" style="font-size:0.7rem;"></span>
-                    </div>
-                    <div id="piiDetailsList" class="d-none mt-2 pt-2" style="border-top:1px solid #ffe69c;"></div>
-                </div>
-
                 <!-- Blank State Guidance (hidden when draft has content) -->
                 <div id="blankStateGuide" class="mb-3">
                     <div class="card border-0 shadow-sm" style="background: #fff5ec; border-left: 3px solid var(--brand-primary) !important;">
@@ -1297,55 +1287,6 @@ document.addEventListener('DOMContentLoaded', function() {
             activeAIController = null;
         }
     };
-
-    // Pre-fetch PII check — scans editor text BEFORE any AI call.
-    // Returns true if PII was found (caller should abort). Returns false if clean.
-    async function checkEditorPII() {
-        if (!window.PIIGuard) return false;
-        var editor = document.getElementById('editorInput');
-        if (!editor || !editor.value.trim()) return false;
-
-        var result = PIIGuard.scan(editor.value);
-        if (!result.hasPII) return false;
-
-        // Build a body-like object so the modal can show highlighted preview
-        var previewBody = { report_text: editor.value };
-        var previewMatches = result.matches.map(function(m) {
-            return { type: m.type, match: m.match, index: m.index, description: m.description, field: 'report_text' };
-        });
-
-        var action = await PIIGuard.showPIIModal(previewMatches, previewBody);
-
-        if (action === 'override') {
-            // User confirmed this is not PII — allow submission to proceed
-            return false;
-        }
-
-        if (action === 'redact' || action === 'remove') {
-            var transformFn = action === 'remove' ? PIIGuard.remove : PIIGuard.redact;
-            var cleaned = transformFn(editor.value, result.matches);
-            if (cleaned === editor.value) {
-                // Fallback: manual string replacement
-                var fallback = editor.value;
-                var replacement = action === 'remove' ? '' : '[REDACTED]';
-                for (var i = 0; i < result.matches.length; i++) {
-                    var m = result.matches[i].match;
-                    if (m && fallback.indexOf(m) !== -1) {
-                        fallback = fallback.split(m).join(replacement);
-                    }
-                }
-                if (action === 'remove') fallback = fallback.replace(/  +/g, ' ').trim();
-                cleaned = fallback;
-            }
-            editor.value = cleaned;
-            var label = action === 'remove' ? 'removed from' : 'redacted in';
-            showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
-            return true; // Block — user must review cleaned text before re-submitting
-        }
-
-        // Cancel — block submission
-        return true;
-    }
 
     // Safety net for server-side PII catches (if client-side misses something)
     function handlePIIResponse(data) {
@@ -2917,13 +2858,27 @@ document.addEventListener('DOMContentLoaded', function() {
             state.outputText = autoApplyText;
             var output = document.getElementById('editorOutput');
             output.value = autoApplyText;
-            autoResizeTextarea(output);
             var outputSection = document.getElementById('outputSection');
             outputSection.classList.add('has-content');
             outputSection.classList.remove('d-none');
+            // Resize after section is visible so scrollHeight is accurate
+            setTimeout(function() { autoResizeTextarea(output); }, 50);
+
+            // Proofread summary: show how many corrections found
+            var totalFound = state.suggestions.length;
+            var autoFixed = state.suggestions.filter(function(s) { return s.status === 'accepted'; }).length;
+            var pending = state.suggestions.filter(function(s) { return s.status === 'pending'; }).length;
+
+            if (totalFound === 0) {
+                showToast('Proofread complete — no errors found. Your report looks good!', 'success');
+            } else if (pending === 0) {
+                showToast('Proofread complete — ' + totalFound + ' minor correction' + (totalFound !== 1 ? 's' : '') + ' auto-applied.', 'success');
+            } else {
+                showToast(totalFound + ' correction' + (totalFound !== 1 ? 's' : '') + ' found (' + autoFixed + ' auto-applied, ' + pending + ' to review).', 'info');
+            }
 
             // Show diff overlay in PACS box (not the separate suggestionsPanel)
-            if (state.suggestions.some(function(s) { return s.status === 'pending'; })) {
+            if (pending > 0) {
                 _renderPacsDiffView(state.suggestions, 'proofread');
                 outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -2941,12 +2896,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.reviewReport = async function() {
-        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const text = getCurrentReportText();
         if (!text) {
             return;
         }
-        if (await checkEditorPII()) return;
+        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
         doReviewReport();
     };
 
@@ -3320,7 +3274,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.askClaude = async function() {
-        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
@@ -3331,7 +3284,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!getCurrentReportText()) {
             return;
         }
-        if (await checkEditorPII()) return;
+        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
 
         const btn = document.getElementById('btnAskClaude');
         _btnStartLoading(btn, '<i class="fas fa-spinner"></i>');
@@ -3455,12 +3408,11 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.submitReportAction = async function(action) {
-        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const reportText = getCurrentReportText();
         if (!reportText) {
             return;
         }
-        if (await checkEditorPII()) return;
+        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
 
         const meta = REPORT_ACTION_META[action];
         if (!meta) return;
@@ -4865,7 +4817,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (overlay) overlay.classList.add('d-none');
         if (textarea) {
             textarea.classList.remove('d-none');
-            autoResizeTextarea(textarea);
+            // Delay resize to ensure layout is recalculated after d-none removal
+            setTimeout(function() { autoResizeTextarea(textarea); }, 50);
         }
         _pacsDiffSource = null;
         showToast('All corrections reviewed.', 'success');
@@ -5394,224 +5347,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
-    // ==================== LIVE PII SCANNER ====================
-    var _piiScanTimer = null;
-    var _piiBlocked = false;
-    var _lastPIIMatches = [];       // all raw matches from scan
-    var _activePIIMatches = [];     // matches after filtering dismissed
-
-    function livePIIScan() {
-        if (!window.PIIGuard) return;
-        var editor = document.getElementById('editorInput');
-        if (!editor) return;
-        var text = editor.value || '';
-        // Also scan PACS output for PII
-        var output = document.getElementById('editorOutput');
-        if (output && output.value) text += '\n' + output.value;
-        var result = PIIGuard.scan(text);
-
-        _lastPIIMatches = result.matches || [];
-
-        // Filter out dismissed matches
-        var active = PIIGuard.filterDismissed ? PIIGuard.filterDismissed(_lastPIIMatches) : _lastPIIMatches;
-        _activePIIMatches = active;
-
-        if (active.length > 0) {
-            _piiBlocked = true;
-            renderPIIWarningBar(active);
-            _setPIIButtonState(true);
-        } else {
-            _piiBlocked = false;
-            var bar = document.getElementById('piiWarningBar');
-            bar.classList.add('d-none');
-            document.getElementById('piiDetailsList').classList.add('d-none');
-            _setPIIButtonState(false);
-        }
-    }
-
-    function renderPIIWarningBar(matches) {
-        var bar = document.getElementById('piiWarningBar');
-        var countBadge = document.getElementById('piiMatchCount');
-        var detailsList = document.getElementById('piiDetailsList');
-
-        bar.classList.remove('d-none');
-        countBadge.textContent = matches.length + ' item' + (matches.length !== 1 ? 's' : '');
-
-        if (PIIGuard.getActionableWarningHTML) {
-            detailsList.innerHTML = PIIGuard.getActionableWarningHTML(matches);
-        } else {
-            detailsList.innerHTML = PIIGuard.getWarningHTML(matches);
-        }
-    }
-
-    function _setPIIButtonState(blocked) {
-        var btns = [
-            document.getElementById('btnReviewReport2'),
-            document.getElementById('btnAskClaude'),
-        ];
-        // Also get all mirror Ask Claude buttons and report action buttons (skip vetting)
-        document.querySelectorAll('.sr-ask-mirror-btn, .report-action-btn, #btnFinalizeToolbar').forEach(function(b) {
-            if (b.dataset && b.dataset.action === 'vetting') return;
-            btns.push(b);
-        });
-        var askInput = document.getElementById('askClaudeInput');
-
-        btns.forEach(function(btn) {
-            if (!btn) return;
-            if (blocked) {
-                btn.disabled = true;
-                btn.style.opacity = '0.4';
-                btn.style.pointerEvents = 'none';
-            } else {
-                btn.disabled = false;
-                btn.style.opacity = '';
-                btn.style.pointerEvents = '';
-            }
-        });
-        if (askInput) {
-            askInput.disabled = blocked;
-            askInput.style.opacity = blocked ? '0.4' : '';
-        }
-    }
-
-    window.showPIIDetails = function() {
-        var detailsList = document.getElementById('piiDetailsList');
-        detailsList.classList.toggle('d-none');
-    };
-
-    // ==================== PII ACTION HANDLERS ====================
-
-    // Called by per-match buttons in the actionable warning bar
-    window.piiAction = function(action, matchIndex) {
-        if (!_activePIIMatches || matchIndex >= _activePIIMatches.length) return;
-        var match = _activePIIMatches[matchIndex];
-        var editor = document.getElementById('editorInput');
-        var output = document.getElementById('editorOutput');
-        if (!editor) return;
-
-        if (action === 'redact') {
-            editor.value = editor.value.split(match.match).join('[REDACTED]');
-            state.inputText = editor.value;
-            if (output) { output.value = output.value.split(match.match).join('[REDACTED]'); state.outputText = output.value; }
-            livePIIScan();
-        } else if (action === 'remove') {
-            editor.value = editor.value.split(match.match).join('');
-            editor.value = editor.value.replace(/  +/g, ' ');
-            state.inputText = editor.value;
-            if (output) { output.value = output.value.split(match.match).join(''); output.value = output.value.replace(/  +/g, ' '); state.outputText = output.value; }
-            livePIIScan();
-        } else if (action === 'dismiss') {
-            _showPIIDismissConfirm(function() {
-                PIIGuard.dismiss(match);
-                _logPIIAction('dismiss', [match.type], 1);
-                livePIIScan();
-            });
-        }
-    };
-
-    // Dismiss all matches of a given type
-    window.piiDismissType = function(type) {
-        var count = 0;
-        for (var i = 0; i < _activePIIMatches.length; i++) {
-            if (_activePIIMatches[i].type === type) count++;
-        }
-        _showPIIDismissConfirm(function() {
-            PIIGuard.dismissType(type, _activePIIMatches);
-            _logPIIAction('batch_dismiss', [type], count);
-            livePIIScan();
-        });
-    };
-
-    // PII Dismiss confirmation with HIPAA acknowledgement checkbox
-    function _showPIIDismissConfirm(onConfirm) {
-        var existing = document.getElementById('piiDismissConfirmOverlay');
-        if (existing) existing.remove();
-
-        var overlay = document.createElement('div');
-        overlay.id = 'piiDismissConfirmOverlay';
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
-
-        var dialog = document.createElement('div');
-        dialog.style.cssText = 'background:#fff;border-radius:8px;padding:1.25rem;max-width:420px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2);';
-        dialog.innerHTML =
-            '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">' +
-                '<i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:1.1rem;"></i>' +
-                '<strong style="font-size:0.95rem;">Confirm Dismissal</strong>' +
-            '</div>' +
-            '<p style="font-size:0.82rem;color:#444;margin-bottom:0.75rem;line-height:1.5;">' +
-                'Dismissing a PII flag means this text will be sent to external AI services. ' +
-                'Under HIPAA guidelines, you must ensure the flagged text does <strong>not</strong> contain protected health information (PHI).' +
-            '</p>' +
-            '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">' +
-                '<label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;font-size:0.8rem;color:#664d03;margin:0;">' +
-                    '<input type="checkbox" id="piiDismissCheckbox" style="margin-top:3px;flex-shrink:0;">' +
-                    '<span>I confirm this is <strong>not</strong> patient-identifiable information and I authorise this dismissal. This action will be logged.</span>' +
-                '</label>' +
-            '</div>' +
-            '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
-                '<button id="piiDismissCancelBtn" class="btn btn-sm btn-outline-secondary">Cancel</button>' +
-                '<button id="piiDismissConfirmBtn" class="btn btn-sm" style="background:#dc3545;color:#fff;opacity:0.5;pointer-events:none;" disabled>Dismiss</button>' +
-            '</div>';
-
-        overlay.appendChild(dialog);
-        document.body.appendChild(overlay);
-
-        var checkbox = document.getElementById('piiDismissCheckbox');
-        var confirmBtn = document.getElementById('piiDismissConfirmBtn');
-        var cancelBtn = document.getElementById('piiDismissCancelBtn');
-
-        checkbox.addEventListener('change', function() {
-            confirmBtn.disabled = !this.checked;
-            confirmBtn.style.opacity = this.checked ? '1' : '0.5';
-            confirmBtn.style.pointerEvents = this.checked ? 'auto' : 'none';
-        });
-
-        cancelBtn.addEventListener('click', function() { overlay.remove(); });
-        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-
-        confirmBtn.addEventListener('click', function() {
-            overlay.remove();
-            onConfirm();
-        });
-
-        setTimeout(function() { checkbox.focus(); }, 100);
-    }
-
-    // Redact all active PII matches at once
-    window.piiRedactAll = function() {
-        var editor = document.getElementById('editorInput');
-        if (!editor || !_activePIIMatches.length) return;
-        editor.value = PIIGuard.redact(editor.value, _activePIIMatches);
-        state.inputText = editor.value;
-        livePIIScan();
-    };
-
-    // Remove all active PII matches at once
-    window.piiRemoveAll = function() {
-        var editor = document.getElementById('editorInput');
-        if (!editor || !_activePIIMatches.length) return;
-        editor.value = PIIGuard.remove(editor.value, _activePIIMatches);
-        state.inputText = editor.value;
-        livePIIScan();
-    };
-
-    // Fire-and-forget audit log for dismiss/batch_dismiss actions
-    function _logPIIAction(action, types, count) {
-        try {
-            fetch('/api/pii-override-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    action: action,
-                    flagged_types: types,
-                    flagged_count: count,
-                    target_url: 'smart-reporter-editor'
-                })
-            }).catch(function() {});
-        } catch(e) {}
-    }
-
     // ==================== FLOATING ACTION BUTTON ====================
     var _fabVisible = false;
     var _fabOpen = false;
@@ -5668,9 +5403,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editorInput').addEventListener('input', function() {
         state.inputText = this.value;
         autoResizeTextarea(this);
-        // Debounced PII scan
-        clearTimeout(_piiScanTimer);
-        _piiScanTimer = setTimeout(livePIIScan, 500);
         _autosaveDraft();
     });
 
@@ -5678,10 +5410,29 @@ document.addEventListener('DOMContentLoaded', function() {
         state.outputText = this.value;
         autoResizeTextarea(this);
         _autosaveDraft();
-        // Debounced PII scan on PACS output
-        clearTimeout(_piiScanTimer);
-        _piiScanTimer = setTimeout(livePIIScan, 500);
     });
+
+    // ==================== PII GUARD UI KIT ====================
+    if (window.PIIGuardUI) {
+        window._piiUI = PIIGuardUI.attach({
+            textareas: ['#editorInput', '#editorOutput'],
+            headerSelector: '.card:has(#editorInput) .card-header .d-flex',
+            auditContext: 'smart-reporter',
+            onStateChange: function(st) {
+                // Disable AI buttons when PII detected
+                ['btnReviewReport2','btnAskClaude'].forEach(function(id) {
+                    var b = document.getElementById(id);
+                    if (b) { b.disabled = st.blocked; b.style.opacity = st.blocked ? '0.4' : ''; b.style.pointerEvents = st.blocked ? 'none' : ''; }
+                });
+                document.querySelectorAll('.sr-ask-mirror-btn, .report-action-btn, #btnFinalizeToolbar').forEach(function(b) {
+                    if (b.dataset && b.dataset.action === 'vetting') return;
+                    b.disabled = st.blocked; b.style.opacity = st.blocked ? '0.4' : ''; b.style.pointerEvents = st.blocked ? 'none' : '';
+                });
+                var ai = document.getElementById('askClaudeInput');
+                if (ai) { ai.disabled = st.blocked; ai.style.opacity = st.blocked ? '0.4' : ''; }
+            }
+        });
+    }
 
     // beforeunload warning when editor has meaningful content
     window.addEventListener('beforeunload', function(e) {

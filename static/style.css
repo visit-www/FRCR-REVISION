@@ -7026,3 +7026,376 @@ body {
     cursor: pointer;
 }
 .dictation-correction-cancel:hover { background: #f8f9fa; }
+
+/* =====================================================================
+   PII Guard UI Kit — Overlay, Widget, Badge, Gate Modal
+   ===================================================================== */
+
+/* --- Layer 1a: Inline Highlight Overlay (Grammarly technique) --- */
+.pii-overlay-container {
+    position: relative;
+}
+.pii-overlay-backdrop {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    overflow: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    color: transparent;
+    z-index: 0;
+    border: 1px solid transparent;
+}
+.pii-overlay-container textarea {
+    background: transparent !important;
+    position: relative;
+    z-index: 1;
+}
+.pii-overlay-mark {
+    border-radius: 2px;
+    color: transparent;
+}
+
+/* Field border glow when PII detected */
+.pii-overlay-container.pii-has-matches textarea {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220,53,69,.15) !important;
+}
+
+/* Dark theme (PACS output card) */
+.pacs-output-card .pii-overlay-backdrop {
+    background: #0d1117;
+}
+.pacs-output-card .pii-overlay-container.pii-has-matches textarea {
+    box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25) !important;
+}
+
+/* --- Layer 1b: Floating Widget (pill) --- */
+.pii-float-widget {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    z-index: 5;
+    display: none;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.2s, transform 0.2s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+.pii-float-widget.visible { display: flex; }
+.pii-float-widget:hover { transform: scale(1.05); }
+
+.pii-float-widget--hard {
+    background: #dc3545;
+    color: #fff;
+}
+.pii-float-widget--soft {
+    background: #e96304;
+    color: #fff;
+}
+
+/* --- Layer 1c: Header Badge --- */
+.pii-header-badge {
+    display: none;
+    font-size: 0.68rem;
+    font-weight: 600;
+    vertical-align: middle;
+    cursor: pointer;
+    animation: piiHeaderPulse 2s ease-in-out infinite;
+}
+.pii-header-badge.visible { display: inline-block; }
+
+@keyframes piiHeaderPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.65; }
+}
+
+/* --- Layer 2: Detail Popover --- */
+.pii-float-detail {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 6px;
+    width: 340px;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    z-index: 10;
+    display: none;
+    font-size: 0.8rem;
+}
+.pii-float-detail.open { display: block; }
+
+.pii-detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+.pii-detail-header-title {
+    font-weight: 600;
+    font-size: 0.78rem;
+    color: #333;
+}
+.pii-detail-batch-btns {
+    display: flex;
+    gap: 4px;
+}
+.pii-detail-batch-btns button {
+    font-size: 0.68rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+}
+.pii-detail-btn-redact { background: var(--brand-primary, #e96304); color: #fff; }
+.pii-detail-btn-redact:hover { background: #c75002; }
+.pii-detail-btn-remove { background: #dc3545; color: #fff; }
+.pii-detail-btn-remove:hover { background: #b02a37; }
+
+.pii-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: opacity 0.3s;
+}
+.pii-detail-row:last-child { border-bottom: none; }
+.pii-detail-row.fading { opacity: 0; }
+
+.pii-detail-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.pii-detail-text {
+    flex: 1;
+    font-size: 0.76rem;
+    color: #444;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pii-detail-actions {
+    display: flex;
+    gap: 3px;
+    flex-shrink: 0;
+}
+.pii-detail-actions button {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+    color: #555;
+}
+.pii-detail-actions button:hover { background: #f0f0f0; }
+.pii-detail-actions .act-redact { border-color: var(--brand-primary, #e96304); color: var(--brand-primary, #e96304); }
+.pii-detail-actions .act-redact:hover { background: var(--brand-primary, #e96304); color: #fff; }
+.pii-detail-actions .act-remove { border-color: #dc3545; color: #dc3545; }
+.pii-detail-actions .act-remove:hover { background: #dc3545; color: #fff; }
+.pii-detail-actions .act-dismiss { border-color: #6c757d; color: #6c757d; }
+.pii-detail-actions .act-dismiss:hover { background: #6c757d; color: #fff; }
+
+/* --- Layer 3: Commit-Gate Modal --- */
+.pii-gate-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 10500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: piiGateFadeIn 0.2s ease;
+}
+@keyframes piiGateFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.pii-gate-modal {
+    background: #fff;
+    border-radius: 12px;
+    width: 95%;
+    max-width: 560px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 48px rgba(0,0,0,0.3);
+}
+
+.pii-gate-modal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-bottom: 1px solid #e9ecef;
+    background: linear-gradient(135deg, #dc3545 0%, #b52d3a 100%);
+    border-radius: 12px 12px 0 0;
+    color: #fff;
+}
+.pii-gate-modal-header h5 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    flex: 1;
+}
+.pii-gate-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.8);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 4px;
+}
+.pii-gate-close:hover { color: #fff; }
+
+.pii-gate-body { padding: 16px 20px; }
+
+.pii-gate-section {
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+}
+.pii-gate-hard-section {
+    background: rgba(220,53,69,0.08);
+    border: 1px solid rgba(220,53,69,0.25);
+}
+.pii-gate-soft-section {
+    background: rgba(233,99,4,0.08);
+    border: 1px solid rgba(233,99,4,0.25);
+}
+.pii-gate-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.pii-gate-hard-section .pii-gate-section-title { color: #dc3545; }
+.pii-gate-soft-section .pii-gate-section-title { color: #e96304; }
+
+.pii-gate-match-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    transition: opacity 0.3s, max-height 0.3s;
+    overflow: hidden;
+}
+.pii-gate-match-row:last-child { border-bottom: none; }
+.pii-gate-match-row.resolved {
+    opacity: 0;
+    max-height: 0;
+    padding: 0;
+    border: none;
+}
+
+.pii-gate-match-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.pii-gate-match-text {
+    flex: 1;
+    font-size: 0.82rem;
+    color: #333;
+}
+.pii-gate-match-type {
+    font-weight: 600;
+    margin-right: 4px;
+}
+.pii-gate-match-preview {
+    color: #666;
+    font-family: monospace;
+    font-size: 0.78rem;
+}
+.pii-gate-match-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.pii-gate-match-actions button {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+    cursor: pointer;
+}
+.pii-gate-match-actions .gate-redact { border-color: var(--brand-primary, #e96304); color: var(--brand-primary, #e96304); }
+.pii-gate-match-actions .gate-redact:hover { background: var(--brand-primary, #e96304); color: #fff; }
+.pii-gate-match-actions .gate-remove { border-color: #dc3545; color: #dc3545; }
+.pii-gate-match-actions .gate-remove:hover { background: #dc3545; color: #fff; }
+.pii-gate-match-actions .gate-dismiss { border-color: #6c757d; color: #6c757d; }
+.pii-gate-match-actions .gate-dismiss:hover { background: #6c757d; color: #fff; }
+
+.pii-gate-footer {
+    padding: 12px 20px;
+    border-top: 1px solid #e9ecef;
+    background: #f8f9fa;
+    border-radius: 0 0 12px 12px;
+}
+.pii-gate-confirm-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    background: #fff8f0;
+    border: 1px solid #ffe0b2;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: #664d03;
+}
+.pii-gate-confirm-row input[type="checkbox"] {
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+.pii-gate-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+.pii-gate-btn-row button {
+    font-size: 0.78rem;
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+}
+.pii-gate-btn-redact-all { background: var(--brand-primary, #e96304); color: #fff; }
+.pii-gate-btn-redact-all:hover { background: #c75002; }
+.pii-gate-btn-remove-all { background: #dc3545; color: #fff; }
+.pii-gate-btn-remove-all:hover { background: #b02a37; }
+.pii-gate-btn-cancel { background: #6c757d; color: #fff; }
+.pii-gate-btn-cancel:hover { background: #5a6268; }
+.pii-gate-btn-override {
+    background: #fff;
+    color: #664d03;
+    border: 1px solid #ffe0b2;
+}
+.pii-gate-btn-override:hover:not(:disabled) { background: #fff8f0; }
+.pii-gate-btn-override:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

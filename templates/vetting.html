@@ -475,6 +475,7 @@ document.querySelectorAll('.modality-btn').forEach(btn => {
 async function analyseReferral(quickClean) {
     const text = document.getElementById('referralText').value.trim();
     if (!text) { alert('Please enter the clinical referral text.'); return; }
+    if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
 
     _quickCleanMode = !!quickClean;
 
@@ -993,6 +994,7 @@ function _buildEnrichedClinicalText() {
 
 // ── Scene 2 → Scene 3 transition ──
 async function continueToProtocol() {
+    if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
     _safetyResponses = _collectSafetyResponses();
 
     if (_selectedProtocol) {
@@ -1301,5 +1303,14 @@ document.getElementById('protocolSearchInput')?.addEventListener('keydown', func
         document.getElementById('referralText').value = prefill;
     }
 })();
+
+// ── PII Guard UI Kit ──
+if (window.PIIGuardUI) {
+    window._piiUI = PIIGuardUI.attach({
+        textareas: ['#referralText'],
+        headerSelector: '.card-brand-header',
+        auditContext: 'vetting'
+    });
+}
 </script>
 {% endblock %}
