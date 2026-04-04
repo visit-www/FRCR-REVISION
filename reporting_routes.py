@@ -2194,6 +2194,62 @@ def generate_radiology_template_route():
     })
 
 
+@reporting_bp.route('/admin/radiology-templates/api', methods=['POST'])
+@require_admin
+def create_radiology_template_manual():
+    """Manually create a radiology report template (no AI generation)."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    title = (data.get('title') or '').strip()
+    if not title:
+        return jsonify({'error': 'Title is required.'}), 400
+
+    pacs_report_text = (data.get('pacs_report_text') or '').strip()
+    if not pacs_report_text:
+        return jsonify({'error': 'Template text is required.'}), 400
+
+    # Generate slug from title with uniqueness counter
+    slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    base_slug = slug
+    counter = 1
+    while RadiologyTemplate.query.filter_by(slug=slug).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    content_format = data.get('content_format', 'plain_text')
+    if content_format not in ('plain_text', 'html'):
+        content_format = 'plain_text'
+
+    template = RadiologyTemplate(
+        slug=slug,
+        title=title,
+        origin='admin',
+        body_section=(data.get('body_section') or '').strip() or None,
+        keywords=(data.get('keywords') or '').strip() or None,
+        description=(data.get('description') or '').strip() or None,
+        template_text=pacs_report_text,
+        content_format=content_format,
+        source_citation=(data.get('source_citation') or '').strip() or None,
+        is_available=bool(data.get('is_available', False)),
+        is_ai_generated=False,
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(template)
+    db.session.commit()
+
+    log_admin_action(current_user.id, 'create_template', 'radiology_template', template.id,
+                     {'title': title}, request.headers.get('X-Forwarded-For', request.remote_addr))
+
+    return jsonify({
+        'success': True,
+        'id': template.id,
+        'slug': slug,
+        'message': f'Template "{title}" created successfully.',
+    })
+
+
 @reporting_bp.route('/admin/radiology-templates/api/<int:template_id>', methods=['GET'])
 @require_admin
 def get_radiology_template(template_id):
@@ -2208,6 +2264,7 @@ def get_radiology_template(template_id):
         'description': t.description or '',
         'keywords': t.keywords or '',
         'pacs_report_text': t.template_text or '',
+        'content_format': getattr(t, 'content_format', 'plain_text') or 'plain_text',
         'is_available': t.is_available,
         'is_ai_generated': t.is_ai_generated,
         'verified_at': t.verified_at.isoformat() if t.verified_at else None,
@@ -2234,6 +2291,8 @@ def update_radiology_template(template_id):
         t.description = data['description'].strip()
     if 'pacs_report_text' in data:
         t.template_text = data['pacs_report_text']
+    if 'content_format' in data and data['content_format'] in ('plain_text', 'html'):
+        t.content_format = data['content_format']
     if 'is_available' in data:
         t.is_available = bool(data['is_available'])
     if 'last_edit_note' in data:
@@ -2257,6 +2316,23 @@ def verify_radiology_template(template_id):
     log_admin_action(current_user.id, 'verify_template', 'radiology_template', template_id,
                      {'title': t.title}, request.headers.get('X-Forwarded-For', request.remote_addr))
     return jsonify({'success': True, 'message': f'Template "{t.title}" verified and published.'})
+
+
+@reporting_bp.route('/admin/radiology-templates/api/<int:template_id>/toggle-public', methods=['POST'])
+@require_admin
+def toggle_radiology_template_public(template_id):
+    """Toggle a radiology template between public (is_available=True) and private."""
+    t = RadiologyTemplate.query.get_or_404(template_id)
+    t.is_available = not t.is_available
+    t.updated_at = datetime.utcnow()
+    db.session.commit()
+    action = 'publish_template' if t.is_available else 'unpublish_template'
+    log_admin_action(current_user.id, action, 'radiology_template', template_id,
+                     {'title': t.title, 'is_available': t.is_available},
+                     request.headers.get('X-Forwarded-For', request.remote_addr))
+    status = 'public' if t.is_available else 'private'
+    return jsonify({'success': True, 'is_available': t.is_available,
+                    'message': f'Template "{t.title}" is now {status}.'})
 
 
 @reporting_bp.route('/admin/radiology-templates/api/<int:template_id>', methods=['DELETE'])
@@ -3393,10 +3469,11 @@ def smart_reporter_admin_templates():
             )
         )
 
-    # --- ReportingAlgorithm (verified) ---
+    # --- ReportingAlgorithm (admin-curated only, exclude anatomy_cache/user) ---
     ra_query = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.is_available == True,
         ReportingAlgorithm.verified_at.isnot(None),
+        ReportingAlgorithm.origin == 'admin',
     )
     if search:
         ra_query = ra_query.filter(

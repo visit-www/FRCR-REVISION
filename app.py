@@ -846,6 +846,9 @@ with app.app_context():
             for _col in ['description', 'source_citation', 'last_edit_note']:
                 _widen_col_to_text(_tbl, _col)
 
+        # -- radiology_template: content_format --
+        _add_col_if_missing('radiology_template', 'content_format', "content_format VARCHAR(20) NOT NULL DEFAULT 'plain_text'")
+
         # -- clinical_protocol --
         _add_col_if_missing('clinical_protocol', 'body_section', 'body_section VARCHAR(100)')
         _add_col_if_missing('clinical_protocol', 'source_url', 'source_url VARCHAR(1000)')

@@ -2674,6 +2674,7 @@ class RadiologyTemplate(db.Model):
     description = db.Column(db.Text, nullable=True)
     keywords = db.Column(db.Text, nullable=True)
     template_text = db.Column(db.Text, nullable=True)
+    content_format = db.Column(db.String(20), nullable=False, default='plain_text', server_default='plain_text')
     source_citation = db.Column(db.Text, nullable=True)
     guideline_version = db.Column(db.String(100), nullable=True)
     is_available = db.Column(db.Boolean, default=False, nullable=False, index=True)
@@ -2698,6 +2699,7 @@ class RadiologyTemplate(db.Model):
             'origin': self.origin, 'category': self.category,
             'body_section': self.body_section, 'description': self.description,
             'keywords': self.keywords, 'template_text': self.template_text,
+            'content_format': self.content_format or 'plain_text',
             'source_citation': self.source_citation, 'guideline_version': self.guideline_version,
             'is_available': self.is_available, 'is_ai_generated': self.is_ai_generated,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,

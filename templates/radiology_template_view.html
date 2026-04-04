@@ -75,13 +75,21 @@
                     {% endif %}
                 </div>
                 <div class="card-body p-0">
+                    {% set is_html = (template.content_format|default('plain_text')) == 'html' %}
                     {% if is_public_preview %}
-                    {# Show first 4 lines + fade overlay for anonymous users #}
+                    {# Show preview + fade overlay for anonymous users #}
+                    {% if is_html %}
+                    <div class="content-teaser" style="max-height:140px;">
+                        <div class="p-4 mb-0" style="background: #f8f9fa; font-size: 0.9rem; line-height: 1.6;">{{ template.template_text|safe }}</div>
+                        <div class="gated-fade-overlay"></div>
+                    </div>
+                    {% else %}
                     {% set lines = (template.template_text or '').split('\n') %}
                     <div class="content-teaser" style="max-height:140px;">
                         <pre class="p-4 mb-0" style="white-space: pre-wrap; background: #f8f9fa; border: none; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;">{{ lines[:4]|join('\n') }}</pre>
                         <div class="gated-fade-overlay"></div>
                     </div>
+                    {% endif %}
                     <div class="text-center py-3">
                         <i class="fas fa-lock mb-1" style="color:#5E899E;"></i>
                         <p class="small text-muted mb-2">Sign in to view and copy the full template</p>
@@ -95,7 +103,11 @@
                         </div>
                     </div>
                     {% else %}
+                    {% if is_html %}
+                    <div id="templateContent" class="p-4 mb-0" style="background: #f8f9fa; font-size: 0.9rem; line-height: 1.6;">{{ template.template_text|safe }}</div>
+                    {% else %}
                     <pre id="templateText" class="p-4 mb-0" style="white-space: pre-wrap; background: #f8f9fa; border: none; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;">{{ template.template_text or '(No template text)' }}</pre>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -157,8 +169,13 @@
 {% block scripts %}
 {% if current_user.is_authenticated %}
 <script>
+function getTemplateEl() {
+    return document.getElementById('templateText') || document.getElementById('templateContent');
+}
+
 function copyTemplate() {
-    var text = document.getElementById('templateText').textContent;
+    var el = getTemplateEl();
+    var text = el ? el.innerText : '';
     var btn = document.getElementById('copyBtn');
     navigator.clipboard.writeText(text).then(function() {
         btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
@@ -184,7 +201,8 @@ function copyTemplate() {
 }
 
 function sendToSmartReporter() {
-    var text = document.getElementById('templateText').textContent;
+    var el = getTemplateEl();
+    var text = el ? el.innerText : '';
     try { sessionStorage.setItem('smartReporterPrefill', text); } catch(e) {}
     window.location.href = '/smart-reporter?context=prefill&title=' + encodeURIComponent({{ template.title|tojson }});
 }
