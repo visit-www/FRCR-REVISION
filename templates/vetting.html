@@ -425,6 +425,7 @@ let _safetyResponses = {};
 let _protocolSource = null; // 'admin', 'personal', 'ai_generated'
 let _flagResponses = {}; // {index: {status: 'dismissed'|'resolved', note: ''}}
 let _quickCleanMode = false;
+let _piiOverride = false;
 
 // Friendly labels for safety check display
 const _PREGNANCY_LABELS = { 'not_pregnant': 'Not applicable', 'possible': 'Possible pregnancy', 'pregnant': 'Pregnant', 'N/A': 'N/A' };
@@ -499,9 +500,11 @@ async function analyseReferral(quickClean) {
     _vettingAbort = new AbortController();
 
     try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (_piiOverride) { headers['X-PII-Override'] = '1'; _piiOverride = false; }
         const resp = await fetch('/api/vetting/analyse', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({
                 referral_text: text,
                 modality_hint: _selectedModalityHint || null,
@@ -511,6 +514,7 @@ async function analyseReferral(quickClean) {
         });
         const data = await resp.json();
         if (!resp.ok) {
+            if (handlePIIResponse(data, function() { analyseReferral(quickClean); })) return;
             alert(data.error || 'Analysis failed.');
             return;
         }
@@ -1040,14 +1044,17 @@ async function continueToProtocol() {
         if (_selectedAlgorithmContext) {
             payload.algorithm_context = _selectedAlgorithmContext;
         }
+        const protoHeaders = { 'Content-Type': 'application/json' };
+        if (_piiOverride) { protoHeaders['X-PII-Override'] = '1'; _piiOverride = false; }
         const resp = await fetch('/api/vetting/generate-protocol', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: protoHeaders,
             body: JSON.stringify(payload),
             signal: _vettingAbort.signal,
         });
         const data = await resp.json();
         if (!resp.ok) {
+            if (handlePIIResponse(data, function() { continueToProtocol(); })) return;
             alert(data.error || 'Protocol generation failed.');
             return;
         }
@@ -1294,6 +1301,56 @@ async function saveToLibrary() {
     } catch (err) {
         console.error('Session save failed (non-fatal):', err);
     }
+}
+
+// ── PII server-side response handler ──
+// Safety net: when server catches PII that client-side missed (e.g. spaCy NER),
+// show actionable modal instead of a dead-end alert.
+function handlePIIResponse(data, retryFn) {
+    if (!data.pii_blocked) return false;
+    var textarea = document.getElementById('referralText');
+    var text = textarea ? textarea.value : '';
+    var clientMatches = (window.PIIGuard && text) ? PIIGuard.scan(text).matches : [];
+    var displayMatches = clientMatches.length > 0 ? clientMatches :
+        (data.pii_detected || []).map(function(d) {
+            return { type: d.type, match: d.match, description: d.type + ' detected', field: 'referral_text' };
+        });
+
+    if (displayMatches.length > 0 && window.PIIGuard) {
+        var previewBody = textarea ? { referral_text: textarea.value } : null;
+        var previewMatches = displayMatches.map(function(m) {
+            return { type: m.type, match: m.match, description: m.description || m.type, field: m.field || 'referral_text' };
+        });
+        PIIGuard.showPIIModal(previewMatches, previewBody).then(function(action) {
+            if (!textarea) return;
+            var matchesToClean = clientMatches.length > 0 ? clientMatches : displayMatches;
+            if (action === 'redact' || action === 'remove') {
+                var transformFn = action === 'remove' ? PIIGuard.remove : PIIGuard.redact;
+                var cleaned = transformFn(textarea.value, matchesToClean);
+                // Fallback: manual string replacement if transform returned unchanged
+                if (cleaned === textarea.value) {
+                    var fb = textarea.value;
+                    var rep = action === 'remove' ? '' : '[REDACTED]';
+                    for (var i = 0; i < matchesToClean.length; i++) {
+                        var mt = matchesToClean[i].match;
+                        if (mt && fb.indexOf(mt) !== -1) fb = fb.split(mt).join(rep);
+                    }
+                    if (action === 'remove') fb = fb.replace(/  +/g, ' ').trim();
+                    cleaned = fb;
+                }
+                textarea.value = cleaned;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                var label = action === 'remove' ? 'removed from' : 'redacted in';
+                showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
+            } else if (action === 'override' && retryFn) {
+                _piiOverride = true;
+                retryFn();
+            }
+        });
+    } else {
+        showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');
+    }
+    return true;
 }
 
 // ── Utility ──
