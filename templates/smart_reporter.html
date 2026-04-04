@@ -1345,12 +1345,12 @@ document.addEventListener('DOMContentLoaded', function() {
         state.scene = scene;
     };
 
-    function doneAndReturn() {
+    window.doneAndReturn = function() {
         var draft = (document.getElementById('editorInput') || {}).value || '';
         var pacs = (document.getElementById('editorOutput') || {}).value || '';
         if ((draft.trim() || pacs.trim()) && !confirm('You have unsaved content in your report. Leave anyway?')) return;
         showScene('landing');
-    }
+    };
 
     // ── Clinical Context Bar ──
     // Always visible in editor — users can fill in context inline

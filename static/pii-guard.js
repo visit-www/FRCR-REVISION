@@ -456,9 +456,8 @@
     }
 
     /**
-     * Build a preview of the source text with all PII highlighted.
-     * Extracts string values from the JSON body object and renders them
-     * with detected PII wrapped in highlighted spans.
+     * Build a preview showing each PII match with surrounding context.
+     * Shows a compact snippet per match instead of the full text.
      */
     function getHighlightedPreview(body, matches) {
         if (!matches || matches.length === 0) return '';
@@ -479,7 +478,6 @@
                 if (!val) break;
                 val = val[parts[i]];
             }
-            if (typeof val !== 'string' || !val) continue;
 
             // Deduplicate matches for this field
             const seen = new Set();
@@ -488,49 +486,32 @@
                 seen.add(m.match);
                 return true;
             });
-            // Sort by length descending for replacement
-            uniqueField.sort((a, b) => b.match.length - a.match.length);
 
-            // Build highlighted text: replace PII with highlighted spans
-            // Use placeholders to avoid double-replacement
-            var processed = val;
-            var placeholders = [];
+            // Build a snippet per match with ~50 chars of surrounding context
             for (var i = 0; i < uniqueField.length; i++) {
                 var m = uniqueField[i];
                 var color = TYPE_COLORS[m.type] || '#6c757d';
-                var placeholder = '\x00PII' + i + '\x00';
-                var replacement = '<span class="pii-highlight" style="background:' + color + '20; border: 1.5px solid ' + color + '; border-radius: 3px; padding: 0 3px;">' +
+                var highlighted = '<span class="pii-highlight" style="background:' + color + '20; border: 1.5px solid ' + color + '; border-radius: 3px; padding: 0 3px;">' +
                     _escapeHtml(m.match) +
                     '<sup class="pii-highlight-label" style="color:' + color + '; font-size:0.6rem; font-weight:700; margin-left:2px;">' + m.type + '</sup>' +
                     '</span>';
-                placeholders.push({ placeholder: placeholder, replacement: replacement });
-                processed = processed.split(m.match).join(placeholder);
-            }
 
-            // Escape HTML in non-PII text, then restore placeholders
-            processed = _escapeHtml(processed);
-            for (var i = 0; i < placeholders.length; i++) {
-                processed = processed.split(_escapeHtml(placeholders[i].placeholder)).join(placeholders[i].replacement);
-            }
-
-            // Truncate long text — show first ~500 chars
-            var lines = processed.split('\n');
-            var truncated = false;
-            var output = '';
-            var charCount = 0;
-            for (var j = 0; j < lines.length; j++) {
-                charCount += lines[j].length;
-                if (charCount > 500 && j > 0) {
-                    truncated = true;
-                    break;
+                var snippet = highlighted; // fallback: just the highlighted match
+                if (typeof val === 'string' && val) {
+                    var idx = val.indexOf(m.match);
+                    if (idx !== -1) {
+                        var start = Math.max(0, idx - 50);
+                        var end = Math.min(val.length, idx + m.match.length + 50);
+                        var before = _escapeHtml(val.substring(start, idx));
+                        var after = _escapeHtml(val.substring(idx + m.match.length, end));
+                        snippet = (start > 0 ? '&hellip;' : '') + before + highlighted + after + (end < val.length ? '&hellip;' : '');
+                    }
                 }
-                output += (j > 0 ? '<br>' : '') + lines[j];
-            }
-            if (truncated) output += '<br><span class="text-muted">...</span>';
 
-            html += '<div class="pii-preview-block">' +
-                '<div class="pii-preview-text">' + output + '</div>' +
-                '</div>';
+                html += '<div class="pii-preview-block">' +
+                    '<div class="pii-preview-text">' + snippet + '</div>' +
+                    '</div>';
+            }
         }
 
         return html;
