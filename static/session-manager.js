@@ -292,39 +292,17 @@ class SessionManager {
         // Signal to beforeunload handlers: session expired, let the redirect through
         window._sessionExpired = true;
 
-        // Stop all pending network requests and page activity before redirecting
-        try { window.stop(); } catch (e) { /* ignore */ }
-
-        // Show expiration message with toast
+        // Show expiration message briefly, then redirect
         const message = 'Your session has expired due to inactivity. Redirecting to login...';
 
         if (typeof showToast === 'function') {
             showToast(message, 'session-warning', 3000);
-        } else {
-            alert(message);
         }
 
-        // Force redirect to login — use replace() so back button won't return to expired page
-        const redirectUrl = '/auth/login?expired=1';
-        try {
-            window.location.replace(redirectUrl);
-        } catch (error) {
-            // Immediate redirect failed, fallback below
-        }
-
-        // Hard fallback: if replace() didn't navigate (e.g. blocked by pending JS), retry
+        // Redirect after brief delay so user sees the toast
         setTimeout(() => {
-            if (!window.location.pathname.startsWith('/auth/login')) {
-                window.location.replace(redirectUrl);
-            }
-        }, 1500);
-
-        // Last-resort fallback using href assignment
-        setTimeout(() => {
-            if (!window.location.pathname.startsWith('/auth/login')) {
-                window.location.href = redirectUrl;
-            }
-        }, 3000);
+            window.location.href = '/auth/login?expired=1';
+        }, 1000);
     }
     
     async handleLogout() {
