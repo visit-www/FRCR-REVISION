@@ -69,7 +69,8 @@
     var _NAME_STOP = "(?!(?:for|was|is|has|had|the|with|by|and|or|in|at|to|of|on|an|a"
         + "|this|that|no|who|will|may|should|could|would|not|been|being"
         + "|reviewed|presented|attended|referred|consulted|evaluated|diagnosed"
-        + "|from|about|into|over|under|after|before|during|through)\\b)";
+        + "|from|about|into|over|under|after|before|during|through"
+        + "|name|report|study|scan|exam|history|findings|impression|clinical|imaging)\\b)";
 
     const PII_PATTERNS = [
         {
@@ -134,7 +135,7 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
+            regex: /\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-\s]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected (with keyword + title)'
         },
         {
@@ -150,12 +151,12 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
+            regex: /\b(?:patient\s*name|pt\s*name)\s*[:=\-\s]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected'
         },
         {
             type: 'Patient Name',
-            regex: /\bname\s*[:=\-]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|\d|$))/gi,
+            regex: /\b[Nn]ame\s*[:=\-\s]\s*[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|\d|$))/g,
             description: 'Possible patient name detected (name keyword)'
         },
         {
@@ -177,6 +178,17 @@
         {
             type: 'Patient Name',
             regex: new RegExp(
+                "\\b[Pp](?:atient|t)\\s+(?:name|full\\s*name)\\s*[:=\\-]?\\s*"
+                + _NAME_STOP + "([A-Z][a-zA-Z'\\-]+"
+                + "(?:\\s+" + _NAME_STOP + "[A-Z][a-zA-Z'\\-]+){0,3})"
+                + "(?=\\s*(?:[,;.\\n|/()]|\\d|\\bage\\b|\\bgender\\b|\\bsex\\b|\\bdob\\b|\\bpresented\\b|\\battended\\b|\\bwas\\b|\\bis\\b|\\bhas\\b|\\bwith\\b|\\bfor\\b|$))",
+                "g"
+            ),
+            description: 'Patient name after "patient name" keyword'
+        },
+        {
+            type: 'Patient Name',
+            regex: new RegExp(
                 "\\b[Tt]his\\s+is\\s+"
                 + _NAME_STOP + "[A-Z][a-zA-Z'\\-]{2,}"
                 + "(?:\\s+" + _NAME_STOP + "[A-Z][a-zA-Z'\\-]+){1,3}"
@@ -184,6 +196,11 @@
                 "g"
             ),
             description: 'Patient name after introduction detected'
+        },
+        {
+            type: 'Patient Name',
+            regex: /\b[A-Z]\.?\s+[A-Z][a-zA-Z'-]{2,}(?:\s+[A-Z][a-zA-Z'-]+)?(?=\s*(?:,\s*\d|\s+age\b|\s+\d{1,3}\s*(?:year|yr|yo|y\.?o)\b|\s+(?:male|female|M|F)\b))/g,
+            description: 'Probable patient name (initial + surname near age/gender context)'
         },
         {
             type: 'Doctor / Clinician Name',
@@ -795,15 +812,11 @@
             const contentType = (options.headers && (options.headers['Content-Type'] || options.headers['content-type'])) || '';
             if (!contentType.includes('application/json')) return originalFetch.call(this, url, options);
 
-            // Skip auth/admin/backup routes and Smart Reporter AI routes
-            // (Smart Reporter has its own checkEditorPII pre-check that cleans the textarea)
+            // Skip auth/admin/backup routes (not application AI routes)
             const urlStr = typeof url === 'string' ? url : url.toString();
-            // Smart Reporter has its own PII checking (livePIIScan + checkEditorPII)
-            // so skip all its routes in the global interceptor
             const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
                 '/api/pii-override-log',
-                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/',
-                '/api/smart-reporter/'];
+                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
             if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
                 return originalFetch.call(this, url, options);
             }
