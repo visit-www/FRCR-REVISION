@@ -451,38 +451,43 @@
                 <!-- Sticky Action Toolbar -->
                 <div id="editorToolbar" class="sr-editor-toolbar">
                     <!-- Top row: AI tools -->
+                    <!-- Row 1: Primary AI actions (always visible) -->
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <!-- Quick Check -->
-                        <button class="btn btn-sm btn-brand-primary" id="btnReviewReport2" onclick="reviewReport()">
-                            <i class="fas fa-spell-check me-1"></i>Quick Check
+                        <button class="btn btn-sm btn-brand-primary" id="btnReviewReport2" onclick="reviewReport()" title="Proofread (spelling, grammar, phrasing)">
+                            <i class="fas fa-spell-check me-1"></i>Proofread
                         </button>
-                        <!-- Finalize -->
-                        <button class="btn btn-sm btn-outline-success quick-ask-btn" id="btnFinalizeToolbar" data-instruction="Finalize this report" onclick="quickAsk(this)">
-                            <i class="fas fa-check-circle me-1"></i>Finalize
+                        <button class="btn btn-sm btn-success quick-ask-btn" id="btnFinalizeToolbar" data-instruction="Finalize this report" onclick="quickAsk(this)" title="AI Review & Finalize (Ctrl+Enter)" style="font-weight: 600;">
+                            <i class="fas fa-check-circle me-1"></i>Review &amp; Finalize
                         </button>
-                        <!-- Separator -->
+                        <!-- Insights badge (hidden when 0) -->
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 d-none" id="btnInsightsToggle" onclick="toggleInsightsPanel()" title="View AI insights">
+                            <i class="fas fa-brain me-1"></i><span id="insightsBadgeCount">0</span>
+                        </button>
                         <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
-                        <!-- Quick Ask shortcuts -->
+                        <!-- More AI Actions toggle -->
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#toolbarQuickAskRow" aria-expanded="true" style="font-size: 0.72rem;">
+                            <i class="fas fa-chevron-down me-1" style="font-size: 0.6rem;"></i>Ask more
+                        </button>
+                    </div>
+                    <!-- Row 2: Quick Ask toggles (collapsible) -->
+                    <div class="collapse show mt-1 pt-1" id="toolbarQuickAskRow" style="border-top: 1px solid #f0f0f0;">
                         <div class="d-flex flex-wrap gap-1">
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Write the impression" onclick="quickAsk(this)">Impression</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="quickAsk(this)">Missing?</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="quickAsk(this)">Differentials</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">Recommendations</button>
                         </div>
-                        <!-- Separator -->
-                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
-                        <!-- Ask RadInsights Intelligence inline -->
+                    </div>
+                    <!-- Row 3: Ask RadInsights + Resource Search (always visible) -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
                         <div class="input-group input-group-sm" style="flex: 1; min-width: 180px;">
                             <input type="text" id="askClaudeInput" class="form-control form-control-sm"
                                    placeholder="Ask RadInsights Intelligence..." maxlength="1000">
-                            <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
+                            <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()" title="Send (Enter)">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
-                        <!-- Separator -->
-                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
-                        <!-- Resource Search inline -->
-                        <div class="input-group input-group-sm" style="flex: 0 1 220px; min-width: 160px;">
+                        <div class="input-group input-group-sm d-none d-md-flex" style="flex: 0 1 220px; min-width: 160px;">
                             <span class="input-group-text py-0 px-2" style="background: #6b46c1; color: #fff; font-size: 0.7rem; border-color: #6b46c1;">
                                 <i class="fas fa-search"></i>
                             </span>
@@ -496,28 +501,34 @@
                             </button>
                         </div>
                     </div>
-                    <!-- Bottom row: Report Actions -->
-                    <div class="d-flex align-items-center mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
-                        <small class="text-muted flex-shrink-0 me-2" style="font-size: 0.7rem;"><i class="fas fa-bolt me-1"></i>Actions:</small>
-                        <div class="d-flex flex-wrap flex-grow-1 gap-2 justify-content-start">
-                            <button class="btn btn-sm report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
-                                <i class="fas fa-users me-1"></i>MDT
+                    <!-- Row 4: Report Actions (collapsible) -->
+                    <div class="mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#toolbarActionsRow" aria-expanded="true" style="font-size: 0.7rem;">
+                                <i class="fas fa-bolt me-1" style="font-size: 0.6rem;"></i>Actions <i class="fas fa-chevron-down ms-1" style="font-size: 0.55rem;"></i>
                             </button>
-                            <button class="btn btn-sm report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
-                                <i class="fas fa-graduation-cap me-1"></i>SBA
-                            </button>
-                            <button class="btn btn-sm report-action-btn" data-action="viva" onclick="submitReportAction('viva')" style="border-color:#6b46c1;color:#6b46c1;">
-                                <i class="fas fa-comments me-1"></i>Viva
-                            </button>
-                            <button class="btn btn-sm report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')" style="border-color:#5E899E;color:#5E899E;">
-                                <i class="fas fa-user-md me-1"></i>Email Dr
-                            </button>
-                            <button class="btn btn-sm report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
-                                <i class="fas fa-envelope me-1"></i>Email Pt
-                            </button>
-                            <button class="btn btn-sm report-action-btn" data-action="vetting" onclick="openVettingModal()" style="border-color:#dc3545;color:#dc3545;">
-                                <i class="fas fa-clipboard-check me-1"></i>Vet
-                            </button>
+                            <div class="collapse show flex-grow-1" id="toolbarActionsRow">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button class="btn btn-sm report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
+                                        <i class="fas fa-users me-1"></i>MDT
+                                    </button>
+                                    <button class="btn btn-sm report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
+                                        <i class="fas fa-graduation-cap me-1"></i>SBA
+                                    </button>
+                                    <button class="btn btn-sm report-action-btn" data-action="viva" onclick="submitReportAction('viva')" style="border-color:#6b46c1;color:#6b46c1;">
+                                        <i class="fas fa-comments me-1"></i>Viva
+                                    </button>
+                                    <button class="btn btn-sm report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')" style="border-color:#5E899E;color:#5E899E;">
+                                        <i class="fas fa-user-md me-1"></i>Email Dr
+                                    </button>
+                                    <button class="btn btn-sm report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
+                                        <i class="fas fa-envelope me-1"></i>Email Pt
+                                    </button>
+                                    <button class="btn btn-sm report-action-btn" data-action="vetting" onclick="openVettingModal()" style="border-color:#dc3545;color:#dc3545;">
+                                        <i class="fas fa-clipboard-check me-1"></i>Vet
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -580,7 +591,7 @@
                                 </div>
                                 <div class="d-flex align-items-center">
                                     <span class="badge rounded-pill me-1" style="background: var(--brand-neutral); font-size: 0.65rem;">2</span>
-                                    <span><strong>Quick Check</strong> or <strong>Finalize</strong></span>
+                                    <span><strong>Proofread</strong> or <strong>AI Review &amp; Finalize</strong></span>
                                 </div>
                                 <div class="d-flex align-items-center">
                                     <span class="badge rounded-pill me-1" style="background: var(--brand-success); font-size: 0.65rem;">3</span>
@@ -600,7 +611,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Working Draft</small>
                                     <div class="d-flex align-items-center gap-2">
-                                        <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-robot me-1"></i>RadInsight Intelligence reads this text</small>
+                                        <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-robot me-1"></i>RII reads this text</small>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2 d-none" onclick="undoDraftInsert()" id="btnUndoDraft" title="Undo (Ctrl+Z)" style="font-size: 0.7rem;">
                                             <i class="fas fa-undo"></i>
                                         </button>
@@ -617,6 +628,17 @@
                                     </div>
                                 </div>
                             </div>
+                            <!-- Clinical Context Bar (editable inline) -->
+                            <div id="clinicalContextBar" class="d-none" style="background: #f0f7fa; border-bottom: 1px solid #d0e3f0; padding: 0.3rem 0.75rem; font-size: 0.78rem; color: #1a3a4a;">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <i class="fas fa-stethoscope" style="color: #5E899E; font-size: 0.7rem;"></i>
+                                    <span class="context-field-group"><strong>CQ:</strong> <span id="ctxBarCQ" contenteditable="true" class="context-editable" data-target="inputClinicalQuestion" data-placeholder="e.g. R/O pancreatitis"></span></span>
+                                    <span style="color: #d0e3f0;">|</span>
+                                    <span class="context-field-group"><strong>Mod:</strong> <span id="ctxBarModality" contenteditable="true" class="context-editable" data-target="inputModality" data-placeholder="e.g. CT"></span></span>
+                                    <span style="color: #d0e3f0;">|</span>
+                                    <span class="context-field-group"><strong>Region:</strong> <span id="ctxBarBodySection" contenteditable="true" class="context-editable" data-target="inputBodySection" data-placeholder="e.g. Abdomen"></span></span>
+                                </div>
+                            </div>
                             <!-- Collapsible corrections panel in draft card -->
                             <div id="draftCorrectionsCollapse" class="d-none" style="border-bottom: 1px solid rgba(0,0,0,0.08); padding: 0.5rem 0.75rem; background: #fffbf0;">
                                 <div id="correctionsAnchorDraft"></div>
@@ -624,26 +646,19 @@
                             <div class="card-body p-3">
                                 <div class="mb-2 px-1" style="font-size: 0.78rem; color: #5a6270; line-height: 1.5;">
                                     <i class="fas fa-magic me-1" style="color: #5E899E;"></i>
-                                    <strong>Shorthand accepted</strong> &mdash; type abbreviated notes and click <em>Finalize</em> to auto-convert to a consultant-grade report.
+                                    <strong>Shorthand accepted</strong> &mdash; type abbreviated notes and click <em>Review &amp; finalize</em> to auto-convert to a consultant-grade report.
                                     To include normal findings, type <strong>rest normal</strong> or click the chip below.
                                 </div>
-                                <textarea class="form-control" id="editorInput" rows="12"
-                                          placeholder="Type shorthand or paste a full report...&#10;&#10;Shorthand example:&#10;  ct abdo contrast. 3cm hypo seg vi liver. kidneys ok. no ascites.&#10;  rest normal&#10;&#10;Full report example:&#10;  FINDINGS: There is a 3cm hypodense lesion in segment VI...&#10;&#10;Click Finalize → AI converts to consultant-grade prose."
+                                <textarea class="form-control" id="editorInput" rows="12" spellcheck="true"
+                                          placeholder="Type shorthand or paste a full report...&#10;&#10;Shorthand example:&#10;  ct abdo contrast. 3cm hypo seg vi liver. kidneys ok. no ascites.&#10;  rest normal&#10;&#10;Full report example:&#10;  FINDINGS: There is a 3cm hypodense lesion in segment VI...&#10;&#10;Click AI Review &amp; Finalize → AI converts to consultant-grade prose."
                                           style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
                             </div>
                             <div class="card-footer bg-white border-0 py-2 px-3">
                                 <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
                                     <div class="d-flex flex-wrap gap-1 align-items-center">
                                         <button type="button" class="btn-dictate" data-target="editorInput" title="Click to dictate"><i class="fas fa-microphone"></i></button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('Rest unremarkable.')" title="Append 'Rest unremarkable.' to draft">
-                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>Rest Normal
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('No significant abnormality.')" title="Append 'No significant abnormality.' to draft">
-                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>NSA
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip" type="button" onclick="insertDraftText('Clinical correlation recommended.')" title="Append to draft">
-                                            <i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>Correlate
-                                        </button>
+                                        <span id="draftChipsContainer"></span>
+                                        <button class="btn btn-sm py-0 px-1" type="button" onclick="openChipSettings()" title="Customise insert chips" style="font-size: 0.65rem; color: #6c757d;"><i class="fas fa-cog"></i></button>
                                     </div>
                                     <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
@@ -674,18 +689,29 @@
                         </div>
 
                         <!-- Review Loading -->
-                        <div id="reviewLoading" class="d-none text-center py-3 mb-3">
-                            <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                            <small class="text-muted ms-2">Quick check: spelling, grammar, and phrasing...</small>
-                            <button class="btn btn-sm btn-outline-secondary ms-3" onclick="cancelAIRequest()" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
-                                <i class="fas fa-times me-1"></i>Cancel
-                            </button>
+                        <div id="reviewLoading" class="d-none ai-loading-bar">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="ai-loading-pulse"></div>
+                                <small class="ai-loading-text">Proofreading: spelling, grammar, and phrasing...</small>
+                                <button class="btn btn-sm btn-outline-secondary ms-auto ai-loading-cancel" onclick="cancelAIRequest()">
+                                    <i class="fas fa-times me-1"></i>Cancel
+                                </button>
+                            </div>
+                            <div class="ai-loading-progress"></div>
                         </div>
 
                         <!-- Anchor for stack-mode output position (PACS goes here in stack view) -->
                         <div id="stackOutputTarget"></div>
                         <!-- Output Box (shown after review) -->
                         <div id="outputSection" class="d-none">
+                            <!-- Report Complete Banner (shown after finalization) -->
+                            <div id="reportCompleteBanner" class="d-none" style="background: linear-gradient(135deg, #d4edda, #c3e6cb); border: 1px solid #a8d5ba; border-radius: 0.375rem; padding: 0.5rem 0.75rem; margin-bottom: 0.5rem; font-size: 0.82rem; color: #155724;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fas fa-check-circle" style="color: #28a745; font-size: 1rem;"></i>
+                                    <strong>Report AI-Reviewed &amp; Finalized</strong>
+                                    <span class="text-muted" style="font-size: 0.75rem;">— Ready to copy to PACS</span>
+                                </div>
+                            </div>
                             <div class="card border-0 mb-3 pacs-output-card">
                                 <div class="card-header pacs-output-header py-2 px-3">
                                     <div class="d-flex justify-content-between align-items-center">
@@ -702,6 +728,9 @@
                                             </button>
                                             <button class="btn btn-sm btn-outline-secondary" onclick="printReport()">
                                                 <i class="fas fa-print me-1"></i>Print
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-info" onclick="applyPacsToDraft()" title="Replace draft with PACS report">
+                                                <i class="fas fa-arrow-up me-1"></i>Apply to Draft
                                             </button>
                                             <div class="dropdown">
                                                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -722,13 +751,27 @@
                                 <!-- Corrections anchor (no longer used, kept for compat) -->
                                 <div id="correctionsAnchorPacs" class="d-none"></div>
                                 <div class="card-body p-0">
-                                    <textarea class="form-control pacs-output-textarea" id="editorOutput" rows="12"></textarea>
+                                    <div id="pacsDiffOverlay" class="d-none p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                            <small class="fw-semibold text-muted"><i class="fas fa-exchange-alt me-1"></i>Review Corrections <span id="diffRemainingBadge" class="badge bg-warning text-dark ms-1">0</span></small>
+                                            <div class="d-flex gap-1">
+                                                <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="diffAcceptAll()">Accept All</button>
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="diffRejectAll()">Reject All</button>
+                                            </div>
+                                        </div>
+                                        <div id="pacsDiffContent" style="white-space: pre-wrap; line-height: 1.6; font-family: monospace; font-size: 0.9rem;"></div>
+                                    </div>
+                                    <textarea class="form-control pacs-output-textarea" id="editorOutput" rows="12" spellcheck="true"></textarea>
                                 </div>
                                 <div class="card-footer pacs-output-footer py-2 px-3 d-flex align-items-center justify-content-between">
-                                    <span><i class="fas fa-info-circle me-1"></i>Copy this to PACS. To change what AI analyses, update your working draft above.</span>
+                                    <span><i class="fas fa-info-circle me-1"></i>Copy this to PACS. To change what RadInsight Intelligence analyses, update your working draft above.</span>
                                     <button type="button" class="btn-dictate ms-2" data-target="editorOutput" title="Click to dictate into PACS output"><i class="fas fa-microphone"></i></button>
                                 </div>
                             </div>
+                            <!-- Prominent Copy to PACS Button (shown after finalization) -->
+                            <button id="prominentCopyBtn" class="btn btn-success w-100 py-2 d-none" onclick="prominentCopyToPACS()" style="font-size: 0.95rem; font-weight: 600; border-radius: 0.375rem; margin-top: 0.25rem;">
+                                <i class="fas fa-clipboard-check me-1"></i><span id="prominentCopyLabel">Copy to PACS</span>
+                            </button>
                         </div>
                     </div>
 
@@ -786,23 +829,23 @@
                         <!-- Movable: Answer / Changes Rationale -->
                         <div id="aiAssistAnswerSection" class="mb-3 d-none">
                             <div class="card border-0 shadow-sm">
-                                <div class="card-header py-2 px-3" style="background: #1a3a4a; border-bottom: 2px solid #e96304;">
+                                <div class="card-header py-2 px-3" style="background: #f0f7fa; border-left: 3px solid var(--brand-neutral); border-bottom: 1px solid #d0e3f0;">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold" style="color: #fff;">
-                                            <i class="fas fa-comment-medical me-1" style="color: #e96304;"></i>Changes Made
+                                        <small class="fw-semibold" style="color: #1a3a4a;">
+                                            <i class="fas fa-comment-medical me-1" style="color: var(--brand-neutral);"></i>Changes Made
                                         </small>
                                         <div>
-                                            <button id="goToReportBtn" class="btn py-0 px-2 me-1 d-none" style="background: #e96304; color: #fff; font-size: 0.65rem; border-radius: 8px;">
-                                                <i class="fas fa-arrow-down me-1"></i>PACS Report
+                                            <button id="goToReportBtn" class="btn btn-brand-primary py-0 px-2 me-1 d-none go-to-pacs-btn" style="font-size: 0.8rem; border-radius: 20px; font-weight: 600;">
+                                                <i class="fas fa-arrow-down me-1"></i>Go to PACS Report
                                             </button>
-                                            <button class="btn btn-sm btn-outline-light py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
                                                 <i class="fas fa-times me-1"></i>Dismiss
                                             </button>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="card-body p-3" style="background: #0d2230 !important; color: #e0e8ef !important;">
-                                    <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; margin: 0; color: #e0e8ef !important; background: transparent !important;"></pre>
+                                <div class="card-body p-3" style="background: #fafcfd;">
+                                    <pre id="aiAssistAnswer" class="mb-0" style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 0.85rem; line-height: 1.6; margin: 0; color: #2c3e50; background: transparent;"></pre>
                                 </div>
                             </div>
                         </div>
@@ -847,22 +890,25 @@
                                     <i class="fas fa-chevron-down me-1" id="aiAssistCorrectionsChevron"></i>Corrections
                                 </small>
                                 <div>
+                                    <button class="btn btn-sm btn-outline-info py-0 px-1" id="btnDiffView" onclick="toggleDiffView()" style="font-size: 0.7rem;"><i class="fas fa-exchange-alt me-1"></i>Diff View</button>
                                     <button class="btn btn-sm btn-outline-success py-0 px-1" onclick="acceptAllCorrections()" style="font-size: 0.7rem;">Accept All</button>
                                     <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="rejectAllCorrections()" style="font-size: 0.7rem;">Reject All</button>
                                 </div>
                             </div>
                             <div id="aiAssistCorrectionsBody" style="max-height: 300px; overflow-y: auto;">
                                 <div id="aiAssistCorrectionsList"></div>
+                                <div id="aiAssistDiffView" class="d-none p-2" style="font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"></div>
                             </div>
                         </div>
 
-                        <!-- Quick Check Suggestions Panel (shown after Quick Check) -->
+                        <!-- Proofread Suggestions Panel (shown after Proofread) -->
                         <div id="suggestionsPanel" class="d-none mb-3">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-header bg-white border-0 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-spell-check me-1" style="color: #e96304;"></i>Quick Check</small>
+                                        <small class="fw-semibold"><i class="fas fa-spell-check me-1" style="color: #e96304;"></i>Proofread</small>
                                         <div>
+                                            <button class="btn btn-sm btn-outline-info py-0 px-1 me-1" id="btnProofDiffView" onclick="toggleProofDiffView()" style="font-size: 0.7rem;"><i class="fas fa-exchange-alt me-1"></i>Diff View</button>
                                             <button class="btn btn-sm btn-outline-success me-1" onclick="acceptAllSuggestions()" title="Accept all">
                                                 <i class="fas fa-check-double me-1"></i><span class="d-none d-xl-inline">Accept All</span>
                                             </button>
@@ -874,6 +920,7 @@
                                 </div>
                                 <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
                                     <div id="suggestionsList"></div>
+                                    <div id="proofDiffView" class="d-none p-2" style="font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"></div>
                                     <div id="noSuggestions" class="d-none text-center py-3">
                                         <i class="fas fa-check-circle text-success" style="font-size: 1.5rem;"></i>
                                         <p class="text-muted small mt-2 mb-0">Report looks good! No suggestions.</p>
@@ -1057,6 +1104,9 @@
 <!-- Floating Action Button (visible when toolbar scrolled out of view) -->
 <div id="srFab" class="sr-fab d-none">
     <div class="sr-fab-menu d-none" id="srFabMenu">
+        <button class="sr-fab-item" onclick="var b=document.getElementById('btnFinalizeToolbar'); if(b) b.click(); srFabClose();" title="AI Review & Finalize">
+            <i class="fas fa-check-circle"></i><span>Finalize</span>
+        </button>
         <button class="sr-fab-item" onclick="copyFinalReport(); srFabClose();" title="Copy PACS report">
             <i class="fas fa-copy"></i><span>Copy Report</span>
         </button>
@@ -1136,6 +1186,7 @@
 document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== STATE ====================
+    const _currentUserId = {{ current_user.id | default(0) }};
     const state = {
         scene: 'landing',
         algorithmTree: null,
@@ -1171,10 +1222,57 @@ document.addEventListener('DOMContentLoaded', function() {
         externalContext: null,
     };
 
+    // Restore externalContext from sessionStorage
+    try {
+        const savedCtx = sessionStorage.getItem('sr_externalContext');
+        if (savedCtx) state.externalContext = JSON.parse(savedCtx);
+    } catch(e) {}
+
+    // ── Autosave system (debounced 2s save to sessionStorage) ──
+    var _autosaveTimer = null;
+    function _autosaveDraft() {
+        clearTimeout(_autosaveTimer);
+        _autosaveTimer = setTimeout(function() {
+            try {
+                var draft = (document.getElementById('editorInput') || {}).value || '';
+                var pacs = (document.getElementById('editorOutput') || {}).value || '';
+                if (!draft && !pacs) return;
+                var _aCtx = _getClinicalContext();
+                sessionStorage.setItem('sr_autosave', JSON.stringify({
+                    draft: draft,
+                    pacs: pacs,
+                    clinicalQuestion: _aCtx.clinicalQuestion,
+                    modality: _aCtx.modality,
+                    bodySection: _aCtx.bodySection,
+                    ts: Date.now(),
+                    uid: _currentUserId
+                }));
+            } catch(e) {}
+        }, 2000);
+    }
+    function _clearAutosave() {
+        try { sessionStorage.removeItem('sr_autosave'); } catch(e) {}
+        clearTimeout(_autosaveTimer);
+    }
+    // Recovery check on page load
+    (function _checkAutosaveRecovery() {
+        try {
+            var saved = sessionStorage.getItem('sr_autosave');
+            if (!saved) return;
+            var data = JSON.parse(saved);
+            // Only recover drafts less than 24h old with meaningful content
+            if (!data.draft || data.draft.length < 20) { _clearAutosave(); return; }
+            if (Date.now() - data.ts > 86400000) { _clearAutosave(); return; }
+            if (data.uid && data.uid !== _currentUserId) { _clearAutosave(); return; }
+            // Defer to after DOM ready so we can show the confirm dialog
+            window._pendingAutosave = data;
+        } catch(e) { _clearAutosave(); }
+    })();
+
     // ── Off-topic pre-filter (saves AI credits) ──
     function isOffTopicQuery(text) {
         const lower = text.toLowerCase().trim();
-        const offTopicShort = /\b(where is|capital of|recipe|weather|score|game|movie|song|who won|how tall|population|president|prime minister|currency|language|distance between|translate|code|python|javascript|html|css)\b/;
+        const offTopicShort = /\b(where is|capital of|recipe|weather|score|game|movie|song|who won|how tall|population|president|prime minister|currency|language|distance between|translate|python|javascript|html|css)\b/;
         const offTopicLong = /^(what is the capital|where is|how do you cook|what.?s the weather|who played|who sang|tell me a joke|write a poem|write me a story)/i;
         if (offTopicShort.test(lower) || offTopicLong.test(lower)) {
             // Allow if it also contains radiology terms
@@ -1304,9 +1402,54 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (scene === 'editor') {
             document.getElementById('sceneEditor').classList.remove('d-none');
             populateEditorInput();
+            _updateContextBar();
         }
         state.scene = scene;
     };
+
+    // ── Clinical Context Bar ──
+    // Always visible in editor — users can fill in context inline
+    // Central helper: read clinical context from context bar spans (source of truth)
+    function _getClinicalContext() {
+        var elCQ = document.getElementById('ctxBarCQ');
+        var elMod = document.getElementById('ctxBarModality');
+        var elBS = document.getElementById('ctxBarBodySection');
+        return {
+            clinicalQuestion: elCQ ? elCQ.textContent.trim() : '',
+            modality: elMod ? elMod.textContent.trim() : '',
+            bodySection: elBS ? elBS.textContent.trim() : ''
+        };
+    }
+
+    function _updateContextBar() {
+        var cq = (document.getElementById('inputClinicalQuestion') || {}).value || '';
+        var mod = (document.getElementById('inputModality') || {}).value || '';
+        var bs = (document.getElementById('inputBodySection') || {}).value || '';
+        var bar = document.getElementById('clinicalContextBar');
+        if (!bar) return;
+        bar.classList.remove('d-none');
+        var elCQ = document.getElementById('ctxBarCQ');
+        var elMod = document.getElementById('ctxBarModality');
+        var elBS = document.getElementById('ctxBarBodySection');
+        if (elCQ) elCQ.textContent = cq || '';
+        if (elMod) elMod.textContent = mod || '';
+        if (elBS) elBS.textContent = bs || '';
+    }
+
+    // Sync contenteditable context fields back to hidden form inputs
+    document.addEventListener('input', function(e) {
+        if (!e.target.classList.contains('context-editable')) return;
+        var targetId = e.target.getAttribute('data-target');
+        var targetEl = targetId ? document.getElementById(targetId) : null;
+        if (targetEl) targetEl.value = e.target.textContent.trim();
+    });
+    // Prevent Enter in contenteditable (keep single line)
+    document.addEventListener('keydown', function(e) {
+        if (e.target.classList.contains('context-editable') && e.key === 'Enter') {
+            e.preventDefault();
+            e.target.blur();
+        }
+    });
 
     // ==================== INTENT ROUTING ====================
 
@@ -2178,8 +2321,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Use the RadInsight input as a quick search, or use the clinical question
         var query = document.getElementById('askClaudeInput').value.trim();
         if (!query) {
-            query = document.getElementById('inputClinicalQuestion') ?
-                    document.getElementById('inputClinicalQuestion').value.trim() : '';
+            query = _getClinicalContext().clinicalQuestion;
         }
 
         if (panelType === 'anatomy') {
@@ -2345,11 +2487,17 @@ document.addEventListener('DOMContentLoaded', function() {
         state.aiAssistInsights = {};
         state.reportActionHistory = [];
         state.externalContext = null;
+        try { sessionStorage.removeItem('sr_externalContext'); } catch(e) {}
+        _clearAutosave();
 
         // Clear PII dismissals for new session
         if (window.PIIGuard && PIIGuard.clearDismissals) PIIGuard.clearDismissals();
 
         // Clear UI
+        var _banner = document.getElementById('reportCompleteBanner');
+        if (_banner) _banner.classList.add('d-none');
+        var _prominentCopy = document.getElementById('prominentCopyBtn');
+        if (_prominentCopy) _prominentCopy.classList.add('d-none');
         hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
@@ -2669,6 +2817,38 @@ document.addEventListener('DOMContentLoaded', function() {
         searchEditorResources();
     };
 
+    // ── Button loading state helpers ──
+    function _btnStartLoading(btn, loadingText) {
+        if (!btn) return;
+        btn._origHTML = btn.innerHTML;
+        btn._origWidth = btn.offsetWidth;
+        btn.style.minWidth = btn._origWidth + 'px';
+        btn.disabled = false; // keep enabled for cancel click
+        btn._isLoading = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" style="width:0.8rem;height:0.8rem;"></span>' +
+            loadingText + ' <i class="fas fa-times ms-1 btn-cancel-x" title="Cancel"></i>';
+        btn.onclick = function(e) {
+            e.preventDefault();
+            cancelAIRequest();
+            _btnStopLoading(btn);
+            document.getElementById('askClaudeLoading').classList.add('d-none');
+            document.getElementById('reviewLoading').classList.add('d-none');
+            showToast('Request cancelled.', 'info');
+        };
+    }
+    function _btnStopLoading(btn) {
+        if (!btn || !btn._isLoading) return;
+        btn._isLoading = false;
+        btn.disabled = false;
+        btn.style.minWidth = '';
+        if (btn._origHTML) btn.innerHTML = btn._origHTML;
+        // Restore original onclick
+        if (btn.id === 'btnReviewReport2') btn.onclick = function() { reviewReport(); };
+        else if (btn.id === 'btnFinalizeToolbar') btn.onclick = function() { quickAsk(btn); };
+        else if (btn.id === 'btnAskClaude') btn.onclick = function() { askClaude(); };
+        else if (btn._origOnclick) btn.onclick = btn._origOnclick;
+    }
+
     // ==================== REVIEW REPORT ====================
 
     function doReviewReport() {
@@ -2676,7 +2856,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const text = input.value.trim();
 
         const btn = document.getElementById('btnReviewReport2');
-        if (btn) btn.disabled = true;
+        _btnStartLoading(btn, 'Proofreading...');
         document.getElementById('reviewLoading').classList.remove('d-none');
         hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
@@ -2695,7 +2875,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             activeAIController = null;
-            btn.disabled = false;
+            _btnStopLoading(btn);
             document.getElementById('reviewLoading').classList.add('d-none');
 
             if (data.upgrade_required) {
@@ -2719,17 +2899,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
-            // Don't show PACS box on Quick Check — only Finalize populates it
-            // Store text for later use when suggestions are accepted
+            // Show PACS box with draft text and overlay corrections
             state.outputText = text;
+            var output = document.getElementById('editorOutput');
+            output.value = text;
+            autoResizeTextarea(output);
+            var outputSection = document.getElementById('outputSection');
+            outputSection.classList.add('has-content');
+            outputSection.classList.remove('d-none');
 
-            document.getElementById('suggestionsPanel').classList.remove('d-none');
-
-            renderSuggestions();
+            // Show diff overlay in PACS box (not the separate suggestionsPanel)
+            if (state.suggestions.some(function(s) { return s.status === 'pending'; })) {
+                _renderPacsDiffView(state.suggestions, 'proofread');
+                outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         })
         .catch(err => {
             activeAIController = null;
-            btn.disabled = false;
+            _btnStopLoading(btn);
             document.getElementById('reviewLoading').classList.add('d-none');
             if (err.name === 'AbortError') {
                 showToast('Review cancelled.', 'info');
@@ -2911,29 +3098,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function applyAcceptedSuggestions() {
-        // Apply all accepted suggestions to BOTH draft and PACS
-        var input = document.getElementById('editorInput');
+        // Apply all accepted suggestions to PACS only (draft is sacrosanct)
         var output = document.getElementById('editorOutput');
-        var inputText = input.value;
-        var outputText = output && output.value ? output.value : inputText;
+        var outputText = output && output.value ? output.value : '';
 
         state.suggestions.forEach(s => {
             if (s.status === 'accepted' && s.original && s.suggested) {
-                if (inputText.indexOf(s.original) >= 0) {
-                    inputText = inputText.split(s.original).join(s.suggested);
-                }
                 if (outputText.indexOf(s.original) >= 0) {
                     outputText = outputText.split(s.original).join(s.suggested);
                 }
             }
         });
 
-        // Update draft
-        input.value = inputText;
-        state.inputText = inputText;
-        autoResizeTextarea(input);
-
-        // Update PACS
+        // Update PACS only
         state.outputText = outputText;
         output.value = outputText;
         autoResizeTextarea(output);
@@ -2946,7 +3123,48 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== COPY REPORT ====================
 
+    // Check for pending fill-ins and unresolved corrections before copy — returns true if user cancels
+    function _checkPendingFillIns() {
+        var msgs = [];
+        var pendingFillIns = (state.aiAssistFillIns || []).filter(function(fi) { return fi.status === 'pending'; });
+        if (pendingFillIns.length > 0) {
+            msgs.push(pendingFillIns.length + ' unfilled placeholder(s)');
+        }
+        // Check for unresolved corrections in the diff overlay
+        var overlay = document.getElementById('pacsDiffOverlay');
+        if (overlay && !overlay.classList.contains('d-none')) {
+            var pendingCorr = 0;
+            if (_pacsDiffSource === 'proofread') {
+                pendingCorr = (state.suggestions || []).filter(function(s) { return s.status === 'pending'; }).length;
+            } else if (_pacsDiffSource === 'finalize') {
+                pendingCorr = (state.aiAssistCorrections || []).filter(function(c) { return c.status === 'pending'; }).length;
+            }
+            if (pendingCorr > 0) {
+                msgs.push(pendingCorr + ' unreviewed correction(s)');
+            }
+        }
+        if (msgs.length > 0) {
+            return !confirm('You have ' + msgs.join(' and ') + '. Copy anyway?');
+        }
+        return false;
+    }
+
+    // Check PACS output for PII before copy — shows toast warning (non-blocking)
+    function _checkOutputPII() {
+        if (!window.PIIGuard) return;
+        var output = document.getElementById('editorOutput');
+        if (!output) return;
+        var result = PIIGuard.scan(output.value || '');
+        var matches = result.matches || [];
+        var active = PIIGuard.filterDismissed ? PIIGuard.filterDismissed(matches) : matches;
+        if (active.length > 0) {
+            showToast('Warning: ' + active.length + ' potential patient identifier(s) detected in PACS output. Please review before pasting.', 'warning', 6000);
+        }
+    }
+
     window.copyFinalReport = function() {
+        if (_checkPendingFillIns()) return;
+        _checkOutputPII();
         const output = document.getElementById('editorOutput');
         const text = output ? output.value : getCurrentReportText();
         const btn = document.getElementById('btnCopyReport');
@@ -2972,6 +3190,46 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 2000);
         });
     };
+
+    window.prominentCopyToPACS = function() {
+        if (_checkPendingFillIns()) return;
+        _checkOutputPII();
+        const output = document.getElementById('editorOutput');
+        const text = output ? output.value : getCurrentReportText();
+        const btn = document.getElementById('prominentCopyBtn');
+        const label = document.getElementById('prominentCopyLabel');
+        navigator.clipboard.writeText(text).then(function() {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-success');
+            label.textContent = 'Copied to Clipboard!';
+            setTimeout(function() {
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+                _updateProminentCopyLabel();
+            }, 3000);
+        }).catch(function() {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            label.textContent = 'Copied to Clipboard!';
+            setTimeout(function() { _updateProminentCopyLabel(); }, 3000);
+        });
+    };
+
+    // Update prominent copy label with fill-in badge count
+    function _updateProminentCopyLabel() {
+        var label = document.getElementById('prominentCopyLabel');
+        if (!label) return;
+        var pending = (state.aiAssistFillIns || []).filter(function(fi) { return fi.status === 'pending'; });
+        if (pending.length > 0) {
+            label.innerHTML = 'Copy to PACS <span class="badge bg-warning text-dark ms-1">' + pending.length + ' fill-in' + (pending.length > 1 ? 's' : '') + '</span>';
+        } else {
+            label.textContent = 'Copy to PACS';
+        }
+    }
 
     window.copyDraftText = function() {
         const input = document.getElementById('editorInput');
@@ -3029,20 +3287,25 @@ document.addEventListener('DOMContentLoaded', function() {
         if (await checkEditorPII()) return;
 
         const btn = document.getElementById('btnAskClaude');
-        btn.disabled = true;
+        _btnStartLoading(btn, '<i class="fas fa-spinner"></i>');
+        // Animate the Finalize button if it's in the instruction queue
+        var _finBtn = document.getElementById('btnFinalizeToolbar');
+        var _isFinalize = question.toLowerCase().indexOf('finalize') >= 0;
+        if (_isFinalize && _finBtn) _btnStartLoading(_finBtn, 'Finalizing...');
         var loadingEl = document.getElementById('askClaudeLoading');
-        // Reset progress bar animation by re-inserting the element
-        var progressBar = loadingEl.querySelector('.ai-loading-progress');
-        if (progressBar) { progressBar.style.animation = 'none'; progressBar.offsetHeight; progressBar.style.animation = ''; }
         loadingEl.classList.remove('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistAnswerSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
 
+        const ctx = _getClinicalContext();
         const assistPayload = {
             question: question,
             report_text: getCurrentReportText(),
             has_finalized_report: state.hasReceivedFinalizedReport,
+            clinical_question: ctx.clinicalQuestion,
+            modality: ctx.modality,
+            body_section: ctx.bodySection,
         };
         // Include external context if user arrived from another tool
         if (state.externalContext) {
@@ -3061,7 +3324,8 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             activeAIController = null;
-            btn.disabled = false;
+            _btnStopLoading(btn);
+            _btnStopLoading(document.getElementById('btnFinalizeToolbar'));
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
             if (data.upgrade_required) {
@@ -3089,6 +3353,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Track that user has received a finalized report (enables advisory-only follow-ups)
                 if (data.response_type === 'full_report') {
                     state.hasReceivedFinalizedReport = true;
+                    var _banner = document.getElementById('reportCompleteBanner');
+                    if (_banner) _banner.classList.remove('d-none');
+                    var _prominentCopy = document.getElementById('prominentCopyBtn');
+                    if (_prominentCopy) _prominentCopy.classList.remove('d-none');
                 }
             }
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
@@ -3110,7 +3378,8 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             activeAIController = null;
-            btn.disabled = false;
+            _btnStopLoading(btn);
+            _btnStopLoading(document.getElementById('btnFinalizeToolbar'));
             document.getElementById('askClaudeLoading').classList.add('d-none');
             if (err.name === 'AbortError') {
                 showToast('Request cancelled.', 'info');
@@ -3149,19 +3418,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const meta = REPORT_ACTION_META[action];
         if (!meta) return;
 
-        // Disable all action buttons during request (skip vetting)
+        // Confirmation gate: warn if report hasn't been AI-reviewed yet
+        if (!state.hasReceivedFinalizedReport) {
+            if (!confirm('Your report hasn\'t been AI-reviewed yet. Generate ' + meta.label + ' from the unreviewed draft?')) return;
+        }
+
+        // Disable all action buttons during request (skip vetting) + animate clicked one
+        var _clickedActionBtn = document.querySelector('.report-action-btn[data-action="' + action + '"]');
         document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = true; });
+        if (_clickedActionBtn) {
+            _clickedActionBtn._origOnclick = _clickedActionBtn.onclick;
+            _btnStartLoading(_clickedActionBtn, meta.label + '...');
+        }
         var _loadEl = document.getElementById('askClaudeLoading');
-        var _progBar = _loadEl.querySelector('.ai-loading-progress');
-        if (_progBar) { _progBar.style.animation = 'none'; _progBar.offsetHeight; _progBar.style.animation = ''; }
         _loadEl.classList.remove('d-none');
 
+        const _ctx = _getClinicalContext();
         const payload = {
             action: action,
             report_text: reportText,
-            clinical_question: (document.getElementById('inputClinicalQuestion') || {}).value || '',
-            modality: (document.getElementById('inputModality') || {}).value || '',
-            body_section: (document.getElementById('inputBodySection') || {}).value || '',
+            clinical_question: _ctx.clinicalQuestion,
+            modality: _ctx.modality,
+            body_section: _ctx.bodySection,
         };
         // Pass accumulated insights if available
         const ins = state.aiAssistInsights;
@@ -3182,6 +3460,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             activeAIController = null;
+            _btnStopLoading(_clickedActionBtn);
             document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = false; });
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
@@ -3274,6 +3553,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             activeAIController = null;
+            _btnStopLoading(_clickedActionBtn);
             document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = false; });
             document.getElementById('askClaudeLoading').classList.add('d-none');
             if (err.name === 'AbortError') {
@@ -3636,12 +3916,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Finalized report inserted into PACS box.', 'success');
-        // Show fill-ins panel if there are placeholders to complete
-        if (state.aiAssistFillIns.length > 0) {
-            var fillInsSection = document.getElementById('aiAssistFillInsSection');
-            renderFillIns();
-            fillInsSection.classList.remove('d-none');
-            repositionFillIns();
+        // Show diff overlay for corrections + fill-ins (instead of separate panels)
+        var hasPendingCorrections = (state.aiAssistCorrections || []).some(function(c) { return c.status === 'pending'; });
+        var hasPendingFillIns = state.aiAssistFillIns.length > 0;
+        if (hasPendingCorrections || hasPendingFillIns) {
+            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
         }
         // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
@@ -3650,6 +3929,23 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
         }
     };
+
+    // Undo toast for auto-replaced PACS report
+    function _showUndoToast() {
+        // Create a toast with an Undo button
+        var toastEl = document.createElement('div');
+        toastEl.className = 'position-fixed bottom-0 start-50 translate-middle-x mb-3';
+        toastEl.style.cssText = 'z-index:1070; background:#333; color:#fff; padding:0.6rem 1rem; border-radius:0.5rem; font-size:0.85rem; box-shadow:0 4px 12px rgba(0,0,0,0.25); display:flex; align-items:center; gap:0.75rem;';
+        toastEl.innerHTML = '<span><i class="fas fa-exchange-alt me-1"></i>PACS report replaced</span>' +
+            '<button class="btn btn-sm btn-outline-light py-0 px-2" style="font-size:0.78rem;" id="_undoReplaceBtn">Undo</button>';
+        document.body.appendChild(toastEl);
+        var undoBtn = document.getElementById('_undoReplaceBtn');
+        undoBtn.addEventListener('click', function() {
+            undoPacsInsert();
+            toastEl.remove();
+        });
+        setTimeout(function() { if (toastEl.parentNode) toastEl.remove(); }, 8000);
+    }
 
     // ==================== SAVE PEARL ====================
 
@@ -3664,7 +3960,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn) { btn.disabled = true; }
 
         // Collect context: first ~300 chars of current report text
-        const reportText = (state.reportText || '').trim();
+        const reportText = (getCurrentReportText(false) || '').trim();
         const contextSnippet = reportText.length > 300 ? reportText.substring(0, 300) + '...' : reportText;
 
         fetch('/api/smart-reporter/save-pearl', {
@@ -3709,11 +4005,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!instruction) return;
         const input = document.getElementById('askClaudeInput');
         const current = input.value.trim();
-        const baseClass = btn.id === 'btnFinalizeToolbar' ? 'btn-outline-success' : 'btn-outline-secondary';
+        const baseClass = btn.id === 'btnFinalizeToolbar' ? 'btn-success' : 'btn-outline-secondary';
         // Toggle: if this instruction is already in the box, remove it
         const lowerInstr = instruction.toLowerCase();
         const parts = current ? current.split(/,\s*/) : [];
         const idx = parts.findIndex(p => p.toLowerCase() === lowerInstr);
+        let wasToggleOn = false;
         if (idx !== -1) {
             // Remove this instruction
             parts.splice(idx, 1);
@@ -3726,8 +4023,17 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = parts.join(', ');
             btn.classList.remove(baseClass);
             btn.classList.add('btn-brand-primary');
+            wasToggleOn = true;
         }
         input.focus();
+
+        // Auto-submit when Finalize is the ONLY instruction queued
+        if (wasToggleOn && btn.id === 'btnFinalizeToolbar') {
+            const finalParts = input.value.trim().split(/,\s*/).filter(p => p);
+            if (finalParts.length === 1) {
+                setTimeout(function() { askClaude(); }, 50);
+            }
+        }
     };
 
     function _clearQuickAskButtons() {
@@ -3735,7 +4041,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.classList.remove('btn-brand-primary');
             // Restore original style class
             if (btn.id === 'btnFinalizeToolbar') {
-                btn.classList.add('btn-outline-success');
+                btn.classList.add('btn-success');
             } else {
                 btn.classList.add('btn-outline-secondary');
             }
@@ -3773,14 +4079,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const output = document.getElementById('editorOutput');
             const pacsHasContent = !outputSection.classList.contains('d-none') && (output.value || '').trim().length > 0;
 
-            if (!pacsHasContent) {
-                // PACS box empty — auto-insert directly, skip intermediate preview
-                reportSection.classList.add('d-none');
-                insertReportText();
+            // Always auto-insert into PACS (undo available if replacing)
+            reportSection.classList.add('d-none');
+            if (pacsHasContent) {
+                // Save undo state, replace, and show undo toast
+                _savePacsUndo(output);
+                output.value = state.aiAssistReportText;
+                state.outputText = output.value;
+                autoResizeTextarea(output);
+                outputSection.classList.remove('d-none');
+                outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
+                _showUndoToast();
             } else {
-                // PACS box has content — show preview with replacement message
-                document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
-                reportSection.classList.remove('d-none');
+                insertReportText();
             }
         } else if (state.aiAssistReportText) {
             document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
@@ -3789,33 +4101,18 @@ document.addEventListener('DOMContentLoaded', function() {
             reportSection.classList.add('d-none');
         }
 
-        // Layer 3: Corrections
+        // Layer 3: Corrections + Fill-ins → unified PACS diff overlay
         const correctionsSection = document.getElementById('aiAssistCorrectionsSection');
-        const correctionsNote = document.getElementById('aiAssistCorrectionsNote');
-        if (state.aiAssistCorrections.length > 0) {
-            renderAiAssistCorrections();
-            correctionsSection.classList.remove('d-none');
-            // Always show corrections expanded; add explanatory note in full_report mode
-            if (isFullReport) {
-                correctionsNote.classList.remove('d-none');
-            } else {
-                correctionsNote.classList.add('d-none');
-            }
-            document.getElementById('aiAssistCorrectionsBody').classList.remove('d-none');
-            const chevron = document.getElementById('aiAssistCorrectionsChevron');
-            if (chevron) chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
-        } else {
-            correctionsSection.classList.add('d-none');
-        }
-
-        // Layer 3.5: Fill-in chips (placeholders to complete)
+        correctionsSection.classList.add('d-none'); // Never show separate panel
         const fillInsSection = document.getElementById('aiAssistFillInsSection');
-        if (state.aiAssistFillIns.length > 0 && isFullReport) {
-            renderFillIns();
-            fillInsSection.classList.remove('d-none');
-            repositionFillIns();
-        } else {
-            fillInsSection.classList.add('d-none');
+        fillInsSection.classList.add('d-none'); // Never show separate panel
+
+        var hasPendingCorrections = state.aiAssistCorrections.some(function(c) { return c.status === 'pending'; });
+        var hasPendingFillIns = state.aiAssistFillIns.length > 0 && isFullReport;
+
+        if (hasPendingCorrections || hasPendingFillIns) {
+            // Show diff overlay in PACS box
+            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
         }
 
         // Layer 4: Insights (persistent — rendered outside #aiAssistResponse)
@@ -3823,7 +4120,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Reposition movable sections based on current PACS state
         repositionAnswerBox();
-        repositionCorrections();
 
         // Focus: always scroll to Changes Made box first (user clicks "Go to PACS Report" after)
         setTimeout(function() {
@@ -3876,7 +4172,27 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             insightsSection.classList.add('d-none');
         }
+
+        // Update insights badge count in toolbar
+        var count = 0;
+        if (ins.clinical_question_coverage) count++;
+        if (ins.quality_assessment) count++;
+        if (ins.differentials_to_consider && ins.differentials_to_consider.length) count++;
+        if (ins.recommendation_check) count++;
+        if (ins.teaching_point) count++;
+        var badge = document.getElementById('insightsBadgeCount');
+        var toggle = document.getElementById('btnInsightsToggle');
+        if (badge) badge.textContent = count;
+        if (toggle) {
+            if (count > 0) { toggle.classList.remove('d-none'); } else { toggle.classList.add('d-none'); }
+        }
     }
+
+    window.toggleInsightsPanel = function() {
+        var section = document.getElementById('aiAssistInsightsSection');
+        if (!section || section.classList.contains('d-none')) return;
+        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
 
     function renderInsight(containerId, textId, value) {
         const el = document.getElementById(containerId);
@@ -3954,6 +4270,544 @@ document.addEventListener('DOMContentLoaded', function() {
         repositionCorrections();
     }
 
+    // ── Unified PACS Diff Overlay ──
+    // Tracks which source is active: 'proofread' or 'finalize' (or null)
+    var _pacsDiffSource = null;
+
+    // Main render function: shows corrections as inline diff in the PACS output box
+    function _renderPacsDiffView(corrections, source) {
+        _pacsDiffSource = source;
+        var overlay = document.getElementById('pacsDiffOverlay');
+        var content = document.getElementById('pacsDiffContent');
+        var textarea = document.getElementById('editorOutput');
+        var badge = document.getElementById('diffRemainingBadge');
+        if (!overlay || !content || !textarea) return;
+
+        // Use the PACS output text as the base (it already has AI corrections applied for finalize)
+        var baseText = textarea.value || '';
+        if (!baseText) { overlay.classList.add('d-none'); textarea.classList.remove('d-none'); return; }
+
+        // Gather pending corrections and find their positions in baseText
+        var pending = [];
+        corrections.forEach(function(c, i) {
+            if (c.status !== 'pending') return;
+            // For finalize: PACS already has c.suggested applied, so we find c.suggested to show the diff
+            // For proofread: PACS has the original text, so we find c.original
+            var searchStr = (source === 'finalize') ? c.suggested : c.original;
+            var pos = baseText.indexOf(searchStr);
+            if (pos >= 0) pending.push({ idx: i, pos: pos, c: c, searchStr: searchStr });
+        });
+        pending.sort(function(a, b) { return a.pos - b.pos; });
+
+        // Also gather pending fill-ins (only for finalize)
+        var fillIns = [];
+        if (source === 'finalize' && state.aiAssistFillIns) {
+            state.aiAssistFillIns.forEach(function(fi, i) {
+                if (fi.status !== 'pending') return;
+                var pos = baseText.indexOf(fi.placeholder);
+                if (pos >= 0) fillIns.push({ idx: i, pos: pos, fi: fi });
+            });
+            fillIns.sort(function(a, b) { return a.pos - b.pos; });
+        }
+
+        // Merge corrections and fill-ins into a single sorted list of markers
+        var markers = [];
+        pending.forEach(function(item) {
+            markers.push({ type: 'correction', idx: item.idx, pos: item.pos, len: item.searchStr.length, c: item.c, searchStr: item.searchStr });
+        });
+        fillIns.forEach(function(item) {
+            markers.push({ type: 'fillin', idx: item.idx, pos: item.pos, len: item.fi.placeholder.length, fi: item.fi });
+        });
+        markers.sort(function(a, b) { return a.pos - b.pos; });
+
+        var pendingCorrectionCount = pending.length;
+        var pendingFillInCount = fillIns.length;
+        var totalPending = pendingCorrectionCount + pendingFillInCount;
+
+        if (totalPending === 0) {
+            _resolveDiffOverlay();
+            return;
+        }
+
+        // Build inline diff HTML
+        var result = '';
+        var cursor = 0;
+        markers.forEach(function(m) {
+            if (m.pos < cursor) return; // overlapping, skip
+            result += escapeHtml(baseText.substring(cursor, m.pos));
+
+            if (m.type === 'correction') {
+                if (_pacsDiffSource === 'finalize') {
+                    // PACS has suggested text; show original as removed, suggested as added
+                    result += '<span class="diff-removed">' + escapeHtml(m.c.original) + '</span>';
+                    result += '<span class="diff-added" data-diff-idx="' + m.idx + '" data-diff-type="correction">' + escapeHtml(m.c.suggested) + '</span>';
+                } else {
+                    // Proofread: PACS has original text; show original as removed, suggested as added
+                    result += '<span class="diff-removed">' + escapeHtml(m.c.original) + '</span>';
+                    result += '<span class="diff-added" data-diff-idx="' + m.idx + '" data-diff-type="correction">' + escapeHtml(m.c.suggested) + '</span>';
+                }
+                cursor = m.pos + m.len;
+            } else if (m.type === 'fillin') {
+                result += '<span class="diff-fillin" data-diff-idx="' + m.idx + '" data-diff-type="fillin">' + escapeHtml(m.fi.placeholder) + '</span>';
+                cursor = m.pos + m.len;
+            }
+        });
+        result += escapeHtml(baseText.substring(cursor));
+        content.innerHTML = result;
+
+        // Update badge
+        var badgeText = pendingCorrectionCount + ' correction' + (pendingCorrectionCount !== 1 ? 's' : '');
+        if (pendingFillInCount > 0) {
+            badgeText += ' + ' + pendingFillInCount + ' fill-in' + (pendingFillInCount !== 1 ? 's' : '');
+        }
+        badge.textContent = badgeText;
+
+        // Show overlay, hide textarea
+        overlay.classList.remove('d-none');
+        textarea.classList.add('d-none');
+
+        // Attach click handlers for corrections
+        content.querySelectorAll('.diff-added[data-diff-type="correction"]').forEach(function(el) {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                _showDiffActionPopup(this, 'correction', parseInt(this.getAttribute('data-diff-idx')));
+            });
+        });
+
+        // Attach click handlers for fill-ins
+        content.querySelectorAll('.diff-fillin[data-diff-type="fillin"]').forEach(function(el) {
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                _showDiffActionPopup(this, 'fillin', parseInt(this.getAttribute('data-diff-idx')));
+            });
+        });
+    }
+
+    // Show inline action popup next to a diff span
+    function _showDiffActionPopup(spanEl, type, idx) {
+        // Remove any existing popups
+        document.querySelectorAll('.diff-action-popup').forEach(function(p) { p.remove(); });
+
+        var popup = document.createElement('span');
+        popup.className = 'diff-action-popup';
+
+        if (type === 'correction') {
+            var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+            var c = corrections[idx];
+            if (!c || c.status !== 'pending') return;
+
+            // Reason tooltip
+            if (c.reason) {
+                var reason = document.createElement('span');
+                reason.style.cssText = 'font-size: 0.65rem; color: #666; padding: 1px 4px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+                reason.textContent = c.reason;
+                reason.title = c.reason;
+                popup.appendChild(reason);
+            }
+
+            // Accept button
+            var acceptBtn = document.createElement('button');
+            acceptBtn.innerHTML = '<i class="fas fa-check" style="color: #28a745;"></i>';
+            acceptBtn.title = 'Accept';
+            acceptBtn.onclick = function(e) { e.stopPropagation(); diffAcceptItem(idx); };
+            popup.appendChild(acceptBtn);
+
+            // Reject button
+            var rejectBtn = document.createElement('button');
+            rejectBtn.innerHTML = '<i class="fas fa-times" style="color: #dc3545;"></i>';
+            rejectBtn.title = 'Reject';
+            rejectBtn.onclick = function(e) { e.stopPropagation(); diffRejectItem(idx); };
+            popup.appendChild(rejectBtn);
+
+            // Edit button
+            var editBtn = document.createElement('button');
+            editBtn.innerHTML = '<i class="fas fa-pen" style="color: #e96304;"></i>';
+            editBtn.title = 'Edit';
+            editBtn.onclick = function(e) { e.stopPropagation(); diffEditItem(idx, spanEl); };
+            popup.appendChild(editBtn);
+        } else if (type === 'fillin') {
+            var fi = state.aiAssistFillIns[idx];
+            if (!fi || fi.status !== 'pending') return;
+
+            // Show label
+            if (fi.label) {
+                var label = document.createElement('span');
+                label.style.cssText = 'font-size: 0.65rem; color: #666; padding: 1px 4px;';
+                label.textContent = fi.label;
+                popup.appendChild(label);
+            }
+
+            // Edit/fill button
+            var fillBtn = document.createElement('button');
+            fillBtn.innerHTML = '<i class="fas fa-pen" style="color: #e96304;"></i>';
+            fillBtn.title = 'Fill in value';
+            fillBtn.onclick = function(e) { e.stopPropagation(); diffEditFillin(idx, spanEl); };
+            popup.appendChild(fillBtn);
+
+            // Remove button
+            var removeBtn = document.createElement('button');
+            removeBtn.innerHTML = '<i class="fas fa-trash-alt" style="color: #dc3545;"></i>';
+            removeBtn.title = 'Remove placeholder';
+            removeBtn.onclick = function(e) { e.stopPropagation(); diffRemoveFillin(idx); };
+            popup.appendChild(removeBtn);
+        }
+
+        spanEl.after(popup);
+
+        // Close popup when clicking elsewhere
+        setTimeout(function() {
+            document.addEventListener('click', function closePopup(e) {
+                if (!popup.contains(e.target)) {
+                    popup.remove();
+                    document.removeEventListener('click', closePopup);
+                }
+            });
+        }, 0);
+    }
+
+    // Accept a single correction in the diff overlay
+    window.diffAcceptItem = function(idx) {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var c = corrections[idx];
+        if (!c || c.status !== 'pending') return;
+        var output = document.getElementById('editorOutput');
+
+        if (_pacsDiffSource === 'proofread') {
+            // Proofread: PACS has original → replace with suggested
+            c.status = 'accepted';
+            if (output && output.value) {
+                _replaceInBox('editorOutput', c.original, c.suggested);
+                state.outputText = output.value;
+            }
+        } else {
+            // Finalize: PACS already has suggested — just mark accepted
+            c.status = 'accepted';
+        }
+
+        _rerenderPacsDiff();
+    };
+
+    // Reject a single correction in the diff overlay
+    window.diffRejectItem = function(idx) {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var c = corrections[idx];
+        if (!c || c.status !== 'pending') return;
+        var output = document.getElementById('editorOutput');
+
+        if (_pacsDiffSource === 'proofread') {
+            // Proofread: PACS has original — keep it, just mark rejected
+            c.status = 'rejected';
+        } else {
+            // Finalize: PACS has suggested → revert to original
+            c.status = 'rejected';
+            if (output && output.value) {
+                _replaceInBox('editorOutput', c.suggested, c.original);
+                state.outputText = output.value;
+            }
+        }
+
+        _rerenderPacsDiff();
+    };
+
+    // Edit a correction inline in the diff overlay
+    window.diffEditItem = function(idx, spanEl) {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var c = corrections[idx];
+        if (!c || c.status !== 'pending') return;
+
+        // Remove any existing popups
+        document.querySelectorAll('.diff-action-popup').forEach(function(p) { p.remove(); });
+
+        // Make span contenteditable
+        spanEl.contentEditable = 'true';
+        spanEl.focus();
+        spanEl.classList.add('diff-editing');
+
+        // Select all text in the span
+        var range = document.createRange();
+        range.selectNodeContents(spanEl);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        // Add confirm/cancel buttons after span
+        var editPopup = document.createElement('span');
+        editPopup.className = 'diff-action-popup';
+        var confirmBtn = document.createElement('button');
+        confirmBtn.innerHTML = '<i class="fas fa-check" style="color: #28a745;"></i>';
+        confirmBtn.title = 'Confirm edit';
+        confirmBtn.onclick = function(e) {
+            e.stopPropagation();
+            var newText = spanEl.textContent.trim();
+            spanEl.contentEditable = 'false';
+            spanEl.classList.remove('diff-editing');
+            editPopup.remove();
+
+            var output = document.getElementById('editorOutput');
+            if (_pacsDiffSource === 'proofread') {
+                // Replace original with edited text in PACS
+                if (output && output.value) {
+                    _replaceInBox('editorOutput', c.original, newText);
+                    state.outputText = output.value;
+                }
+            } else {
+                // Replace suggested (which is in PACS) with edited text
+                if (output && output.value) {
+                    _replaceInBox('editorOutput', c.suggested, newText);
+                    state.outputText = output.value;
+                }
+            }
+            c.suggested = newText;
+            c.status = 'accepted';
+            _rerenderPacsDiff();
+        };
+        var cancelBtn = document.createElement('button');
+        cancelBtn.innerHTML = '<i class="fas fa-times" style="color: #dc3545;"></i>';
+        cancelBtn.title = 'Cancel edit';
+        cancelBtn.onclick = function(e) {
+            e.stopPropagation();
+            spanEl.textContent = c.suggested;
+            spanEl.contentEditable = 'false';
+            spanEl.classList.remove('diff-editing');
+            editPopup.remove();
+        };
+        editPopup.appendChild(confirmBtn);
+        editPopup.appendChild(cancelBtn);
+        spanEl.after(editPopup);
+
+        // Handle Enter key to confirm
+        spanEl.addEventListener('keydown', function onKey(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmBtn.click();
+                spanEl.removeEventListener('keydown', onKey);
+            } else if (e.key === 'Escape') {
+                cancelBtn.click();
+                spanEl.removeEventListener('keydown', onKey);
+            }
+        });
+    };
+
+    // Edit a fill-in placeholder inline
+    window.diffEditFillin = function(idx, spanEl) {
+        var fi = state.aiAssistFillIns[idx];
+        if (!fi || fi.status !== 'pending') return;
+
+        // Remove any existing popups
+        document.querySelectorAll('.diff-action-popup').forEach(function(p) { p.remove(); });
+
+        // Replace placeholder text with input-like editable
+        spanEl.textContent = '';
+        spanEl.contentEditable = 'true';
+        spanEl.focus();
+        spanEl.classList.add('diff-editing');
+        spanEl.setAttribute('data-placeholder', fi.label || 'Enter value...');
+
+        // Add hint as placeholder
+        if (fi.hint) {
+            spanEl.setAttribute('placeholder', fi.hint);
+        }
+
+        // Add confirm/remove buttons
+        var editPopup = document.createElement('span');
+        editPopup.className = 'diff-action-popup';
+
+        // Option chips if available
+        if (fi.type === 'options' && fi.options) {
+            fi.options.forEach(function(opt) {
+                var chipBtn = document.createElement('button');
+                chipBtn.textContent = opt;
+                chipBtn.style.cssText = 'font-size: 0.65rem; color: var(--brand-neutral); border: 1px solid var(--brand-neutral); border-radius: 10px; padding: 0 6px; background: #fff;';
+                chipBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    spanEl.textContent = opt;
+                };
+                editPopup.appendChild(chipBtn);
+            });
+        }
+
+        var confirmBtn = document.createElement('button');
+        confirmBtn.innerHTML = '<i class="fas fa-check" style="color: #28a745;"></i>';
+        confirmBtn.title = 'Confirm';
+        confirmBtn.onclick = function(e) {
+            e.stopPropagation();
+            var newText = spanEl.textContent.trim();
+            if (!newText) { showToast('Enter a value first.', 'warning'); return; }
+            spanEl.contentEditable = 'false';
+            spanEl.classList.remove('diff-editing');
+            editPopup.remove();
+
+            var output = document.getElementById('editorOutput');
+            if (output && output.value) {
+                _replaceInBox('editorOutput', fi.placeholder, newText);
+                state.outputText = output.value;
+            }
+            fi.status = 'applied';
+            fi.appliedValue = newText;
+            _rerenderPacsDiff();
+        };
+        var removeBtn = document.createElement('button');
+        removeBtn.innerHTML = '<i class="fas fa-trash-alt" style="color: #dc3545;"></i>';
+        removeBtn.title = 'Remove';
+        removeBtn.onclick = function(e) {
+            e.stopPropagation();
+            spanEl.contentEditable = 'false';
+            editPopup.remove();
+            diffRemoveFillin(idx);
+        };
+        editPopup.appendChild(confirmBtn);
+        editPopup.appendChild(removeBtn);
+        spanEl.after(editPopup);
+
+        spanEl.addEventListener('keydown', function onKey(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                confirmBtn.click();
+                spanEl.removeEventListener('keydown', onKey);
+            } else if (e.key === 'Escape') {
+                // Restore placeholder text and cancel
+                spanEl.textContent = fi.placeholder;
+                spanEl.contentEditable = 'false';
+                spanEl.classList.remove('diff-editing');
+                editPopup.remove();
+                spanEl.removeEventListener('keydown', onKey);
+            }
+        });
+    };
+
+    // Remove a fill-in placeholder from the report
+    window.diffRemoveFillin = function(idx) {
+        var fi = state.aiAssistFillIns[idx];
+        if (!fi || fi.status !== 'pending') return;
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) {
+            // Remove the placeholder and any surrounding whitespace that would leave double spaces
+            var text = output.value;
+            var pos = text.indexOf(fi.placeholder);
+            if (pos >= 0) {
+                // Remove placeholder, trim extra whitespace/newlines left behind
+                var before = text.substring(0, pos);
+                var after = text.substring(pos + fi.placeholder.length);
+                // If placeholder was on its own line, remove the whole line
+                if (before.endsWith('\n') && (after.startsWith('\n') || after === '')) {
+                    before = before.replace(/\n$/, '');
+                } else {
+                    // Just collapse any double spaces
+                    if (before.endsWith(' ') && after.startsWith(' ')) {
+                        after = after.substring(1);
+                    }
+                }
+                output.value = before + after;
+                state.outputText = output.value;
+            }
+        }
+        fi.status = 'rejected';
+        _rerenderPacsDiff();
+    };
+
+    // Accept all pending corrections + fill-ins
+    window.diffAcceptAll = function() {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var output = document.getElementById('editorOutput');
+
+        corrections.forEach(function(c) {
+            if (c.status !== 'pending') return;
+            if (_pacsDiffSource === 'proofread') {
+                // Replace original → suggested in PACS
+                if (output && output.value) {
+                    _replaceInBox('editorOutput', c.original, c.suggested);
+                    state.outputText = output.value;
+                }
+            }
+            // Finalize: PACS already has suggested, just mark accepted
+            c.status = 'accepted';
+        });
+
+        // Auto-apply fill-ins that have hints/defaults? No — just leave them for user to fill
+        _rerenderPacsDiff();
+    };
+
+    // Reject all pending corrections + remove all fill-ins
+    window.diffRejectAll = function() {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var output = document.getElementById('editorOutput');
+
+        corrections.forEach(function(c) {
+            if (c.status !== 'pending') return;
+            if (_pacsDiffSource === 'finalize') {
+                // Revert suggested → original in PACS
+                if (output && output.value) {
+                    _replaceInBox('editorOutput', c.suggested, c.original);
+                    state.outputText = output.value;
+                }
+            }
+            // Proofread: PACS has original, just mark rejected
+            c.status = 'rejected';
+        });
+
+        // Also reject all fill-ins
+        if (state.aiAssistFillIns) {
+            state.aiAssistFillIns.forEach(function(fi) {
+                if (fi.status === 'pending') {
+                    // Remove placeholder from PACS
+                    if (output && output.value && output.value.indexOf(fi.placeholder) >= 0) {
+                        var text = output.value;
+                        var before = text.substring(0, text.indexOf(fi.placeholder));
+                        var after = text.substring(text.indexOf(fi.placeholder) + fi.placeholder.length);
+                        if (before.endsWith('\n') && (after.startsWith('\n') || after === '')) {
+                            before = before.replace(/\n$/, '');
+                        } else if (before.endsWith(' ') && after.startsWith(' ')) {
+                            after = after.substring(1);
+                        }
+                        output.value = before + after;
+                        state.outputText = output.value;
+                    }
+                    fi.status = 'rejected';
+                }
+            });
+        }
+
+        _rerenderPacsDiff();
+    };
+
+    // Re-render the diff overlay (called after accept/reject/edit)
+    function _rerenderPacsDiff() {
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        _renderPacsDiffView(corrections, _pacsDiffSource);
+    }
+
+    // Resolve the diff overlay — hide it, show textarea
+    function _resolveDiffOverlay() {
+        var overlay = document.getElementById('pacsDiffOverlay');
+        var textarea = document.getElementById('editorOutput');
+        if (overlay) overlay.classList.add('d-none');
+        if (textarea) {
+            textarea.classList.remove('d-none');
+            autoResizeTextarea(textarea);
+        }
+        _pacsDiffSource = null;
+        showToast('All corrections reviewed.', 'success');
+        _updateProminentCopyLabel();
+    }
+
+    // Apply PACS output back to draft
+    window.applyPacsToDraft = function() {
+        var output = document.getElementById('editorOutput');
+        if (!output || !output.value.trim()) return;
+        if (!confirm('Replace your working draft with the PACS report? This cannot be undone.')) return;
+        var input = document.getElementById('editorInput');
+        input.value = output.value;
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+        showToast('Draft updated from PACS report.', 'success');
+    };
+
+    // Stubs for old panel buttons (panels are hidden but kept in DOM for compat)
+    window.toggleDiffView = function() {};
+    window.toggleProofDiffView = function() {};
+
     // Correction logic:
     // The AI finalized report ALREADY has corrections applied (original → suggested).
     // So PACS (editorOutput) has the suggested text, Draft (editorInput) has the original text.
@@ -3995,14 +4849,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         c.status = 'accepted';
-        // Apply to Draft (original → suggested)
-        var input = document.getElementById('editorInput');
-        if (input && input.value) {
-            _saveDraftUndo(input);
-            _replaceInBox('editorInput', c.original, c.suggested);
-            state.inputText = input.value;
-            autoResizeTextarea(input);
-        }
+        // Draft is sacrosanct — do NOT modify editorInput
         renderAiAssistCorrections();
     };
 
@@ -4040,23 +4887,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.acceptAllCorrections = function() {
-        var input = document.getElementById('editorInput');
         var output = document.getElementById('editorOutput');
-        if (input && input.value) _saveDraftUndo(input);
         var pacsUndoSaved = false;
         state.aiAssistCorrections.forEach(c => {
             if (c.status === 'pending') {
                 c.status = 'accepted';
-                // Apply to Draft
-                _replaceInBox('editorInput', c.original, c.suggested);
-                // Also ensure PACS has the correction (fallback if AI didn't apply it verbatim)
+                // Draft is sacrosanct — do NOT modify editorInput
+                // Ensure PACS has the correction (fallback if AI didn't apply it verbatim)
                 if (output && output.value && output.value.indexOf(c.suggested) < 0 && output.value.indexOf(c.original) >= 0) {
                     if (!pacsUndoSaved) { _savePacsUndo(output); pacsUndoSaved = true; }
                     _replaceInBox('editorOutput', c.original, c.suggested);
                 }
             }
         });
-        if (input) { state.inputText = input.value; autoResizeTextarea(input); }
         if (pacsUndoSaved && output) { state.outputText = output.value; autoResizeTextarea(output); }
         renderAiAssistCorrections();
     };
@@ -4186,6 +5029,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (removeAllBtn) {
             removeAllBtn.style.display = pendingCount > 0 ? '' : 'none';
         }
+        _updateProminentCopyLabel();
     }
 
     window.applyFillIn = function(index, value) {
@@ -4481,6 +5325,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var editor = document.getElementById('editorInput');
         if (!editor) return;
         var text = editor.value || '';
+        // Also scan PACS output for PII
+        var output = document.getElementById('editorOutput');
+        if (output && output.value) text += '\n' + output.value;
         var result = PIIGuard.scan(text);
 
         _lastPIIMatches = result.matches || [];
@@ -4559,16 +5406,19 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!_activePIIMatches || matchIndex >= _activePIIMatches.length) return;
         var match = _activePIIMatches[matchIndex];
         var editor = document.getElementById('editorInput');
+        var output = document.getElementById('editorOutput');
         if (!editor) return;
 
         if (action === 'redact') {
             editor.value = editor.value.split(match.match).join('[REDACTED]');
             state.inputText = editor.value;
+            if (output) { output.value = output.value.split(match.match).join('[REDACTED]'); state.outputText = output.value; }
             livePIIScan();
         } else if (action === 'remove') {
             editor.value = editor.value.split(match.match).join('');
             editor.value = editor.value.replace(/  +/g, ' ');
             state.inputText = editor.value;
+            if (output) { output.value = output.value.split(match.match).join(''); output.value = output.value.replace(/  +/g, ' '); state.outputText = output.value; }
             livePIIScan();
         } else if (action === 'dismiss') {
             _showPIIDismissConfirm(function() {
@@ -4734,19 +5584,65 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Auto-resize on editor input changes
+    // Auto-resize on editor input changes + autosave
     document.getElementById('editorInput').addEventListener('input', function() {
         state.inputText = this.value;
         autoResizeTextarea(this);
         // Debounced PII scan
         clearTimeout(_piiScanTimer);
         _piiScanTimer = setTimeout(livePIIScan, 500);
+        _autosaveDraft();
     });
 
     document.getElementById('editorOutput').addEventListener('input', function() {
         state.outputText = this.value;
         autoResizeTextarea(this);
+        _autosaveDraft();
+        // Debounced PII scan on PACS output
+        clearTimeout(_piiScanTimer);
+        _piiScanTimer = setTimeout(livePIIScan, 500);
     });
+
+    // beforeunload warning when editor has meaningful content
+    window.addEventListener('beforeunload', function(e) {
+        var editorScene = document.getElementById('sceneEditor');
+        if (!editorScene || editorScene.classList.contains('d-none')) return;
+        var draft = (document.getElementById('editorInput') || {}).value || '';
+        if (draft.trim().length > 20) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Autosave recovery prompt
+    if (window._pendingAutosave) {
+        var savedData = window._pendingAutosave;
+        delete window._pendingAutosave;
+        var mins = Math.round((Date.now() - savedData.ts) / 60000);
+        var timeAgo = mins < 1 ? 'just now' : (mins < 60 ? mins + ' min ago' : Math.round(mins / 60) + 'h ago');
+        if (confirm('Recover unsaved draft from ' + timeAgo + '?\n\n"' + savedData.draft.substring(0, 80) + '..."')) {
+            showScene('editor');
+            var editorInput = document.getElementById('editorInput');
+            if (editorInput) { editorInput.value = savedData.draft; state.inputText = savedData.draft; autoResizeTextarea(editorInput); }
+            var editorOutput = document.getElementById('editorOutput');
+            if (editorOutput && savedData.pacs) { editorOutput.value = savedData.pacs; state.outputText = savedData.pacs; autoResizeTextarea(editorOutput); document.getElementById('outputSection').classList.remove('d-none'); }
+            // Restore context directly into the context bar spans
+            var _rCQ = document.getElementById('ctxBarCQ');
+            var _rMod = document.getElementById('ctxBarModality');
+            var _rBS = document.getElementById('ctxBarBodySection');
+            if (savedData.clinicalQuestion && _rCQ) _rCQ.textContent = savedData.clinicalQuestion;
+            if (savedData.modality && _rMod) _rMod.textContent = savedData.modality;
+            if (savedData.bodySection && _rBS) _rBS.textContent = savedData.bodySection;
+            // Also sync to hidden form inputs for backward compat
+            if (savedData.clinicalQuestion) { var cq = document.getElementById('inputClinicalQuestion'); if (cq) cq.value = savedData.clinicalQuestion; }
+            if (savedData.modality) { var mod = document.getElementById('inputModality'); if (mod) mod.value = savedData.modality; }
+            if (savedData.bodySection) { var bs = document.getElementById('inputBodySection'); if (bs) bs.value = savedData.bodySection; }
+            _clearAutosave();
+            updateActionButtonState();
+        } else {
+            _clearAutosave();
+        }
+    }
 
     // Ctrl+Z / Ctrl+Shift+Z in PACS output: use our undo/redo stacks for programmatic inserts
     document.getElementById('editorOutput').addEventListener('keydown', function(e) {
@@ -4774,6 +5670,137 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+
+    // ── Customisable Insert Chips ──
+    var _defaultChips = [
+        { label: 'Rest Normal', text: 'Rest unremarkable.' },
+        { label: 'NSA', text: 'No significant abnormality.' },
+        { label: 'Correlate', text: 'Clinical correlation recommended.' }
+    ];
+    function _loadChips() {
+        try {
+            var saved = localStorage.getItem('sr_custom_chips');
+            if (saved) return JSON.parse(saved);
+        } catch(e) {}
+        return _defaultChips.slice();
+    }
+    function _saveChips(chips) {
+        try { localStorage.setItem('sr_custom_chips', JSON.stringify(chips)); } catch(e) {}
+    }
+    function _renderChips() {
+        var container = document.getElementById('draftChipsContainer');
+        if (!container) return;
+        var chips = _loadChips();
+        container.innerHTML = '';
+        chips.forEach(function(chip) {
+            var btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-secondary py-0 px-2 draft-insert-chip';
+            btn.title = 'Insert: ' + chip.text;
+            btn.innerHTML = '<i class="fas fa-plus me-1" style="font-size: 0.6rem;"></i>' + escapeHtml(chip.label);
+            btn.addEventListener('click', function() { insertDraftText(chip.text); });
+            container.appendChild(btn);
+        });
+    }
+    _renderChips();
+
+    window.openChipSettings = function() {
+        // Remove any existing overlay
+        var existing = document.getElementById('chipSettingsOverlay');
+        if (existing) { existing.remove(); return; }
+
+        var chips = _loadChips();
+        var overlay = document.createElement('div');
+        overlay.id = 'chipSettingsOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:1060;display:flex;align-items:center;justify-content:center;';
+        var panel = document.createElement('div');
+        panel.style.cssText = 'background:#fff;border-radius:0.5rem;padding:1rem;max-width:420px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.15);';
+        panel.innerHTML = '<h6 class="mb-2"><i class="fas fa-cog me-1"></i>Customise Insert Chips</h6><div id="chipSettingsList"></div>' +
+            '<div class="d-flex gap-1 mt-2">' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="addChipRow()"><i class="fas fa-plus me-1"></i>Add</button>' +
+            '<button class="btn btn-sm btn-brand-primary" onclick="saveChipSettings()"><i class="fas fa-check me-1"></i>Save</button>' +
+            '<button class="btn btn-sm btn-outline-warning" onclick="resetChipDefaults()">Reset Defaults</button>' +
+            '<button class="btn btn-sm btn-outline-secondary ms-auto" onclick="document.getElementById(\'chipSettingsOverlay\').remove()">Cancel</button>' +
+            '</div>';
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+        var list = panel.querySelector('#chipSettingsList');
+        chips.forEach(function(chip) {
+            var row = document.createElement('div');
+            row.className = 'd-flex gap-1 mb-1 align-items-center';
+            row.innerHTML = '<input type="text" class="form-control form-control-sm chip-label" value="' + escapeHtml(chip.label) + '" placeholder="Label" style="max-width:100px;">' +
+                '<input type="text" class="form-control form-control-sm chip-text" value="' + escapeHtml(chip.text) + '" placeholder="Insert text">' +
+                '<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.closest(\'.d-flex\').remove()" style="font-size:0.7rem;"><i class="fas fa-times"></i></button>';
+            list.appendChild(row);
+        });
+    };
+    window.addChipRow = function() {
+        var list = document.getElementById('chipSettingsList');
+        if (!list) return;
+        var row = document.createElement('div');
+        row.className = 'd-flex gap-1 mb-1 align-items-center';
+        row.innerHTML = '<input type="text" class="form-control form-control-sm chip-label" placeholder="Label" style="max-width: 100px;">' +
+            '<input type="text" class="form-control form-control-sm chip-text" placeholder="Insert text">' +
+            '<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="this.closest(\'.d-flex\').remove()" style="font-size: 0.7rem;"><i class="fas fa-times"></i></button>';
+        list.appendChild(row);
+    };
+    window.saveChipSettings = function() {
+        var list = document.getElementById('chipSettingsList');
+        if (!list) return;
+        var rows = list.querySelectorAll('.d-flex');
+        var chips = [];
+        rows.forEach(function(row) {
+            var label = row.querySelector('.chip-label');
+            var text = row.querySelector('.chip-text');
+            if (label && text && label.value.trim() && text.value.trim()) {
+                chips.push({ label: label.value.trim(), text: text.value.trim() });
+            }
+        });
+        if (chips.length === 0) chips = _defaultChips.slice();
+        _saveChips(chips);
+        _renderChips();
+        var overlay = document.getElementById('chipSettingsOverlay');
+        if (overlay) overlay.remove();
+        showToast('Chips saved!', 'success');
+    };
+    window.resetChipDefaults = function() {
+        _saveChips(_defaultChips.slice());
+        _renderChips();
+        var overlay = document.getElementById('chipSettingsOverlay');
+        if (overlay) overlay.remove();
+        showToast('Chips reset to defaults.', 'success');
+    };
+
+    // ── Keyboard Shortcuts (active when editor scene visible) ──
+    document.addEventListener('keydown', function(e) {
+        var editorScene = document.getElementById('sceneEditor');
+        if (!editorScene || editorScene.classList.contains('d-none')) return;
+
+        // Ctrl+Enter → AI Review & Finalize
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            var finBtn = document.getElementById('btnFinalizeToolbar');
+            if (finBtn && !finBtn.disabled) finBtn.click();
+            return;
+        }
+        // Ctrl+Shift+C → Copy PACS report
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+            e.preventDefault();
+            if (typeof copyFinalReport === 'function') copyFinalReport();
+            return;
+        }
+        // Esc → Cancel active AI request
+        if (e.key === 'Escape') {
+            var loading = document.getElementById('askClaudeLoading');
+            if (loading && !loading.classList.contains('d-none')) {
+                e.preventDefault();
+                cancelAIRequest();
+                loading.classList.add('d-none');
+            }
+        }
+    });
 
     // ==================== PERSONAL TEMPLATES (Phase 4, Gap 4) ====================
 
@@ -4889,16 +5916,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Try to infer a name from the report content
         const nameInput = document.getElementById('saveTemplateName');
         if (!nameInput.value) {
-            const lines = input.value.trim().split('\n');
             let inferred = '';
-            for (const line of lines) {
-                if (line.match(/^(INDICATION|CLINICAL)/i)) {
-                    inferred = line.replace(/^(INDICATION|CLINICAL[^:]*):?\s*/i, '').trim();
-                    break;
-                }
+            // Priority 1: Use clinical context bar if any field is filled
+            const _sCtx = _getClinicalContext();
+            const ctxParts = [_sCtx.modality, _sCtx.bodySection, _sCtx.clinicalQuestion].filter(p => p);
+            if (ctxParts.length > 0) {
+                inferred = ctxParts.join(' - ');
             }
-            if (!inferred && lines[0]) {
-                inferred = lines[0].substring(0, 80).trim();
+            // Priority 2: Look for INDICATION line in report
+            if (!inferred) {
+                const lines = input.value.trim().split('\n');
+                for (const line of lines) {
+                    if (line.match(/^(INDICATION|CLINICAL)/i)) {
+                        inferred = line.replace(/^(INDICATION|CLINICAL[^:]*):?\s*/i, '').trim();
+                        break;
+                    }
+                }
+                // Priority 3: First line of report
+                if (!inferred && lines[0]) {
+                    inferred = lines[0].substring(0, 80).trim();
+                }
             }
             nameInput.value = inferred;
         }
@@ -5351,9 +6388,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var outputSection = document.getElementById('outputSection');
         var textarea = document.getElementById('editorOutput');
         // Always clear and hide — no empty PACS panel in any mode
-        if (textarea) textarea.value = '';
+        if (textarea) { textarea.value = ''; textarea.classList.remove('d-none'); }
         outputSection.classList.remove('has-content');
         outputSection.classList.add('d-none');
+        // Also hide diff overlay
+        var overlay = document.getElementById('pacsDiffOverlay');
+        if (overlay) overlay.classList.add('d-none');
+        _pacsDiffSource = null;
         repositionCorrections();
     }
 
@@ -5406,44 +6447,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Move corrections near PACS (if has content) or near Draft card
     function repositionCorrections() {
-        var section = document.getElementById('aiAssistCorrectionsSection');
         var toggleBtn = document.getElementById('btnCorrectionsToggleDraft');
-        var collapse = document.getElementById('draftCorrectionsCollapse');
+        var overlay = document.getElementById('pacsDiffOverlay');
 
-        // Check if there are any pending corrections
+        // Check if there are any pending corrections (from either source)
         var pendingCount = 0;
         if (state.aiAssistCorrections) {
-            pendingCount = state.aiAssistCorrections.filter(function(c) { return c.status === 'pending'; }).length;
+            pendingCount += state.aiAssistCorrections.filter(function(c) { return c.status === 'pending'; }).length;
+        }
+        if (state.suggestions) {
+            pendingCount += state.suggestions.filter(function(s) { return s.status === 'pending'; }).length;
         }
 
-        var hasCorrections = section && !section.classList.contains('d-none') && pendingCount > 0;
+        var hasOverlay = overlay && !overlay.classList.contains('d-none');
 
-        if (hasCorrections) {
-            // Move corrections into the draft card collapsible area
-            var anchor = document.getElementById('correctionsAnchorDraft');
-            if (anchor) anchor.after(section);
-            // Show the toggle button in draft header
+        if (hasOverlay && pendingCount > 0) {
+            // Show the corrections badge in draft header (clicking scrolls to PACS diff overlay)
             if (toggleBtn) toggleBtn.classList.remove('d-none');
-            // Keep collapsed — user clicks button to expand
-            // Update badge count
             var badge = document.getElementById('correctionsCountBadgeDraft');
             if (badge) badge.textContent = pendingCount;
         } else {
-            // Hide toggle button and collapse when no pending corrections
             if (toggleBtn) toggleBtn.classList.add('d-none');
-            if (collapse) collapse.classList.add('d-none');
-            // Also hide the corrections section itself
-            if (section && pendingCount === 0 && state.aiAssistCorrections && state.aiAssistCorrections.length > 0) {
-                section.classList.add('d-none');
-            }
         }
     }
 
     // Toggle corrections collapsible in draft header
     window.toggleDraftCorrections = function() {
-        var collapse = document.getElementById('draftCorrectionsCollapse');
-        if (!collapse) return;
-        collapse.classList.toggle('d-none');
+        // Scroll to the PACS diff overlay instead of expanding collapsible
+        var overlay = document.getElementById('pacsDiffOverlay');
+        if (overlay && !overlay.classList.contains('d-none')) {
+            overlay.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            // Fallback: scroll to PACS output
+            var os = document.getElementById('outputSection');
+            if (os && !os.classList.contains('d-none')) {
+                os.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
     };
 
     // Toggle resource search overlay
@@ -5508,6 +6548,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Store context for AI Assist calls
         state.externalContext = { type: contextType, title: title, slug: slug, id: id };
+        try { sessionStorage.setItem('sr_externalContext', JSON.stringify(state.externalContext)); } catch(e) {}
 
         // Check sessionStorage for pre-filled content (from "Send to Smart Reporter" buttons)
         const editor = document.getElementById('editorInput');
@@ -5826,8 +6867,8 @@ function startCheckout(plan) {
 <script>
 function openVettingModal() {
     var iframe = document.getElementById('vettingIframe');
-    var clinical = (document.getElementById('inputClinicalQuestion') || {}).value || '';
-    clinical = clinical.trim();
+    var _cqEl = document.getElementById('ctxBarCQ');
+    var clinical = (_cqEl ? _cqEl.textContent.trim() : '') || (document.getElementById('inputClinicalQuestion') || {}).value || '';
     var url = '/vetting?embed=1';
     if (clinical) url += '&prefill=' + encodeURIComponent(clinical);
     iframe.src = url;
@@ -5843,9 +6884,10 @@ document.getElementById('vettingModal').addEventListener('hidden.bs.modal', func
 <script>
 if (window.registerVoiceCommands) {
     registerVoiceCommands({
-        'quick check':  { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Quick Check' },
-        'finalize':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'Finalize' },
-        'finalise':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'Finalize' },
+        'quick check':  { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Proofread' },
+        'proofread':    { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Proofread' },
+        'finalize':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'AI Review & Finalize' },
+        'finalise':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'AI Review & Finalize' },
         'mdt':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('mdt'); }, label: 'MDT' },
         'sba':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('sba'); }, label: 'SBA' },
         'viva':         { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('viva'); }, label: 'Viva' },

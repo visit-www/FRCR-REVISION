@@ -6073,7 +6073,7 @@ body {
     border: none;
     border-radius: 0;
     padding: 1rem 1.25rem;
-    resize: none;
+    resize: vertical;
     caret-color: #e96304;
 }
 .pacs-output-textarea:focus {
@@ -6133,16 +6133,115 @@ body {
     position: absolute;
     bottom: 0;
     left: 0;
+    width: 100%;
     height: 2px;
-    background: #e96304;
-    animation: ai-progress 8s ease-out forwards;
+    background: linear-gradient(90deg, transparent 0%, #e96304 40%, #ffa040 60%, transparent 100%);
+    background-size: 200% 100%;
+    animation: ai-shimmer 1.5s ease-in-out infinite;
     border-radius: 0 0 0.375rem 0.375rem;
 }
-@keyframes ai-progress {
-    0% { width: 0; }
-    50% { width: 60%; }
-    80% { width: 85%; }
-    100% { width: 95%; }
+@keyframes ai-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ==================== Inline Diff View ==================== */
+.diff-removed {
+    background: #ffcdd2;
+    color: #b71c1c;
+    text-decoration: line-through;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+.diff-added {
+    background: #c8e6c9;
+    color: #1b5e20;
+    padding: 1px 2px;
+    border-radius: 2px;
+}
+.diff-added:hover {
+    background: #a5d6a7;
+    outline: 2px solid #66bb6a;
+}
+.diff-editing {
+    outline: 2px solid #e96304 !important;
+    background: #fff3cd !important;
+    color: #333 !important;
+    min-width: 40px;
+}
+
+/* ==================== PACS Diff Overlay ==================== */
+#pacsDiffOverlay {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+.diff-action-popup {
+    display: inline-flex;
+    gap: 2px;
+    margin-left: 4px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1px 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    vertical-align: middle;
+}
+.diff-action-popup button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 1px 4px;
+}
+.diff-action-popup button:hover {
+    background: #f0f0f0;
+    border-radius: 2px;
+}
+.diff-fillin {
+    background: #fff3cd;
+    border: 1px dashed #ffc107;
+    padding: 1px 4px;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #856404;
+}
+.diff-fillin:hover {
+    background: #ffe69c;
+    border-color: #e96304;
+}
+
+/* ==================== Go to PACS Report Button ==================== */
+.go-to-pacs-btn {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(233, 99, 4, 0.4); }
+    50% { box-shadow: 0 0 8px 2px rgba(233, 99, 4, 0.25); }
+}
+
+/* ==================== Clinical Context Bar ==================== */
+.context-editable {
+    display: inline-block;
+    min-width: 60px;
+    border-bottom: 1px dashed #5E899E;
+    padding: 0 4px;
+    outline: none;
+    cursor: text;
+}
+.context-editable:focus {
+    border-bottom-style: solid;
+    background: rgba(94,137,158,0.08);
+    border-radius: 2px;
+}
+.context-editable:empty::before {
+    content: attr(data-placeholder);
+    color: #aab;
+}
+.context-field-group {
+    white-space: nowrap;
 }
 
 /* ==================== Draft Insert Chips ==================== */
@@ -6246,6 +6345,27 @@ body {
         width: 44px;
         height: 44px;
         font-size: 1rem;
+    }
+}
+
+/* ==================== Smart Reporter Mobile Responsive ==================== */
+@media (max-width: 767px) {
+    /* Hide collapsible toolbar rows on mobile */
+    #toolbarQuickAskRow { display: none !important; }
+    #toolbarActionsRow { display: none !important; }
+    /* Full-width primary buttons */
+    #btnReviewReport2,
+    #btnFinalizeToolbar {
+        flex: 1;
+        min-height: 36px;
+    }
+    /* Touch-friendly button sizing */
+    .sr-editor-toolbar .btn {
+        min-height: 36px;
+    }
+    /* Ensure PACS output scrolls into view after finalize */
+    .pacs-output-card {
+        scroll-margin-top: 80px;
     }
 }
 
