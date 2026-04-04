@@ -289,6 +289,9 @@ class SessionManager {
             return;
         }
 
+        // Signal to beforeunload handlers: session expired, let the redirect through
+        window._sessionExpired = true;
+
         // Stop all pending network requests and page activity before redirecting
         try { window.stop(); } catch (e) { /* ignore */ }
 
