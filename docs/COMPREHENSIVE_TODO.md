@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **53** / 77 |
-| WONTFIX | 2 / 77 |
-| TODO | **22** / 77 |
-| **Completion** | **71%** |
+| DONE | **54** / 81 |
+| WONTFIX | 2 / 81 |
+| TODO | **25** / 81 |
+| **Completion** | **67%** |
 
 ---
 
@@ -176,8 +176,12 @@
 |---|------|--------|---------|
 | 71 | Shared HTML syntax highlighting editor | TODO | Extract `highlightHTML()` + scroll sync from `edit_reporting_algorithm.html` into `static/js/html-syntax-highlight.js`. Expose `initSyntaxEditor(textareaId, highlightId)`. Apply to: TNM calculator edit, Radiology Tools admin, Clinical Protocols admin, Anatomy snippet add modal. |
 | 72 | Protocol nav tab not active | TODO | Verify why the Protocols nav tab is not highlighted as active when working with protocols. Likely same Jinja2 `{% block %}` inside `{% if %}` issue fixed for anatomy snippets (commit e3d7973). Check protocol templates for correct `tool_active_protocols` block definition. |
-| 76 | RadInsight Intelligence — User Reporting Preferences | TODO | Track user editing patterns (placeholder rejections, correction rejections, fill-in defaults) and inject as preference rules into Smart Reporter prompts. JSONB column on User model, ~200 token preference section, 3-occurrence activation threshold. **Plan:** `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md` |
-| 77 | Vetting Tool — Imaging Protocol Workflow | TODO | Structured vetting workflow: paste clinical referral → safety checklist (eGFR/pregnancy/allergy + AI-flagged) → 3 copy-paste ready outputs (clinical details, shorthand protocol, detailed protocol table). Personal + admin protocol library with TinyMCE inline editing. Batch generation from PDF. **Plan:** `docs/plans/VETTING_TOOL_PLAN.md` |
+| 76 | RadInsight Intelligence — User Reporting Preferences | TODO | Track user editing patterns (placeholder rejections, correction rejections, fill-in defaults) and inject as preference rules into Smart Reporter prompts. JSONB column on User model, ~200 token preference section, 3-occurrence activation threshold. **Plan:** `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md`. **Note:** Low priority — future suggestion only. |
+| 77 | Vetting Tool — Core Workflow (Phases 1-3) | DONE | Fully deployed: 3 AI functions (analysis, protocol gen, shorthand extraction), 23 API routes, 4 templates, 3 DB models (ImagingProtocol, VettingSession, VettingAlgorithm), 50 protocols + 20 algorithms imported, Quick Clean mode, speech-to-text, algorithm-guided protocol generation. **Plan:** `docs/plans/VETTING_TOOL_PLAN.md` |
+| 78 | Vetting Tool — Session History Browser | TODO | Users cannot review past vetting sessions. Add `/vetting/history` route, list API, browse template. Data already saved in VettingSession model. |
+| 79 | Vetting Tool — TinyMCE Inline Editing on Output | TODO | Output sections (clinical details, shorthand, detailed protocol) are read-only with copy buttons. Add inline editing so users can tweak before copying. |
+| 80 | Vetting Tool — Publish Draft Protocols & Algorithms | TODO | 49 admin protocols in draft, 20 algorithms in draft. Need admin review, verification, and publishing to make them available in the protocol picker during vetting. |
+| 81 | Vetting Tool — Protocol Usage Analytics | TODO | Track which protocols are used most frequently via VettingSession.protocol_id. Display usage count in admin protocol list. |
 
 ### 4.4 Performance
 
@@ -298,11 +302,11 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (18 total)
+### Remaining TODO Items (25 total)
 
 **Tier 3 — Medium Priority:**
-- **#33** Split `app.py` (5,548 lines) into route modules
-- **#34** Split `models.py` (2,969 lines) into model packages
+- **#33** Split `app.py` (~7000 lines) into route modules
+- **#34** Split `models.py` (~3000 lines) into model packages
 - **#38** Standardize API response format
 - **#43** API documentation (OpenAPI/Swagger) — 269 routes, no docs
 - **#46** Bulk admin operations (delete, publish, reassign)
@@ -321,6 +325,13 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 - **#67** Query optimization (N+1 queries)
 - **#68** DICOM header stripping
 - **#69** Analytics integration (GA/Mixpanel)
+- **#71** Shared HTML syntax highlighting editor
+- **#72** Protocol nav tab not active
+- **#76** User Reporting Preferences (future suggestion only)
+- **#78** Vetting Tool — Session History Browser
+- **#79** Vetting Tool — TinyMCE Inline Editing on Output
+- **#80** Vetting Tool — Publish Draft Protocols & Algorithms
+- **#81** Vetting Tool — Protocol Usage Analytics
 
 ### Suggested Priorities
 

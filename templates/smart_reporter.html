@@ -6334,8 +6334,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== SPLIT / STACK VIEW TOGGLE ====================
 
     function getSavedViewMode() {
-        try { return localStorage.getItem('smartReporterViewMode') || 'stack'; }
-        catch(e) { return 'stack'; }
+        try { return localStorage.getItem('smartReporterViewMode') || 'split'; }
+        catch(e) { return 'split'; }
     }
 
     function saveViewMode(mode) {
