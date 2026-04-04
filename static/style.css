@@ -5968,7 +5968,6 @@ body {
     border: none;
     border-radius: 0;
     padding: 1rem 1.25rem;
-    resize: vertical;
     caret-color: #e96304;
 }
 .pacs-output-textarea:focus {
@@ -6148,6 +6147,13 @@ body {
 .draft-insert-chip:hover {
     color: #495057;
     background: #f8f9fa;
+}
+
+/* Auto-grow textareas — no nested scrollbar, only column panel scrolls */
+#editorInput,
+#editorOutput {
+    overflow: hidden;
+    min-height: 180px;
 }
 
 /* Draft card footer — no visible border */
