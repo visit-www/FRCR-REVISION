@@ -81,6 +81,7 @@
                     <div id="analyseSpinner" class="text-center mt-3 d-none">
                         <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
                         <span class="text-muted">Analysing referral...</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-2 py-0 px-2" onclick="cancelVettingRequest()"><i class="fas fa-times me-1"></i>Cancel</button>
                     </div>
                 </div>
             </div>
@@ -193,6 +194,7 @@
                     <div id="protocolSpinner" class="text-center mt-3 d-none">
                         <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
                         <span class="text-muted">Generating protocol...</span>
+                        <button class="btn btn-sm btn-outline-secondary ms-2 py-0 px-2" onclick="cancelVettingRequest()"><i class="fas fa-times me-1"></i>Cancel</button>
                     </div>
                 </div>
             </div>
@@ -471,6 +473,13 @@ document.querySelectorAll('.modality-btn').forEach(btn => {
     });
 });
 
+// Active AbortController for cancelling in-flight AI requests
+let _vettingAbort = null;
+
+function cancelVettingRequest() {
+    if (_vettingAbort) { _vettingAbort.abort(); _vettingAbort = null; }
+}
+
 // ── Scene 1: Analyse ──
 async function analyseReferral(quickClean) {
     const text = document.getElementById('referralText').value.trim();
@@ -486,6 +495,9 @@ async function analyseReferral(quickClean) {
     btn2.disabled = true;
     spinner.classList.remove('d-none');
 
+    cancelVettingRequest();
+    _vettingAbort = new AbortController();
+
     try {
         const resp = await fetch('/api/vetting/analyse', {
             method: 'POST',
@@ -495,6 +507,7 @@ async function analyseReferral(quickClean) {
                 modality_hint: _selectedModalityHint || null,
                 quick_clean: _quickCleanMode,
             }),
+            signal: _vettingAbort.signal,
         });
         const data = await resp.json();
         if (!resp.ok) {
@@ -509,9 +522,11 @@ async function analyseReferral(quickClean) {
         populateScene2();
         showScene(2);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         alert('Network error. Please try again.');
         console.error(err);
     } finally {
+        _vettingAbort = null;
         btn.disabled = false;
         btn2.disabled = false;
         spinner.classList.add('d-none');
@@ -1013,6 +1028,9 @@ async function continueToProtocol() {
     btn.disabled = true;
     spinner.classList.remove('d-none');
 
+    cancelVettingRequest();
+    _vettingAbort = new AbortController();
+
     try {
         const payload = {
             study_type: _analysisResult.study_type,
@@ -1026,6 +1044,7 @@ async function continueToProtocol() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
+            signal: _vettingAbort.signal,
         });
         const data = await resp.json();
         if (!resp.ok) {
@@ -1036,9 +1055,11 @@ async function continueToProtocol() {
         _protocolSource = 'ai_generated';
         renderScene3(data.protocol);
     } catch (err) {
+        if (err.name === 'AbortError') return;
         alert('Network error. Please try again.');
         console.error(err);
     } finally {
+        _vettingAbort = null;
         btn.disabled = false;
         spinner.classList.add('d-none');
     }
@@ -1309,7 +1330,13 @@ if (window.PIIGuardUI) {
     window._piiUI = PIIGuardUI.attach({
         textareas: ['#referralText'],
         headerSelector: '.card-brand-header',
-        auditContext: 'vetting'
+        auditContext: 'vetting',
+        onStateChange: function(st) {
+            ['analyseBtn','quickCleanBtn','continueBtn'].forEach(function(id) {
+                var b = document.getElementById(id);
+                if (b) { b.disabled = st.blocked; b.style.opacity = st.blocked ? '0.4' : ''; b.style.pointerEvents = st.blocked ? 'none' : ''; }
+            });
+        }
     });
 }
 </script>
