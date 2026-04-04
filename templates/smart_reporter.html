@@ -659,6 +659,7 @@
                                         <button type="button" class="btn-dictate" data-target="editorInput" title="Click to dictate"><i class="fas fa-microphone"></i></button>
                                         <span id="draftChipsContainer"></span>
                                         <button class="btn btn-sm py-0 px-1" type="button" onclick="openChipSettings()" title="Customise insert chips" style="font-size: 0.65rem; color: #6c757d;"><i class="fas fa-cog"></i></button>
+                                        <button class="btn btn-sm py-0 px-1" type="button" onclick="openAutotextSettings()" title="Autotext shortcuts" style="font-size: 0.65rem; color: #6c757d;"><i class="fas fa-keyboard"></i></button>
                                     </div>
                                     <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
@@ -1221,6 +1222,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // External context from "Use in Report" buttons
         externalContext: null,
     };
+
+    // ── Two-Tier Correction Classification ──
+    // Tier 1 (minor): auto-accepted silently.  Tier 2 (substantive): manual review.
+    var TIER1_TYPES = ['spelling', 'grammar', 'phrasing'];
+    function isTier1(type) { return TIER1_TYPES.indexOf(type) >= 0; }
 
     // Restore externalContext from sessionStorage
     try {
@@ -2890,7 +2896,7 @@ document.addEventListener('DOMContentLoaded', function() {
             state.improvedReport = data.improved_report || text;
             state.suggestions = (data.suggestions || []).map(s => ({
                 ...s,
-                status: 'pending',
+                status: isTier1(s.type) ? 'accepted' : 'pending',
             }));
 
             if (data.remaining_requests !== undefined) {
@@ -2899,10 +2905,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
+            // Auto-apply Tier 1 (minor) corrections to the PACS output text
+            var autoApplyText = text;
+            state.suggestions.forEach(function(s) {
+                if (s.status === 'accepted' && s.original && s.suggested) {
+                    autoApplyText = autoApplyText.split(s.original).join(s.suggested);
+                }
+            });
+
             // Show PACS box with draft text and overlay corrections
-            state.outputText = text;
+            state.outputText = autoApplyText;
             var output = document.getElementById('editorOutput');
-            output.value = text;
+            output.value = autoApplyText;
             autoResizeTextarea(output);
             var outputSection = document.getElementById('outputSection');
             outputSection.classList.add('has-content');
@@ -2940,8 +2954,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const list = document.getElementById('suggestionsList');
         const noSuggestions = document.getElementById('noSuggestions');
 
-        const pending = state.suggestions.filter(s => s.status === 'pending');
-
         if (state.suggestions.length === 0) {
             list.innerHTML = '';
             noSuggestions.classList.remove('d-none');
@@ -2949,19 +2961,54 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         noSuggestions.classList.add('d-none');
 
+        const typeColorMap = {
+            'spelling': '#dc3545',
+            'grammar': '#e96304',
+            'phrasing': '#5E899E',
+            'structure': '#6b46c1',
+            'completeness': '#198754',
+            'terminology': '#6b46c1',
+            'gender_check': '#dc3545',
+            'anatomy_check': '#dc3545',
+            'consistency': '#e96304',
+            'sidedness': '#dc3545',
+        };
+
+        // Split into Tier 1 (auto-accepted minor) and Tier 2 (substantive)
+        var tier1 = [];
+        var tier2Indices = [];
+        state.suggestions.forEach(function(s, i) {
+            if (isTier1(s.type) && s.status === 'accepted') {
+                tier1.push(s);
+            } else {
+                tier2Indices.push(i);
+            }
+        });
+
         let html = '';
-        state.suggestions.forEach((s, i) => {
-            const typeColor = {
-                'spelling': '#dc3545',
-                'grammar': '#e96304',
-                'phrasing': '#5E899E',
-                'structure': '#6b46c1',
-                'completeness': '#198754',
-                'terminology': '#6b46c1',
-                'gender_check': '#dc3545',
-                'anatomy_check': '#dc3545',
-                'consistency': '#e96304',
-            }[s.type] || '#6c757d';
+
+        // ── Tier 1: Collapsible summary of auto-applied minor corrections ──
+        if (tier1.length > 0) {
+            html += `<div class="mb-2 rounded" style="background: #d4edda; border: 1px solid #c3e6cb;">
+                <div class="d-flex align-items-center justify-content-between p-2" style="cursor: pointer;" onclick="var body=this.nextElementSibling; var chev=this.querySelector('.tier1-chevron'); body.classList.toggle('d-none'); chev.classList.toggle('fa-chevron-down'); chev.classList.toggle('fa-chevron-up');">
+                    <small class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i>${tier1.length} minor correction${tier1.length !== 1 ? 's' : ''} applied</small>
+                    <i class="fas fa-chevron-down tier1-chevron text-success" style="font-size: 0.7rem;"></i>
+                </div>
+                <div class="d-none px-2 pb-2" style="font-size: 0.8rem;">`;
+            tier1.forEach(function(s) {
+                html += `<div class="d-flex align-items-baseline gap-1 mb-1">
+                    <small class="text-muted"><s>${escapeHtml(s.original)}</s></small>
+                    <small class="text-muted">&rarr;</small>
+                    <small class="text-success">${escapeHtml(s.suggested)}</small>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── Tier 2: Interactive cards for substantive corrections ──
+        tier2Indices.forEach(function(i) {
+            var s = state.suggestions[i];
+            const typeColor = typeColorMap[s.type] || '#6c757d';
 
             if (s.status === 'accepted') {
                 html += `
@@ -3359,7 +3406,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (_prominentCopy) _prominentCopy.classList.remove('d-none');
                 }
             }
-            state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
+            state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: isTier1(c.type) ? 'accepted' : 'pending' }));
             state.aiAssistFillIns = (data.fill_ins || []).map(fi => ({ ...fi, status: 'pending' }));
 
             // Accumulate insights (new non-empty values enhance existing ones)
@@ -4215,10 +4262,43 @@ document.addEventListener('DOMContentLoaded', function() {
             'phrasing': '#5E899E',
             'spelling': '#dc3545',
             'grammar': '#e96304',
+            'sidedness': '#dc3545',
         };
 
+        // Split into Tier 1 (auto-accepted minor) and Tier 2 (substantive)
+        var tier1 = [];
+        var tier2Indices = [];
+        state.aiAssistCorrections.forEach(function(c, i) {
+            if (isTier1(c.type) && c.status === 'accepted') {
+                tier1.push(c);
+            } else {
+                tier2Indices.push(i);
+            }
+        });
+
         let html = '';
-        state.aiAssistCorrections.forEach((c, i) => {
+
+        // ── Tier 1: Collapsible summary of auto-applied minor corrections ──
+        if (tier1.length > 0) {
+            html += `<div class="mb-2 rounded" style="background: #d4edda; border: 1px solid #c3e6cb;">
+                <div class="d-flex align-items-center justify-content-between p-2" style="cursor: pointer;" onclick="var body=this.nextElementSibling; var chev=this.querySelector('.tier1-chevron'); body.classList.toggle('d-none'); chev.classList.toggle('fa-chevron-down'); chev.classList.toggle('fa-chevron-up');">
+                    <small class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i>${tier1.length} minor correction${tier1.length !== 1 ? 's' : ''} applied</small>
+                    <i class="fas fa-chevron-down tier1-chevron text-success" style="font-size: 0.7rem;"></i>
+                </div>
+                <div class="d-none px-2 pb-2" style="font-size: 0.8rem;">`;
+            tier1.forEach(function(c) {
+                html += `<div class="d-flex align-items-baseline gap-1 mb-1">
+                    <small class="text-muted"><s>${escapeHtml(c.original)}</s></small>
+                    <small class="text-muted">&rarr;</small>
+                    <small class="text-success">${escapeHtml(c.suggested)}</small>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // ── Tier 2: Interactive cards for substantive corrections ──
+        tier2Indices.forEach(function(i) {
+            var c = state.aiAssistCorrections[i];
             const color = typeColor[c.type] || '#6c757d';
             const typeLabel = (c.type || 'phrasing').replace('_', ' ');
 
@@ -5773,6 +5853,198 @@ document.addEventListener('DOMContentLoaded', function() {
         var overlay = document.getElementById('chipSettingsOverlay');
         if (overlay) overlay.remove();
         showToast('Chips reset to defaults.', 'success');
+    };
+
+    // ==================== AUTOTEXT (Text Expansion) ====================
+
+    window._autotextMap = {};       // {shortcut: expansion} for fast lookup
+    window._autotextEntries = [];   // full entries [{id, shortcut, expansion}] for settings UI
+
+    function loadAutotext() {
+        fetch('/api/smart-reporter/autotext')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var entries = data.entries || [];
+                window._autotextEntries = entries;
+                window._autotextMap = {};
+                entries.forEach(function(e) {
+                    window._autotextMap[e.shortcut.toLowerCase()] = e.expansion;
+                });
+            })
+            .catch(function() { /* silently ignore load failures */ });
+    }
+    loadAutotext();
+
+    // Autotext expansion: on Space or Tab, check if previous word is a shortcut
+    function _handleAutotextExpand(e, textarea, undoFn) {
+        if (e.key !== ' ' && e.key !== 'Tab') return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        var val = textarea.value;
+        var pos = textarea.selectionStart;
+        if (pos !== textarea.selectionEnd) return; // has selection
+
+        // Scan backwards from cursor to find start of word
+        var wordStart = pos;
+        while (wordStart > 0 && val.charAt(wordStart - 1) !== ' ' && val.charAt(wordStart - 1) !== '\n' && val.charAt(wordStart - 1) !== '\t') {
+            wordStart--;
+        }
+        if (wordStart === pos) return; // no word before cursor
+
+        var word = val.substring(wordStart, pos).toLowerCase();
+        var expansion = window._autotextMap[word];
+        if (!expansion) return;
+
+        e.preventDefault();
+        if (undoFn) undoFn(textarea);
+
+        // Replace word with expansion + trailing space
+        var before = val.substring(0, wordStart);
+        var after = val.substring(pos);
+        var insertText = expansion + ' ';
+        textarea.value = before + insertText + after;
+        var newPos = wordStart + insertText.length;
+        textarea.setSelectionRange(newPos, newPos);
+        autoResizeTextarea(textarea);
+
+        // Update state
+        if (textarea.id === 'editorInput') {
+            state.inputText = textarea.value;
+            _autosaveDraft();
+        } else if (textarea.id === 'editorOutput') {
+            state.outputText = textarea.value;
+        }
+    }
+
+    document.getElementById('editorInput').addEventListener('keydown', function(e) {
+        _handleAutotextExpand(e, this, _saveDraftUndo);
+    });
+    document.getElementById('editorOutput').addEventListener('keydown', function(e) {
+        _handleAutotextExpand(e, this, _savePacsUndo);
+    });
+
+    // ── Autotext Settings Modal ──
+    window.openAutotextSettings = function() {
+        var existing = document.getElementById('autotextSettingsOverlay');
+        if (existing) { existing.remove(); return; }
+
+        var overlay = document.createElement('div');
+        overlay.id = 'autotextSettingsOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:1060;display:flex;align-items:center;justify-content:center;';
+
+        var panel = document.createElement('div');
+        panel.style.cssText = 'background:#fff;border-radius:0.5rem;padding:1rem;max-width:520px;width:95%;box-shadow:0 8px 24px rgba(0,0,0,0.15);max-height:80vh;display:flex;flex-direction:column;';
+        panel.innerHTML = '<h6 class="mb-2"><i class="fas fa-keyboard me-1"></i>Autotext Shortcuts</h6>' +
+            '<small class="text-muted mb-2 d-block">Type a shortcut then press <kbd>Space</kbd> or <kbd>Tab</kbd> to expand. Max 200 entries.</small>' +
+            '<div id="autotextSettingsList" style="overflow-y:auto;flex:1;max-height:50vh;"></div>' +
+            '<div class="d-flex gap-1 mt-2 flex-wrap">' +
+            '<button class="btn btn-sm btn-outline-secondary" onclick="addAutotextRow()"><i class="fas fa-plus me-1"></i>Add</button>' +
+            '<button class="btn btn-sm btn-brand-primary" onclick="saveAllAutotext()"><i class="fas fa-check me-1"></i>Save All</button>' +
+            '<button class="btn btn-sm btn-outline-secondary ms-auto" onclick="document.getElementById(\'autotextSettingsOverlay\').remove()">Cancel</button>' +
+            '</div>';
+
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+        var list = panel.querySelector('#autotextSettingsList');
+        (window._autotextEntries || []).forEach(function(entry) {
+            _addAutotextRowToList(list, entry.id, entry.shortcut, entry.expansion);
+        });
+    };
+
+    function _addAutotextRowToList(list, id, shortcut, expansion) {
+        var row = document.createElement('div');
+        row.className = 'd-flex gap-1 mb-1 align-items-center autotext-row';
+        row.dataset.entryId = id || '';
+        row.innerHTML = '<input type="text" class="form-control form-control-sm autotext-shortcut" value="' + escapeHtml(shortcut || '') + '" placeholder="shortcut" style="max-width:100px;font-family:monospace;font-size:0.85rem;">' +
+            '<input type="text" class="form-control form-control-sm autotext-expansion" value="' + escapeHtml(expansion || '') + '" placeholder="Expansion text" style="font-size:0.85rem;">' +
+            '<button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteAutotextRow(this)" style="font-size:0.7rem;" title="Delete"><i class="fas fa-times"></i></button>';
+        list.appendChild(row);
+    }
+
+    window.addAutotextRow = function() {
+        var list = document.getElementById('autotextSettingsList');
+        if (!list) return;
+        var rowCount = list.querySelectorAll('.autotext-row').length;
+        if (rowCount >= 200) { showToast('Maximum 200 entries reached.', 'warning'); return; }
+        _addAutotextRowToList(list, '', '', '');
+        // Focus the new shortcut input
+        var inputs = list.querySelectorAll('.autotext-shortcut');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+    };
+
+    window.deleteAutotextRow = function(btn) {
+        var row = btn.closest('.autotext-row');
+        var entryId = row.dataset.entryId;
+        if (entryId) {
+            // Delete from server
+            fetch('/api/smart-reporter/autotext/' + entryId, { method: 'DELETE' })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) { showToast(data.error, 'error'); return; }
+                    row.remove();
+                    loadAutotext();
+                })
+                .catch(function() { showToast('Failed to delete.', 'error'); });
+        } else {
+            row.remove(); // unsaved row — just remove DOM
+        }
+    };
+
+    window.saveAllAutotext = function() {
+        var list = document.getElementById('autotextSettingsList');
+        if (!list) return;
+        var rows = list.querySelectorAll('.autotext-row');
+        var promises = [];
+        var seen = {};
+        var hasError = false;
+
+        rows.forEach(function(row) {
+            var shortcut = (row.querySelector('.autotext-shortcut').value || '').trim().toLowerCase();
+            var expansion = (row.querySelector('.autotext-expansion').value || '').trim();
+            var entryId = row.dataset.entryId;
+
+            if (!shortcut && !expansion) return; // skip empty rows
+            if (!shortcut || !expansion) { hasError = true; showToast('All rows need both shortcut and expansion.', 'warning'); return; }
+            if (shortcut.indexOf(' ') >= 0) { hasError = true; showToast('Shortcut "' + shortcut + '" must not contain spaces.', 'warning'); return; }
+            if (seen[shortcut]) { hasError = true; showToast('Duplicate shortcut: "' + shortcut + '"', 'warning'); return; }
+            seen[shortcut] = true;
+
+            if (entryId) {
+                // Update existing
+                promises.push(
+                    fetch('/api/smart-reporter/autotext/' + entryId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ shortcut: shortcut, expansion: expansion })
+                    }).then(function(r) { return r.json(); })
+                );
+            } else {
+                // Create new
+                promises.push(
+                    fetch('/api/smart-reporter/autotext', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ shortcut: shortcut, expansion: expansion })
+                    }).then(function(r) { return r.json(); })
+                );
+            }
+        });
+
+        if (hasError) return;
+
+        Promise.all(promises).then(function(results) {
+            var errors = results.filter(function(r) { return r.error; });
+            if (errors.length) {
+                showToast(errors[0].error, 'error');
+            } else {
+                showToast('Autotext saved!', 'success');
+                loadAutotext();
+                var overlay = document.getElementById('autotextSettingsOverlay');
+                if (overlay) overlay.remove();
+            }
+        }).catch(function() { showToast('Failed to save autotext.', 'error'); });
     };
 
     // ── Keyboard Shortcuts (active when editor scene visible) ──

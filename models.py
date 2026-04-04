@@ -315,6 +315,9 @@ class User(UserMixin, db.Model):
     # === ONBOARDING ===
     has_seen_tour = db.Column(db.Boolean, default=False)
 
+    # === AUTOTEXT (Smart Reporter text expansion) ===
+    autotext_entries = db.Column(db.JSON, nullable=True)  # [{id, shortcut, expansion}]
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)

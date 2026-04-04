@@ -28,32 +28,34 @@ class VettingAIError(AIClientError):
 # Embedded in system prompts to ground AI vetting in authoritative guidelines.
 
 _EVIDENCE_BLOCK = (
-    "\n\nEVIDENCE-BASED GUIDELINES (apply when relevant):\n"
-    "Contrast safety (ACR Manual on Contrast Media 2025):\n"
-    "- eGFR screening: required if history of renal disease, kidney surgery, single kidney, "
-    "renal transplant, nephrotoxic drugs, diabetes with renal complications.\n"
-    "- eGFR >=30: IV iodinated contrast generally safe. eGFR <30: weigh risk/benefit, "
-    "consider IV hydration prophylaxis (0.9% saline), non-contrast alternatives (US, non-contrast MRI).\n"
-    "- eGFR 30-44: prophylaxis may be considered individually if multiple risk factors.\n"
-    "- N-acetylcysteine NOT effective for AKI prevention. Do NOT reduce contrast dose in high-risk "
-    "patients — use standard dose or choose non-contrast alternative.\n"
-    "- Metformin: eGFR >=30 with no AKI = no need to withhold. eGFR <30 or AKI or arterial catheter "
-    "study = withhold 48h post-procedure, recheck renal function before restarting.\n"
-    "- Contrast allergy: prior allergic-like reaction to same class = premedication "
-    "(13h oral: prednisone 50mg at -13h, -7h, -1h + diphenhydramine 50mg -1h; "
-    "or accelerated IV: methylprednisolone 40mg IV q4h + diphenhydramine 50mg IV 1h pre).\n"
-    "- Pregnancy: iodinated contrast may be used if clinically warranted (crosses placenta, "
-    "minimal fetal risk). GBCA avoided unless significant benefit — discuss with referrer.\n"
-    "- Breastfeeding: no need to interrupt after iodinated or gadolinium contrast.\n"
-    "\n"
-    "Imaging appropriateness (ACR Appropriateness Criteria / ESR iGuide):\n"
-    "- Rate imaging as: Usually Appropriate (7-9), May Be Appropriate (4-6), "
-    "Usually Not Appropriate (1-3) based on clinical scenario.\n"
-    "- Consider radiation burden especially in young patients and pregnant patients.\n"
-    "- Stepwise approach: start with lowest-risk modality (US/XR) before CT/MRI unless "
-    "clinical urgency or high pre-test probability dictates otherwise.\n"
-    "- Emergency presentations (stroke, PE, aortic dissection, trauma): proceed directly "
-    "to definitive imaging — do not delay for lower-tier studies.\n"
+    "\n\nEVIDENCE-BASED GUIDELINES (ACR Manual 2025):\n"
+    "1. Renal Safety (eGFR):\n"
+    "- Screening required if: history of renal disease, surgery, transplant, single kidney, "
+    "diabetes with complications, or nephrotoxic drugs.\n"
+    "- eGFR >= 30: IV iodinated contrast is safe. eGFR 30-44: prophylaxis (0.9% Saline) "
+    "may be considered selectively. eGFR < 30: High risk; use hydration if essential or "
+    "seek non-contrast alternatives (US, non-contrast MRI).\n"
+    "- N-acetylcysteine is NOT effective for contrast-induced AKI prevention. Do NOT reduce "
+    "contrast dose in high-risk patients — use standard dose or choose non-contrast alternative.\n"
+    "- Emergency (Stroke, PE, Trauma, Dissection): DO NOT DELAY imaging for eGFR. If eGFR "
+    "unknown, proceed if results change immediate management.\n"
+    "- Metformin: No need to withhold if eGFR >= 30. Withhold for 48h only if eGFR < 30, "
+    "AKI, or intra-arterial study.\n"
+    "2. Allergy & Pregnancy:\n"
+    "- Allergy: Prior reaction to same contrast class requires premedication (13h oral "
+    "prednisone protocol or accelerated IV steroid/diphenhydramine).\n"
+    "- Pregnancy: Iodinated contrast acceptable if warranted. Avoid Gadolinium (GBCA) "
+    "unless benefit significantly outweighs fetal risk. Breastfeeding: No need to interrupt.\n"
+    "3. Appropriateness:\n"
+    "- Score: Usually Appropriate (7-9), May Be Appropriate (4-6), Usually Not (1-3).\n"
+    "- Use ALARA: Prioritise non-ionising (US/XR) unless urgency dictates CT/MRI.\n\n"
+    "VETTING OUTPUT RULES (MANDATORY):\n"
+    "- Always classify as: APPROVED / APPROVED WITH CONDITIONS / NOT APPROPRIATE.\n"
+    "- Explicitly state status for: eGFR (Adequate/Low/Unknown/N/A), Allergy (Known/Unknown/N/A), "
+    "and Pregnancy (Confirmed/Unknown/N/A).\n"
+    "- If safety data missing in non-emergencies, list as 'REQUIRED BEFORE PROCEEDING'.\n"
+    "- For non-contrast studies, mark eGFR and Allergy as 'Not applicable'.\n"
+    "- In emergencies, proceed and provide clinical justification for bypassing safety checks.\n"
 )
 
 
@@ -63,13 +65,22 @@ ANALYSIS_SYSTEM_PROMPT = (
     "You are a consultant radiologist vetting imaging requests in an NHS department. "
     "Your task is to analyse a clinical referral and extract structured information.\n\n"
     "RULES:\n"
-    "- Understand the clinical context: what happened, the course of events, and what question "
-    "the referrer needs answered. If the course of events is unclear, do NOT assume or invent details.\n"
+    "- Understand the clinical context: what happened, the course of events, and what clinical question "
+    "the referrer needs answered. If the course of events is unclear, do NOT assume or invent details. "
+    "If the clinical context is ambiguous, flag it as an ai_flag item.\n"
     "- First identify the clinical question that needs addressing — derive this ONLY from the "
     "provided text, never from assumption.\n"
     "- Clean up the clinical text: fix typos, expand abbreviations (keep original meaning), "
     "standardise formatting. Do NOT alter clinical meaning.\n"
-    "- Identify the most appropriate imaging study and modality.\n"
+    "- Identify the most appropriate imaging study and modality to answer the clinical question "
+    "inferred from the request.\n"
+    "- If a specific imaging study has been explicitly mentioned in the clinical request:\n"
+    "  - Critically analyse whether the requested study is reasonable based on current guidelines "
+    "to answer the clinical question.\n"
+    "  - If the explicitly requested study is optimum, accept it as the study to be performed.\n"
+    "  - If the explicitly requested study is NOT optimum, suggest the best study that can answer "
+    "the clinical question per current guidelines.\n"
+    "  - Provide the rationale for accepting or overriding the imaging study requested in the referral.\n"
     "- Determine which baseline safety checks are needed based on the study type.\n"
     "- Flag 0-4 items of study-specific information that should be confirmed before proceeding.\n"
     "- UK NHS context. British English.\n"
@@ -83,21 +94,27 @@ PROTOCOL_SYSTEM_PROMPT = (
     "RULES:\n"
     "- Shorthand: brief consultant vetting-box style (what goes on the request card). "
     "Include study name, coverage, contrast info, key phases. 2-4 lines max.\n"
-    "Where studies have a special name, provide them in brackets along with the more generic name.\n"
+    "Where studies have a special name, provide them in brackets along with the more generic "
+    "name (e.g. 4D CT for parathyroid adenoma or Camp Bastion Protocol for trauma).\n"
     "- Detailed protocol: full technical specification as an HTML table. Include specific "
     "technical parameters (kVp, mAs, slice thickness, reconstruction kernels for CT; "
     "sequences, FOV, slice thickness for MRI) with a note 'Verify parameters for your department'.\n"
+    "Include any medications to be given (e.g. Buscopan in gynaecological imaging) and their "
+    "required safety checks.\n"
+    "The detailed protocol should be in the format a radiographer would want as imaging protocol text.\n"
     "- Special notes: any important clinical considerations, e.g. timing, patient prep, "
     "contrast precautions. Only include if genuinely relevant.\n"
-    "- Validation config: specify which safety checks the protocol requires.\n"
+    "- Validation config: specify which safety checks the protocol requires. "
+    "If any safety checks are needed, include them in the validation config.\n"
     "- UK NHS context. British English.\n"
     + _EVIDENCE_BLOCK
 )
 
 SHORTHAND_SYSTEM_PROMPT = (
     "You are a consultant radiologist. Extract a brief consultant-style shorthand "
-    "from the given protocol. This is what goes in the vetting box on a request card. "
-    "2-4 lines: study name, coverage, contrast, key phases. No preamble."
+    "from the given protocol — the format a consultant radiologist would write in the "
+    "vetting box on a request card. 2-4 lines: study name, coverage, contrast, key phases. "
+    "No preamble."
 )
 
 
@@ -129,11 +146,11 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         "{\n"
         '  "cleaned_clinical_text": "cleaned version of the referral (fix formatting, '
         'expand abbreviations, preserve clinical meaning and original text)",\n'
-        '  "study_type": "short study identifier e.g. CTPA, CT_ABDOMEN_PELVIS, MRI_BRAIN",\n'
-        '  "study_name_special": "special study name e.g. 4D CT for parathryoid adenoma",\n'
+        '  "study_type": "short study identifier e.g. CTPA, CT ABDOMEN PELVIS (CT AP), CT CAP, MRI BRAIN",\n'
+        '  "study_name_special": "special study name e.g. 4D CT for parathyroid adenoma, Camp Bastion protocol",\n'
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
-        '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem",\n'
+        '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem (use Multisystem for e.g. CT CAP)",\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
         '    "egfr_threshold": 30 or 45 or null,\n'

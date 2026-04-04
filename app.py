@@ -968,6 +968,9 @@ with app.app_context():
         # -- user: 2FA grace period for admin accounts --
         _add_col_if_missing('user', 'totp_grace_period_until', 'totp_grace_period_until TIMESTAMP')
 
+        # -- user: autotext entries for Smart Reporter text expansion --
+        _add_col_if_missing('user', 'autotext_entries', 'autotext_entries TEXT')
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
         

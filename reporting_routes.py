@@ -18,6 +18,7 @@ import re
 import logging
 import requests as http_requests
 import time
+import uuid
 
 from models import (
     db, Case, CaseStatus, Question, Answer, CaseApprovalQueue,
@@ -3439,6 +3440,114 @@ def smart_reporter_delete_personal_template(template_id):
 
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
+
+## ==================== AUTOTEXT (Text Expansion) ====================
+
+@reporting_bp.route('/api/smart-reporter/autotext', methods=['GET'])
+@login_required
+def smart_reporter_list_autotext():
+    """Return the current user's autotext entries."""
+    entries = current_user.autotext_entries or []
+    return jsonify({'entries': entries})
+
+
+@reporting_bp.route('/api/smart-reporter/autotext', methods=['POST'])
+@login_required
+def smart_reporter_create_autotext():
+    """Add a new autotext entry."""
+    data = request.get_json(silent=True) or {}
+    shortcut = (data.get('shortcut') or '').strip().lower()
+    expansion = (data.get('expansion') or '').strip()
+
+    if not shortcut or not expansion:
+        return jsonify({'error': 'Shortcut and expansion are required.'}), 400
+    if ' ' in shortcut:
+        return jsonify({'error': 'Shortcut must not contain spaces.'}), 400
+    if len(shortcut) > 30:
+        return jsonify({'error': 'Shortcut must be 30 characters or fewer.'}), 400
+
+    entries = list(current_user.autotext_entries or [])
+
+    if len(entries) >= 200:
+        return jsonify({'error': 'Maximum of 200 autotext entries reached.'}), 400
+
+    # Duplicate check
+    for e in entries:
+        if e.get('shortcut', '').lower() == shortcut:
+            return jsonify({'error': f'Shortcut "{shortcut}" already exists.'}), 409
+
+    new_entry = {'id': str(uuid.uuid4())[:8], 'shortcut': shortcut, 'expansion': expansion}
+    entries.append(new_entry)
+    current_user.autotext_entries = entries
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to create autotext: {exc}")
+        return jsonify({'error': 'Failed to save autotext.'}), 500
+
+    return jsonify({'success': True, 'entry': new_entry})
+
+
+@reporting_bp.route('/api/smart-reporter/autotext/<entry_id>', methods=['PUT'])
+@login_required
+def smart_reporter_update_autotext(entry_id):
+    """Update an existing autotext entry."""
+    data = request.get_json(silent=True) or {}
+    shortcut = (data.get('shortcut') or '').strip().lower()
+    expansion = (data.get('expansion') or '').strip()
+
+    if not shortcut or not expansion:
+        return jsonify({'error': 'Shortcut and expansion are required.'}), 400
+    if ' ' in shortcut:
+        return jsonify({'error': 'Shortcut must not contain spaces.'}), 400
+
+    entries = list(current_user.autotext_entries or [])
+    found = False
+    for e in entries:
+        if e.get('id') == entry_id:
+            # Duplicate check (excluding self)
+            for other in entries:
+                if other.get('id') != entry_id and other.get('shortcut', '').lower() == shortcut:
+                    return jsonify({'error': f'Shortcut "{shortcut}" already exists.'}), 409
+            e['shortcut'] = shortcut
+            e['expansion'] = expansion
+            found = True
+            break
+
+    if not found:
+        return jsonify({'error': 'Entry not found.'}), 404
+
+    current_user.autotext_entries = entries
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to update autotext {entry_id}: {exc}")
+        return jsonify({'error': 'Failed to update autotext.'}), 500
+
+    return jsonify({'success': True})
+
+
+@reporting_bp.route('/api/smart-reporter/autotext/<entry_id>', methods=['DELETE'])
+@login_required
+def smart_reporter_delete_autotext(entry_id):
+    """Delete an autotext entry."""
+    entries = list(current_user.autotext_entries or [])
+    new_entries = [e for e in entries if e.get('id') != entry_id]
+
+    if len(new_entries) == len(entries):
+        return jsonify({'error': 'Entry not found.'}), 404
+
+    current_user.autotext_entries = new_entries
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to delete autotext {entry_id}: {exc}")
+        return jsonify({'error': 'Failed to delete autotext.'}), 500
+
+    return jsonify({'success': True})
 
 
 
