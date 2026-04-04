@@ -74,6 +74,14 @@
         }
         backdrop.style.width = textarea.offsetWidth + 'px';
         backdrop.style.height = textarea.offsetHeight + 'px';
+        // Compensate for scrollbar gutter: textarea content is narrower when
+        // a scrollbar is visible, but backdrop has overflow:hidden (no scrollbar).
+        // Without this, text wraps differently and highlights drift downward.
+        var scrollbarW = textarea.offsetWidth - textarea.clientWidth
+            - (parseFloat(cs.borderLeftWidth) || 0) - (parseFloat(cs.borderRightWidth) || 0);
+        if (scrollbarW > 0) {
+            backdrop.style.paddingRight = ((parseFloat(cs.paddingRight) || 0) + scrollbarW) + 'px';
+        }
     }
 
     // ===================== PIIGuardUI.attach() =====================

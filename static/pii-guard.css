@@ -136,6 +136,7 @@
     background: transparent !important;
     position: relative;
     z-index: 1;
+    resize: none; /* prevent native resize handle from covering floating widget */
 }
 .pii-overlay-mark {
     border-radius: 2px;
