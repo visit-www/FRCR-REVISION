@@ -357,11 +357,12 @@ def create_pii_middleware(app):
                 key = f"{ptype}:{ptext}"
                 if key not in seen:
                     seen.add(key)
-                    unique.append({'type': ptype, 'match': ptext[:20] + '...' if len(ptext) > 20 else ptext})
+                    unique.append({'type': ptype, 'match': ptext})
 
             logger.warning(
                 f"PII blocked on {request.method} {request.path}: "
-                f"{len(unique)} pattern(s) detected — {[m['type'] for m in unique]}"
+                f"{len(unique)} pattern(s) detected — "
+                f"{[{'type': m['type'], 'match': m['match'][:20]} for m in unique]}"
             )
 
             return jsonify({

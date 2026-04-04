@@ -377,31 +377,9 @@
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-sm btn-outline-info" onclick="showSaveTemplatePrompt()" title="Save as personal template" id="btnSaveTemplate">
-                            <i class="fas fa-bookmark me-1"></i><span class="d-none d-md-inline">Save as Template</span>
+                        <button class="btn btn-sm btn-brand-neutral" onclick="doneAndReturn()">
+                            <i class="fas fa-check-circle me-1"></i>Done
                         </button>
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-brand-neutral dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-check-circle me-1"></i>Done
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#" onclick="showScene('landing'); return false;">
-                                    <i class="fas fa-home me-2 text-muted"></i>Back to Smart Reporter
-                                </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="document.getElementById('editorTemplateSearch').focus(); return false;">
-                                    <i class="fas fa-file-alt me-2 text-muted"></i>Choose a Template
-                                </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="document.getElementById('editorAlgoSearch').focus(); return false;">
-                                    <i class="fas fa-sitemap me-2 text-muted"></i>Choose an Algorithm
-                                </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="pasteMyReport(); return false;">
-                                    <i class="fas fa-edit me-2 text-muted"></i>Blank Report
-                                </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingResourceSearch').focus(); }, 200); return false;">
-                                    <i class="fas fa-search me-2 text-muted"></i>Search Resources
-                                </a></li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
 
@@ -1201,6 +1179,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: null,
         usageData: null,
+        piiOverride: false,
         // AI Assist state
         aiAssistResponseType: 'advisory',  // 'advisory' or 'full_report'
         aiAssistAnswer: '',
@@ -1288,8 +1267,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
+    // Build headers for Smart Reporter fetch calls, with optional PII override
+    function _srHeaders() {
+        var h = { 'Content-Type': 'application/json' };
+        if (state.piiOverride) {
+            h['X-PII-Override'] = '1';
+            state.piiOverride = false;
+        }
+        return h;
+    }
+
     // Safety net for server-side PII catches (if client-side misses something)
-    function handlePIIResponse(data) {
+    function handlePIIResponse(data, retryFn) {
         if (!data.pii_blocked) return false;
         var editor = document.getElementById('editorInput');
         var editorText = editor ? editor.value : '';
@@ -1326,8 +1315,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     editor.value = cleaned;
                     var label = action === 'remove' ? 'removed from' : 'redacted in';
                     showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
+                } else if (action === 'override' && retryFn) {
+                    state.piiOverride = true;
+                    retryFn();
                 }
-                // override: user confirmed not PII — they can re-submit normally
             });
         } else {
             showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');
@@ -1353,6 +1344,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         state.scene = scene;
     };
+
+    function doneAndReturn() {
+        var draft = (document.getElementById('editorInput') || {}).value || '';
+        var pacs = (document.getElementById('editorOutput') || {}).value || '';
+        if ((draft.trim() || pacs.trim()) && !confirm('You have unsaved content in your report. Leave anyway?')) return;
+        showScene('landing');
+    }
 
     // ── Clinical Context Bar ──
     // Always visible in editor — users can fill in context inline
@@ -1627,7 +1625,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _srHeaders(),
             body: JSON.stringify({
                 clinical_question: clinicalQuestion,
                 modality: modality,
@@ -1648,7 +1646,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (data.pii_blocked || data.error) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                if (!handlePIIResponse(data, function() { generateTree(); })) showToast(data.error, 'error');
                 return;
             }
 
@@ -2813,7 +2811,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/quick-review', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _srHeaders(),
             body: JSON.stringify({
                 report_text: text,
             }),
@@ -2830,7 +2828,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                if (!handlePIIResponse(data, function() { doReviewReport(); })) showToast(data.error, 'error');
                 return;
             }
 
@@ -3317,7 +3315,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/ai-assist', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _srHeaders(),
             body: JSON.stringify(assistPayload),
             signal: activeAIController.signal,
         })
@@ -3333,7 +3331,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                if (!handlePIIResponse(data, function() { askClaude(); })) showToast(data.error, 'error');
                 return;
             }
 
@@ -3452,7 +3450,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/report-action', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _srHeaders(),
             body: JSON.stringify(payload),
             signal: activeAIController.signal,
         })
@@ -3468,7 +3466,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                if (!handlePIIResponse(data, function() { submitReportAction(action); })) showToast(data.error, 'error');
                 return;
             }
 
@@ -6127,7 +6125,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: _srHeaders(),
             body: JSON.stringify({
                 clinical_question: clinicalQuestion,
                 modality: modality,
@@ -6149,7 +6147,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (data.pii_blocked || data.error) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                if (!handlePIIResponse(data, function() { generateFullReportDirectly(); })) showToast(data.error, 'error');
                 return;
             }
 
