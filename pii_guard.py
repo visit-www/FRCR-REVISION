@@ -229,8 +229,6 @@ SKIP_ROUTE_PREFIXES = (
     '/vetting/admin/',
     '/api/vetting/admin/',
     '/stripe/webhook',
-    # Smart Reporter has its own PII checking (livePIIScan + checkEditorPII)
-    '/api/smart-reporter/',
 )
 
 
