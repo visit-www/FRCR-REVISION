@@ -22,9 +22,10 @@ logger = logging.getLogger(__name__)
 radiq_bp = Blueprint('radiq', __name__)
 
 TIER_LIMITS = {
-    'free':     {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
-    'standard': {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
-    'elite':    {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
+    'free':      {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
+    'standard':  {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
+    'elite':     {'sr_monthly': 300,  'radiq_monthly': 40,  'trial_days': None},
+    'elite_pro': {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
 }
 
 

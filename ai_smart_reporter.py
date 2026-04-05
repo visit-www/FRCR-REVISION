@@ -57,7 +57,12 @@ import logging
 
 import requests
 
-from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw, AIClientError, strip_markdown_fences
+from ai_client import (
+    call_claude as _call_claude_raw,
+    parse_json_response as _parse_json_raw,
+    AIClientError,
+    strip_markdown_fences,
+)
 from clinical_tool_generator import format_resources_for_prompt
 
 logger = logging.getLogger(__name__)
@@ -312,11 +317,9 @@ Return a JSON object with EXACTLY this structure:
 }}
 
 RULES FOR RESPONSE_TYPE:
-1. "full_report" — use when you provide complete report text in report_text. Use this when the trainee explicitly asks to "finalize", "rewrite", or "redo" their report.
-2. "advisory" — use for focused answers without regenerating the full report. report_text must be empty string. Use this when:
-   a. The trainee asks a knowledge question unrelated to their draft.
-   b. REPORT STATUS is ALREADY_FINALIZED and the trainee asks about differentials, recommendations, missing findings, impressions, or other follow-up questions (NOT "finalize"/"rewrite"/"redo").
-   c. REPORT STATUS is NOT_YET_FINALIZED and the trainee asks about differentials, recommendations, or missing findings without explicitly requesting finalization.
+1. "full_report" — when REPORT STATUS is NOT_YET_FINALIZED and the trainee asks you to review, check, finalize, rewrite, redo, or help with their report. You MUST generate the corrected report_text. NEVER return advisory when the trainee wants their report reviewed or corrected.
+2. "advisory" — for knowledge questions (e.g. "what is X?", "explain Y"), or when REPORT STATUS is ALREADY_FINALIZED (unless trainee explicitly says "finalize"/"rewrite"/"redo").
+3. CRITICAL: If you find errors (laterality, terminology, clinical mismatch, structural gaps), STILL generate full_report with corrections applied. Flag the issues prominently in "answer" — do NOT withhold the report. The trainee needs the corrected text to learn from.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -358,8 +361,8 @@ RULES FOR ANSWER AND REPORT_TEXT:
 1. "answer" is for advisory/explanatory text ONLY. Never put complete report sections in answer.
 2. "report_text" is for complete PACS-ready report text ONLY. It must contain ZERO explanations, commentary, preamble, or padding — only text that belongs in a PACS report. If the trainee asks "write the impression", report_text contains the impression and NOTHING else. Any explanations, rationale, or notes about discrepancies go in "answer", never in report_text.
 3. When to produce report_text:
-   a. If REPORT STATUS is ALREADY_FINALIZED: Only produce report_text when the trainee EXPLICITLY asks to "finalize", "rewrite", or "redo". For all other questions (differentials, recommendations, "what am I missing?", impressions), provide your answer in the answer field only — do NOT regenerate the report.
-   b. If REPORT STATUS is NOT_YET_FINALIZED: Only produce report_text when the trainee EXPLICITLY asks to "finalize", "rewrite", or "redo". For other questions, provide your focused answer and end with: "When you're ready, click 'Finalize this report' to get your complete PACS-ready report."
+   a. If REPORT STATUS is ALREADY_FINALIZED: Only produce report_text when the trainee EXPLICITLY asks to "finalize", "rewrite", or "redo". For all other questions, provide your answer in the answer field only — do NOT regenerate the report.
+   b. If REPORT STATUS is NOT_YET_FINALIZED: Produce report_text when the trainee asks to finalize, rewrite, redo, review, check, or help with their report. For pure knowledge questions (e.g. "what is X?"), provide your focused answer only.
    c. When you DO produce report_text, it should incorporate any relevant points from the trainee's question.
 4. If the trainee asks a specific question (e.g. "what am I missing?", "is the laterality correct?", "should I mention X?"), ALSO answer it in the answer field. This applies whether the question comes alone or alongside a "finalize" / "write impression" / "add recommendation" command.
 5. If the trainee ONLY asks for report text with no question (e.g. just "finalize this report"), report_text has the report. answer can be empty UNLESS you made substantive changes (see rule 9).
@@ -443,6 +446,13 @@ RULES FOR INSIGHTS:
 7. recommendation_check: flag if urgent/critical findings (stroke, PE, tension pneumothorax,
    ruptured AAA, ectopic pregnancy) lack appropriate escalation language or verbal communication
    documentation. Flag if follow-up recommendations are missing specific timeframes.
+
+FINAL CHECK — BEFORE YOU OUTPUT:
+1. If REPORT STATUS is ALREADY_FINALIZED and the trainee did NOT say "finalize", "rewrite", or "redo":
+   → response_type MUST be "advisory", report_text MUST be "", fill_ins MUST be []
+2. If REPORT STATUS is NOT_YET_FINALIZED and the trainee asks to review/check/finalize/help:
+   → response_type MUST be "full_report" with corrected report_text — even if you found errors.
+   → Flag errors in "answer" and "corrections". NEVER refuse to generate report_text because of errors.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -1307,11 +1317,126 @@ def quick_review(report_text):
     return parsed
 
 
+# ==================== SAFETY BLOCKER DETECTION ====================
+
+# --- Soft warning detection via corrections + answer text ---
+# Urgency words the AI adds when fixing weak recommendations
+_URGENCY_ADDITIONS = [
+    'urgent', 'immediate', 'emergent', 'stat', 'thrombolysis',
+    'verbal communication', 'verbally communicated', 'notify',
+    'alert', 'escalat', 'life-threatening', 'time-critical',
+    'time-sensitive', 'critical care', 'stroke team',
+    'on-call', 'theatre', 'surgical emergency',
+]
+
+# Words in the answer text that signal the AI thought the draft had
+# a significant interpretation or diagnostic problem
+_ANSWER_CONCERN_SIGNALS = [
+    'incorrect', 'wrong diagnosis', 'misinterpret', 'erroneous',
+    'would not sign', 'does not support', 'not consistent with',
+    'disagree with', 'overcall', 'undercall', 'missed finding',
+    'missed diagnosis', 'important omission', 'significant omission',
+    'changed the diagnosis', 'changed the impression',
+    'revised the impression', 'impression does not match',
+]
+
+
+def _detect_safety_blockers(parsed, original_draft=''):
+    """Post-process parsed AI response to detect hard blockers and soft warnings.
+
+    Hard blockers (laterality, impression-body contradiction) come from
+    structured correction types — reliable signal.
+
+    Soft warnings come from three concrete signals:
+    1. Escalation: the AI's correction *added* urgency language that was
+       absent in the original — meaning the draft lacked proper escalation.
+    2. Escalation (report-level): the finalized report_text contains urgency
+       language that is absent from the original draft — the AI added it
+       during the rewrite, not via a discrete correction.
+    3. Interpretation: the AI's answer text describes a diagnostic concern
+       about the draft.
+
+    Mutates *parsed* in place, adding 'hard_blockers' and 'soft_warnings' lists.
+    """
+    hard_blockers = []
+    soft_warnings = []
+
+    # --- Hard blockers from corrections (structured types) ---
+    for c in parsed.get('corrections', []):
+        ctype = c.get('type', '')
+        if ctype == 'sidedness':
+            hard_blockers.append(
+                f"Laterality issue: {c.get('reason', 'side mismatch detected')}"
+            )
+        elif ctype == 'consistency':
+            hard_blockers.append(
+                f"Impression-body contradiction: {c.get('reason', 'inconsistency detected')}"
+            )
+
+    # --- Soft: escalation added by correction ---
+    # If the AI's suggested text introduces urgency words that weren't in
+    # the original, the draft was missing critical escalation language.
+    escalation_found = False
+    for c in parsed.get('corrections', []):
+        original = (c.get('original') or '').lower()
+        suggested = (c.get('suggested') or '').lower()
+        for kw in _URGENCY_ADDITIONS:
+            if kw in suggested and kw not in original:
+                soft_warnings.append(
+                    f"Escalation concern: {c.get('reason', 'Urgent language was added to your draft')}"
+                )
+                escalation_found = True
+                break  # one warning per correction
+
+    # --- Soft: escalation added in full rewrite (no discrete correction) ---
+    # When response_type is full_report the AI may rewrite the whole report
+    # with urgency language baked in, without a separate correction entry.
+    if not escalation_found and original_draft:
+        draft_lower = original_draft.lower()
+        finalized = (parsed.get('report_text') or '').lower()
+        if finalized:
+            for kw in _URGENCY_ADDITIONS:
+                if kw in finalized and kw not in draft_lower:
+                    # Build a meaningful message from the recommendation_check
+                    # insight (which is about the corrected report) or fallback.
+                    rec_insight = (parsed.get('insights', {})
+                                   .get('recommendation_check') or '')
+                    msg = rec_insight if rec_insight else (
+                        'The AI added urgent escalation language that was '
+                        'absent from your original draft'
+                    )
+                    soft_warnings.append(f"Escalation concern: {msg}")
+                    break
+
+    # --- Soft: interpretation concern from answer text ---
+    # The answer describes what the AI changed and WHY — it's written about
+    # the draft's deficiencies, not the corrected report.
+    answer = (parsed.get('answer') or '').lower()
+    for signal in _ANSWER_CONCERN_SIGNALS:
+        if signal in answer:
+            # Extract a short excerpt around the signal for context
+            idx = answer.index(signal)
+            start = max(0, answer.rfind('.', 0, idx) + 1)
+            end = answer.find('.', idx)
+            if end < 0:
+                end = min(len(answer), idx + 120)
+            else:
+                end += 1
+            excerpt = parsed.get('answer', '')[start:end].strip()
+            soft_warnings.append(f"Interpretation concern: {excerpt}")
+            break  # one interpretation warning is enough
+
+    # Deduplicate while preserving order
+    parsed['hard_blockers'] = list(dict.fromkeys(hard_blockers))
+    parsed['soft_warnings'] = list(dict.fromkeys(soft_warnings))
+
+
 # ==================== UNIFIED AI ASSIST (Layers 1+2+3) ====================
 
 def unified_ai_assist(report_text, question, clinical_question='', modality='',
                       body_section='', external_context=None, resources=None,
-                      has_finalized_report=False):
+                      has_finalized_report=False, previous_insights=None,
+                      model_override=None):
     """
     Unified AI assistant: corrections + direct answer + clinical insights.
     Single API call returns all three layers.
@@ -1324,6 +1449,9 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         body_section: Anatomical region (from session)
         external_context: Optional dict with {type, title, slug, id} from "Use in Report" buttons
         resources: Optional dict with urls, db_refs, pdf_texts, tnm_refs (Gap 1)
+        previous_insights: Optional dict of insights from a prior review (hybrid mode).
+                          When present, gives the model the benefit of deep clinical reasoning.
+        model_override: Optional model ID (e.g. 'claude-opus-4-6') to override the default.
 
     Returns:
         dict with: corrections[], answer, insights{}, model, token_count
@@ -1348,20 +1476,53 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
                 f"{label}: \"{ctx_title}\". Factor this into your corrections, answer, and insights.\n"
             )
 
+    # Inject previous V2 insights if available (hybrid mode)
+    if previous_insights and isinstance(previous_insights, dict):
+        parts = []
+        if previous_insights.get('cognitive_traps'):
+            parts.append(f"Cognitive traps identified: {previous_insights['cognitive_traps']}")
+        if previous_insights.get('clinical_question_coverage'):
+            parts.append(f"Clinical question coverage: {previous_insights['clinical_question_coverage']}")
+        if previous_insights.get('quality_assessment'):
+            parts.append(f"Quality assessment: {previous_insights['quality_assessment']}")
+        if previous_insights.get('differentials_to_consider'):
+            diffs = previous_insights['differentials_to_consider']
+            if isinstance(diffs, list):
+                diffs = ', '.join(diffs)
+            parts.append(f"Differentials to consider: {diffs}")
+        if previous_insights.get('teaching_point'):
+            parts.append(f"Teaching point: {previous_insights['teaching_point']}")
+        if parts:
+            resource_section += (
+                "\nPREVIOUS CLINICAL REVIEW (from an earlier deep review of this report):\n"
+                + "\n".join(f"- {p}" for p in parts)
+                + "\nUse these insights to inform your answer. Do not contradict them "
+                "unless the trainee has since corrected the issue.\n"
+            )
+
     # Build report status section for advisory-only follow-up mode
     if has_finalized_report:
         report_status_section = (
-            "\nREPORT STATUS: ALREADY_FINALIZED — The trainee has already received a finalized "
-            "report. For follow-up questions (differentials, recommendations, missing findings, "
-            "impressions), provide ONLY your advisory answer and insights. Do NOT regenerate the "
-            "full report unless they explicitly ask to 'finalize', 'rewrite', or 'redo' the report."
+            "\n⚠️ REPORT STATUS: ALREADY_FINALIZED\n"
+            "The trainee already has a finalized report. This is a FOLLOW-UP question.\n"
+            "You MUST use response_type: \"advisory\" and report_text: \"\" (empty string).\n"
+            "Put your entire answer in the \"answer\" field. Do NOT regenerate or rewrite the report.\n"
+            "The ONLY exception: if the trainee explicitly says \"finalize\", \"rewrite\", or \"redo\"."
         )
     else:
         report_status_section = (
             "\nREPORT STATUS: NOT_YET_FINALIZED — The trainee has not yet received a finalized report."
         )
 
-    user_prompt = UNIFIED_ASSIST_PROMPT.format(
+    # Select prompts: V3 for Opus, V1 for everything else
+    if model_override and 'opus' in model_override:
+        selected_system_prompt = UNIFIED_ASSIST_V3_SYSTEM_PROMPT
+        prompt_template = UNIFIED_ASSIST_V3_PROMPT
+    else:
+        selected_system_prompt = UNIFIED_ASSIST_SYSTEM_PROMPT
+        prompt_template = UNIFIED_ASSIST_PROMPT
+
+    user_prompt = prompt_template.format(
         report_text=report_text or '(empty report — user may be starting fresh or about to paste their report)',
         question=question,
         clinical_question=clinical_question or 'Not specified',
@@ -1371,10 +1532,10 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         report_status_section=report_status_section,
     )
 
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    effective_model = model_override or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     text, model, tokens = _call_claude(
-        system_prompt=UNIFIED_ASSIST_SYSTEM_PROMPT,
+        system_prompt=selected_system_prompt,
         user_prompt=user_prompt,
         model=effective_model,
         max_tokens=4000,
@@ -1385,8 +1546,208 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     parsed = _parse_assist_response(text, question)
     parsed['model'] = model
     parsed['token_count'] = tokens
+    if model_override and 'opus' in model_override:
+        parsed['version'] = 'opus'
+        # Ensure cognitive_traps field exists (V3 schema includes it)
+        raw_insights = parsed.get('insights', {})
+        if isinstance(raw_insights, dict):
+            raw_insights.setdefault('cognitive_traps', '')
 
+    _detect_safety_blockers(parsed, original_draft=report_text)
     return parsed
+
+
+# ==================== UNIFIED AI ASSIST V3 — OPUS-OPTIMISED ====================
+#
+# V3 is a dedicated prompt for Opus 4.6. Combines V2's clinical reasoning chain
+# with V1's critical edge-case rules, in a concise format that leverages Opus's
+# stronger native reasoning. ~1,550 total tokens vs V1's ~2,700.
+
+UNIFIED_ASSIST_V3_SYSTEM_PROMPT = (
+    "You are an expert subspecialty consultant radiologist mentoring a trainee at "
+    "the PACS workstation. You review their draft report, answer their question, "
+    "and provide clinical quality assessment.\n\n"
+
+    "Before producing output, reason through these steps internally:\n\n"
+    "STEP 1 — UNDERSTAND THE CLINICAL SCENARIO:\n"
+    "  What is the referrer actually asking? What clinical decision depends on this scan?\n"
+    "  What diagnosis is the referrer worried about? What would change management?\n\n"
+    "STEP 2 — ANALYSE THE FINDINGS:\n"
+    "  What has the trainee described? Build a mental picture of the pathology.\n"
+    "  What is the most likely diagnosis? Are there findings that don't fit?\n\n"
+    "STEP 3 — ASSESS REPORT QUALITY AS A CONSULTANT WHO MUST SIGN THIS:\n"
+    "  Does this report answer the referrer's clinical question?\n"
+    "  Would a surgeon/oncologist/physician make the right decision from this report?\n"
+    "  Which specific guidelines or criteria apply? "
+    "(Fleischner, LI-RADS, Bosniak, NCCN, AAST — apply whichever is relevant)\n\n"
+    "STEP 4 — IDENTIFY COGNITIVE TRAPS:\n"
+    "  Satisfaction of search, anchoring, premature closure — specific to this case.\n"
+    "  Frame as 'ensure you have assessed X', NOT 'you missed X'.\n\n"
+    "STEP 5 — THEN AND ONLY THEN, PRODUCE YOUR OUTPUT.\n"
+    "  Every suggestion must be traceable to clinical reasoning, not pattern matching.\n\n"
+
+    "ABSOLUTE GUARD RAILS — THESE OVERRIDE EVERYTHING:\n"
+    "- NEVER add findings the trainee didn't describe — you cannot see the images\n"
+    "- NEVER fabricate or hallucinate imaging findings\n"
+    "- NEVER assert imaging characteristics (margins, enhancement, attenuation) unless "
+    "the trainee stated them\n"
+    "- NEVER suggest the trainee add findings they didn't observe\n"
+    "- NEVER remove or contradict findings the trainee DID describe "
+    "(they saw the images, you didn't)\n"
+    "- NEVER pad a report with generic normal findings the trainee didn't mention\n"
+    "- If shorthand is ambiguous, expand conservatively and flag the ambiguity\n"
+    "- Measurements: ALWAYS preserve trainee-provided values. Only add placeholders "
+    "when clinically required and not provided.\n\n"
+
+    "SHORTHAND INPUT: Expand rough shorthand into formal consultant-grade structured "
+    "prose — but ONLY expand what was written. Do not infer or invent findings.\n\n"
+    "SHORTHAND EXPANSION QUALITY: Do NOT restate shorthand in longer form. Structure "
+    "as a consultant would dictate — proper anatomical descriptions, standard "
+    "radiological descriptors. For unstated characteristics, omit or use a placeholder "
+    "ONLY when clinically important.\n\n"
+
+    "MEASUREMENT HANDLING: If draft has a measurement → use verbatim. If no measurement "
+    "and clinically required → add ONE placeholder. If not required → omit entirely. "
+    "If a measurement is anatomically implausible, flag it in corrections — do NOT "
+    "silently accept or replace it.\n\n"
+
+    "CLASSIFICATION/GRADING:\n"
+    "  TIER A (definitional — trainee's words ARE the grade): Include directly.\n"
+    "  TIER B (inferable from features): Suggest in answer, add fill_in for trainee "
+    "to confirm.\n"
+    "  TIER C (insufficient features): Educate in answer about what to assess.\n\n"
+
+    "REST NORMAL SHORTHAND: If trainee writes 'rest normal', 'rest unremarkable', "
+    "'rest NAD', 'otherwise normal', 'remaining structures normal', 'rest ok', "
+    "'everything else normal', or similar — expand into brief standard normal "
+    "statements for expected organs/structures. This IS the trainee's finding. "
+    "Individual organ comments like 'kidneys ok' expand as single statements only "
+    "— do NOT generate boilerplate for unmentioned organs.\n\n"
+
+    "ADJACENT STRUCTURES: Only add placeholders for adjacent structures when their "
+    "status would change management (e.g. vascular encasement for staging). "
+    "No boilerplate placeholders.\n\n"
+
+    "CONTRADICTION RESOLUTION: When the report contradicts itself (e.g. impression "
+    "says pathology but body says 'normal'), keep the positive finding and reject "
+    "the 'normal' statement. A specific finding always trumps a generic 'unremarkable'. "
+    "Always explain the resolution in your answer.\n\n"
+
+    "REPORT QUALITY BAR:\n"
+    "- Every diagnosis in IMPRESSION must be described in FINDINGS with anatomical "
+    "localisation.\n"
+    "- Recommendations must be specific, actionable, and reflect severity.\n"
+    "- NEVER produce flat parrot-like output that restates shorthand in slightly "
+    "longer form.\n"
+    "- PLACEHOLDER RESTRAINT: Only insert placeholders for clinically important "
+    "missing info. A clean report with fewer placeholders is better than one "
+    "cluttered with brackets. Never replace trainee-provided values.\n"
+    "- Never assert imaging characteristics the trainee did not state.\n\n"
+
+    "If the question is not related to radiology, imaging, or clinical practice, "
+    "set answer to: 'This query is outside the scope of RadInsights Intelligence. "
+    "Please ask radiology or clinical practice related questions.' and return empty "
+    "corrections and insights.\n\n"
+
+    "Output valid JSON only. No markdown fences. No text outside the JSON object."
+)
+
+UNIFIED_ASSIST_V3_PROMPT = """You are reviewing a trainee's draft PACS report and answering their question.
+
+CLINICAL CONTEXT:
+- Clinical question: {clinical_question}
+- Modality: {modality}
+- Body section: {body_section}
+
+DRAFT REPORT:
+---
+{report_text}
+---
+
+TRAINEE'S QUESTION: {question}
+{resource_section}
+{report_status_section}
+Reason through Steps 1-4 from your instructions internally before producing output.
+
+Return a JSON object with EXACTLY this structure:
+
+{{
+  "response_type": "full_report|advisory",
+  "answer": "Advisory response informed by your clinical reasoning. Empty string if question only asks for report text.",
+  "report_text": "Complete PACS-ready report text. Empty string if response_type is advisory.",
+  "corrections": [
+    {{
+      "original": "exact phrase from the report",
+      "suggested": "corrected/improved phrase",
+      "reason": "Brief explanation (5-10 words)",
+      "type": "terminology|gender_check|anatomy_check|consistency|phrasing|sidedness|structure"
+    }}
+  ],
+  "fill_ins": [
+    {{
+      "placeholder": "[exact placeholder text from report_text]",
+      "label": "Short label (e.g. Mass size)",
+      "type": "free_text|options",
+      "options": ["option1", "option2"],
+      "hint": "Brief guidance for the trainee"
+    }}
+  ],
+  "insights": {{
+    "clinical_question_coverage": "Does the report answer the referrer's actual question? Flag discordance between clinical indication and findings. 1-2 sentences.",
+    "quality_assessment": "Would you sign this report as supervising consultant? What would a subspecialist change? 1-2 sentences.",
+    "differentials_to_consider": ["Differential 1", "Differential 2"],
+    "recommendation_check": "Are recommendations specific, actionable, and guideline-appropriate? Flag if urgent/critical findings (stroke, PE, tension pneumothorax, ruptured AAA, ectopic pregnancy) lack escalation language or verbal communication documentation. 1 sentence.",
+    "teaching_point": "The single most valuable thing you would teach this trainee about THIS case at the workstation right now. Must be specific to these findings. Consider: alternative interpretations of the findings, classic pitfalls, how a subspecialist consultant might interpret this differently. 1-3 sentences.",
+    "cognitive_traps": "Any satisfaction of search, anchoring, or premature closure risks specific to this case. Empty string if none. 1-2 sentences."
+  }}
+}}
+
+RULES FOR RESPONSE_TYPE:
+1. "full_report" — when REPORT STATUS is NOT_YET_FINALIZED and the trainee asks you to review, check, finalize, rewrite, redo, or help with their report. You MUST generate corrected report_text. NEVER return advisory when the trainee wants their report reviewed or corrected.
+2. "advisory" — for knowledge questions (e.g. "what is X?", "explain Y"), follow-up questions AFTER finalization, or when REPORT STATUS is ALREADY_FINALIZED.
+3. CRITICAL: If you find errors (laterality, terminology, clinical mismatch, structural gaps), STILL generate full_report with corrections applied. Flag issues in "answer" — do NOT withhold the report. The trainee needs the corrected text to learn from.
+
+RULES FOR CORRECTIONS:
+1. Radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma").
+2. Cross-check gender/anatomy consistency.
+3. Section consistency: impression must not mention findings absent from FINDINGS.
+4. Each correction must quote EXACT original text.
+5. Laterality and anatomical plausibility — flag implausible anatomy, missing sidedness, clinical-vs-report mismatch.
+6. Measurements: only flag as missing when clinically required and not provided.
+7. Resolve contradictions by keeping the positive finding over the "normal" statement. Explain the resolution in answer.
+8. Max 10 corrections. Prioritise: anatomical/sidedness > clinical gaps > terminology > phrasing.
+9. If no issues, return empty corrections array.
+
+RULES FOR ANSWER AND REPORT_TEXT:
+1. "answer" is advisory/explanatory ONLY. "report_text" is PACS-ready text ONLY — zero explanations.
+2. Produce report_text when response_type is "full_report" (see RESPONSE_TYPE rules above).
+3. If you made substantive changes while finalizing (resolved contradiction, changed laterality, added/removed section), explain them in "answer" — never silently alter the report.
+4. If the trainee asks a specific question alongside a finalize/review command (e.g. "Finalize and what Bosniak category is this?"), answer it in "answer" AND finalize in "report_text".
+5. Write report_text as a consultant would dictate. Plain text, no markdown/HTML.
+6. Keep answer under 250 words.
+
+RULES FOR FILL_INS:
+1. Only when response_type is "full_report" AND report_text has placeholders.
+2. Each fill_in must match a placeholder that EXISTS verbatim in report_text.
+3. Order fill_ins as they appear in report_text.
+
+RULES FOR INSIGHTS:
+1. Specific and actionable, not generic platitudes.
+2. differentials_to_consider: diagnoses that could ALSO explain these findings. Educational only.
+3. teaching_point: genuinely insightful, specific to THIS case. Think "what would I teach at the workstation right now?"
+4. cognitive_traps: specific to this case's findings, NOT generic advice.
+5. CRITICAL: Never suggest the trainee ADD findings they didn't describe.
+6. If the report is excellent, say so — do not invent criticisms. But still provide a meaningful teaching point.
+7. You MUST populate ALL insight fields with meaningful text.
+
+FINAL CHECK — BEFORE YOU OUTPUT:
+1. If REPORT STATUS is ALREADY_FINALIZED and trainee did NOT say "finalize"/"rewrite"/"redo":
+   → response_type MUST be "advisory", report_text MUST be "", fill_ins MUST be []
+2. If REPORT STATUS is NOT_YET_FINALIZED and trainee asks to review/check/finalize/help:
+   → response_type MUST be "full_report" with corrected report_text — even if you found errors.
+   → Flag errors in "answer" and "corrections". NEVER refuse to generate report_text because of errors.
+
+Output ONLY the JSON object. No markdown. No explanation."""
 
 
 # ==================== REPORT ACTIONS ====================
@@ -1654,6 +2015,7 @@ def _parse_assist_response(text, original_question):
         'differentials_to_consider': raw_insights.get('differentials_to_consider', []),
         'recommendation_check': raw_insights.get('recommendation_check', ''),
         'teaching_point': raw_insights.get('teaching_point', ''),
+        'cognitive_traps': raw_insights.get('cognitive_traps', ''),
     }
 
     # Ensure differentials is a list

@@ -30,13 +30,14 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 PRICE_IDS = {
-    'standard': os.environ.get('STRIPE_STANDARD_PRICE_ID', ''),
-    'elite':    os.environ.get('STRIPE_ELITE_PRICE_ID', ''),
+    'standard':  os.environ.get('STRIPE_STANDARD_PRICE_ID', ''),
+    'elite':     os.environ.get('STRIPE_ELITE_PRICE_ID', ''),
+    'elite_pro': os.environ.get('STRIPE_ELITE_PRO_PRICE_ID', ''),
 }
 
 BASE_URL = os.environ.get('BASE_URL', 'https://www.radinsights.xyz')
 
-TIER_RANK = {'free': 0, 'standard': 1, 'elite': 2}
+TIER_RANK = {'free': 0, 'standard': 1, 'elite': 2, 'elite_pro': 3}
 
 
 # ---------------------------------------------------------------------------
@@ -96,6 +97,8 @@ def _tier_from_subscription(subscription_obj):
     first_item = items_data[0]
     price_obj = _get(first_item, 'price', {})
     price_id = _get(price_obj, 'id', '')
+    if price_id == PRICE_IDS.get('elite_pro'):
+        return 'elite_pro'
     if price_id == PRICE_IDS.get('elite'):
         return 'elite'
     return 'standard'
@@ -139,7 +142,7 @@ def create_checkout_session():
         return jsonify({'error': f'You are already on the {plan.capitalize()} plan.'}), 400
 
     # Paid users must use change-plan flow
-    if current_tier in ('standard', 'elite'):
+    if current_tier in ('standard', 'elite', 'elite_pro'):
         return jsonify({'error': 'Use plan change for existing subscribers', 'use_change': True}), 400
 
     try:
@@ -197,7 +200,7 @@ def change_plan():
     if current_tier == new_plan:
         return jsonify({'error': f'You are already on the {new_plan.capitalize()} plan.'}), 400
 
-    if current_tier not in ('standard', 'elite'):
+    if current_tier not in ('standard', 'elite', 'elite_pro'):
         return jsonify({'error': 'No active subscription to change. Please subscribe first.'}), 400
 
     customer_id = current_user.stripe_customer_id
@@ -283,7 +286,7 @@ def preview_change():
         return jsonify({'error': f'Unknown plan: {new_plan}'}), 400
 
     current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
-    if current_tier not in ('standard', 'elite'):
+    if current_tier not in ('standard', 'elite', 'elite_pro'):
         return jsonify({'error': 'No active subscription'}), 400
 
     customer_id = current_user.stripe_customer_id
@@ -545,22 +548,22 @@ def _handle_subscription_deleted(sub_obj):
 
     pending_tier = user.pending_subscription_tier
 
-    # Elite → Standard: auto-create a Standard subscription
-    if pending_tier == 'standard':
-        standard_price_id = PRICE_IDS.get('standard')
-        if standard_price_id:
+    # Downgrade to a lower paid tier: auto-create the new subscription
+    if pending_tier in ('standard', 'elite'):
+        new_price_id = PRICE_IDS.get(pending_tier)
+        if new_price_id:
             try:
                 new_sub = stripe.Subscription.create(
                     customer=customer_id,
-                    items=[{'price': standard_price_id}],
-                    metadata={'user_id': str(user.id), 'auto_downgrade': 'elite_to_standard'},
+                    items=[{'price': new_price_id}],
+                    metadata={'user_id': str(user.id), 'auto_downgrade': f'to_{pending_tier}'},
                 )
                 end_date = _subscription_end_from_event(new_sub)
-                upgrade_to_paid(user, end_date, 'standard')
-                logger.info(f"User {user.id} auto-created Standard sub after Elite expiry (ends {end_date})")
+                upgrade_to_paid(user, end_date, pending_tier)
+                logger.info(f"User {user.id} auto-created {pending_tier} sub after downgrade (ends {end_date})")
                 return
             except stripe.StripeError as e:
-                logger.error(f"Failed to auto-create Standard sub for user {user.id}: {e}")
+                logger.error(f"Failed to auto-create {pending_tier} sub for user {user.id}: {e}")
                 # Fall through to downgrade_to_free as safety net
 
     # Check if customer still has other active subscriptions (safety check)

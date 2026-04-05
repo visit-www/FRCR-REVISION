@@ -244,9 +244,10 @@ def normalize_modality(raw):
 reporting_bp = Blueprint('reporting', __name__)
 
 TIER_LIMITS = {
-    'free':     {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
-    'standard': {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
-    'elite':    {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
+    'free':      {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
+    'standard':  {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
+    'elite':     {'sr_monthly': 300,  'radiq_monthly': 40,  'trial_days': None},
+    'elite_pro': {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
 }
 
 
@@ -717,7 +718,8 @@ def unified_search():
             }).fetchall()
 
             for r in pearl_results:
-                pearl_title = r.pearl_text[:100] + '...' if len(r.pearl_text or '') > 100 else r.pearl_text
+                plain_pearl = re.sub(r'<[^>]+>', '', r.pearl_text or '')
+                pearl_title = plain_pearl[:100] + '...' if len(plain_pearl) > 100 else plain_pearl
                 results.append({
                     'type': 'pearl',
                     'id': r.id,
@@ -1067,9 +1069,10 @@ def _fallback_search(query, filter_type, limit, raw_query=None):
             ),
         ).limit(limit).all()
         for p in pearls:
+            plain_pearl = re.sub(r'<[^>]+>', '', p.pearl_text or '')
             results.append({
                 'type': 'pearl', 'id': p.id,
-                'title': p.pearl_text[:100] + '...' if len(p.pearl_text or '') > 100 else p.pearl_text,
+                'title': plain_pearl[:100] + '...' if len(plain_pearl) > 100 else plain_pearl,
                 'body_section': p.body_section,
                 'description': p.modality or '',
                 'subtitle': 'Radiology Pearl',
@@ -2885,9 +2888,14 @@ def smart_reporter_ai_assist():
     body_section = (data.get('body_section') or '')
     external_context = data.get('external_context')
     has_finalized_report = bool(data.get('has_finalized_report', False))
+    use_opus = bool(data.get('use_opus', False))  # Opus for Review & Finalize
+    previous_review_insights = data.get('previous_review_insights')  # Opus/V2 insights for hybrid
 
     try:
         from ai_smart_reporter import unified_ai_assist, SmartReporterError
+        # Opus mode: use unified_ai_assist with Opus model override
+        # Hybrid mode: V1 Sonnet with previous Opus insights injected
+        model_override = 'claude-opus-4-6' if use_opus else None
         result = unified_ai_assist(
             report_text=report_text,
             question=question,
@@ -2896,6 +2904,8 @@ def smart_reporter_ai_assist():
             body_section=body_section,
             external_context=external_context,
             has_finalized_report=has_finalized_report,
+            previous_insights=previous_review_insights,
+            model_override=model_override,
         )
     except Exception as exc:
         logger.error(f"Smart Reporter AI assist failed: {exc}")
@@ -2921,7 +2931,7 @@ def smart_reporter_ai_assist():
             user_id=current_user.id,
         )
 
-    return jsonify({
+    resp = {
         'success': True,
         'response_type': result.get('response_type', 'advisory'),
         'corrections': result.get('corrections', []),
@@ -2930,7 +2940,10 @@ def smart_reporter_ai_assist():
         'fill_ins': result.get('fill_ins', []),
         'insights': insights,
         'remaining_requests': remaining,
-    })
+        'hard_blockers': result.get('hard_blockers', []),
+        'soft_warnings': result.get('soft_warnings', []),
+    }
+    return jsonify(resp)
 
 
 ALLOWED_REPORT_ACTIONS = {'mdt', 'sba', 'viva', 'email_colleague', 'email_patient'}

@@ -132,6 +132,97 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     return text, effective_model, token_count
 
 
+def call_claude_thinking(system_prompt, user_prompt, model=None, max_tokens=16000,
+                         timeout=120, error_class=None, skip_preamble=False):
+    """
+    Call the Anthropic Messages API with extended thinking (adaptive mode).
+
+    Uses adaptive thinking — the model reasons internally before producing
+    its output.  Temperature is not supported with thinking and is omitted.
+
+    Args:
+        system_prompt: System message string
+        user_prompt: User message string
+        model: Override model (defaults to CLAUDE_MODEL env var)
+        max_tokens: Max response tokens (must exceed thinking budget)
+        timeout: Request timeout in seconds (default 120 — thinking takes longer)
+        error_class: Exception class to raise on failure
+        skip_preamble: If True, omit the ABC_PREAMBLE
+
+    Returns:
+        tuple: (response_text: str, thinking_text: str, model_used: str, token_count: int)
+    """
+    exc = error_class or AIClientError
+
+    api_key = os.getenv("CLAUDE_API_KEY")
+    if not api_key:
+        raise exc("CLAUDE_API_KEY not configured.")
+
+    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+
+    effective_system = system_prompt
+    if not skip_preamble:
+        effective_system = ABC_PREAMBLE + system_prompt
+
+    payload = {
+        "model": effective_model,
+        "max_tokens": max_tokens,
+        "thinking": {
+            "type": "enabled",
+            "budget_tokens": max_tokens - 4096,
+        },
+        "system": effective_system,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=timeout,
+        )
+    except requests.exceptions.Timeout:
+        raise exc("Request timed out. Please try again.")
+    except requests.exceptions.RequestException as e:
+        raise exc(f"API connection error: {e}")
+
+    if response.status_code >= 300:
+        detail = response.text[:500]
+        raise exc(f"API error (HTTP {response.status_code}): {detail}")
+
+    result = response.json()
+    content = result.get("content", [])
+    if not content:
+        raise exc("Empty response from API.")
+
+    # Extract thinking and text blocks
+    thinking_text = ""
+    response_text = ""
+    for block in content:
+        if block.get("type") == "thinking":
+            thinking_text = block.get("thinking", "")
+        elif block.get("type") == "text":
+            response_text = block.get("text", "").strip()
+
+    if not response_text:
+        raise exc("No text in API response.")
+
+    stop_reason = result.get("stop_reason", "")
+    if stop_reason == "max_tokens":
+        logger.warning(
+            "API output truncated (hit max_tokens=%d). Output may be incomplete.",
+            max_tokens,
+        )
+
+    token_count = result.get("usage", {}).get("output_tokens", 0)
+    return response_text, thinking_text, effective_model, token_count
+
+
 def strip_markdown_fences(text):
     """Strip markdown code fences (```json ... ```) from AI output."""
     cleaned = text.strip()

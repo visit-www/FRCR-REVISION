@@ -4687,10 +4687,11 @@ def get_related_cases(case_id):
     for prow in pearl_rows:
         pearl = RadiologyPearl.query.get(prow.pearl_id)
         if pearl:
+            _plain_pearl = _re.sub(r'<[^>]+>', '', pearl.pearl_text or '')
             items.append({
                 'id': pearl.id,
                 'link_type': 'pearl',
-                'title': pearl.pearl_text[:120] + '...' if len(pearl.pearl_text or '') > 120 else pearl.pearl_text,
+                'title': _plain_pearl[:120] + '...' if len(_plain_pearl) > 120 else _plain_pearl,
                 'body_section': pearl.body_section,
                 'is_verified': pearl.is_verified,
             })
@@ -5363,9 +5364,10 @@ def add_related_case(case_id):
             case_id=case_id, pearl_id=pearl_id, created_by_user_id=current_user.id
         ))
         db.session.commit()
+        _plain_pearl = _re.sub(r'<[^>]+>', '', pearl.pearl_text or '')
         return jsonify({'success': True, 'message': 'Pearl linked', 'item': {
             'id': pearl.id, 'link_type': 'pearl',
-            'title': pearl.pearl_text[:120] + '...' if len(pearl.pearl_text or '') > 120 else pearl.pearl_text,
+            'title': _plain_pearl[:120] + '...' if len(_plain_pearl) > 120 else _plain_pearl,
             'body_section': pearl.body_section,
         }})
 
@@ -5659,9 +5661,10 @@ def search_cases_for_linking():
                 RadiologyPearl.body_section.ilike(f'%{query}%'),
             )
         ).limit(per_type_limit).all():
+            _plain_pearl = _re.sub(r'<[^>]+>', '', p.pearl_text or '')
             results.append({
                 'id': p.id,
-                'title': p.pearl_text[:120] + '...' if len(p.pearl_text or '') > 120 else p.pearl_text,
+                'title': _plain_pearl[:120] + '...' if len(_plain_pearl) > 120 else _plain_pearl,
                 'body_section': p.body_section,
                 'modality': p.modality,
                 'is_verified': p.is_verified,

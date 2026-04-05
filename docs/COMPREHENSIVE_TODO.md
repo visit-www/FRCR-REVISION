@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **54** / 81 |
-| WONTFIX | 2 / 81 |
-| TODO | **25** / 81 |
-| **Completion** | **67%** |
+| DONE | **54** / 83 |
+| WONTFIX | 2 / 83 |
+| TODO | **27** / 83 |
+| **Completion** | **65%** |
 
 ---
 
@@ -182,6 +182,8 @@
 | 79 | Vetting Tool — TinyMCE Inline Editing on Output | TODO | Output sections (clinical details, shorthand, detailed protocol) are read-only with copy buttons. Add inline editing so users can tweak before copying. |
 | 80 | Vetting Tool — Publish Draft Protocols & Algorithms | TODO | 49 admin protocols in draft, 20 algorithms in draft. Need admin review, verification, and publishing to make them available in the protocol picker during vetting. |
 | 81 | Vetting Tool — Protocol Usage Analytics | TODO | Track which protocols are used most frequently via VettingSession.protocol_id. Display usage count in admin protocol list. |
+| 82 | Create Elite Pro price in Stripe dashboard | TODO | Create a new recurring price in Stripe for Elite Pro tier: £99/mo (launch) / £120/mo (post-launch). Note the price ID. |
+| 83 | Set STRIPE_ELITE_PRO_PRICE_ID env var on Vercel | TODO | After creating the Stripe price (#82), set `STRIPE_ELITE_PRO_PRICE_ID` env var in Vercel project settings. Code in `stripe_routes.py` already reads this var. |
 
 ### 4.4 Performance
 
@@ -302,7 +304,7 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (25 total)
+### Remaining TODO Items (27 total)
 
 **Tier 3 — Medium Priority:**
 - **#33** Split `app.py` (~7000 lines) into route modules
@@ -332,6 +334,8 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 - **#79** Vetting Tool — TinyMCE Inline Editing on Output
 - **#80** Vetting Tool — Publish Draft Protocols & Algorithms
 - **#81** Vetting Tool — Protocol Usage Analytics
+- **#82** Create Elite Pro price in Stripe dashboard
+- **#83** Set STRIPE_ELITE_PRO_PRICE_ID env var on Vercel
 
 ### Suggested Priorities
 

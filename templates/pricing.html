@@ -805,9 +805,9 @@
         <div class="current-plan-badge">
             <div>
                 <span class="badge-tier">
-                    <i class="fas fa-{% if user_data.tier == 'elite' %}crown{% elif user_data.tier == 'standard' %}user-md{% else %}compass{% endif %} me-1"
-                       style="color: {% if user_data.tier == 'elite' %}var(--elite-green){% elif user_data.tier == 'standard' %}var(--brand-primary){% else %}var(--brand-neutral){% endif %};"></i>
-                    {{ user_data.tier | capitalize }} Plan
+                    <i class="fas fa-{% if user_data.tier == 'elite_pro' %}gem{% elif user_data.tier == 'elite' %}crown{% elif user_data.tier == 'standard' %}user-md{% else %}compass{% endif %} me-1"
+                       style="color: {% if user_data.tier == 'elite_pro' %}#7c3aed{% elif user_data.tier == 'elite' %}var(--elite-green){% elif user_data.tier == 'standard' %}var(--brand-primary){% else %}var(--brand-neutral){% endif %};"></i>
+                    {% if user_data.tier == 'elite_pro' %}Elite Pro{% else %}{{ user_data.tier | capitalize }}{% endif %} Plan
                 </span>
             </div>
             {% if user_data.trial_active and user_data.trial_days_left is not none %}
@@ -844,7 +844,7 @@
         <div class="container">
             <div class="row g-4 justify-content-center">
                 <!-- Free -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card">
                         <div class="pricing-badge" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
                             <i class="fas fa-compass me-1"></i>Free
@@ -856,7 +856,7 @@
                             <li><i class="fas fa-check"></i>All 39 TNM Calculators</li>
                             <li><i class="fas fa-check"></i>Clinical Guidelines & Radiology Tools</li>
                             <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month<br><small class="text-muted">(~4 reports)</small></li>
                             <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
                         {% if user_data %}
@@ -880,7 +880,7 @@
                 </div>
 
                 <!-- Standard -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card pricing-card-standard">
                         <div class="pricing-badge" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
                             <i class="fas fa-user-md me-1"></i>Standard
@@ -890,7 +890,7 @@
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Free</li>
                             <li><i class="fas fa-check"></i>Unlimited cases & practice</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 75 AI actions/month (~30 reports)</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 75 AI actions/month<br><small class="text-muted">(~30 reports)</small></li>
                             <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
                             <li><i class="fas fa-check"></i>Save personal templates</li>
                             <li><i class="fas fa-check"></i>Full template & algorithm library</li>
@@ -905,7 +905,7 @@
                             <button class="btn-pricing btn-pricing-pending" disabled>
                                 <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
                             </button>
-                            {% elif user_data.tier == 'elite' %}
+                            {% elif user_data.tier in ('elite', 'elite_pro') %}
                             <button onclick="startPlanChange('standard')" class="btn-pricing" style="background: #fff; color: var(--brand-primary); border: 1.5px solid var(--brand-primary);">
                                 <i class="fas fa-exchange-alt me-1"></i>Switch to Standard
                             </button>
@@ -921,7 +921,7 @@
                 </div>
 
                 <!-- Elite -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card pricing-card-featured">
                         <div class="pricing-popular">Most Popular</div>
                         <div class="pricing-badge" style="background: rgba(168,213,186,0.15); color: var(--elite-green);">
@@ -931,8 +931,8 @@
                         <div class="pricing-full-price">&pound;45/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Standard</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 1,500 AI actions/month (~600 reports)</li>
-                            <li><i class="fas fa-check"></i>RadIQ: 60 queries/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 300 AI actions/month<br><small class="text-muted">(~120 reports)</small></li>
+                            <li><i class="fas fa-check"></i>RadIQ: 40 queries/month</li>
                             <li><i class="fas fa-check"></i>Priority content requests</li>
                             <li><i class="fas fa-check"></i>Early access to new features</li>
                         </ul>
@@ -941,6 +941,14 @@
                             <button class="btn-pricing disabled" disabled style="background: var(--elite-green); color: #fff;">
                                 <i class="fas fa-check-circle me-1"></i>Current Plan
                             </button>
+                            {% elif user_data.pending_tier == 'elite' %}
+                            <button class="btn-pricing btn-pricing-pending" disabled>
+                                <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
+                            </button>
+                            {% elif user_data.tier == 'elite_pro' %}
+                            <button onclick="startPlanChange('elite')" class="btn-pricing" style="background: #fff; color: var(--elite-green); border: 1.5px solid var(--elite-green);">
+                                <i class="fas fa-exchange-alt me-1"></i>Switch to Elite
+                            </button>
                             {% else %}
                             <button onclick="startCheckout('elite')" class="btn-pricing" style="background: var(--elite-green); color: #fff;">
                                 <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite
@@ -948,6 +956,42 @@
                             {% endif %}
                         {% else %}
                         <a href="/auth/register?plan=elite" class="btn-pricing" style="background: var(--elite-green); color: #fff;">Choose Elite</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Elite Pro -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pricing-card" style="border: 2px solid #7c3aed; box-shadow: 0 4px 20px rgba(124,58,237,0.15);">
+                        <div class="pricing-badge" style="background: rgba(124,58,237,0.1); color: #7c3aed;">
+                            <i class="fas fa-gem me-1"></i>Elite Pro
+                        </div>
+                        <div class="pricing-price">&pound;99<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;120/month after launch</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Elite</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 1,500 AI actions/month<br><small class="text-muted">(~600 reports)</small></li>
+                            <li><i class="fas fa-check"></i>RadIQ: 60 queries/month</li>
+                            <li><i class="fas fa-check"></i>Priority content requests</li>
+                            <li><i class="fas fa-check"></i>Early access to new features</li>
+                            <li><i class="fas fa-check"></i>Dedicated support</li>
+                        </ul>
+                        {% if user_data %}
+                            {% if user_data.tier == 'elite_pro' %}
+                            <button class="btn-pricing disabled" disabled style="background: #7c3aed; color: #fff;">
+                                <i class="fas fa-check-circle me-1"></i>Current Plan
+                            </button>
+                            {% elif user_data.pending_tier == 'elite_pro' %}
+                            <button class="btn-pricing btn-pricing-pending" disabled>
+                                <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
+                            </button>
+                            {% else %}
+                            <button onclick="startCheckout('elite_pro')" class="btn-pricing" style="background: #7c3aed; color: #fff;">
+                                <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite Pro
+                            </button>
+                            {% endif %}
+                        {% else %}
+                        <a href="/auth/register?plan=elite_pro" class="btn-pricing" style="background: #7c3aed; color: #fff;">Choose Elite Pro</a>
                         {% endif %}
                     </div>
                 </div>
@@ -966,15 +1010,17 @@
                 <table class="comparison-table">
                     <thead>
                         <tr>
-                            <th style="min-width: 200px;">Feature</th>
+                            <th style="min-width: 180px;">Feature</th>
                             <th>Free</th>
                             <th>Standard</th>
                             <th>Elite</th>
+                            <th>Elite Pro</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td>Browse cases & Knowledge Hub</td>
+                            <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
@@ -984,9 +1030,11 @@
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
                             <td>TNM Calculators (39+)</td>
+                            <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
@@ -996,22 +1044,26 @@
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
-                            <td>Smart Reporter AI actions</td>
-                            <td><span class="highlight-val">10/month</span></td>
-                            <td><span class="highlight-val">75/month</span></td>
-                            <td><span class="highlight-val">1,500/month</span></td>
+                            <td>Smart Reporter AI actions<br><small class="text-muted">(estimated reports)</small></td>
+                            <td><span class="highlight-val">10/month</span><br><small class="text-muted">(~4 reports)</small></td>
+                            <td><span class="highlight-val">75/month</span><br><small class="text-muted">(~30 reports)</small></td>
+                            <td><span class="highlight-val">300/month</span><br><small class="text-muted">(~120 reports)</small></td>
+                            <td><span class="highlight-val">1,500/month</span><br><small class="text-muted">(~600 reports)</small></td>
                         </tr>
                         <tr>
                             <td>RadIQ queries</td>
                             <td><span class="highlight-val">5/month</span></td>
                             <td><span class="highlight-val">20/month</span></td>
+                            <td><span class="highlight-val">40/month</span></td>
                             <td><span class="highlight-val">60/month</span></td>
                         </tr>
                         <tr>
                             <td>7-day AI free trial</td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td>&mdash;</td>
                             <td>&mdash;</td>
                             <td>&mdash;</td>
                         </tr>
@@ -1020,10 +1072,12 @@
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
                             <td>Save personal templates</td>
                             <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                         </tr>
@@ -1032,10 +1086,12 @@
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
                             <td>Notes & Highlights</td>
                             <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                             <td><i class="fas fa-check check"></i></td>
                         </tr>
@@ -1044,9 +1100,18 @@
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
                             <td>Early access to new features</td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-minus cross"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                            <td><i class="fas fa-check check"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Dedicated support</td>
+                            <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-minus cross"></i></td>
                             <td><i class="fas fa-check check"></i></td>
@@ -1118,7 +1183,8 @@
                             <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                                 <div class="accordion-body">
                                     An AI action is any request to our AI engine &mdash; reviewing a report, generating a decision tree,
-                                    getting anatomy guidance, or asking a follow-up question. A typical report review uses 2&ndash;3 actions.
+                                    getting anatomy guidance, or asking a follow-up question. A typical report review uses 2&ndash;3 actions
+                                    (1 review + 1&ndash;2 follow-ups), so 75 actions &asymp; 30 reports, 300 actions &asymp; 120 reports, and 1,500 actions &asymp; 600 reports.
                                     RadIQ queries are counted separately.
                                 </div>
                             </div>
@@ -1226,7 +1292,7 @@
     let pendingChangePlan = '';
 
     // ── Plan labels ──
-    const PLAN_LABELS = { free: 'Free', standard: 'Standard', elite: 'Elite' };
+    const PLAN_LABELS = { free: 'Free', standard: 'Standard', elite: 'Elite', elite_pro: 'Elite Pro' };
 
     // ── Free → paid: Stripe Checkout ──
     function startCheckout(plan) {
