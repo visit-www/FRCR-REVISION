@@ -3014,6 +3014,7 @@ def smart_reporter_report_action():
         'success': True,
         'action': action,
         'html': html_text,
+        'model_used': model_used,
         'remaining_requests': remaining,
     })
 

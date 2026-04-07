@@ -3732,6 +3732,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
+            // Update model badge for report action
+            var _raModelUsed = data.model_used || '';
+            var _raModelBadge = document.getElementById('modelUsedBadge');
+            if (_raModelBadge) {
+                var _raIsOpus = _raModelUsed.indexOf('opus') >= 0;
+                _raModelBadge.textContent = _raIsOpus ? 'Pro' : 'Standard';
+                _raModelBadge.className = 'badge ms-2 ' + (_raIsOpus ? 'bg-success' : 'bg-secondary');
+                _raModelBadge.classList.remove('d-none');
+            }
+
             // Destroy TinyMCE on previous latest card before adding new one
             destroyReportActionEditor();
 
