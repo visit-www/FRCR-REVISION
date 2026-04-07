@@ -1889,10 +1889,8 @@ ACTION_PROMPTS = {
     ),
 }
 
-ACTION_MODELS = {
-    'mdt': os.getenv("CLAUDE_MODEL_FAST", "claude-haiku-4-5-20251001"),
-}
-# All others default to Sonnet via the general default
+ACTION_MODELS = {}
+# All actions default to Sonnet via the general default
 
 ACTION_TOKEN_LIMITS = {
     'mdt': 800,
