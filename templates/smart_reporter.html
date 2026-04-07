@@ -5075,6 +5075,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Accept all corrections and dismiss overlay to edit directly
     window.diffEditDirectly = function() {
+        // Block edit mode if fill-ins are still pending — user must resolve them in the overlay first
+        var _pendingFillIns = (state.aiAssistFillIns || []).filter(function(fi) { return fi.status === 'pending'; });
+        if (_pendingFillIns.length > 0) {
+            showToast('Resolve all fill-in placeholders before editing directly. ' + _pendingFillIns.length + ' remaining.', 'warning', 5000);
+            return;
+        }
         // Auto-accept all pending corrections before dismissing
         var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
         var output = document.getElementById('editorOutput');
