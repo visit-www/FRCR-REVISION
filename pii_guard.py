@@ -27,6 +27,7 @@ _TYPE_TIERS = {
     'UK National Insurance Number': TIER_HIGH,
     'Aadhaar Number': TIER_HIGH,
     'PAN Card': TIER_HIGH,
+    'GMC Number': TIER_HIGH,
     'Possible Patient ID': TIER_HIGH,
     'Patient Name': TIER_MEDIUM,
     'Doctor / Clinician Name': TIER_MEDIUM,
@@ -130,6 +131,7 @@ PII_PATTERNS = [
         r'\b(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\b')),
     ('Aadhaar Number', re.compile(r'\b\d{4}\s?\d{4}\s?\d{4}\b')),
     ('PAN Card', re.compile(r'\b[A-Z]{5}\d{4}[A-Z]\b')),
+    ('GMC Number', re.compile(r'\b(?:GMC|gmc)\s*(?:no\.?|number|#|:)?\s*\d{7}\b', re.IGNORECASE)),
 ]
 
 # ======================== MEDICAL ALLOWLIST ========================

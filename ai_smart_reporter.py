@@ -351,10 +351,9 @@ RULES FOR CORRECTIONS:
     within the main report body, in the impression, or between different sections — resolve it by
     choosing the statement that mentions a positive finding and rejecting the statement that says
     normal or unremarkable. A specific pathology or finding always trumps a generic "normal".
-    Example: if the impression says "soft tissue in external auditory canal suggesting chronic otitis
-    externa" but the body says "bilateral external auditory canals are normal" — keep the impression
-    finding and ADD it to the body, do NOT remove it from the impression. The trainee likely saw
-    something on imaging and forgot to update the body.
+    When the impression describes a pathology but the body says "normal" for that anatomical region,
+    keep the impression finding and ADD it to the body — do NOT remove it from the impression.
+    The trainee likely saw something on imaging and forgot to update the body.
     Always inform the user how and where the contradiction was resolved and the rationale.
 
 RULES FOR ANSWER AND REPORT_TEXT:
@@ -375,9 +374,9 @@ RULES FOR ANSWER AND REPORT_TEXT:
    NEVER put explanations inside report_text. report_text is the clean report only.
    This applies even if the trainee only said "finalize" with no specific question.
    Formatting/grammar/terminology cleanup does NOT need explanation.
-   Example answer: "I added the external auditory canal soft tissue finding to your Findings section —
-   your impression mentioned it but your body said 'normal'. I also moved the recommendation
-   for follow-up from findings to the recommendations section."
+   Example answer: "I resolved a contradiction between your Findings and Impression — your impression
+   described a pathology but the body said 'normal' for that region, so I added the finding to the
+   body. I also moved the recommendation for follow-up from findings to the recommendations section."
 10. REPORT QUALITY BAR:
    - Any diagnosis in the IMPRESSION must be explicitly described in FINDINGS with correct
      anatomical localisation. Do not introduce new findings in the impression.

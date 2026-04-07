@@ -726,6 +726,7 @@
                                             <div class="d-flex gap-1">
                                                 <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="diffAcceptAll()">Accept All</button>
                                                 <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="diffRejectAll()">Reject All</button>
+                                                <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="diffEditDirectly()" title="Dismiss overlay and edit the report text directly"><i class="fas fa-pencil-alt me-1"></i>Edit</button>
                                             </div>
                                         </div>
                                         <div id="pacsDiffContent" style="white-space: pre-wrap; line-height: 1.6; font-family: monospace; font-size: 0.9rem;"></div>
@@ -2865,7 +2866,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!text) {
             return;
         }
-        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
         doReviewReport();
     };
 
@@ -3092,7 +3092,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check for pending fill-ins and unresolved corrections before copy — returns true if user cancels
     function _checkPendingFillIns() {
         var msgs = [];
-        var pendingFillIns = (state.aiAssistFillIns || []).filter(function(fi) { return fi.status === 'pending'; });
+        // Only count fill-ins whose placeholder still exists in the text
+        var outputText = (document.getElementById('editorOutput') || {}).value || '';
+        var pendingFillIns = (state.aiAssistFillIns || []).filter(function(fi) {
+            return fi.status === 'pending' && outputText.indexOf(fi.placeholder) >= 0;
+        });
         if (pendingFillIns.length > 0) {
             msgs.push(pendingFillIns.length + ' unfilled placeholder(s)');
         }
@@ -3304,7 +3308,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!getCurrentReportText()) {
             return;
         }
-        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
 
         const btn = document.getElementById('btnAskClaude');
         _btnStartLoading(btn, '<i class="fas fa-spinner"></i>');
@@ -3319,6 +3322,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
 
         const ctx = _getClinicalContext();
+        // Opus routing: use Opus for report-generation actions, Sonnet for supplementary/knowledge questions
+        var _qLower = question.toLowerCase();
+        var _isReportGen = /\b(finali[sz]e|redo|rewrite)\b/.test(_qLower);
+        var _isReviewAction = /\b(review|check|write\s+(the\s+)?impression|add\s+impression|generate\s+report)\b/.test(_qLower);
+        // After finalization: only Opus for explicit re-generation (finalize/redo/rewrite)
+        // Before finalization: Opus for any report-generation or review action
+        var _useOpus = _isReportGen || (_isReviewAction && !state.hasReceivedFinalizedReport);
         const assistPayload = {
             question: question,
             report_text: getCurrentReportText(),
@@ -3326,6 +3336,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clinical_question: ctx.clinicalQuestion,
             modality: ctx.modality,
             body_section: ctx.bodySection,
+            use_opus: _useOpus,
         };
         // Include external context if user arrived from another tool
         if (state.externalContext) {
@@ -3441,8 +3452,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!reportText) {
             return;
         }
-        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
-
         const meta = REPORT_ACTION_META[action];
         if (!meta) return;
 
@@ -4388,8 +4397,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hard blockers: only while safety-critical corrections remain pending
         state.hardBlockers = remaining;
 
-        // Soft warnings: clear once ALL corrections are resolved
-        if (!anyPending && state.softWarnings && state.softWarnings.length) {
+        // Soft warnings: clear once no safety-critical corrections remain pending
+        if (remaining.length === 0 && state.softWarnings && state.softWarnings.length) {
             state.softWarnings = [];
         }
 
@@ -4905,6 +4914,23 @@ document.addEventListener('DOMContentLoaded', function() {
         _refreshSafetyBlockers();
     }
 
+    // Dismiss the diff overlay to edit the report text directly
+    window.diffEditDirectly = function() {
+        var overlay = document.getElementById('pacsDiffOverlay');
+        var textarea = document.getElementById('editorOutput');
+        if (overlay) overlay.classList.add('d-none');
+        if (textarea) {
+            textarea.classList.remove('d-none');
+            setTimeout(function() { autoResizeTextarea(textarea); }, 50);
+            textarea.focus();
+        }
+        _pacsDiffSource = null;
+        _refreshSafetyBlockers();
+        renderFillIns();
+        _updateProminentCopyLabel();
+        showToast('You can now edit the report directly. Fill-in chips are still available below.', 'info');
+    };
+
     // Resolve the diff overlay — hide it, show textarea
     function _resolveDiffOverlay() {
         var overlay = document.getElementById('pacsDiffOverlay');
@@ -4916,8 +4942,10 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(function() { autoResizeTextarea(textarea); }, 50);
         }
         _pacsDiffSource = null;
-        showToast('All corrections reviewed.', 'success');
+        _refreshSafetyBlockers();
+        renderFillIns();
         _updateProminentCopyLabel();
+        showToast('All corrections reviewed.', 'success');
     }
 
     // Apply PACS output back to draft
@@ -5514,6 +5542,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window._piiCtrl = PIIGuard.protect({
             textareas: ['#editorInput', '#editorOutput'],
             bannerTarget: '.card:has(#editorInput) .card-header .d-flex',
+            apiButtons: ['#btnAskClaude', '#btnFinalizeToolbar', '#btnReviewReport2', '.report-action-btn'],
             auditContext: 'smart-reporter'
         });
     }

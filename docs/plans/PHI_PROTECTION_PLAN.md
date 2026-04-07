@@ -42,29 +42,45 @@ RadInsights' PHI Guard protects users from accidentally submitting patient-ident
 
 ## 2. Current State
 
-### 2.1 Client-Side Detection (`static/pii-guard.js`)
+### 2.1 Client-Side Detection (`static/pii-guard.js` + `static/pii-guard-ui.js`)
+
+**Architecture (v2 — Apr 2026):** Standalone reusable package. `pii-guard.js` is the detection engine (~400 lines). `pii-guard-ui.js` is the UI module (~350 lines). `pii-guard.css` styles (~310 lines). All 3 files loaded globally via `base.html` for authenticated users.
+
+**Standalone API:**
+```javascript
+PIIGuard.protect({
+    textareas: ['#editorInput'],
+    bannerTarget: '.card-header .d-flex',
+    apiButtons: ['#btnSubmit', '#btnAnalyse'],
+    auditContext: 'smart-reporter'
+});
+```
 
 | Feature | Status |
 |---------|--------|
-| 24 regex pattern categories | Done |
-| Fetch interceptor (POST/PUT) | Done |
-| Modal with highlighted preview | Done |
-| Redact / Remove / Override options | Done |
-| Per-match Redact / Remove / Dismiss | Done (P0) |
-| Batch dismiss by type | Done (P0) |
-| Bulk Redact All / Remove All | Done (P0) |
-| Per-session dismissed items memory | Done (P0) |
-| Decision cache (2-min TTL) | Done |
-| Smart name detection (30+ stop words) | Done |
+| 28 regex patterns + HIGH/MEDIUM/LOW tiers | Done (v2) |
+| Spell-check-feel highlights (dotted underline overlay) | Done (v2) |
+| Per-match click popover (Redact / Remove / Dismiss) | Done (v2) |
+| Dismiss flow: checkbox confirmation → mark turns green | Done (v2) |
+| Red shield badge in card header (click → bulk actions) | Done (v2) |
+| API buttons grayed out while unresolved PII exists | Done (v2) |
+| Fetch interceptor (POST/PUT) with X-PII-Override | Done |
+| Per-session dismissed items memory | Done |
+| Medical allowlist (43 terms), eponym filter | Done (v2) |
+| NHS MOD-11 checksum, enhanced NINO/MRN patterns | Done (v2) |
 | Skip routes (admin, auth, AI) | Done |
+
+**Integrated in:** Smart Reporter, Vetting, RadIQ
 
 ### 2.2 Server-Side Detection (`pii_guard.py`)
 
+**Architecture (v2):** Regex-only (~200 lines). spaCy dropped entirely (eliminates 3-8s Vercel cold starts).
+
 | Feature | Status |
 |---------|--------|
-| Mirror of client 24 patterns | Done |
+| 27 regex patterns with tier info in 422 response | Done (v2) |
 | Flask middleware (POST/PUT intercept) | Done |
-| 422 response with `pii_blocked: true` | Done |
+| 422 response with `pii_blocked: true` + tier info | Done (v2) |
 | `X-PII-Override` header bypass | Done |
 | Recursive JSON scanning | Done |
 | Safe key skip list | Done |
@@ -81,16 +97,25 @@ RadInsights' PHI Guard protects users from accidentally submitting patient-ident
 | Admin dashboard UI | **Missing** |
 | Alerting on override spikes | **Missing** |
 
-### 2.4 Smart Reporter Integration
+### 2.4 App Integration (v2 — Standalone Package)
 
-| Feature | Status |
-|---------|--------|
-| Live PII scan (500ms debounce) | Done |
-| `checkEditorPII()` pre-flight check | Done |
-| Actionable warning bar with per-match buttons | Done (P0) |
-| `_logPIIAction()` fire-and-forget audit | Done (P0) |
-| `clearDismissals()` on session reset | Done (P0) |
-| AI button blocking when PII detected | Done |
+PII Guard v2 is a **standalone reusable module**. Each page integrates via a single `PIIGuard.protect()` call:
+
+| Page | Textareas | API Buttons Blocked | Status |
+|------|-----------|-------------------|--------|
+| Smart Reporter | `#editorInput`, `#editorOutput` | Ask Claude, Finalize, Review, Report Actions | Done (v2) |
+| Vetting | `#referralText` | Analyse, Quick Clean, Continue | Done (v2) |
+| RadIQ | `#queryInput` | Submit Query | Done (v2) |
+
+**UX Flow (v2):**
+1. User types → PII highlighted inline (dotted underline, spell-check-feel)
+2. Red shield badge appears in card header with count
+3. API buttons **grayed out** while unresolved PII exists
+4. Click highlighted PII → popover: Redact / Remove / Dismiss
+5. Dismiss → checkbox confirmation → mark turns green
+6. Click shield badge → dropdown: Redact All / Remove All / Dismiss All
+7. All PII resolved → API buttons re-enabled, badge turns green
+8. No gate modal — blocking is done at the button level
 
 ### 2.5 Pattern Coverage (24 categories)
 
@@ -950,13 +975,18 @@ tests/
 
 ### 15.1 Existing Files
 
-| File | Role | Layer |
-|------|------|-------|
-| `static/pii-guard.js` | Client-side detection + fetch interceptor + dismiss tracking | L1 Client |
-| `pii_guard.py` | Server-side middleware | L1 Server |
-| `models.py` → `PiiOverrideLog` | Audit trail model | Audit |
-| `app.py` → `/api/pii-override-log` | Audit log route | Audit |
-| `templates/smart_reporter.html` | Live scan + actionable warning bar | UI |
+| File | Role | Lines | Layer |
+|------|------|-------|-------|
+| `static/pii-guard.js` | Detection engine: 28 regex patterns, tiers, scan/redact/remove, fetch interceptor, dismiss tracking | ~400 | L1 Client |
+| `static/pii-guard-ui.js` | UI module: overlay highlights, header badge, click popover, badge dropdown, API button blocking | ~350 | L1 Client |
+| `static/pii-guard.css` | All PII Guard styles: marks, badge, dropdown, popover, button blocked state | ~310 | L1 Client |
+| `pii_guard.py` | Server-side middleware: regex-only (no spaCy), 422 response with tier info | ~200 | L1 Server |
+| `models.py` → `PiiOverrideLog` | Audit trail model | — | Audit |
+| `app.py` → `/api/pii-override-log` | Audit log route | — | Audit |
+| `templates/smart_reporter.html` | `PIIGuard.protect()` integration | ~6 | UI |
+| `templates/vetting.html` | `PIIGuard.protect()` integration | ~6 | UI |
+| `templates/radiq.html` | `PIIGuard.protect()` integration | ~6 | UI |
+| `templates/base.html` | Global CSS/JS includes (authenticated only) | ~8 | UI |
 
 ### 15.2 Files to Create
 
@@ -988,6 +1018,7 @@ tests/
 | Date | Phase | Change |
 |------|-------|--------|
 | 2026-03-30 | P0 | Per-match Redact/Remove/Dismiss UI, batch dismiss, audit `action` column, 48 tests |
+| 2026-04-06 | v2 | **Complete rewrite.** Standalone package (3 files). Spell-check-feel highlights. Red shield badge with click-to-bulk-action dropdown. API buttons grayed out (no gate modal). HIGH/MEDIUM/LOW tiers. NHS MOD-11 checksum. spaCy dropped. Integrated in Smart Reporter + Vetting + RadIQ. |
 | — | P1 | (Planned) Regex expansion, medical allowlist |
 | — | P2 | (Planned) Presidio integration, confidence scoring |
 | — | P3 | (Planned) Admin dashboard, adversarial detection, risk scoring |

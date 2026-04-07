@@ -456,9 +456,6 @@ async function submitQuery() {
     if (!question) return;
     if (!selectedCategory) return;
 
-    // PII gate — blocks if user cancels
-    if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
-
     // Client-side off-topic filter — saves AI credit
     if (isOffTopicQuery(question)) {
         showResponse(
@@ -972,6 +969,7 @@ if (window.PIIGuard && window.PIIGuard.protect) {
     window._piiCtrl = PIIGuard.protect({
         textareas: ['#queryInput'],
         bannerTarget: '#inputCol .d-flex',
+        apiButtons: ['#btnSubmitQuery'],
         auditContext: 'radiq'
     });
 }

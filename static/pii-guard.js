@@ -162,6 +162,11 @@
             description: 'Indian PAN card number detected'
         },
         {
+            type: 'GMC Number', tier: TIER_HIGH,
+            regex: /\b(?:GMC|gmc)\s*(?:no\.?|number|#|:)?\s*\d{7}\b/gi,
+            description: 'UK GMC registration number detected'
+        },
+        {
             type: 'Possible Patient ID', tier: TIER_HIGH,
             regex: /^\d{7,10}$/gm,
             description: 'Bare number on own line — likely hospital number or patient ID'

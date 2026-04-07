@@ -485,7 +485,6 @@ function cancelVettingRequest() {
 async function analyseReferral(quickClean) {
     const text = document.getElementById('referralText').value.trim();
     if (!text) { alert('Please enter the clinical referral text.'); return; }
-    if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
 
     _quickCleanMode = !!quickClean;
 
@@ -1015,7 +1014,6 @@ function _buildEnrichedClinicalText() {
 
 // ── Scene 2 → Scene 3 transition ──
 async function continueToProtocol() {
-    if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
     _safetyResponses = _collectSafetyResponses();
 
     if (_selectedProtocol) {
@@ -1343,6 +1341,7 @@ if (window.PIIGuard && window.PIIGuard.protect) {
     window._piiCtrl = PIIGuard.protect({
         textareas: ['#referralText'],
         bannerTarget: '#scene1 .card-brand-header',
+        apiButtons: ['#analyseBtn', '#quickCleanBtn', '#continueBtn'],
         auditContext: 'vetting'
     });
 }
