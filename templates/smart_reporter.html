@@ -3485,8 +3485,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // After finalization: only Opus for explicit re-generation (finalize/redo/rewrite)
         // Before finalization: Opus for any report-generation or review action
         var _useOpus = _isRegenMode || _isReportGen || (_isReviewAction && !state.hasReceivedFinalizedReport);
+        // In regen mode, prefix the question so the prompt treats it as a rewrite request
+        var _effectiveQuestion = _isRegenMode
+            ? 'Rewrite and finalize the full report with the following changes: ' + question
+            : question;
         const assistPayload = {
-            question: question,
+            question: _effectiveQuestion,
             report_text: getCurrentReportText(),
             has_finalized_report: state.hasReceivedFinalizedReport,
             clinical_question: ctx.clinicalQuestion,
