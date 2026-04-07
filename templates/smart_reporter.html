@@ -4138,7 +4138,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/save-pearl', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-PII-Override': '1' },
             body: JSON.stringify({
                 pearl_text: teachingText,
                 body_section: state.bodySection || '',
