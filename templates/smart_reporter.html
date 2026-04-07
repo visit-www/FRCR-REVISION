@@ -3958,11 +3958,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Finalized report inserted into PACS box.', 'success');
-        // Show diff overlay for corrections + fill-ins (instead of separate panels)
-        var hasPendingCorrections = (state.aiAssistCorrections || []).some(function(c) { return c.status === 'pending'; });
-        var hasPendingFillIns = state.aiAssistFillIns.length > 0;
-        if (hasPendingCorrections || hasPendingFillIns) {
-            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
+        // Auto-accept corrections (already applied in finalized text) — textarea stays editable
+        var _corrCount = 0;
+        (state.aiAssistCorrections || []).forEach(function(c) {
+            if (c.status === 'pending') { c.status = 'accepted'; _corrCount++; }
+        });
+        // Show fill-in chips panel (textarea remains visible and editable)
+        renderFillIns();
+        _refreshSafetyBlockers();
+        if (_corrCount > 0) {
+            setTimeout(function() {
+                showToast(_corrCount + ' correction' + (_corrCount !== 1 ? 's' : '') + ' applied automatically.', 'info', 4000);
+            }, 1500);
         }
         // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
