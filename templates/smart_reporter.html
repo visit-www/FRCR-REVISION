@@ -454,6 +454,12 @@
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="quickAsk(this)">Missing?</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="quickAsk(this)">Differentials</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">Recommendations</button>
+                            <button id="btnRegenerateReport" class="btn btn-sm btn-brand-primary py-0 px-2 d-none"
+                                    style="font-size: 0.72rem; font-weight: 600;"
+                                    onclick="startRegenerate()"
+                                    title="Regenerate the finalized report with specific changes. Use this when you want to modify, add, or redo findings in the report.">
+                                <i class="fas fa-sync-alt me-1"></i>Regenerate
+                            </button>
                         </div>
                     </div>
                     <!-- Row 3: Ask RadInsights + Resource Search (always visible) -->
@@ -680,6 +686,10 @@
                                     <strong>Report AI-Reviewed &amp; Finalized</strong>
                                     <span class="text-muted" style="font-size: 0.75rem;">— Ready to copy to PACS</span>
                                 </div>
+                                <div style="font-size: 0.72rem; color: #3d6b4f; margin-top: 4px; line-height: 1.3;">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    This is an AI-assisted decision support tool only. The reporting radiologist must independently review all images and verify the accuracy of this report before signing off.
+                                </div>
                             </div>
                             <div class="card border-0 mb-3 pacs-output-card">
                                 <div class="card-header pacs-output-header py-2 px-3">
@@ -731,6 +741,9 @@
                                         </div>
                                         <div id="pacsDiffContent" style="white-space: pre-wrap; line-height: 1.6; font-family: monospace; font-size: 0.9rem;"></div>
                                     </div>
+                                    <button id="btnDiffEditDirect" class="btn btn-brand-primary w-100 py-2 d-none" onclick="diffEditDirectly()" style="border-radius: 0; font-size: 0.9rem; font-weight: 600;">
+                                        <i class="fas fa-pencil-alt me-1"></i>Accept All &amp; Edit Report
+                                    </button>
                                     <textarea class="form-control pacs-output-textarea" id="editorOutput" spellcheck="true"></textarea>
                                 </div>
                                 <div class="card-footer pacs-output-footer py-2 px-3 d-flex align-items-center justify-content-between">
@@ -751,7 +764,7 @@
                         <div id="radInsightPanel" class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
+                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence<span id="modelUsedBadge" class="badge bg-secondary ms-2 d-none" style="font-size: 0.6rem; font-weight: 500;"></span></small>
                                 </div>
                                 <div class="mt-1">
                                     <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by RadInsight Intelligence &mdash; a fine-tuned radiology specific model. <a href="/privacy" target="_blank">Privacy Policy</a></small>
@@ -1252,6 +1265,20 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e) { _clearAutosave(); }
     })();
 
+    // ── Server-side PII blocked handler ──
+    // Shows what was detected + injects into PII Guard UI for user resolution
+    function handleServerPiiBlock(data) {
+        var detected = data.pii_detected || [];
+        var types = detected.map(function(d) { return d.type; }).filter(function(v, i, a) { return a.indexOf(v) === i; });
+        var msg = 'Patient data detected: ' + (types.length > 0 ? types.join(', ') : 'unknown pattern') + '. Review the highlighted items below.';
+        showToast(msg, 'warning', 8000);
+        if (window._piiCtrl && _piiCtrl.injectServerMatches) {
+            _piiCtrl.injectServerMatches(detected);
+        } else if (window._piiCtrl) {
+            _piiCtrl.scan();
+        }
+    }
+
     // ── Off-topic pre-filter (saves AI credits) ──
     function isOffTopicQuery(text) {
         const lower = text.toLowerCase().trim();
@@ -1598,8 +1625,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (data.pii_blocked) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                handleServerPiiBlock(data);
                 return;
             }
             if (data.error) {
@@ -2399,6 +2425,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.PIIGuard) PIIGuard.clearDismissals();
         if (window._piiCtrl) _piiCtrl.scan();
 
+        // Reset regenerate mode
+        state._regenerateMode = false;
+        var _regenBtn = document.getElementById('btnRegenerateReport');
+        if (_regenBtn) _regenBtn.classList.add('d-none');
+        var _askInput = document.getElementById('askClaudeInput');
+        if (_askInput) _askInput.placeholder = 'Ask RadInsights Intelligence...';
+
         // Clear UI
         var _banner = document.getElementById('reportCompleteBanner');
         if (_banner) _banner.classList.add('d-none');
@@ -2413,9 +2446,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
         var _brainBtn = document.getElementById('btnInsightsToggle');
         if (_brainBtn) _brainBtn.classList.add('d-none');
-        // Remove corrections summary card if present
-        var _corrSummary = document.getElementById('correctionsSummaryCard');
-        if (_corrSummary) _corrSummary.remove();
+        var _editBtn = document.getElementById('btnDiffEditDirect');
+        if (_editBtn) _editBtn.classList.add('d-none');
+        var _modelBadge = document.getElementById('modelUsedBadge');
+        if (_modelBadge) _modelBadge.classList.add('d-none');
         document.getElementById('aiHardBlockersBanner').classList.add('d-none');
         document.getElementById('aiSoftWarningsBanner').classList.add('d-none');
         destroyReportActionEditor();
@@ -2424,6 +2458,8 @@ document.addEventListener('DOMContentLoaded', function() {
         raContainer.classList.add('d-none');
         hideAllAdaptivePanels();
         updateActionButtonState();
+        // Re-sync split/stack layout and button after reset
+        applyViewMode(getSavedViewMode());
     }
 
     // Enable/disable action buttons + blank state guide based on draft length
@@ -2493,8 +2529,14 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function getCurrentReportText(warnIfEmpty) {
-        // Draft (editorInput) is the user's working document — always use it.
-        // editorOutput is PACS-ready copy only — never used as AI input.
+        // If PACS output has content (e.g. from proofread), prefer it — it has corrections applied.
+        // Otherwise fall back to draft (editorInput).
+        var output = document.getElementById('editorOutput');
+        var outputSection = document.getElementById('outputSection');
+        var pacsHasContent = output && outputSection && !outputSection.classList.contains('d-none') && output.value.trim().length > 0;
+        if (pacsHasContent) {
+            return output.value.trim();
+        }
         const input = document.getElementById('editorInput');
         const text = input ? input.value.trim() : '';
         if (!text && warnIfEmpty !== false) {
@@ -2796,8 +2838,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked) {
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                handleServerPiiBlock(data);
                 return;
             }
             if (data.error) {
@@ -2805,10 +2846,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Show model badge (proofread uses Standard)
+            var _modelUsed = data.model_used || '';
+            var _modelBadge = document.getElementById('modelUsedBadge');
+            if (_modelBadge) {
+                var isOpus = _modelUsed.indexOf('opus') >= 0;
+                _modelBadge.textContent = isOpus ? 'Pro' : 'Standard';
+                _modelBadge.className = 'badge ms-2 ' + (isOpus ? 'bg-success' : 'bg-secondary');
+                _modelBadge.classList.remove('d-none');
+            }
+
             state.improvedReport = data.improved_report || text;
+            // All proofread corrections start as pending — user reviews in overlay
             state.suggestions = (data.suggestions || []).map(s => ({
                 ...s,
-                status: isTier1(s.type) ? 'accepted' : 'pending',
+                status: 'pending',
             }));
 
             if (data.remaining_requests !== undefined) {
@@ -2817,39 +2869,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
-            // Auto-apply Tier 1 (minor) corrections to the PACS output text
-            var autoApplyText = text;
-            state.suggestions.forEach(function(s) {
-                if (s.status === 'accepted' && s.original && s.suggested) {
-                    autoApplyText = autoApplyText.split(s.original).join(s.suggested);
-                }
-            });
-
-            // Show PACS box with draft text and overlay corrections
-            state.outputText = autoApplyText;
+            // Show PACS box with original draft text (corrections applied via overlay)
+            state.outputText = text;
             var output = document.getElementById('editorOutput');
-            output.value = autoApplyText;
+            output.value = text;
             var outputSection = document.getElementById('outputSection');
             outputSection.classList.add('has-content');
             outputSection.classList.remove('d-none');
             // Resize after section is visible so scrollHeight is accurate
             setTimeout(function() { autoResizeTextarea(output); }, 50);
 
-            // Proofread summary: show how many corrections found
+            // Proofread summary
             var totalFound = state.suggestions.length;
-            var autoFixed = state.suggestions.filter(function(s) { return s.status === 'accepted'; }).length;
-            var pending = state.suggestions.filter(function(s) { return s.status === 'pending'; }).length;
 
             if (totalFound === 0) {
                 showToast('Proofread complete — no errors found. Your report looks good!', 'success');
-            } else if (pending === 0) {
-                showToast('Proofread complete — ' + totalFound + ' minor correction' + (totalFound !== 1 ? 's' : '') + ' auto-applied.', 'success');
             } else {
-                showToast(totalFound + ' correction' + (totalFound !== 1 ? 's' : '') + ' found (' + autoFixed + ' auto-applied, ' + pending + ' to review).', 'info');
+                showToast(totalFound + ' correction' + (totalFound !== 1 ? 's' : '') + ' found — review below.', 'info');
             }
 
-            // Show diff overlay in PACS box (not the separate suggestionsPanel)
-            if (pending > 0) {
+            // Show diff overlay in PACS box for all corrections
+            if (totalFound > 0) {
                 _renderPacsDiffView(state.suggestions, 'proofread');
                 outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -3302,10 +3342,33 @@ document.addEventListener('DOMContentLoaded', function() {
         askClaude();
     };
 
+    window.startRegenerate = function() {
+        var input = document.getElementById('askClaudeInput');
+        state._regenerateMode = true;
+        input.placeholder = 'What changes do you want in the report?';
+        input.focus();
+    };
+
     window.askClaude = async function() {
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
+
+        // Capture and reset regenerate mode
+        var _isRegenMode = state._regenerateMode;
+        if (_isRegenMode) {
+            state._regenerateMode = false;
+            input.placeholder = 'Ask a follow-up question...';
+        }
+
+        // Soft guard: redirect regen-like text to Regenerate button
+        if (state.hasReceivedFinalizedReport && !_isRegenMode) {
+            if (/\b(regenerat|finali[sz]ed?|redo|rewrite|update\s+(the\s+)?report|add\s+.+to\s+(the\s+)?report)\b/i.test(question)) {
+                showToast('To regenerate the report, click the orange Regenerate button first, then type your changes.', 'info', 5000);
+                return;
+            }
+        }
+
         if (isOffTopicQuery(question)) {
             showToast('That doesn\'t seem radiology-related. Try asking about imaging, reporting, or clinical correlation.', 'warning');
             return;
@@ -3333,7 +3396,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var _isReviewAction = /\b(review|check|write\s+(the\s+)?impression|add\s+impression|generate\s+report)\b/.test(_qLower);
         // After finalization: only Opus for explicit re-generation (finalize/redo/rewrite)
         // Before finalization: Opus for any report-generation or review action
-        var _useOpus = _isReportGen || (_isReviewAction && !state.hasReceivedFinalizedReport);
+        var _useOpus = _isRegenMode || _isReportGen || (_isReviewAction && !state.hasReceivedFinalizedReport);
         const assistPayload = {
             question: question,
             report_text: getCurrentReportText(),
@@ -3369,8 +3432,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked) {
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                handleServerPiiBlock(data);
                 return;
             }
             if (data.error) {
@@ -3388,6 +3450,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Store AI assist state
             state.aiAssistResponseType = data.response_type || 'advisory';
             state.aiAssistAnswer = data.answer || '';
+
+            // Block Sonnet full_report after finalization (prevent unwanted PACS replacement)
+            var _modelUsed = data.model_used || '';
+            if (_modelUsed.indexOf('opus') < 0 && data.response_type === 'full_report' && state.hasReceivedFinalizedReport) {
+                data.response_type = 'advisory';
+                state.aiAssistResponseType = 'advisory';
+                data.report_text = '';
+            }
+
             // Preserve finalized report if follow-up is advisory (no new report_text)
             if ((data.report_text || '').trim()) {
                 state.aiAssistReportText = data.report_text;
@@ -3398,6 +3469,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (_banner) _banner.classList.remove('d-none');
                     var _prominentCopy = document.getElementById('prominentCopyBtn');
                     if (_prominentCopy) _prominentCopy.classList.remove('d-none');
+                    // Show Regenerate button
+                    var _regenBtn = document.getElementById('btnRegenerateReport');
+                    if (_regenBtn) _regenBtn.classList.remove('d-none');
+                    // Change Ask AI placeholder
+                    var _askInput = document.getElementById('askClaudeInput');
+                    if (_askInput) _askInput.placeholder = 'Ask a follow-up question...';
                 }
             }
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: isTier1(c.type) ? 'accepted' : 'pending' }));
@@ -3417,6 +3494,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Safety blockers (replace on each response — not accumulated)
             state.hardBlockers = data.hard_blockers || [];
             state.softWarnings = data.soft_warnings || [];
+
+            // Show model indicator (helps verify Opus vs Sonnet routing)
+            var _modelUsed = data.model_used || '';
+            var _modelBadge = document.getElementById('modelUsedBadge');
+            if (_modelBadge) {
+                var isOpus = _modelUsed.indexOf('opus') >= 0;
+                _modelBadge.textContent = isOpus ? 'Pro' : 'Standard';
+                _modelBadge.className = 'badge ms-2 ' + (isOpus ? 'bg-success' : 'bg-secondary');
+                _modelBadge.classList.remove('d-none');
+            }
 
             // Render 3 layers
             renderAiAssistResponse();
@@ -3511,8 +3598,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (data.pii_blocked) {
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                handleServerPiiBlock(data);
                 return;
             }
             if (data.error) {
@@ -3959,7 +4045,8 @@ document.addEventListener('DOMContentLoaded', function() {
         _savePacsUndo(output);
         output.value = reportText;
         state.outputText = output.value;
-        autoResizeTextarea(output);
+        // Defer resize to ensure layout has reflowed after d-none removal
+        setTimeout(function() { autoResizeTextarea(output); output.scrollTop = 0; }, 50);
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Finalized report inserted into PACS box.', 'success');
@@ -3968,18 +4055,19 @@ document.addEventListener('DOMContentLoaded', function() {
         (state.aiAssistCorrections || []).forEach(function(c) {
             if (c.status === 'pending') { c.status = 'accepted'; _corrCount++; }
         });
-        // Show corrections summary card if any were auto-applied
-        if (_corrCount > 0) {
-            _renderCorrectionsSummary(state.aiAssistCorrections);
-        }
         // Show fill-in chips panel (textarea remains visible and editable)
         renderFillIns();
         _refreshSafetyBlockers();
+        if (_corrCount > 0) {
+            setTimeout(function() {
+                showToast(_corrCount + ' correction' + (_corrCount !== 1 ? 's' : '') + ' applied automatically.', 'info', 4000);
+            }, 1500);
+        }
         // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
         if (outputSection) {
             outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
+            setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); output.scrollTop = 0; }, 300);
         }
     };
 
@@ -4125,36 +4213,19 @@ document.addEventListener('DOMContentLoaded', function() {
             answerSection.classList.add('d-none');
         }
 
-        // Layer 2: Report text — auto-insert if PACS box empty, else show preview
+        // Layer 2: Report text — auto-insert if PACS box empty, else show preview for user decision
         const reportSection = document.getElementById('aiAssistReportSection');
         if (state.aiAssistReportText && isFullReport) {
             const outputSection = document.getElementById('outputSection');
             const output = document.getElementById('editorOutput');
             const pacsHasContent = !outputSection.classList.contains('d-none') && (output.value || '').trim().length > 0;
 
-            // Always auto-insert into PACS (undo available if replacing)
-            reportSection.classList.add('d-none');
             if (pacsHasContent) {
-                // Save undo state, replace, and show undo toast
-                _savePacsUndo(output);
-                output.value = state.aiAssistReportText;
-                state.outputText = output.value;
-                autoResizeTextarea(output);
-                outputSection.classList.remove('d-none');
-                outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
-                _showUndoToast();
-                // Auto-accept corrections and show summary (same as insertReportText path)
-                var _replCorrCount = 0;
-                (state.aiAssistCorrections || []).forEach(function(c) {
-                    if (c.status === 'pending') { c.status = 'accepted'; _replCorrCount++; }
-                });
-                if (_replCorrCount > 0) {
-                    _renderCorrectionsSummary(state.aiAssistCorrections);
-                }
-                renderFillIns();
-                _refreshSafetyBlockers();
+                // Show in preview box — user decides whether to replace
+                document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
+                reportSection.classList.remove('d-none');
             } else {
+                reportSection.classList.add('d-none');
                 insertReportText();
             }
         } else if (state.aiAssistReportText) {
@@ -4164,27 +4235,19 @@ document.addEventListener('DOMContentLoaded', function() {
             reportSection.classList.add('d-none');
         }
 
-        // Layer 3: Corrections auto-accepted + fill-in chips shown (no overlay)
-        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
+        // Layer 3: Corrections + Fill-ins → unified PACS diff overlay
+        const correctionsSection = document.getElementById('aiAssistCorrectionsSection');
+        correctionsSection.classList.add('d-none'); // Never show separate panel
+        const fillInsSection = document.getElementById('aiAssistFillInsSection');
+        fillInsSection.classList.add('d-none'); // Never show separate panel
 
-        // Auto-accept corrections (already applied in finalized text)
-        var _corrCount = 0;
-        (state.aiAssistCorrections || []).forEach(function(c) {
-            if (c.status === 'pending') { c.status = 'accepted'; _corrCount++; }
-        });
+        var hasPendingCorrections = state.aiAssistCorrections.some(function(c) { return c.status === 'pending'; });
+        var hasPendingFillIns = state.aiAssistFillIns.length > 0 && isFullReport;
 
-        // Show corrections summary card if any were auto-applied
-        if (_corrCount > 0) {
-            _renderCorrectionsSummary(state.aiAssistCorrections);
+        if (hasPendingCorrections || hasPendingFillIns) {
+            // Show diff overlay in PACS box
+            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
         }
-
-        // Show fill-in chips panel (textarea stays visible and editable)
-        if (state.aiAssistFillIns.length > 0 && isFullReport) {
-            renderFillIns();
-        } else {
-            document.getElementById('aiAssistFillInsSection').classList.add('d-none');
-        }
-        _refreshSafetyBlockers();
 
         // Layer 4: Insights (persistent — rendered outside #aiAssistResponse)
         renderInsights();
@@ -4404,85 +4467,6 @@ document.addEventListener('DOMContentLoaded', function() {
         _refreshSafetyBlockers();
     }
 
-    // ── Corrections Summary Card (dismissible, above PACS textarea) ──
-    function _renderCorrectionsSummary(corrections) {
-        // Remove existing card if any
-        var existing = document.getElementById('correctionsSummaryCard');
-        if (existing) existing.remove();
-
-        var accepted = (corrections || []).filter(function(c) { return c.status === 'accepted'; });
-        if (accepted.length === 0) return;
-
-        var card = document.createElement('div');
-        card.id = 'correctionsSummaryCard';
-        card.className = 'corrections-summary-card';
-
-        // Header
-        var header = '<div class="summary-header">';
-        header += '<span class="summary-title"><i class="fas fa-check-circle me-1"></i>Changes Applied (' + accepted.length + ')</span>';
-        header += '<button class="btn btn-sm py-0 px-1" onclick="this.closest(\'.corrections-summary-card\').remove()" style="font-size: 0.7rem; color: #999; border: none; background: none;" title="Dismiss"><i class="fas fa-times"></i></button>';
-        header += '</div>';
-
-        // Items
-        var items = '';
-        var textarea = document.getElementById('editorOutput');
-        var pacsText = textarea ? textarea.value : '';
-
-        accepted.forEach(function(c, i) {
-            // Find position of the suggested (accepted) text in the PACS textarea
-            var pos = pacsText.indexOf(c.suggested);
-            var dataAttrs = pos >= 0 ? ' data-corr-pos="' + pos + '" data-corr-len="' + c.suggested.length + '"' : '';
-
-            items += '<div class="corrections-summary-item" onclick="_highlightCorrectionInPacs(this)"' + dataAttrs + '>';
-            items += '<i class="fas fa-check" style="color: var(--brand-neutral); font-size: 0.65rem; margin-right: 0.3rem;"></i>';
-
-            // Show context: "...text [old → new] text..."
-            var contextBefore = '';
-            var contextAfter = '';
-            if (pos >= 0) {
-                contextBefore = pacsText.substring(Math.max(0, pos - 15), pos).replace(/^\S*\s/, '');
-                var end = pos + c.suggested.length;
-                contextAfter = pacsText.substring(end, Math.min(pacsText.length, end + 15)).replace(/\s\S*$/, '');
-            }
-            if (contextBefore) items += '<span style="font-size: 0.75rem; color: #666;">…' + escapeHtml(contextBefore) + '</span>';
-            items += '<span class="corr-old">' + escapeHtml(c.original) + '</span>';
-            items += '<i class="fas fa-arrow-right corr-arrow"></i>';
-            items += '<span class="corr-new">' + escapeHtml(c.suggested) + '</span>';
-            if (contextAfter) items += '<span style="font-size: 0.75rem; color: #666;">' + escapeHtml(contextAfter) + '…</span>';
-
-            if (c.reason) {
-                items += '<span class="corr-reason">' + escapeHtml(c.reason) + '</span>';
-            }
-            items += '</div>';
-        });
-
-        card.innerHTML = header + items;
-
-        // Insert above textarea inside the card-body of the PACS output card
-        var cardBody = document.querySelector('.pacs-output-card .card-body');
-        if (cardBody) {
-            cardBody.insertBefore(card, cardBody.firstChild);
-        }
-    }
-
-    // Click handler: highlight the corrected text in the PACS textarea
-    window._highlightCorrectionInPacs = function(el) {
-        var pos = parseInt(el.getAttribute('data-corr-pos'));
-        var len = parseInt(el.getAttribute('data-corr-len'));
-        if (isNaN(pos) || isNaN(len)) return;
-
-        var textarea = document.getElementById('editorOutput');
-        if (!textarea) return;
-        textarea.focus();
-        textarea.setSelectionRange(pos, pos + len);
-
-        // Scroll textarea to show the selection
-        var lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 20;
-        var charsPerLine = Math.floor(textarea.clientWidth / 8) || 80;
-        var approxLine = Math.floor(pos / charsPerLine);
-        textarea.scrollTop = Math.max(0, (approxLine - 3) * lineHeight);
-    };
-
     // Recalculate hard + soft blockers based on unresolved corrections.
     // Called after every accept/reject so pills + gates vanish once resolved.
     function _refreshSafetyBlockers() {
@@ -4605,9 +4589,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         badge.textContent = badgeText;
 
-        // Show overlay, hide textarea
+        // Show overlay, hide textarea, show prominent Edit button
         overlay.classList.remove('d-none');
         textarea.classList.add('d-none');
+        var editBtn = document.getElementById('btnDiffEditDirect');
+        if (editBtn) editBtn.classList.remove('d-none');
 
         // Attach click handlers for corrections
         content.querySelectorAll('.diff-added[data-diff-type="correction"]').forEach(function(el) {
@@ -4891,6 +4877,16 @@ document.addEventListener('DOMContentLoaded', function() {
             fi.appliedValue = newText;
             _rerenderPacsDiff();
         };
+        var cancelBtn = document.createElement('button');
+        cancelBtn.innerHTML = '<i class="fas fa-undo" style="color: #6c757d;"></i>';
+        cancelBtn.title = 'Cancel';
+        cancelBtn.onclick = function(e) {
+            e.stopPropagation();
+            spanEl.textContent = fi.placeholder;
+            spanEl.contentEditable = 'false';
+            spanEl.classList.remove('diff-editing');
+            editPopup.remove();
+        };
         var removeBtn = document.createElement('button');
         removeBtn.innerHTML = '<i class="fas fa-trash-alt" style="color: #dc3545;"></i>';
         removeBtn.title = 'Remove';
@@ -4901,6 +4897,7 @@ document.addEventListener('DOMContentLoaded', function() {
             diffRemoveFillin(idx);
         };
         editPopup.appendChild(confirmBtn);
+        editPopup.appendChild(cancelBtn);
         editPopup.appendChild(removeBtn);
         spanEl.after(editPopup);
 
@@ -4910,11 +4907,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 confirmBtn.click();
                 spanEl.removeEventListener('keydown', onKey);
             } else if (e.key === 'Escape') {
-                // Restore placeholder text and cancel
-                spanEl.textContent = fi.placeholder;
-                spanEl.contentEditable = 'false';
-                spanEl.classList.remove('diff-editing');
-                editPopup.remove();
+                cancelBtn.click();
                 spanEl.removeEventListener('keydown', onKey);
             }
         });
@@ -5022,11 +5015,27 @@ document.addEventListener('DOMContentLoaded', function() {
         _refreshSafetyBlockers();
     }
 
-    // Dismiss the diff overlay to edit the report text directly
+    // Accept all corrections and dismiss overlay to edit directly
     window.diffEditDirectly = function() {
+        // Auto-accept all pending corrections before dismissing
+        var corrections = (_pacsDiffSource === 'proofread') ? state.suggestions : state.aiAssistCorrections;
+        var output = document.getElementById('editorOutput');
+        var _acceptCount = 0;
+        (corrections || []).forEach(function(c) {
+            if (c.status !== 'pending') return;
+            if (_pacsDiffSource === 'proofread' && output && output.value) {
+                _replaceInBox('editorOutput', c.original, c.suggested);
+                state.outputText = output.value;
+            }
+            c.status = 'accepted';
+            _acceptCount++;
+        });
+
         var overlay = document.getElementById('pacsDiffOverlay');
         var textarea = document.getElementById('editorOutput');
+        var editBtn = document.getElementById('btnDiffEditDirect');
         if (overlay) overlay.classList.add('d-none');
+        if (editBtn) editBtn.classList.add('d-none');
         if (textarea) {
             textarea.classList.remove('d-none');
             setTimeout(function() { autoResizeTextarea(textarea); }, 50);
@@ -5034,16 +5043,27 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         _pacsDiffSource = null;
         _refreshSafetyBlockers();
+        // Show fill-in chips panel so user can fill them while editing
+        var fillInsSection = document.getElementById('aiAssistFillInsSection');
+        var hasPendingFillIns = state.aiAssistFillIns.some(function(fi) { return fi.status === 'pending'; });
+        if (hasPendingFillIns && fillInsSection) {
+            fillInsSection.classList.remove('d-none');
+        }
         renderFillIns();
         _updateProminentCopyLabel();
-        showToast('You can now edit the report directly. Fill-in chips are still available below.', 'info');
+        var msg = _acceptCount > 0
+            ? _acceptCount + ' correction' + (_acceptCount !== 1 ? 's' : '') + ' applied. You can now edit the report.'
+            : 'You can now edit the report directly.';
+        showToast(msg, 'success');
     };
 
     // Resolve the diff overlay — hide it, show textarea
     function _resolveDiffOverlay() {
         var overlay = document.getElementById('pacsDiffOverlay');
         var textarea = document.getElementById('editorOutput');
+        var editBtn = document.getElementById('btnDiffEditDirect');
         if (overlay) overlay.classList.add('d-none');
+        if (editBtn) editBtn.classList.add('d-none');
         if (textarea) {
             textarea.classList.remove('d-none');
             // Delay resize to ensure layout is recalculated after d-none removal
@@ -5051,6 +5071,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         _pacsDiffSource = null;
         _refreshSafetyBlockers();
+        // Show fill-in chips panel after overlay resolves
+        var fillInsSection = document.getElementById('aiAssistFillInsSection');
+        var hasPendingFillIns = state.aiAssistFillIns.some(function(fi) { return fi.status === 'pending'; });
+        if (hasPendingFillIns && fillInsSection) {
+            fillInsSection.classList.remove('d-none');
+        }
         renderFillIns();
         _updateProminentCopyLabel();
         showToast('All corrections reviewed.', 'success');
@@ -5203,12 +5229,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderFillIns() {
         const list = document.getElementById('aiAssistFillInsList');
         if (!list) return;
-        // Show the fill-ins section if there are pending fill-ins
-        var section = document.getElementById('aiAssistFillInsSection');
-        var hasPending = state.aiAssistFillIns.some(function(fi) { return fi.status === 'pending'; });
-        if (section) {
-            if (hasPending) { section.classList.remove('d-none'); } else { section.classList.add('d-none'); }
-        }
         // Save current input values before re-rendering so user doesn't lose typed text
         var savedInputs = {};
         state.aiAssistFillIns.forEach(function(fi, i) {
@@ -6454,8 +6474,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (data.pii_blocked) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                handleServerPiiBlock(data);
                 return;
             }
             if (data.error) {
@@ -6757,11 +6776,16 @@ document.addEventListener('DOMContentLoaded', function() {
             var outputSection = document.getElementById('outputSection');
             var editorOutput = document.getElementById('editorOutput');
             if (!outputSection || outputSection.classList.contains('d-none')) return;
-            // Use window.scrollTo for reliable cross-layout scrolling (stack + split)
+            // Scroll so the PACS card header sits at the top of the viewport
             var rect = outputSection.getBoundingClientRect();
             var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            window.scrollTo({ top: rect.top + scrollTop - 20, behavior: 'smooth' });
-            setTimeout(function() { editorOutput.focus(); }, 500);
+            window.scrollTo({ top: rect.top + scrollTop - 10, behavior: 'smooth' });
+            // Focus textarea after scroll completes, reset cursor to top to prevent browser auto-scroll
+            setTimeout(function() {
+                editorOutput.setSelectionRange(0, 0);
+                editorOutput.scrollTop = 0;
+                editorOutput.focus();
+            }, 600);
         });
     }
 
@@ -6846,12 +6870,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== SCENE EXTENSION ====================
 
+    // Apply saved view mode immediately to avoid visual jump
+    applyViewMode(getSavedViewMode());
+
     // Extend showScene to reload lists and fetch related content
     const origShowScene = window.showScene;
     window.showScene = function(scene) {
         origShowScene(scene);
         if (scene === 'editor') {
-            // Apply saved view mode
+            // Re-sync view mode after scene transition
             applyViewMode(getSavedViewMode());
         }
         if (scene === 'landing') {

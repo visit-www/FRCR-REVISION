@@ -300,11 +300,12 @@
                 ev.stopPropagation();
                 if (!cb.checked) return;
                 for (var i = 0; i < _activeMatches.length; i++) {
-                    PIIGuard.dismiss(_activeMatches[i]);
+                    _dismissWithOverlaps(_activeMatches[i]);
                 }
                 var types = _activeMatches.map(function(m) { return m.type; });
                 _logAction('batch_dismiss', types, _activeMatches.length);
                 _closeBadgeDropdown();
+                clearTimeout(_debounceTimer);
                 _doScan();
             });
         }
@@ -313,18 +314,19 @@
 
         function _updateApiButtons(hasActivePII) {
             for (var i = 0; i < apiButtonSels.length; i++) {
-                var btn = document.querySelector(apiButtonSels[i]);
-                if (!btn) continue;
-                if (hasActivePII) {
-                    btn.classList.add('pii-btn-blocked');
-                    btn.setAttribute('data-pii-blocked', 'true');
-                    btn.setAttribute('title', 'Resolve PHI issues before submitting');
-                } else {
-                    btn.classList.remove('pii-btn-blocked');
-                    btn.removeAttribute('data-pii-blocked');
-                    // Restore original title if stored
-                    var orig = btn.getAttribute('data-orig-title');
-                    if (orig) btn.setAttribute('title', orig);
+                var btns = document.querySelectorAll(apiButtonSels[i]);
+                for (var b = 0; b < btns.length; b++) {
+                    var btn = btns[b];
+                    if (hasActivePII) {
+                        btn.classList.add('pii-btn-blocked');
+                        btn.setAttribute('data-pii-blocked', 'true');
+                        btn.setAttribute('title', 'Resolve PHI issues before submitting');
+                    } else {
+                        btn.classList.remove('pii-btn-blocked');
+                        btn.removeAttribute('data-pii-blocked');
+                        var orig = btn.getAttribute('data-orig-title');
+                        if (orig) btn.setAttribute('title', orig);
+                    }
                 }
             }
         }
@@ -332,9 +334,11 @@
         // Store original titles on first run
         function _storeOrigTitles() {
             for (var i = 0; i < apiButtonSels.length; i++) {
-                var btn = document.querySelector(apiButtonSels[i]);
-                if (btn && !btn.hasAttribute('data-orig-title')) {
-                    btn.setAttribute('data-orig-title', btn.getAttribute('title') || '');
+                var btns = document.querySelectorAll(apiButtonSels[i]);
+                for (var b = 0; b < btns.length; b++) {
+                    if (!btns[b].hasAttribute('data-orig-title')) {
+                        btns[b].setAttribute('data-orig-title', btns[b].getAttribute('title') || '');
+                    }
                 }
             }
         }
@@ -431,14 +435,28 @@
                     ev.stopPropagation();
                     if (!cb.checked) return;
                     _closePopover();
-                    PIIGuard.dismiss(match);
+                    _dismissWithOverlaps(match);
                     _logAction('dismiss', [match.type], 1);
+                    clearTimeout(_debounceTimer);
                     _doScan();
                 });
             }
         }
 
         // ===================== ACTIONS =====================
+
+        // Dismiss a match AND all overlapping matches (text contained in or containing it)
+        function _dismissWithOverlaps(match) {
+            PIIGuard.dismiss(match);
+            for (var i = 0; i < _allMatches.length; i++) {
+                var other = _allMatches[i];
+                if (other.match === match.match ||
+                    match.match.indexOf(other.match) >= 0 ||
+                    other.match.indexOf(match.match) >= 0) {
+                    PIIGuard.dismiss(other);
+                }
+            }
+        }
 
         function _singleAction(action, match) {
             var replacement = action === 'redact' ? '[REDACTED]' : '';
@@ -489,6 +507,32 @@
             }
         }
 
+        // Merge overlapping matches — keep the longest match per text region
+        function _dedupeOverlaps(matches) {
+            if (!matches || matches.length <= 1) return matches;
+            // Sort by index, then longest first
+            var sorted = matches.slice().sort(function(a, b) {
+                var d = (a.index || 0) - (b.index || 0);
+                return d !== 0 ? d : (b.length || 0) - (a.length || 0);
+            });
+            var result = [sorted[0]];
+            for (var i = 1; i < sorted.length; i++) {
+                var prev = result[result.length - 1];
+                var curr = sorted[i];
+                var prevEnd = (prev.index || 0) + (prev.length || 0);
+                // If current overlaps with previous, keep the longer one
+                if ((curr.index || 0) < prevEnd) {
+                    if ((curr.length || 0) > (prev.length || 0)) {
+                        result[result.length - 1] = curr;
+                    }
+                    // else skip curr (prev is longer or equal)
+                } else {
+                    result.push(curr);
+                }
+            }
+            return result;
+        }
+
         function _doScan() {
             if (_destroyed) return;
             _allMatches = [];
@@ -499,13 +543,13 @@
                 var taId = ta.id || ('pii-ta-' + t);
                 var text = ta.value || '';
                 var result = PIIGuard.scan(text);
-                var matches = result.matches || [];
+                var matches = _dedupeOverlaps(result.matches || []);
 
                 for (var i = 0; i < matches.length; i++) {
                     var m = matches[i];
                     var isDupe = false;
                     for (var j = 0; j < _allMatches.length; j++) {
-                        if (_allMatches[j].type === m.type && _allMatches[j].match === m.match) {
+                        if (_allMatches[j].match === m.match) {
                             isDupe = true; break;
                         }
                     }
@@ -574,8 +618,9 @@
                     ov.container.parentNode.insertBefore(ov.textarea, ov.container);
                     ov.container.remove();
                 }
+                delete _overlays[id];
             }
-            if (_badge) _badge.remove();
+            if (_badge) { _badge.remove(); _badge = null; }
             _closePopover();
             _closeBadgeDropdown();
             _updateApiButtons(false);
@@ -586,8 +631,92 @@
             return _activeMatches.length > 0;
         }
 
+        // Inject server-detected PII matches into the client UI so the user
+        // can see, dismiss, redact, or remove them — then retry.
+        function injectServerMatches(serverMatches) {
+            if (!serverMatches || serverMatches.length === 0) return;
+
+            // Un-dismiss any previously dismissed matches the server flagged
+            for (var i = 0; i < serverMatches.length; i++) {
+                if (serverMatches[i].match && PIIGuard.undismiss) {
+                    PIIGuard.undismiss({ type: serverMatches[i].type, match: serverMatches[i].match });
+                }
+            }
+
+            // If destroyed, fully re-initialize overlays and listeners
+            if (_destroyed) {
+                _destroyed = false;
+                for (var t = 0; t < _textareas.length; t++) {
+                    var ta = _textareas[t];
+                    var taId = ta.id || ('pii-ta-' + t);
+                    _setupOverlay(ta, taId);
+                    ta.addEventListener('input', _onInput);
+                    ta.addEventListener('scroll', _onScroll);
+                }
+                document.addEventListener('click', _onDocClick);
+            }
+
+            // Clear override — server just rejected us
+            PIIGuard.setOverride(false);
+
+            // Run a full scan — picks up everything the client can detect
+            _doScan();
+
+            // Inject any server-only matches the client scan missed
+            for (var t2 = 0; t2 < _textareas.length; t2++) {
+                var ta2 = _textareas[t2];
+                var taId2 = ta2.id || ('pii-ta-' + t2);
+                var text = ta2.value || '';
+
+                for (var j = 0; j < serverMatches.length; j++) {
+                    var sm = serverMatches[j];
+                    if (!sm.match) continue;
+
+                    var idx = text.indexOf(sm.match);
+                    if (idx < 0) continue;
+
+                    // Check if _doScan already found this match
+                    var alreadyFound = false;
+                    for (var k = 0; k < _allMatches.length; k++) {
+                        if (_allMatches[k].type === sm.type && _allMatches[k].match === sm.match) {
+                            alreadyFound = true; break;
+                        }
+                    }
+                    if (alreadyFound) continue;
+
+                    var m = {
+                        type: sm.type || 'Unknown',
+                        match: sm.match,
+                        index: idx,
+                        length: sm.match.length,
+                        tier: sm.tier || 'medium',
+                        description: sm.description || (sm.type + ' detected by server')
+                    };
+                    _allMatches.push(m);
+                    _activeMatches.push(m);
+                }
+
+                // Re-render overlay if we added server-only matches
+                if (_overlays[taId2]) {
+                    var allForTa = [];
+                    for (var n = 0; n < _allMatches.length; n++) {
+                        if (text.indexOf(_allMatches[n].match) >= 0) {
+                            allForTa.push(_allMatches[n]);
+                        }
+                    }
+                    _renderOverlay(taId2, text, allForTa);
+                }
+            }
+
+            // Final UI update
+            var dismissedCount = _allMatches.length - _activeMatches.length;
+            _updateBadge(_activeMatches.length, dismissedCount);
+            _updateApiButtons(_activeMatches.length > 0);
+        }
+
         return {
             scan: function() { _doScan(); },
+            injectServerMatches: injectServerMatches,
             hasPII: hasPII,
             destroy: destroy
         };

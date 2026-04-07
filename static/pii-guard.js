@@ -432,6 +432,10 @@
         return _dismissedKeys.has(_dismissKey(match));
     }
 
+    function undismiss(match) {
+        _dismissedKeys.delete(_dismissKey(match));
+    }
+
     function filterDismissed(matches) {
         return matches.filter(function(m) { return !_dismissedKeys.has(_dismissKey(m)); });
     }
@@ -482,6 +486,7 @@
         setOverride: setOverride,
         getOverride: getOverride,
         dismiss: dismiss,
+        undismiss: undismiss,
         isDismissed: isDismissed,
         filterDismissed: filterDismissed,
         clearDismissals: clearDismissals,

@@ -2828,6 +2828,7 @@ def smart_reporter_quick_review():
         'improved_report': result.get('improved_report', ''),
         'suggestions': result.get('suggestions', []),
         'remaining_requests': remaining,
+        'model_used': result.get('model', ''),
     })
 
 
@@ -2942,6 +2943,7 @@ def smart_reporter_ai_assist():
         'remaining_requests': remaining,
         'hard_blockers': result.get('hard_blockers', []),
         'soft_warnings': result.get('soft_warnings', []),
+        'model_used': result.get('model', ''),
     }
     return jsonify(resp)
 

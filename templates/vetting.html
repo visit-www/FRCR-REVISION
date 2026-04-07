@@ -512,8 +512,10 @@ async function analyseReferral(quickClean) {
         const data = await resp.json();
         if (!resp.ok) {
             if (data.pii_blocked) {
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                var _piiTypes = (data.pii_detected || []).map(function(d) { return d.type; }).filter(function(v, i, a) { return a.indexOf(v) === i; });
+                showToast('Patient data detected: ' + (_piiTypes.length ? _piiTypes.join(', ') : 'unknown') + '. Review highlighted items.', 'warning', 8000);
+                if (window._piiCtrl && _piiCtrl.injectServerMatches) { _piiCtrl.injectServerMatches(data.pii_detected); }
+                else if (window._piiCtrl) { _piiCtrl.scan(); }
                 return;
             }
             alert(data.error || 'Analysis failed.');
@@ -1053,8 +1055,10 @@ async function continueToProtocol() {
         const data = await resp.json();
         if (!resp.ok) {
             if (data.pii_blocked) {
-                showToast('Server detected patient data. Please review and re-submit.', 'warning');
-                if (window._piiCtrl) _piiCtrl.scan();
+                var _piiTypes = (data.pii_detected || []).map(function(d) { return d.type; }).filter(function(v, i, a) { return a.indexOf(v) === i; });
+                showToast('Patient data detected: ' + (_piiTypes.length ? _piiTypes.join(', ') : 'unknown') + '. Review highlighted items.', 'warning', 8000);
+                if (window._piiCtrl && _piiCtrl.injectServerMatches) { _piiCtrl.injectServerMatches(data.pii_detected); }
+                else if (window._piiCtrl) { _piiCtrl.scan(); }
                 return;
             }
             alert(data.error || 'Protocol generation failed.');

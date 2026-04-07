@@ -318,8 +318,7 @@ Return a JSON object with EXACTLY this structure:
 
 RULES FOR RESPONSE_TYPE:
 1. "full_report" — when REPORT STATUS is NOT_YET_FINALIZED and the trainee asks you to review, check, finalize, rewrite, redo, or help with their report. You MUST generate the corrected report_text. NEVER return advisory when the trainee wants their report reviewed or corrected.
-2. "advisory" — for knowledge questions (e.g. "what is X?", "explain Y"), or when REPORT STATUS is ALREADY_FINALIZED (unless trainee explicitly says "finalize"/"rewrite"/"redo").
-3. CRITICAL: If you find errors (laterality, terminology, clinical mismatch, structural gaps), STILL generate full_report with corrections applied. Flag the issues prominently in "answer" — do NOT withhold the report. The trainee needs the corrected text to learn from.
+2. CRITICAL: "advisory" — for knowledge questions (e.g. "what is X?", "explain Y"), or when REPORT STATUS is ALREADY_FINALIZED (unless trainee explicitly says "finalize"/"rewrite"/"redo"). When ALREADY_FINALIZED, you MUST return response_type "advisory" with report_text as empty string. Do NOT regenerate the report.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -1533,12 +1532,16 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
 
     effective_model = model_override or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
+    # Opus (finalize/review): lower temperature for consistent, reproducible output
+    # Sonnet (advisory/follow-up): slightly higher for natural knowledge responses
+    _temperature = 0.1 if (model_override and 'opus' in model_override) else 0.3
+
     text, model, tokens = _call_claude(
         system_prompt=selected_system_prompt,
         user_prompt=user_prompt,
         model=effective_model,
         max_tokens=4000,
-        temperature=0.3,
+        temperature=_temperature,
         timeout=90,
     )
 
