@@ -2427,6 +2427,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Reset regenerate mode
         state._regenerateMode = false;
+        state._wasAlreadyFinalized = false;
         var _regenBtn = document.getElementById('btnRegenerateReport');
         if (_regenBtn) _regenBtn.classList.add('d-none');
         var _askInput = document.getElementById('askClaudeInput');
@@ -3464,6 +3465,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 state.aiAssistReportText = data.report_text;
                 // Track that user has received a finalized report (enables advisory-only follow-ups)
                 if (data.response_type === 'full_report') {
+                    // Capture BEFORE setting — used in Layer 2 to distinguish first finalization vs regeneration
+                    state._wasAlreadyFinalized = state.hasReceivedFinalizedReport;
                     state.hasReceivedFinalizedReport = true;
                     var _banner = document.getElementById('reportCompleteBanner');
                     if (_banner) _banner.classList.remove('d-none');
@@ -4057,6 +4060,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         // Show fill-in chips panel (textarea remains visible and editable)
         renderFillIns();
+        // Render inline diff overlay for pending fill-ins (corrections already accepted above)
+        // This ensures fill-ins show inline in PACS for both first finalization and regeneration
+        var _hasPendingFillIns = (state.aiAssistFillIns || []).some(function(fi) { return fi.status === 'pending'; });
+        if (_hasPendingFillIns) {
+            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
+        }
         _refreshSafetyBlockers();
         if (_corrCount > 0) {
             setTimeout(function() {
@@ -4213,18 +4222,21 @@ document.addEventListener('DOMContentLoaded', function() {
             answerSection.classList.add('d-none');
         }
 
-        // Layer 2: Report text — auto-insert if PACS box empty, else show preview for user decision
+        // Layer 2: Report text
+        // First finalization: always auto-insert into PACS (replaces proofread)
+        // Regeneration (hasReceivedFinalizedReport already true): show preview box
         const reportSection = document.getElementById('aiAssistReportSection');
         if (state.aiAssistReportText && isFullReport) {
             const outputSection = document.getElementById('outputSection');
             const output = document.getElementById('editorOutput');
             const pacsHasContent = !outputSection.classList.contains('d-none') && (output.value || '').trim().length > 0;
 
-            if (pacsHasContent) {
-                // Show in preview box — user decides whether to replace
+            if (pacsHasContent && state._wasAlreadyFinalized) {
+                // Regeneration: show in preview box — user decides whether to replace
                 document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
                 reportSection.classList.remove('d-none');
             } else {
+                // First finalization or empty PACS: auto-insert
                 reportSection.classList.add('d-none');
                 insertReportText();
             }
