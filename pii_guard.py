@@ -34,6 +34,7 @@ _TYPE_TIERS = {
     'Date of Birth': TIER_MEDIUM,
     'Phone Number': TIER_MEDIUM,
     'Patient Address': TIER_MEDIUM,
+    'Institution Name': TIER_MEDIUM,
     'UK Postcode': TIER_LOW,
     'Patient Age': TIER_LOW,
     'Patient Gender': TIER_LOW,
@@ -65,7 +66,7 @@ PII_PATTERNS = [
     ('NHS Number', re.compile(r'\b\d{3}[-\s]\d{3}[-\s]\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
     ('MRN / Hospital ID', re.compile(
-        r'\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b',
+        r'\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no\.?|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*[A-Z]{0,3}\d{4,10}\b',
         re.IGNORECASE)),
     ('Date of Birth', re.compile(
         r"\b(?:DOB|dob|D\.O\.B|born|(?:patient'?s?\s+)?date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b",
@@ -125,6 +126,8 @@ PII_PATTERNS = [
         r'\b(?:gender|sex)\s*[:=\-]\s*(?:male|female|m|f|other|non-binary)\b', re.IGNORECASE)),
     ('Patient Address', re.compile(
         r'\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.\'\-]{5,}', re.IGNORECASE)),
+    ('Institution Name', re.compile(
+        r"\b(?:St\.?\s+)?[A-Z][a-zA-Z'-]+(?:'s)?\s+(?:Hospital|Infirmary|Medical\s+Cent(?:re|er)|Health\s+Cent(?:re|er)|Clinic|Surgery|General\s+Hospital|Royal\s+(?:Hospital|Infirmary)|University\s+Hospital|NHS\s+Trust|Foundation\s+Trust)\b")),
     ('UK National Insurance Number', re.compile(
         _NINO_INVALID + r'\b[A-Z]{2}\d{6}[A-D]\b', re.IGNORECASE)),
     ('IP Address', re.compile(

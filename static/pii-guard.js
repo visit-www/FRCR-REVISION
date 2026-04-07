@@ -138,7 +138,7 @@
         },
         {
             type: 'MRN / Hospital ID', tier: TIER_HIGH,
-            regex: /\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b/gi,
+            regex: /\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no\.?|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*[A-Z]{0,3}\d{4,10}\b/gi,
             description: 'Medical Record / Accession Number detected'
         },
         {
@@ -276,6 +276,11 @@
             type: 'Patient Address', tier: TIER_MEDIUM,
             regex: /\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.''-]{5,}/gi,
             description: 'Patient address detected'
+        },
+        {
+            type: 'Institution Name', tier: TIER_MEDIUM,
+            regex: /\b(?:St\.?\s+)?[A-Z][a-zA-Z'-]+(?:'s)?\s+(?:Hospital|Infirmary|Medical\s+Cent(?:re|er)|Health\s+Cent(?:re|er)|Clinic|Surgery|General\s+Hospital|Royal\s+(?:Hospital|Infirmary)|University\s+Hospital|NHS\s+Trust|Foundation\s+Trust)\b/g,
+            description: 'Hospital or institution name detected'
         },
 
         // --- LOW tier: soft-warn ---
