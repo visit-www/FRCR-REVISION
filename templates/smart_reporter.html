@@ -465,7 +465,7 @@
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                             <button class="btn btn-sm btn-brand-primary d-none" id="btnRegenSend" onclick="askClaude()" title="Regenerate report (Enter)" style="font-weight: 600;">
-                                <i class="fas fa-sync-alt me-1"></i>Go
+                                <i class="fas fa-sync-alt me-1"></i>Regenerate
                             </button>
                             <button class="btn btn-sm btn-outline-secondary d-none" id="btnCancelRegen" onclick="cancelRegenerate()" title="Cancel regeneration mode (Esc)" style="font-size: 0.72rem;">
                                 Cancel
@@ -3545,9 +3545,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.response_type = 'advisory';
                 state.aiAssistResponseType = 'advisory';
                 data.report_text = '';
+                state.aiAssistReportText = '';
             }
 
-            // Preserve finalized report if follow-up is advisory (no new report_text)
+            // For advisory follow-ups after finalization, clear stale report text
+            // so the preview box doesn't re-appear with the old report
+            if (!(data.report_text || '').trim() && state.hasReceivedFinalizedReport) {
+                state.aiAssistReportText = '';
+            }
             if ((data.report_text || '').trim()) {
                 state.aiAssistReportText = data.report_text;
                 // Track that user has received a finalized report (enables advisory-only follow-ups)
