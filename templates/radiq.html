@@ -456,6 +456,9 @@ async function submitQuery() {
     if (!question) return;
     if (!selectedCategory) return;
 
+    // PII gate — blocks if user cancels
+    if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
+
     // Client-side off-topic filter — saves AI credit
     if (isOffTopicQuery(question)) {
         showResponse(
@@ -492,6 +495,11 @@ async function submitQuery() {
         const data = await res.json();
         if (data.upgrade_required) {
             showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
+            return;
+        }
+        if (data.pii_blocked) {
+            showToast('Server detected patient data. Please review and re-submit.', 'warning');
+            if (window._piiCtrl) _piiCtrl.scan();
             return;
         }
         if (!res.ok || data.error) {
@@ -957,6 +965,15 @@ function hideUpgradeModal() {
     if (!modal) return;
     modal.classList.remove('show');
     setTimeout(() => modal.style.display = 'none', 300);
+}
+
+// ── PII Guard ──
+if (window.PIIGuard && window.PIIGuard.protect) {
+    window._piiCtrl = PIIGuard.protect({
+        textareas: ['#queryInput'],
+        bannerTarget: '#inputCol .d-flex',
+        auditContext: 'radiq'
+    });
 }
 </script>
 

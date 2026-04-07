@@ -1,21 +1,23 @@
 /**
- * PII Guard — Global Patient Data Detection
+ * PII Guard v2 — Detection Engine
  * Dual-layer protection: client-side (this file) + server-side (pii_guard.py)
- * Loaded globally via base.html to intercept all fetch POST/PUT requests.
+ * Loaded globally via base.html. Thin fetch interceptor; all UI in pii-guard-ui.js.
  */
 (function() {
     'use strict';
 
-    // ======================== MEDICAL ALLOWLIST ========================
-    // Known medical/radiology terms that should NOT trigger PII warnings.
-    // Suppresses false positives from vertebral levels, TNM staging, MRI sequences, etc.
+    // ======================== CONFIDENCE TIERS ========================
+    var TIER_HIGH   = 'high';
+    var TIER_MEDIUM = 'medium';
+    var TIER_LOW    = 'low';
 
-    const MEDICAL_ALLOWLIST = new Set([
+    // ======================== MEDICAL ALLOWLIST ========================
+    var MEDICAL_ALLOWLIST = new Set([
         // Vertebral levels
         'C1','C2','C3','C4','C5','C6','C7',
         'T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12',
         'L1','L2','L3','L4','L5','S1','S2','S3','S4','S5',
-        // Vertebral ranges (hyphenated)
+        // Vertebral ranges
         'C1-C2','C2-C3','C3-C4','C4-C5','C5-C6','C6-C7',
         'T1-T2','T2-T3','T3-T4','T4-T5','T5-T6','T6-T7','T7-T8','T8-T9','T9-T10','T10-T11','T11-T12','T12-L1',
         'L1-L2','L2-L3','L3-L4','L4-L5','L5-S1',
@@ -25,36 +27,74 @@
         'M0','M1','M1A','M1B','M1C',
         'STAGE I','STAGE IA','STAGE IB','STAGE II','STAGE IIA','STAGE IIB','STAGE IIC',
         'STAGE III','STAGE IIIA','STAGE IIIB','STAGE IIIC','STAGE IV','STAGE IVA','STAGE IVB',
-        // Common radiology / imaging terms
+        // Radiology / imaging
         'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
         'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
         'T1W','T2W','T1 WEIGHTED','T2 WEIGHTED','T1 W','T2 W',
         'DR','CR','US','XR',
-        // Measurements & units used in radiology
+        // Measurements
         'HU','SUV','ADC VALUE','SUV MAX','SUVMAX',
-        // Contrast phases
+        // Contrast
         'IV CONTRAST',
         // Grading
         'G1','G2','G3','G4','GX',
-        // BIRADS / PIRADS / TIRADS / LIRADS
+        // RADS scoring
         'BI-RADS','BIRADS','PI-RADS','PIRADS','TI-RADS','TIRADS','LI-RADS','LIRADS',
-        // Common anatomy abbreviations that look like IDs
+        // Anatomy abbreviations
         'SA NODE','AV NODE','SI JOINT','SI JOINTS',
     ]);
 
-    // Imaging modality terms that should never be treated as part of a person's name.
-    // Prevents false positives like "Pt CT Facial Bones" being flagged as a patient name.
-    const IMAGING_MODALITY_TERMS = new Set([
+    var IMAGING_MODALITY_TERMS = new Set([
         'CT','MRI','MRA','MRV','PET','SPECT','DEXA','BMD',
         'FLAIR','DWI','ADC','SWI','GRE','STIR','FIESTA','CISS',
         'XR','CXR','AXR','USS','HRCT','CECT','NCCT','MRE','MRCP',
+    ]);
+
+    var NER_FALSE_POSITIVE_TERMS = new Set([
+        // Eponymous conditions / signs / procedures
+        'GREY','BAKER','COLLES','CROHN','CUSHING','GRAVES','HASHIMOTO',
+        'HODGKIN','WILMS','EWING','PAGET','DUPUYTREN','MECKEL','BARRETT',
+        'BELL','ADDISON','MARFAN','PARKINSON','ALZHEIMER','RAYNAUD',
+        'SJOGREN','WEGENER','BEHCET','HIRSCHSPRUNG','BUDD','CHIARI',
+        'ARNOLD','DANDY','WALKER','KLATSKIN','WARTHIN','RICHTER',
+        'VIRCHOW','TROUSSEAU','MURPHY','COURVOISIER','WHIPPLE',
+        'HARTMANN','BILLROTH','NISSEN','BANKART','HILL','SACHS',
+        'MOREL','LAVALLEE','MONTEGGIA','GALEAZZI','SMITH','BARTON',
+        'CHAUFFEUR','BENNETT','ROLANDO','GAMEKEEPER','STENER','SEGOND',
+        'PELLEGRINI','STIEDA','OSGOOD','SCHLATTER','SEVER','KOHLER',
+        'FREIBERG','KIENBOCK','PREISER','LEGG','CALVE','PERTHES',
+        'BLOUNT','SCHEUERMANN','CHANCE','JEFFERSON','HANGMAN',
+        'SALTER','HARRIS','TILLAUX','MAISONNEUVE','LISFRANC','JONES',
+        'MARCH','STRESS',
+        // Radiology signs
+        'FLEISCHNER','KERLEY','RIGLER','CHILAIDITI','WESTERMARK','FELSON',
+        'HAMPTON','CODMAN','SUNBURST','ONION','TERRY','THOMAS',
+        // Scoring / classification systems
+        'BOSNIAK','FISHER','CHILD','PUGH','DEAUVILLE','NEER','MASON',
+        'WEBER','SCHATZKER','GARDEN','GUSTILO','ANDERSON','ROCKWOOD',
+        'DENIS','MAGERL','FRANKEL','ASIA','HUNT','HESS','SPETZLER',
+        'MARTIN','LUGANO','ANN','ARBOR','CLARK','BRESLOW','GLEASON',
+        'FUHRMAN','EDMONDSON','STEINER','CLAVIEN','DINDO','BISMUTH',
+        'TODANI','HINCHEY','ALVARADO','BALTHAZAR','DUKE',
+        // Anatomy / clinical
+        'WHITE','WARD','LIVER','BRAIN','SPINE','BOWEL','COLON',
+        'RECTUM','KIDNEY','LUNG','HEART','AORTA','PANCREAS',
+        'SPLEEN','ADRENAL','BLADDER','PROSTATE','UTERUS','OVARY',
+        'BREAST','THYROID','TRACHEA','OESOPHAGUS','ESOPHAGUS',
+        // Report section headings
+        'FINDINGS','IMPRESSION','INDICATION','TECHNIQUE','COMPARISON',
+        'CLINICAL','HISTORY','CONCLUSION','RECOMMENDATION','COMMENT',
+        'OPINION','SUMMARY','DISCUSSION','PROTOCOL','PROCEDURE',
+        // Common radiology descriptors
+        'NORMAL','UNREMARKABLE','STABLE','UNCHANGED','MILD','MODERATE',
+        'SEVERE','ACUTE','CHRONIC','BILATERAL','LATERAL','MEDIAL',
+        'ANTERIOR','POSTERIOR','SUPERIOR','INFERIOR','PROXIMAL','DISTAL',
     ]);
 
     function _isMedicalTerm(matchText) {
         if (!matchText) return false;
         var upper = matchText.trim().toUpperCase();
         if (MEDICAL_ALLOWLIST.has(upper)) return true;
-        // Check hyphenated/slashed compound terms (e.g. "C3-C4", "L4/L5")
         var parts = upper.split(/[-\/]/);
         if (parts.length >= 2 && parts.every(function(p) { return MEDICAL_ALLOWLIST.has(p.trim()); })) {
             return true;
@@ -64,82 +104,77 @@
 
     // ======================== PII PATTERNS ========================
 
-    // Common English words that must NOT be treated as parts of a person's name.
-    // Used as a per-word negative lookahead in name-detection patterns.
     var _NAME_STOP = "(?!(?:for|was|is|has|had|the|with|by|and|or|in|at|to|of|on|an|a"
         + "|this|that|no|who|will|may|should|could|would|not|been|being"
         + "|reviewed|presented|attended|referred|consulted|evaluated|diagnosed"
         + "|from|about|into|over|under|after|before|during|through"
         + "|name|report|study|scan|exam|history|findings|impression|clinical|imaging)\\b)";
 
-    const PII_PATTERNS = [
+    // Invalid NINO prefixes (Presidio-derived)
+    var _NINO_INVALID = 'BG|GB|NK|KN|TN|NT|ZZ';
+
+    var PII_PATTERNS = [
+        // --- HIGH tier: always block ---
         {
-            type: 'NHS Number',
+            type: 'NHS Number', tier: TIER_HIGH,
             regex: /\bNHS\s*(?:no|number|#)?[:\s]+\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/gi,
             description: 'NHS number detected'
         },
         {
-            type: 'NHS Number',
+            type: 'NHS Number', tier: TIER_HIGH,
             regex: /\bNHS\s*(?:no|number|#)?[:\s]+\d{6,10}\b/gi,
             description: 'NHS number detected (short format)'
         },
         {
-            type: 'NHS Number',
+            type: 'NHS Number', tier: TIER_HIGH,
             regex: /\b\d{3}[-\s]\d{3}[-\s]\d{4}\b/g,
-            description: 'NHS number detected (format)'
+            description: 'NHS number detected (format)',
+            validate: _validateNHSChecksum
         },
         {
-            type: 'US SSN',
+            type: 'US SSN', tier: TIER_HIGH,
             regex: /\b\d{3}-\d{2}-\d{4}\b/g,
             description: 'US Social Security Number detected'
         },
         {
-            type: 'MRN / Hospital ID',
-            regex: /\b(?:MRN|UHID|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*id)[:\s#]*\d{4,10}\b/gi,
+            type: 'MRN / Hospital ID', tier: TIER_HIGH,
+            regex: /\b(?:MRN|UHID|ACCN|ACC\s*NO|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b/gi,
             description: 'Medical Record Number detected'
         },
         {
-            type: 'Date of Birth',
-            regex: /\b(?:DOB|dob|D\.O\.B|born|date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/gi,
-            description: 'Date of birth detected'
-        },
-        {
-            type: 'UK Postcode',
-            regex: /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi,
-            description: 'UK postcode detected'
-        },
-        {
-            type: 'Phone Number',
-            regex: /\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d/gi,
-            description: 'Phone number detected'
-        },
-        {
-            type: 'Phone Number',
-            regex: /\b(?:his|her|my|their|the)\s+(?:number|no|contact)\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
-            description: 'Phone number detected (context)'
-        },
-        {
-            type: 'Phone Number',
-            regex: /\bnumber\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
-            description: 'Phone number detected (keyword)'
-        },
-        {
-            type: 'Phone Number',
-            regex: /\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b/g,
-            description: 'International phone number detected'
-        },
-        {
-            type: 'Email Address',
+            type: 'Email Address', tier: TIER_HIGH,
             regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
             description: 'Email address detected'
         },
         {
-            type: 'Patient Name',
+            type: 'UK National Insurance Number', tier: TIER_HIGH,
+            regex: new RegExp('\\b(?!' + _NINO_INVALID + ')[A-Z]{2}\\d{6}[A-D]\\b', 'gi'),
+            description: 'UK National Insurance Number detected'
+        },
+        {
+            type: 'Aadhaar Number', tier: TIER_HIGH,
+            regex: /\b\d{4}\s?\d{4}\s?\d{4}\b/g,
+            description: 'Indian Aadhaar number detected'
+        },
+        {
+            type: 'PAN Card', tier: TIER_HIGH,
+            regex: /\b[A-Z]{5}\d{4}[A-Z]\b/g,
+            description: 'Indian PAN card number detected'
+        },
+        {
+            type: 'Possible Patient ID', tier: TIER_HIGH,
+            regex: /^\d{7,10}$/gm,
+            description: 'Bare number on own line — likely hospital number or patient ID'
+        },
+
+        // --- MEDIUM tier: warn ---
+        {
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: /\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-\s]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected (with keyword + title)'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: new RegExp(
                 "\\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\b\\.?\\s*"
                 + _NAME_STOP + "[A-Za-z][a-zA-Z'\\-]+"
@@ -150,22 +185,22 @@
             description: 'Patient name with title detected'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: /\b(?:patient\s*name|pt\s*name)\s*[:=\-\s]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: /\b[Nn]ame\s*[:=\-\s]\s*[A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|\d|$))/g,
             description: 'Possible patient name detected (name keyword)'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: /\d{1,3}[-\s]?year[-\s]?old\b[^.\n]{0,30}?([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3})(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))/g,
             description: 'Patient name after age context detected'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: new RegExp(
                 "\\b[Pp](?:atient|t)(?:\\s*[:=\\-]\\s*|\\s+)"
                 + _NAME_STOP + "([A-Z][a-zA-Z'\\-]+"
@@ -176,7 +211,7 @@
             description: 'Patient name after keyword detected'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: new RegExp(
                 "\\b[Pp](?:atient|t)\\s+(?:name|full\\s*name)\\s*[:=\\-]?\\s*"
                 + _NAME_STOP + "([A-Z][a-zA-Z'\\-]+"
@@ -187,7 +222,7 @@
             description: 'Patient name after "patient name" keyword'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: new RegExp(
                 "\\b[Tt]his\\s+is\\s+"
                 + _NAME_STOP + "[A-Z][a-zA-Z'\\-]{2,}"
@@ -198,69 +233,85 @@
             description: 'Patient name after introduction detected'
         },
         {
-            type: 'Patient Name',
+            type: 'Patient Name', tier: TIER_MEDIUM,
             regex: /\b[A-Z]\.?\s+[A-Z][a-zA-Z'-]{2,}(?:\s+[A-Z][a-zA-Z'-]+)?(?=\s*(?:,\s*\d|\s+age\b|\s+\d{1,3}\s*(?:year|yr|yo|y\.?o)\b|\s+(?:male|female|M|F)\b))/g,
             description: 'Probable patient name (initial + surname near age/gender context)'
         },
         {
-            type: 'Doctor / Clinician Name',
+            type: 'Doctor / Clinician Name', tier: TIER_MEDIUM,
             regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){0,3}/gi,
             description: 'Referring/reporting clinician name detected'
         },
         {
-            type: 'Doctor / Clinician Name',
+            type: 'Doctor / Clinician Name', tier: TIER_MEDIUM,
             regex: /\bDr\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){1,3}\b/g,
             description: 'Doctor name detected'
         },
         {
-            type: 'Possible Patient ID',
-            regex: /^\d{7,10}$/gm,
-            description: 'Bare number on own line — likely hospital number or patient ID'
+            type: 'Date of Birth', tier: TIER_MEDIUM,
+            regex: /\b(?:DOB|dob|D\.O\.B|born|date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/gi,
+            description: 'Date of birth detected'
         },
         {
-            type: 'Patient Age',
+            type: 'Phone Number', tier: TIER_MEDIUM,
+            regex: /\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d/gi,
+            description: 'Phone number detected'
+        },
+        {
+            type: 'Phone Number', tier: TIER_MEDIUM,
+            regex: /\b(?:his|her|my|their|the)\s+(?:number|no|contact)\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
+            description: 'Phone number detected (context)'
+        },
+        {
+            type: 'Phone Number', tier: TIER_MEDIUM,
+            regex: /\bnumber\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
+            description: 'Phone number detected (keyword)'
+        },
+        {
+            type: 'Patient Address', tier: TIER_MEDIUM,
+            regex: /\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.''-]{5,}/gi,
+            description: 'Patient address detected'
+        },
+
+        // --- LOW tier: soft-warn ---
+        {
+            type: 'UK Postcode', tier: TIER_LOW,
+            regex: /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi,
+            description: 'UK postcode detected'
+        },
+        {
+            type: 'Phone Number', tier: TIER_LOW,
+            regex: /\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b/g,
+            description: 'International phone number detected'
+        },
+        {
+            type: 'Patient Age', tier: TIER_LOW,
             regex: /\b(?:age|aged)\s*[:=\-]\s*\d{1,3}\b/gi,
             description: 'Patient age detected'
         },
         {
-            type: 'Patient Gender',
+            type: 'Patient Gender', tier: TIER_LOW,
             regex: /\b(?:gender|sex)\s*[:=\-]\s*(?:male|female|m|f|other|non-binary)\b/gi,
             description: 'Patient gender detected'
         },
         {
-            type: 'Patient Address',
-            regex: /\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.''-]{5,}/gi,
-            description: 'Patient address detected'
-        },
-        {
-            type: 'UK National Insurance Number',
-            regex: /\b[A-Z]{2}\d{6}[A-D]\b/gi,
-            description: 'UK National Insurance Number detected'
-        },
-        {
-            type: 'IP Address',
+            type: 'IP Address', tier: TIER_LOW,
             regex: /\b(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\b/g,
             description: 'IP address detected (HIPAA identifier)'
         },
-        {
-            type: 'Aadhaar Number',
-            regex: /\b\d{4}\s?\d{4}\s?\d{4}\b/g,
-            description: 'Indian Aadhaar number detected'
-        },
-        {
-            type: 'PAN Card',
-            regex: /\b[A-Z]{5}\d{4}[A-Z]\b/g,
-            description: 'Indian PAN card number detected'
-        }
     ];
 
-    // Fields to skip scanning (non-patient data)
-    const SKIP_KEYS = new Set([
-        'password', 'token', 'csrf', 'username',
-        'model', 'provider', 'slug', 'category', 'status',
-        'modality', 'body_section', 'image_url', 'image_public_id',
-        'image_type', 'filename', 'image_thumbnail_url'
-    ]);
+    // NHS MOD-11 checksum validator (OpenRedaction-derived)
+    function _validateNHSChecksum(matchText) {
+        var digits = matchText.replace(/[\s-]/g, '');
+        if (digits.length !== 10) return true; // can't validate, allow through
+        var weights = [6, 2, 7, 1, 3, 6, 2, 7, 1, 3];
+        var sum = 0;
+        for (var i = 0; i < 10; i++) {
+            sum += parseInt(digits[i], 10) * weights[i];
+        }
+        return sum % 11 === 0;
+    }
 
     // ======================== SCANNER ========================
 
@@ -269,32 +320,50 @@
             return { hasPII: false, matches: [] };
         }
 
-        const matches = [];
-        for (const pattern of PII_PATTERNS) {
-            // Reset lastIndex for global regexes
+        var matches = [];
+        for (var p = 0; p < PII_PATTERNS.length; p++) {
+            var pattern = PII_PATTERNS[p];
             pattern.regex.lastIndex = 0;
-            let match;
+            var match;
             while ((match = pattern.regex.exec(text)) !== null) {
-                matches.push({
+                var m = {
                     type: pattern.type,
                     match: match[0],
                     index: match.index,
+                    length: match[0].length,
+                    tier: pattern.tier,
                     description: pattern.description
-                });
+                };
+                // Run optional validator (e.g. NHS checksum)
+                if (pattern.validate && !pattern.validate(match[0])) continue;
+                matches.push(m);
             }
         }
 
-        // Filter out known medical/radiology terms (false positive suppression)
+        // 3-stage false-positive suppression
+        // Stage 1: Medical allowlist
         var filtered = matches.filter(function(m) { return !_isMedicalTerm(m.match); });
 
-        // Filter out Patient/Doctor Name matches containing imaging modality terms
-        // e.g. "Pt CT Facial Bones" — "CT" is an imaging modality, not a person's name
+        // Stage 2: Imaging modality filter for name matches
         filtered = filtered.filter(function(m) {
             if (m.type === 'Patient Name' || m.type === 'Doctor / Clinician Name') {
                 var words = m.match.split(/[\s:=\-]+/);
                 for (var i = 0; i < words.length; i++) {
                     if (words[i] && IMAGING_MODALITY_TERMS.has(words[i].toUpperCase())) return false;
                 }
+            }
+            return true;
+        });
+
+        // Stage 3: Eponym filter — skip names where ALL content words are medical eponyms
+        filtered = filtered.filter(function(m) {
+            if (m.type === 'Patient Name' || m.type === 'Doctor / Clinician Name') {
+                var nameWords = m.match.split(/[\s:=.\-]+/).filter(function(w) {
+                    return w.length > 0 && !/^(pt|patient|name|dr|mr|mrs|ms|miss|prof)$/i.test(w);
+                });
+                if (nameWords.length > 0 && nameWords.every(function(w) {
+                    return NER_FALSE_POSITIVE_TERMS.has(w.toUpperCase());
+                })) return false;
             }
             return true;
         });
@@ -312,7 +381,6 @@
                 unique.push(matches[i]);
             }
         }
-        // Sort by match length descending — replace longer matches first
         unique.sort(function(a, b) { return b.match.length - a.match.length; });
         return unique;
     }
@@ -340,303 +408,11 @@
                 result = result.split(matchText).join('');
             }
         }
-        // Clean up leftover whitespace (double spaces, leading/trailing)
         return result.replace(/  +/g, ' ').trim();
-    }
-
-    // ======================== DEEP SCAN JSON ========================
-
-    function scanObject(obj) {
-        const allMatches = [];
-
-        function recurse(val, path) {
-            if (typeof val === 'string') {
-                // Skip known non-patient fields
-                const lastKey = path.split('.').pop();
-                if (SKIP_KEYS.has(lastKey)) return;
-
-                const result = scan(val);
-                if (result.hasPII) {
-                    result.matches.forEach(m => {
-                        m.field = path;
-                        allMatches.push(m);
-                    });
-                }
-            } else if (Array.isArray(val)) {
-                val.forEach((item, i) => recurse(item, path + '[' + i + ']'));
-            } else if (val && typeof val === 'object') {
-                Object.keys(val).forEach(key => recurse(val[key], path ? path + '.' + key : key));
-            }
-        }
-
-        recurse(obj, '');
-        return allMatches;
-    }
-
-    function _applyToObject(obj, matches, transformFn) {
-        if (!matches || matches.length === 0) return obj;
-
-        const clone = JSON.parse(JSON.stringify(obj));
-
-        const byField = {};
-        matches.forEach(m => {
-            if (!byField[m.field]) byField[m.field] = [];
-            byField[m.field].push(m);
-        });
-
-        for (const [path, fieldMatches] of Object.entries(byField)) {
-            const parts = path.replace(/\[(\d+)\]/g, '.$1').split('.');
-            let target = clone;
-            for (let i = 0; i < parts.length - 1; i++) {
-                target = target[parts[i]];
-                if (!target) break;
-            }
-            if (target) {
-                const lastKey = parts[parts.length - 1];
-                if (typeof target[lastKey] === 'string') {
-                    target[lastKey] = transformFn(target[lastKey], fieldMatches);
-                }
-            }
-        }
-
-        return clone;
-    }
-
-    function redactObject(obj, matches) {
-        return _applyToObject(obj, matches, redact);
-    }
-
-    function removeObject(obj, matches) {
-        return _applyToObject(obj, matches, remove);
-    }
-
-    // ======================== WARNING UI ========================
-
-    const TYPE_COLORS = {
-        'NHS Number': '#dc3545',
-        'US SSN': '#dc3545',
-        'MRN / Hospital ID': '#dc3545',
-        'Date of Birth': '#e96304',
-        'UK Postcode': '#6b46c1',
-        'Phone Number': '#0d6efd',
-        'Email Address': '#0d6efd',
-        'Patient Name': '#dc3545',
-        'Doctor / Clinician Name': '#e96304',
-        'Patient Age': '#e96304',
-        'Patient Gender': '#e96304',
-        'Patient Address': '#6b46c1',
-        'UK National Insurance Number': '#dc3545',
-        'IP Address': '#6b46c1',
-        'Aadhaar Number': '#dc3545',
-        'PAN Card': '#dc3545',
-        'Possible Patient ID': '#dc3545'
-    };
-
-    function _escapeHtml(str) {
-        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-
-    function getWarningHTML(matches) {
-        const seen = new Set();
-        const unique = matches.filter(m => {
-            const key = m.type + ':' + m.match;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-
-        return unique.map(m => {
-            const color = TYPE_COLORS[m.type] || '#6c757d';
-            const masked = m.match.substring(0, 3) + '***';
-            return '<div class="d-flex align-items-center mb-2">' +
-                '<span class="badge me-2" style="background:' + color + '; font-size: 0.7rem;">' + m.type + '</span>' +
-                '<code class="small">' + masked + '</code>' +
-                '</div>';
-        }).join('');
-    }
-
-    /**
-     * Build a preview showing each PII match with surrounding context.
-     * Shows a compact snippet per match instead of the full text.
-     */
-    function getHighlightedPreview(body, matches) {
-        if (!matches || matches.length === 0) return '';
-
-        // Group matches by field
-        const byField = {};
-        matches.forEach(m => {
-            if (!byField[m.field]) byField[m.field] = [];
-            byField[m.field].push(m);
-        });
-
-        var html = '';
-        for (const [field, fieldMatches] of Object.entries(byField)) {
-            // Resolve field value from body
-            const parts = field.replace(/\[(\d+)\]/g, '.$1').split('.');
-            let val = body;
-            for (let i = 0; i < parts.length; i++) {
-                if (!val) break;
-                val = val[parts[i]];
-            }
-
-            // Deduplicate matches for this field
-            const seen = new Set();
-            const uniqueField = fieldMatches.filter(m => {
-                if (seen.has(m.match)) return false;
-                seen.add(m.match);
-                return true;
-            });
-
-            // Build a snippet per match with ~50 chars of surrounding context
-            for (var i = 0; i < uniqueField.length; i++) {
-                var m = uniqueField[i];
-                var color = TYPE_COLORS[m.type] || '#6c757d';
-                var highlighted = '<span class="pii-highlight" style="background:' + color + '20; border: 1.5px solid ' + color + '; border-radius: 3px; padding: 0 3px;">' +
-                    _escapeHtml(m.match) +
-                    '<sup class="pii-highlight-label" style="color:' + color + '; font-size:0.6rem; font-weight:700; margin-left:2px;">' + m.type + '</sup>' +
-                    '</span>';
-
-                var snippet = highlighted; // fallback: just the highlighted match
-                if (typeof val === 'string' && val) {
-                    var idx = val.indexOf(m.match);
-                    if (idx !== -1) {
-                        var start = Math.max(0, idx - 50);
-                        var end = Math.min(val.length, idx + m.match.length + 50);
-                        var before = _escapeHtml(val.substring(start, idx));
-                        var after = _escapeHtml(val.substring(idx + m.match.length, end));
-                        snippet = (start > 0 ? '&hellip;' : '') + before + highlighted + after + (end < val.length ? '&hellip;' : '');
-                    }
-                }
-
-                html += '<div class="pii-preview-block">' +
-                    '<div class="pii-preview-text">' + snippet + '</div>' +
-                    '</div>';
-            }
-        }
-
-        return html;
-    }
-
-    function showPIIModal(matches, body) {
-        return new Promise(function(resolve) {
-            // Remove existing modal if any
-            var existing = document.getElementById('piiGuardModal');
-            if (existing) {
-                var oldInstance = bootstrap.Modal.getInstance(existing);
-                if (oldInstance) oldInstance.dispose();
-                existing.remove();
-            }
-
-            // Build preview with highlighted PII if body is available
-            var previewHTML = '';
-            if (body) {
-                previewHTML = getHighlightedPreview(body, matches);
-            }
-
-            // Build Bootstrap modal following app design (scoped via .app-content-modal.pii-guard-modal)
-            var wrapper = document.createElement('div');
-            wrapper.innerHTML =
-                '<div class="modal fade app-content-modal pii-guard-modal" id="piiGuardModal" tabindex="-1" data-bs-backdrop="static">' +
-                  '<div class="modal-dialog modal-dialog-centered' + (previewHTML ? ' modal-lg' : '') + '">' +
-                    '<div class="modal-content">' +
-                      '<div class="modal-header">' +
-                        '<h5 class="modal-title">' +
-                          '<i class="fas fa-shield-alt"></i> Patient Data Detected' +
-                        '</h5>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
-                      '</div>' +
-                      '<div class="modal-body">' +
-                        '<p class="text-muted small mb-2">' +
-                          'The following patient-identifiable information was found in your input. Highlighted items will be affected by your choice.' +
-                        '</p>' +
-                        (previewHTML
-                          ? '<div class="pii-preview-container mb-3">' + previewHTML + '</div>'
-                          : '<div class="pii-matches-list mb-3">' + getWarningHTML(matches) + '</div>'
-                        ) +
-                        '<div class="d-flex align-items-start gap-2 small text-muted mb-3" style="line-height:1.4;">' +
-                          '<i class="fas fa-info-circle mt-1" style="flex-shrink:0;"></i>' +
-                          '<span><strong>Redact</strong> replaces highlighted data with [REDACTED]. <strong>Remove</strong> deletes it entirely.</span>' +
-                        '</div>' +
-                        '<div class="pii-override-section">' +
-                          '<div class="form-check mb-1">' +
-                            '<input class="form-check-input" type="checkbox" id="piiOverrideCheck">' +
-                            '<label class="form-check-label small" for="piiOverrideCheck">' +
-                              'I confirm this does not contain patient-identifiable information' +
-                            '</label>' +
-                          '</div>' +
-                          '<div class="d-flex align-items-center gap-1 mb-0" style="margin-left: 1.5rem;">' +
-                            '<i class="fas fa-exclamation-triangle" style="color: #e96304; font-size: 0.65rem;"></i>' +
-                            '<span class="text-muted" style="font-size: 0.7rem;">Overrides are logged in the system audit trail</span>' +
-                          '</div>' +
-                        '</div>' +
-                      '</div>' +
-                      '<div class="modal-footer">' +
-                        '<button type="button" class="btn btn-pii-cancel" id="piiCancelBtn">' +
-                          '<i class="fas fa-times me-1"></i>Cancel' +
-                        '</button>' +
-                        '<button type="button" class="btn btn-pii-override" id="piiOverrideBtn" disabled title="Confirm checkbox above to enable">' +
-                          '<i class="fas fa-forward me-1"></i>Send Anyway' +
-                        '</button>' +
-                        '<button type="button" class="btn btn-pii-redact" id="piiRedactBtn" title="Replace detected data with [REDACTED] and continue">' +
-                          '<i class="fas fa-marker me-1"></i>Redact' +
-                        '</button>' +
-                        '<button type="button" class="btn btn-pii-remove" id="piiRemoveBtn" title="Delete detected data entirely and continue">' +
-                          '<i class="fas fa-eraser me-1"></i>Remove' +
-                        '</button>' +
-                      '</div>' +
-                    '</div>' +
-                  '</div>' +
-                '</div>';
-
-            var modalEl = wrapper.firstChild;
-            document.body.appendChild(modalEl);
-
-            var bsModal = new bootstrap.Modal(modalEl);
-            var resolved = false;
-
-            // Checkbox enables/disables override button
-            document.getElementById('piiOverrideCheck').addEventListener('change', function() {
-                document.getElementById('piiOverrideBtn').disabled = !this.checked;
-            });
-
-            document.getElementById('piiOverrideBtn').addEventListener('click', function() {
-                resolved = true;
-                bsModal.hide();
-                resolve('override');
-            });
-
-            document.getElementById('piiRedactBtn').addEventListener('click', function() {
-                resolved = true;
-                bsModal.hide();
-                resolve('redact');
-            });
-
-            document.getElementById('piiRemoveBtn').addEventListener('click', function() {
-                resolved = true;
-                bsModal.hide();
-                resolve('remove');
-            });
-
-            document.getElementById('piiCancelBtn').addEventListener('click', function() {
-                resolved = true;
-                bsModal.hide();
-                resolve('cancel');
-            });
-
-            // Clean up DOM after hidden; resolve as cancel if X button or backdrop clicked
-            modalEl.addEventListener('hidden.bs.modal', function() {
-                bsModal.dispose();
-                modalEl.remove();
-                if (!resolved) resolve('cancel');
-            });
-
-            bsModal.show();
-        });
     }
 
     // ======================== DISMISS TRACKING ========================
 
-    // Per-session dismissed items: stores "type:matchText" keys
     var _dismissedKeys = new Set();
 
     function _dismissKey(match) {
@@ -645,14 +421,6 @@
 
     function dismiss(match) {
         _dismissedKeys.add(_dismissKey(match));
-    }
-
-    function dismissType(type, matches) {
-        for (var i = 0; i < matches.length; i++) {
-            if (matches[i].type === type) {
-                _dismissedKeys.add(_dismissKey(matches[i]));
-            }
-        }
     }
 
     function isDismissed(match) {
@@ -667,193 +435,35 @@
         _dismissedKeys.clear();
     }
 
-    // ======================== ACTIONABLE WARNING UI ========================
-
-    function getActionableWarningHTML(matches) {
-        // Dedupe matches
-        var seen = new Set();
-        var unique = matches.filter(function(m) {
-            var key = m.type + ':' + m.match;
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-        });
-
-        if (unique.length === 0) return '';
-
-        // Group by type
-        var groups = {};
-        var groupOrder = [];
-        for (var i = 0; i < unique.length; i++) {
-            var m = unique[i];
-            if (!groups[m.type]) {
-                groups[m.type] = [];
-                groupOrder.push(m.type);
-            }
-            groups[m.type].push({ match: m, originalIndex: i });
-        }
-
-        // Build HTML
-        var html = '';
-
-        // Bulk actions header
-        html += '<div class="d-flex align-items-center gap-2 mb-2">';
-        html += '<button class="btn btn-sm py-0 px-2" style="font-size:0.72rem;background:#dc3545;color:#fff;border:none;border-radius:3px;" onclick="piiRedactAll()" title="Replace all detected items with [REDACTED]"><i class="fas fa-marker me-1"></i>Redact All</button>';
-        html += '<button class="btn btn-sm py-0 px-2" style="font-size:0.72rem;background:#e96304;color:#fff;border:none;border-radius:3px;" onclick="piiRemoveAll()" title="Delete all detected items from text"><i class="fas fa-eraser me-1"></i>Remove All</button>';
-        html += '<span class="ms-auto text-muted" style="font-size:0.7rem;">' + unique.length + ' item' + (unique.length !== 1 ? 's' : '') + ' detected</span>';
-        html += '</div>';
-
-        // Per-type groups
-        for (var g = 0; g < groupOrder.length; g++) {
-            var type = groupOrder[g];
-            var items = groups[type];
-            var color = TYPE_COLORS[type] || '#6c757d';
-
-            html += '<div class="mb-2 pb-2" style="border-bottom:1px solid #ffe69c;">';
-
-            // Type header with batch dismiss
-            html += '<div class="d-flex align-items-center gap-2 mb-1">';
-            html += '<span class="badge" style="background:' + color + ';font-size:0.68rem;">' + _escapeHtml(type) + '</span>';
-            html += '<span class="text-muted" style="font-size:0.7rem;">(' + items.length + ')</span>';
-            if (items.length >= 2) {
-                html += '<button class="btn btn-sm py-0 px-2 ms-auto" style="font-size:0.65rem;background:#f8f9fa;color:#856404;border:1px solid #ffe69c;border-radius:3px;" onclick="piiDismissType(\'' + _escapeHtml(type).replace(/'/g, "\\'") + '\')" title="Dismiss all ' + _escapeHtml(type) + ' — dismissals are audited">Dismiss all ' + _escapeHtml(type) + '</button>';
-            }
-            html += '</div>';
-
-            // Individual matches
-            for (var j = 0; j < items.length; j++) {
-                var item = items[j];
-                var masked = item.match.match.length > 3 ? item.match.match.substring(0, 3) + '***' : '***';
-                var idx = item.originalIndex;
-
-                html += '<div class="d-flex align-items-center gap-1 mb-1 pii-match-row" data-pii-index="' + idx + '" style="padding-left:0.5rem;">';
-                html += '<code class="small" style="color:' + color + ';">' + _escapeHtml(masked) + '</code>';
-                html += '<div class="ms-auto d-flex gap-1">';
-                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#dc354520;color:#dc3545;border:1px solid #dc354540;border-radius:3px;" onclick="piiAction(\'redact\',' + idx + ')" title="Replace with [REDACTED]">Redact</button>';
-                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#e9630420;color:#e96304;border:1px solid #e9630440;border-radius:3px;" onclick="piiAction(\'remove\',' + idx + ')" title="Delete from text">Remove</button>';
-                html += '<button class="btn btn-sm py-0 px-1" style="font-size:0.65rem;background:#ffc10720;color:#856404;border:1px solid #ffc10740;border-radius:3px;" onclick="piiAction(\'dismiss\',' + idx + ')" title="Dismiss — dismissals are audited">Dismiss <small>\u2715</small></button>';
-                html += '</div>';
-                html += '</div>';
-            }
-
-            html += '</div>';
-        }
-
-        return html;
-    }
-
     // ======================== FETCH INTERCEPTOR ========================
+    // Thin pass-through: only adds X-PII-Override header when _overrideActive flag is set.
 
-    // Decision cache: prevents re-prompting when the same URL is re-submitted
-    // after redact/remove/override within a short window.
-    var _piiDecisionCache = {};
-    var _PII_CACHE_TTL = 120000; // 2 minutes
+    var _overrideActive = false;
 
-    function _getCachedDecision(urlStr) {
-        var entry = _piiDecisionCache[urlStr];
-        if (entry && (Date.now() - entry.ts) < _PII_CACHE_TTL) return entry.action;
-        delete _piiDecisionCache[urlStr];
-        return null;
-    }
-
-    function _cacheDecision(urlStr, action) {
-        _piiDecisionCache[urlStr] = { action: action, ts: Date.now() };
-    }
-
-    function _applyDecision(action, body, matches, url, options, originalFetch, context, urlStr) {
-        if (action === 'override') {
-            // Add header so server-side PII middleware allows it through
-            if (!options.headers) options.headers = {};
-            if (options.headers instanceof Headers) {
-                options.headers.set('X-PII-Override', '1');
-            } else {
-                options.headers['X-PII-Override'] = '1';
-            }
-            return originalFetch.call(context, url, options);
-        }
-        // Redact or Remove
-        var cleaned = action === 'remove'
-            ? removeObject(body, matches)
-            : redactObject(body, matches);
-        options.body = JSON.stringify(cleaned);
-        return originalFetch.call(context, url, options);
-    }
+    function setOverride(val) { _overrideActive = !!val; }
+    function getOverride() { return _overrideActive; }
 
     function attachToFetch() {
-        const originalFetch = window.fetch;
+        var originalFetch = window.fetch;
 
-        window.fetch = async function(url, options) {
-            // Only intercept POST/PUT with JSON body
+        window.fetch = function(url, options) {
             if (!options || !options.body) return originalFetch.call(this, url, options);
-            if (!options.method || !['POST', 'PUT'].includes(options.method.toUpperCase())) {
+            if (!options.method || ['POST', 'PUT'].indexOf(options.method.toUpperCase()) === -1) {
                 return originalFetch.call(this, url, options);
             }
 
-            // Skip non-JSON content types
-            const contentType = (options.headers && (options.headers['Content-Type'] || options.headers['content-type'])) || '';
-            if (!contentType.includes('application/json')) return originalFetch.call(this, url, options);
-
-            // Skip auth/admin/backup routes (not application AI routes)
-            const urlStr = typeof url === 'string' ? url : url.toString();
-            const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
-                '/api/pii-override-log',
-                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
-            if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
-                return originalFetch.call(this, url, options);
+            // Add override header if flag is set
+            if (_overrideActive) {
+                _overrideActive = false;
+                if (!options.headers) options.headers = {};
+                if (options.headers instanceof Headers) {
+                    options.headers.set('X-PII-Override', '1');
+                } else {
+                    options.headers['X-PII-Override'] = '1';
+                }
             }
 
-            // Parse and scan the JSON body
-            let body;
-            try {
-                body = JSON.parse(options.body);
-            } catch(e) {
-                return originalFetch.call(this, url, options);
-            }
-
-            const matches = scanObject(body);
-            if (matches.length === 0) {
-                return originalFetch.call(this, url, options);
-            }
-
-            // Check if user already made a decision for this URL recently
-            var cachedAction = _getCachedDecision(urlStr);
-            if (cachedAction) {
-                return _applyDecision(cachedAction, body, matches, url, options, originalFetch, this, urlStr);
-            }
-
-            // PII detected — show modal with highlighted preview
-            const action = await showPIIModal(matches, body);
-
-            if (action === 'cancel') {
-                return new Response(JSON.stringify({
-                    error: 'Submission cancelled — patient data detected.',
-                    pii_blocked: true
-                }), { status: 422, headers: { 'Content-Type': 'application/json' } });
-            }
-
-            // Cache the decision so re-submits don't re-prompt
-            _cacheDecision(urlStr, action);
-
-            if (action === 'override') {
-                // Log the override to audit trail (fire-and-forget)
-                var flaggedTypes = [];
-                var seen = {};
-                matches.forEach(function(m) {
-                    if (!seen[m.type]) { seen[m.type] = true; flaggedTypes.push(m.type); }
-                });
-                originalFetch.call(this, '/api/pii-override-log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        flagged_types: flaggedTypes,
-                        flagged_count: matches.length,
-                        target_url: urlStr
-                    })
-                }).catch(function() {});
-            }
-
-            return _applyDecision(action, body, matches, url, options, originalFetch, this, urlStr);
+            return originalFetch.call(this, url, options);
         };
     }
 
@@ -863,23 +473,22 @@
         scan: scan,
         redact: redact,
         remove: remove,
-        scanObject: scanObject,
-        redactObject: redactObject,
-        removeObject: removeObject,
-        getWarningHTML: getWarningHTML,
-        getActionableWarningHTML: getActionableWarningHTML,
-        showPIIModal: showPIIModal,
         attachToFetch: attachToFetch,
+        setOverride: setOverride,
+        getOverride: getOverride,
         dismiss: dismiss,
-        dismissType: dismissType,
         isDismissed: isDismissed,
         filterDismissed: filterDismissed,
         clearDismissals: clearDismissals,
+        isMedicalTerm: _isMedicalTerm,
         PII_PATTERNS: PII_PATTERNS,
         MEDICAL_ALLOWLIST: MEDICAL_ALLOWLIST,
         IMAGING_MODALITY_TERMS: IMAGING_MODALITY_TERMS,
-        isMedicalTerm: _isMedicalTerm,
-        TYPE_COLORS: TYPE_COLORS
+        NER_FALSE_POSITIVE_TERMS: NER_FALSE_POSITIVE_TERMS,
+        TIER_HIGH: TIER_HIGH,
+        TIER_MEDIUM: TIER_MEDIUM,
+        TIER_LOW: TIER_LOW,
+        // protect() is defined by pii-guard-ui.js and injected onto this namespace
     };
 
 })();

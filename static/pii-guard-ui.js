@@ -1,29 +1,22 @@
 /**
- * PII Guard UI Kit — 3-Layer Progressive Escalation
- *
- * Layer 1: Ambient Awareness (inline highlights, floating widget, header badge, border glow)
- * Layer 2: Detail on Demand (popover with per-match actions)
- * Layer 3: Commit-Gate Modal (blocking modal before AI calls)
+ * PII Guard v2 — UI Module
+ * Layer 1: Ambient highlights (dotted underline) + banner
+ * Layer 2: Click-to-act popover (Redact / Remove / Dismiss with confirmation)
+ * Layer 3: Gate modal (per-item actions + bulk Redact All / Remove All / Dismiss All)
  *
  * Depends on: pii-guard.js (window.PIIGuard)
+ *
+ * Usage:
+ *   var ctrl = PIIGuard.protect({
+ *       textareas: ['#editorInput', '#editorOutput'],
+ *       bannerTarget: '.card-header .d-flex',
+ *       auditContext: 'smart-reporter'
+ *   });
+ *   // Before API call:
+ *   var r = await ctrl.gate(); if (!r.allowed) return;
  */
 (function() {
     'use strict';
-
-    var HARD_TYPES = [
-        'NHS Number', 'US SSN', 'MRN / Hospital ID', 'Patient Name',
-        'Possible Patient ID', 'Aadhaar Number', 'PAN Card', 'UK National Insurance Number'
-    ];
-
-    function isHard(type) {
-        return HARD_TYPES.indexOf(type) !== -1;
-    }
-
-    function maskText(text) {
-        if (!text) return '';
-        if (text.length <= 3) return text + '***';
-        return text.substring(0, 3) + text.substring(3).replace(/[A-Za-z0-9]/g, '*');
-    }
 
     function escapeHtml(str) {
         var div = document.createElement('div');
@@ -31,52 +24,20 @@
         return div.innerHTML;
     }
 
-    function getTypeColor(type) {
-        var colors = (window.PIIGuard && PIIGuard.TYPE_COLORS) || {};
-        return colors[type] || '#dc3545';
-    }
-
-    function hexToRgba(hex, alpha) {
-        hex = hex.replace('#', '');
-        var r = parseInt(hex.substring(0, 2), 16);
-        var g = parseInt(hex.substring(2, 4), 16);
-        var b = parseInt(hex.substring(4, 6), 16);
-        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-    }
-
-    /** Detect if a textarea has a dark background */
-    function isDarkBg(textarea) {
-        var bg = window.getComputedStyle(textarea).backgroundColor;
-        if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') {
-            // Check parent
-            var parent = textarea.closest('.pacs-output-card, .card');
-            if (parent) bg = window.getComputedStyle(parent).backgroundColor;
-        }
-        if (!bg || bg === 'transparent') return false;
-        var m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (!m) return false;
-        var luminance = (0.299 * parseInt(m[1]) + 0.587 * parseInt(m[2]) + 0.114 * parseInt(m[3])) / 255;
-        return luminance < 0.35;
-    }
-
-    /** Copy computed text styles from textarea to backdrop */
     function syncStyles(textarea, backdrop) {
         var cs = window.getComputedStyle(textarea);
         var props = [
-            'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'lineHeight',
-            'letterSpacing', 'wordSpacing', 'textIndent', 'whiteSpace', 'wordWrap',
-            'overflowWrap', 'wordBreak', 'paddingTop', 'paddingRight', 'paddingBottom',
-            'paddingLeft', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth',
-            'borderLeftWidth', 'boxSizing', 'textTransform'
+            'fontFamily','fontSize','fontWeight','fontStyle','lineHeight',
+            'letterSpacing','wordSpacing','textIndent','whiteSpace','wordWrap',
+            'overflowWrap','wordBreak','paddingTop','paddingRight','paddingBottom',
+            'paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth',
+            'borderLeftWidth','boxSizing','textTransform'
         ];
         for (var i = 0; i < props.length; i++) {
             backdrop.style[props[i]] = cs[props[i]];
         }
         backdrop.style.width = textarea.offsetWidth + 'px';
         backdrop.style.height = textarea.offsetHeight + 'px';
-        // Compensate for scrollbar gutter: textarea content is narrower when
-        // a scrollbar is visible, but backdrop has overflow:hidden (no scrollbar).
-        // Without this, text wraps differently and highlights drift downward.
         var scrollbarW = textarea.offsetWidth - textarea.clientWidth
             - (parseFloat(cs.borderLeftWidth) || 0) - (parseFloat(cs.borderRightWidth) || 0);
         if (scrollbarW > 0) {
@@ -84,33 +45,30 @@
         }
     }
 
-    // ===================== PIIGuardUI.attach() =====================
+    function truncate(str, len) {
+        return str.length > len ? str.substring(0, len) + '...' : str;
+    }
 
-    function attach(config) {
+    // ===================== PIIGuard.protect() =====================
+
+    function protect(config) {
         if (!window.PIIGuard) {
-            console.warn('PIIGuardUI: PIIGuard not loaded');
+            console.warn('PIIGuard.protect: PIIGuard not loaded');
             return null;
         }
 
         config = config || {};
         var selectors = config.textareas || [];
-        var headerSelector = config.headerSelector || null;
-        var debounceMs = config.debounceMs || 400;
-        var enableOverlay = config.highlightOverlay !== false;
-        var enableWidget = config.floatingWidget !== false;
-        var enableBadge = config.headerBadge !== false;
+        var bannerTargetSel = config.bannerTarget || null;
         var auditContext = config.auditContext || 'unknown';
-        var onStateChange = config.onStateChange || null;
 
         var _textareas = [];
-        var _overlays = {};     // keyed by textarea id/index
-        var _widgets = {};
-        var _badge = null;
-        var _detailPopover = null;
+        var _overlays = {};
+        var _banner = null;
+        var _popover = null;
         var _debounceTimer = null;
-        var _allMatches = [];   // current filtered matches across all textareas
-        var _matchesByTa = {};  // matches per textarea
-        var _blocked = false;
+        var _allMatches = [];       // ALL matches (including dismissed)
+        var _activeMatches = [];    // non-dismissed matches only
         var _destroyed = false;
 
         // Resolve textareas
@@ -120,62 +78,44 @@
         }
         if (_textareas.length === 0) return null;
 
-        // --- Setup overlay containers ---
+        // Setup overlays
         for (var t = 0; t < _textareas.length; t++) {
             var ta = _textareas[t];
             var taId = ta.id || ('pii-ta-' + t);
-
-            if (enableOverlay) {
-                _setupOverlay(ta, taId);
-            }
-            if (enableWidget) {
-                _setupWidget(ta, taId);
-            }
-
-            // Attach input listeners
+            _setupOverlay(ta, taId);
             ta.addEventListener('input', _onInput);
             ta.addEventListener('scroll', _onScroll);
         }
 
-        // Setup header badge
-        if (enableBadge && headerSelector) {
-            _setupBadge(headerSelector);
-        }
-
-        // Resize observer for overlay sync
-        if (enableOverlay && window.ResizeObserver) {
+        // ResizeObserver
+        if (window.ResizeObserver) {
             var ro = new ResizeObserver(function() {
                 if (_destroyed) return;
                 _syncAllOverlays();
             });
-            for (var r = 0; r < _textareas.length; r++) {
-                ro.observe(_textareas[r]);
-            }
+            for (var r = 0; r < _textareas.length; r++) ro.observe(_textareas[r]);
         }
 
-        // Close detail popover on outside click
         document.addEventListener('click', _onDocClick);
-
-        // Initial scan
         setTimeout(_doScan, 50);
 
         // ===================== OVERLAY =====================
+
         function _setupOverlay(textarea, id) {
             var parent = textarea.parentNode;
-            // Wrap if not already in overlay container
             if (!parent.classList.contains('pii-overlay-container')) {
                 var wrapper = document.createElement('div');
                 wrapper.className = 'pii-overlay-container';
+                wrapper.style.width = '100%';
                 parent.insertBefore(wrapper, textarea);
                 wrapper.appendChild(textarea);
                 parent = wrapper;
             }
+            // Backdrop goes AFTER textarea in DOM → paints on top.
+            // CSS: z-index:2, transparent bg, pointer-events:none. Marks: pointer-events:auto.
             var backdrop = document.createElement('div');
             backdrop.className = 'pii-overlay-backdrop';
-            if (isDarkBg(textarea)) {
-                backdrop.style.background = '#0d1117';
-            }
-            parent.insertBefore(backdrop, textarea);
+            parent.appendChild(backdrop);
             syncStyles(textarea, backdrop);
             _overlays[id] = { backdrop: backdrop, container: parent, textarea: textarea };
         }
@@ -186,36 +126,53 @@
             syncStyles(ov.textarea, ov.backdrop);
 
             if (!matches || matches.length === 0) {
-                ov.backdrop.innerHTML = escapeHtml(text);
-                ov.container.classList.remove('pii-has-matches');
+                ov.backdrop.textContent = text;
+                ov.container.classList.remove('pii-has-matches', 'pii-all-dismissed');
                 return;
             }
 
-            ov.container.classList.add('pii-has-matches');
-            var dark = isDarkBg(ov.textarea);
-            var alpha = dark ? 0.35 : 0.2;
-
-            // Sort matches by index (position in text) for correct rendering
+            // Sort by index for correct rendering
             var sorted = matches.slice().sort(function(a, b) { return (a.index || 0) - (b.index || 0); });
 
-            // Build highlighted text
             var html = '';
             var lastEnd = 0;
             for (var i = 0; i < sorted.length; i++) {
                 var m = sorted[i];
-                var idx = text.indexOf(m.match, lastEnd);
-                if (idx === -1) idx = text.indexOf(m.match);
-                if (idx === -1) continue;
-                // Text before match
+                var idx = m.index;
+                if (typeof idx !== 'number' || idx < lastEnd) continue;
+                if (idx + m.length > text.length) continue;
+
                 html += escapeHtml(text.substring(lastEnd, idx));
-                // The match itself
-                var color = getTypeColor(m.type);
-                html += '<mark class="pii-overlay-mark" style="background:' + hexToRgba(color, alpha) + ';">' +
-                    escapeHtml(m.match) + '</mark>';
-                lastEnd = idx + m.match.length;
+                var dismissed = PIIGuard.isDismissed(m);
+                html += '<mark class="pii-mark" data-tier="' + (m.tier || 'medium')
+                    + '" data-pii-type="' + escapeHtml(m.type)
+                    + '" data-pii-match="' + escapeHtml(m.match)
+                    + '"' + (dismissed ? ' data-dismissed="true"' : '')
+                    + '>' + escapeHtml(m.match) + '</mark>';
+                lastEnd = idx + m.length;
             }
             html += escapeHtml(text.substring(lastEnd));
             ov.backdrop.innerHTML = html;
+
+            // Check if all matches are dismissed
+            var activeCount = 0;
+            for (var j = 0; j < matches.length; j++) {
+                if (!PIIGuard.isDismissed(matches[j])) activeCount++;
+            }
+
+            if (activeCount > 0) {
+                ov.container.classList.add('pii-has-matches');
+                ov.container.classList.remove('pii-all-dismissed');
+            } else {
+                ov.container.classList.remove('pii-has-matches');
+                ov.container.classList.add('pii-all-dismissed');
+            }
+
+            // Attach click handlers
+            var marks = ov.backdrop.querySelectorAll('.pii-mark');
+            for (var mi = 0; mi < marks.length; mi++) {
+                marks[mi].addEventListener('click', _onMarkClick);
+            }
         }
 
         function _syncAllOverlays() {
@@ -224,326 +181,247 @@
             }
         }
 
-        // ===================== WIDGET =====================
-        function _setupWidget(textarea, id) {
-            var container = textarea.closest('.pii-overlay-container') || textarea.parentNode;
-            var widget = document.createElement('div');
-            widget.className = 'pii-float-widget';
-            widget.innerHTML = '<i class="fas fa-shield-alt" style="font-size:0.7rem;"></i><span class="pii-widget-count"></span>';
-            widget.addEventListener('click', function(e) {
-                e.stopPropagation();
-                _toggleDetail(container, widget);
-            });
-            container.appendChild(widget);
-            _widgets[id] = widget;
-        }
+        // ===================== BANNER =====================
 
-        function _updateWidget(id, matches) {
-            var w = _widgets[id];
-            if (!w) return;
-            if (!matches || matches.length === 0) {
-                w.classList.remove('visible', 'pii-float-widget--hard', 'pii-float-widget--soft');
-                return;
-            }
-            var hasHard = matches.some(function(m) { return isHard(m.type); });
-            w.classList.add('visible');
-            w.classList.toggle('pii-float-widget--hard', hasHard);
-            w.classList.toggle('pii-float-widget--soft', !hasHard);
-            w.querySelector('.pii-widget-count').textContent = matches.length;
-        }
+        function _updateBanner(activeCount, dismissedCount) {
+            if (!bannerTargetSel) return;
+            if (_banner) { _banner.remove(); _banner = null; }
+            if (activeCount === 0 && dismissedCount === 0) return;
 
-        // ===================== BADGE =====================
-        function _setupBadge(selector) {
-            var header = document.querySelector(selector);
-            if (!header) return;
-            _badge = document.createElement('span');
-            _badge.className = 'badge bg-danger pii-header-badge ms-2';
-            _badge.style.cursor = 'pointer';
-            _badge.addEventListener('click', function(e) {
-                e.stopPropagation();
-                // Find first widget container for popover anchoring
-                var firstId = _textareas[0] && (_textareas[0].id || 'pii-ta-0');
-                var w = _widgets[firstId];
-                if (w) {
-                    var container = w.parentNode;
-                    _toggleDetail(container, w);
-                }
-            });
-            header.appendChild(_badge);
-        }
+            var target = document.querySelector(bannerTargetSel);
+            if (!target) return;
 
-        function _updateBadge(total) {
-            if (!_badge) return;
-            if (total === 0) {
-                _badge.classList.remove('visible');
+            _banner = document.createElement('div');
+            _banner.className = 'pii-banner';
+            if (activeCount > 0) {
+                _banner.innerHTML = '<i class="fas fa-shield-alt" style="font-size:0.7rem"></i> Sensitive data detected (' + activeCount + ' item' + (activeCount !== 1 ? 's' : '') + ')';
             } else {
-                _badge.classList.add('visible');
-                _badge.textContent = 'PII: ' + total;
+                _banner.className += ' pii-banner-clear';
+                _banner.innerHTML = '<i class="fas fa-check-circle" style="font-size:0.7rem"></i> All items reviewed (' + dismissedCount + ' dismissed)';
             }
+            target.appendChild(_banner);
         }
 
-        // ===================== DETAIL POPOVER =====================
-        function _toggleDetail(container, anchorWidget) {
-            if (_detailPopover && _detailPopover.classList.contains('open')) {
-                _closeDetail();
-                return;
-            }
-            _showDetail(container, anchorWidget);
+        // ===================== POPOVER (Layer 2) =====================
+
+        function _closePopover() {
+            if (_popover) { _popover.remove(); _popover = null; }
         }
 
-        function _showDetail(container, anchorWidget) {
-            _closeDetail();
-            if (_allMatches.length === 0) return;
+        function _onMarkClick(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            var mark = e.currentTarget;
+            var matchType = mark.getAttribute('data-pii-type');
+            var matchText = mark.getAttribute('data-pii-match');
+            if (!matchType || !matchText) return;
 
-            _detailPopover = document.createElement('div');
-            _detailPopover.className = 'pii-float-detail open';
-
-            // Header with batch buttons
-            var header = document.createElement('div');
-            header.className = 'pii-detail-header';
-            header.innerHTML =
-                '<span class="pii-detail-header-title">' + _allMatches.length + ' PII match' + (_allMatches.length !== 1 ? 'es' : '') + '</span>' +
-                '<div class="pii-detail-batch-btns">' +
-                    '<button class="pii-detail-btn-redact" data-batch="redact">Redact All</button>' +
-                    '<button class="pii-detail-btn-remove" data-batch="remove">Remove All</button>' +
-                '</div>';
-            _detailPopover.appendChild(header);
-
-            header.querySelector('[data-batch="redact"]').addEventListener('click', function(e) {
-                e.stopPropagation();
-                _batchAction('redact');
-            });
-            header.querySelector('[data-batch="remove"]').addEventListener('click', function(e) {
-                e.stopPropagation();
-                _batchAction('remove');
-            });
-
-            // Match rows
-            var body = document.createElement('div');
-            body.style.padding = '4px 0';
+            // Find the match object
+            var match = null;
             for (var i = 0; i < _allMatches.length; i++) {
-                body.appendChild(_createDetailRow(_allMatches[i], i));
+                if (_allMatches[i].type === matchType && _allMatches[i].match === matchText) {
+                    match = _allMatches[i]; break;
+                }
             }
-            _detailPopover.appendChild(body);
+            if (!match) return;
 
-            container.appendChild(_detailPopover);
-        }
+            var isDismissedItem = PIIGuard.isDismissed(match);
+            _closePopover();
 
-        function _closeDetail() {
-            if (_detailPopover) {
-                _detailPopover.remove();
-                _detailPopover = null;
+            _popover = document.createElement('div');
+            _popover.className = 'pii-popover';
+
+            // Header
+            var header = '<div class="pii-pop-header">'
+                + '<span class="pii-pop-type">[' + escapeHtml(matchType) + ']</span>'
+                + '<span class="pii-pop-match">"' + escapeHtml(truncate(matchText, 30)) + '"</span>'
+                + '</div>';
+
+            // Actions
+            var actions = '<div class="pii-pop-actions">'
+                + '<button class="pop-redact">Redact</button>'
+                + '<button class="pop-remove">Remove</button>';
+            if (!isDismissedItem) {
+                actions += '<button class="pop-dismiss">Dismiss</button>';
             }
-        }
+            actions += '</div>';
 
-        function _createDetailRow(match, index) {
-            var row = document.createElement('div');
-            row.className = 'pii-detail-row';
-            row.dataset.index = index;
+            // Dismiss confirmation section (hidden initially)
+            var isHigh = match.tier === PIIGuard.TIER_HIGH;
+            var confirmSection = '<div class="pii-pop-dismiss-confirm' + (isHigh ? ' pii-high-warn' : '') + '">'
+                + '<div class="pii-pop-dismiss-warn">'
+                + (isHigh
+                    ? '⚠ This is HIGH-sensitivity data (e.g. NHS number, MRN). Dismissing will be audited and logged.'
+                    : 'Dismissing will allow this item through. This action will be audited.')
+                + '</div>'
+                + '<label class="pii-pop-dismiss-cb-row">'
+                + '<input type="checkbox" class="pii-pop-cb">'
+                + '<span>I confirm this complies with data protection policy</span>'
+                + '</label>'
+                + '<button class="pii-pop-confirm-btn" disabled>Confirm Dismiss</button>'
+                + '</div>';
 
-            var color = getTypeColor(match.type);
-            row.innerHTML =
-                '<span class="pii-detail-dot" style="background:' + color + ';"></span>' +
-                '<span class="pii-detail-text"><strong>' + escapeHtml(match.type) + ':</strong> ' + escapeHtml(maskText(match.match)) + '</span>' +
-                '<span class="pii-detail-actions">' +
-                    '<button class="act-redact" data-action="redact">Redact</button>' +
-                    '<button class="act-remove" data-action="remove">Remove</button>' +
-                    '<button class="act-dismiss" data-action="dismiss">Dismiss</button>' +
-                '</span>';
+            _popover.innerHTML = header + actions + confirmSection;
+            document.body.appendChild(_popover);
 
-            row.querySelector('.act-redact').addEventListener('click', function(e) { e.stopPropagation(); _singleAction('redact', match, row); });
-            row.querySelector('.act-remove').addEventListener('click', function(e) { e.stopPropagation(); _singleAction('remove', match, row); });
-            row.querySelector('.act-dismiss').addEventListener('click', function(e) { e.stopPropagation(); _singleDismiss(match, row); });
+            // Position
+            var rect = mark.getBoundingClientRect();
+            var popW = _popover.offsetWidth || 220;
+            _popover.style.left = Math.min(rect.left, window.innerWidth - popW - 10) + 'px';
+            _popover.style.top = (rect.bottom + 4) + 'px';
 
-            return row;
+            // Wire action buttons
+            _popover.querySelector('.pop-redact').addEventListener('click', function(ev) {
+                ev.stopPropagation(); _closePopover(); _singleAction('redact', match);
+            });
+            _popover.querySelector('.pop-remove').addEventListener('click', function(ev) {
+                ev.stopPropagation(); _closePopover(); _singleAction('remove', match);
+            });
+
+            if (!isDismissedItem) {
+                var dismissBtn = _popover.querySelector('.pop-dismiss');
+                var confirmDiv = _popover.querySelector('.pii-pop-dismiss-confirm');
+                var cb = _popover.querySelector('.pii-pop-cb');
+                var confirmBtn = _popover.querySelector('.pii-pop-confirm-btn');
+
+                dismissBtn.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    // Show confirmation section
+                    confirmDiv.classList.add('visible');
+                    dismissBtn.style.display = 'none';
+                });
+
+                cb.addEventListener('change', function() {
+                    confirmBtn.disabled = !this.checked;
+                });
+
+                confirmBtn.addEventListener('click', function(ev) {
+                    ev.stopPropagation();
+                    if (!cb.checked) return;
+                    _closePopover();
+                    PIIGuard.dismiss(match);
+                    _logAction('dismiss', [match.type], 1);
+                    _doScan(); // mark turns green
+                });
+            }
         }
 
         // ===================== ACTIONS =====================
-        function _singleAction(action, match, row) {
+
+        function _singleAction(action, match) {
             var replacement = action === 'redact' ? '[REDACTED]' : '';
             for (var t = 0; t < _textareas.length; t++) {
                 var ta = _textareas[t];
                 if (ta.value.indexOf(match.match) !== -1) {
                     ta.value = ta.value.split(match.match).join(replacement);
                     if (action === 'remove') ta.value = ta.value.replace(/  +/g, ' ');
-                    // Trigger change for any external listeners
                     ta.dispatchEvent(new Event('input', { bubbles: true }));
                 }
             }
             _logAction(action, [match.type], 1);
-            if (row) { row.classList.add('fading'); setTimeout(function() { row.remove(); }, 300); }
             _doScan();
         }
 
-        function _batchAction(action) {
-            var matches = _allMatches.slice();
+        function _batchAction(action, matches) {
+            if (!matches || matches.length === 0) return;
             for (var t = 0; t < _textareas.length; t++) {
                 var ta = _textareas[t];
                 if (action === 'redact') {
                     ta.value = PIIGuard.redact(ta.value, matches);
-                } else {
+                } else if (action === 'remove') {
                     ta.value = PIIGuard.remove(ta.value, matches);
                 }
                 ta.dispatchEvent(new Event('input', { bubbles: true }));
             }
             var types = matches.map(function(m) { return m.type; });
             _logAction('batch_' + action, types, matches.length);
-            _closeDetail();
             _doScan();
         }
 
-        function _singleDismiss(match, row) {
-            _showDismissConfirm(function() {
-                PIIGuard.dismiss(match);
-                _logAction('dismiss', [match.type], 1);
-                if (row) { row.classList.add('fading'); setTimeout(function() { row.remove(); }, 300); }
-                _doScan();
-            });
-        }
-
-        function _showDismissConfirm(onConfirm) {
-            var existing = document.getElementById('piiDismissConfirmOverlay');
-            if (existing) existing.remove();
-
-            var overlay = document.createElement('div');
-            overlay.id = 'piiDismissConfirmOverlay';
-            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:11000;display:flex;align-items:center;justify-content:center;';
-
-            var dialog = document.createElement('div');
-            dialog.style.cssText = 'background:#fff;border-radius:8px;padding:1.25rem;max-width:420px;width:90%;box-shadow:0 8px 24px rgba(0,0,0,0.2);';
-            dialog.innerHTML =
-                '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">' +
-                    '<i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:1.1rem;"></i>' +
-                    '<strong style="font-size:0.95rem;">Confirm Dismissal</strong>' +
-                '</div>' +
-                '<p style="font-size:0.82rem;color:#444;margin-bottom:0.75rem;line-height:1.5;">' +
-                    'Dismissing a PII flag means this text will be sent to external AI services. ' +
-                    'You must ensure the flagged text does <strong>not</strong> contain protected health information (PHI).' +
-                '</p>' +
-                '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">' +
-                    '<label style="display:flex;align-items:flex-start;gap:0.5rem;cursor:pointer;font-size:0.8rem;color:#664d03;margin:0;">' +
-                        '<input type="checkbox" class="pii-dismiss-cb" style="margin-top:3px;flex-shrink:0;">' +
-                        '<span>I confirm this is <strong>not</strong> patient-identifiable information and I authorise this dismissal. This action will be logged.</span>' +
-                    '</label>' +
-                '</div>' +
-                '<div style="display:flex;gap:0.5rem;justify-content:flex-end;">' +
-                    '<button class="btn btn-sm btn-outline-secondary pii-dismiss-cancel-btn">Cancel</button>' +
-                    '<button class="btn btn-sm pii-dismiss-confirm-btn" style="background:#dc3545;color:#fff;opacity:0.5;pointer-events:none;" disabled>Dismiss</button>' +
-                '</div>';
-
-            overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
-
-            var checkbox = dialog.querySelector('.pii-dismiss-cb');
-            var confirmBtn = dialog.querySelector('.pii-dismiss-confirm-btn');
-            var cancelBtn = dialog.querySelector('.pii-dismiss-cancel-btn');
-
-            checkbox.addEventListener('change', function() {
-                confirmBtn.disabled = !this.checked;
-                confirmBtn.style.opacity = this.checked ? '1' : '0.5';
-                confirmBtn.style.pointerEvents = this.checked ? 'auto' : 'none';
-            });
-            cancelBtn.addEventListener('click', function() { overlay.remove(); });
-            overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
-            confirmBtn.addEventListener('click', function() {
-                overlay.remove();
-                onConfirm();
-            });
-            setTimeout(function() { checkbox.focus(); }, 100);
-        }
-
         // ===================== SCANNING =====================
-        function _onInput() {
+
+        function _onInput(e) {
+            // Immediately clear stale highlights
+            var ta = e.target;
+            var taId = ta.id || ('pii-ta-' + Array.prototype.indexOf.call(_textareas, ta));
+            if (_overlays[taId]) {
+                _overlays[taId].backdrop.textContent = ta.value;
+                _overlays[taId].container.classList.remove('pii-has-matches', 'pii-all-dismissed');
+            }
             clearTimeout(_debounceTimer);
-            _debounceTimer = setTimeout(_doScan, debounceMs);
+            _debounceTimer = setTimeout(_doScan, 250);
         }
 
         function _onScroll() {
-            // Sync overlay scroll
             for (var id in _overlays) {
-                var ov = _overlays[id];
-                ov.backdrop.scrollTop = ov.textarea.scrollTop;
+                _overlays[id].backdrop.scrollTop = _overlays[id].textarea.scrollTop;
             }
         }
 
         function _doScan() {
             if (_destroyed) return;
             _allMatches = [];
-            _matchesByTa = {};
+            _activeMatches = [];
 
             for (var t = 0; t < _textareas.length; t++) {
                 var ta = _textareas[t];
                 var taId = ta.id || ('pii-ta-' + t);
                 var text = ta.value || '';
                 var result = PIIGuard.scan(text);
-                var matches = PIIGuard.filterDismissed ? PIIGuard.filterDismissed(result.matches || []) : (result.matches || []);
+                var matches = result.matches || [];
 
-                _matchesByTa[taId] = matches;
-
-                // Dedupe into _allMatches
+                // Collect all matches (including dismissed)
                 for (var i = 0; i < matches.length; i++) {
                     var m = matches[i];
                     var isDupe = false;
                     for (var j = 0; j < _allMatches.length; j++) {
                         if (_allMatches[j].type === m.type && _allMatches[j].match === m.match) {
-                            isDupe = true;
-                            break;
+                            isDupe = true; break;
                         }
                     }
                     if (!isDupe) _allMatches.push(m);
+                    if (!isDupe && !PIIGuard.isDismissed(m)) _activeMatches.push(m);
                 }
 
-                // Update overlay
-                if (enableOverlay && _overlays[taId]) {
+                // Render overlay with ALL matches (dismissed shown green)
+                if (_overlays[taId]) {
                     _renderOverlay(taId, text, matches);
                 }
-                // Update widget
-                if (enableWidget) {
-                    _updateWidget(taId, matches);
-                }
             }
 
-            // Update badge
-            if (enableBadge) {
-                _updateBadge(_allMatches.length);
-            }
-
-            // Update blocked state
-            var wasBlocked = _blocked;
-            _blocked = _allMatches.length > 0;
-
-            if (onStateChange && (_blocked !== wasBlocked || _allMatches.length > 0)) {
-                onStateChange({ blocked: _blocked, count: _allMatches.length, matches: _allMatches });
-            }
+            var dismissedCount = _allMatches.length - _activeMatches.length;
+            _updateBanner(_activeMatches.length, dismissedCount);
         }
 
-        // ===================== GATE (Layer 3) =====================
+        // ===================== GATE MODAL (Layer 3) =====================
+
         function gate() {
             return new Promise(function(resolve) {
                 if (_destroyed) { resolve({ allowed: true }); return; }
 
-                // Fresh scan
                 _doScan();
 
-                if (_allMatches.length === 0) {
+                // If no active PII (all dismissed or none)
+                if (_activeMatches.length === 0) {
+                    if (_allMatches.length > 0) {
+                        // All are dismissed — set override for fetch interceptor
+                        PIIGuard.setOverride(true);
+                    }
                     resolve({ allowed: true });
                     return;
                 }
 
-                _showGateModal(_allMatches.slice(), resolve);
+                _showGateModal(resolve);
             });
         }
 
-        function _showGateModal(matches, resolve) {
-            var hard = matches.filter(function(m) { return isHard(m.type); });
-            var soft = matches.filter(function(m) { return !isHard(m.type); });
+        function _showGateModal(resolve) {
             var resolved = false;
 
             function finish(result) {
                 if (resolved) return;
                 resolved = true;
                 if (overlay.parentNode) overlay.remove();
-                // Re-scan to update UI
                 _doScan();
                 resolve(result);
             }
@@ -556,212 +434,261 @@
 
             // Header
             modal.innerHTML =
-                '<div class="pii-gate-modal-header">' +
-                    '<i class="fas fa-shield-alt"></i>' +
-                    '<h5>Patient Data Review Required</h5>' +
-                    '<button class="pii-gate-close">&times;</button>' +
-                '</div>';
+                '<div class="pii-gate-header">'
+                + '<i class="fas fa-shield-alt"></i>'
+                + '<h5>Review Required</h5>'
+                + '<button class="pii-gate-close">&times;</button>'
+                + '</div>';
 
+            // Body
             var body = document.createElement('div');
             body.className = 'pii-gate-body';
+            body.innerHTML = '<p>' + _activeMatches.length + ' item' + (_activeMatches.length !== 1 ? 's' : '') + ' detected in your text:</p>';
 
-            // Hard section
-            var hardSection = null;
-            if (hard.length > 0) {
-                hardSection = document.createElement('div');
-                hardSection.className = 'pii-gate-section pii-gate-hard-section';
-                hardSection.innerHTML = '<div class="pii-gate-section-title"><i class="fas fa-exclamation-circle me-1"></i>Must Resolve (' + hard.length + ')</div>';
-                for (var h = 0; h < hard.length; h++) {
-                    hardSection.appendChild(_createGateRow(hard[h], 'hard', onMatchResolved));
-                }
-                body.appendChild(hardSection);
+            // Per-item rows
+            var itemsContainer = document.createElement('div');
+            itemsContainer.className = 'pii-gate-items';
+
+            // Track item states: { match, el, status }
+            var itemStates = [];
+
+            for (var i = 0; i < _activeMatches.length; i++) {
+                (function(match, idx) {
+                    var row = document.createElement('div');
+                    row.className = 'pii-gate-item';
+
+                    var info = document.createElement('div');
+                    info.className = 'pii-gate-item-info';
+                    info.innerHTML = '<span class="pii-gate-item-type">' + escapeHtml(match.type) + '</span>'
+                        + '<span class="pii-gate-item-match">"' + escapeHtml(truncate(match.match, 30)) + '"</span>';
+
+                    var tierBadge = document.createElement('span');
+                    tierBadge.className = 'pii-gate-item-tier tier-' + (match.tier || 'medium');
+                    tierBadge.textContent = (match.tier || 'medium').toUpperCase();
+
+                    var actionsDiv = document.createElement('div');
+                    actionsDiv.className = 'pii-gate-item-actions';
+                    actionsDiv.innerHTML =
+                        '<button class="gate-redact">Redact</button>'
+                        + '<button class="gate-remove">Remove</button>'
+                        + '<button class="gate-dismiss">Dismiss</button>';
+
+                    var statusSpan = document.createElement('span');
+                    statusSpan.className = 'pii-gate-item-status';
+                    statusSpan.style.display = 'none';
+
+                    row.appendChild(info);
+                    row.appendChild(tierBadge);
+                    row.appendChild(actionsDiv);
+                    row.appendChild(statusSpan);
+                    itemsContainer.appendChild(row);
+
+                    var state = { match: match, el: row, actionsDiv: actionsDiv, statusSpan: statusSpan, status: 'pending' };
+                    itemStates.push(state);
+
+                    // Wire per-item buttons
+                    actionsDiv.querySelector('.gate-redact').addEventListener('click', function() {
+                        _singleAction('redact', match);
+                        _markItemDone(state, 'Redacted ✓');
+                        _checkAllDone();
+                    });
+                    actionsDiv.querySelector('.gate-remove').addEventListener('click', function() {
+                        _singleAction('remove', match);
+                        _markItemDone(state, 'Removed ✓');
+                        _checkAllDone();
+                    });
+                    actionsDiv.querySelector('.gate-dismiss').addEventListener('click', function() {
+                        _showItemDismissConfirm(state);
+                    });
+                })(_activeMatches[i], i);
             }
 
-            // Soft section
-            var softSection = null;
-            if (soft.length > 0) {
-                softSection = document.createElement('div');
-                softSection.className = 'pii-gate-section pii-gate-soft-section';
-                softSection.innerHTML = '<div class="pii-gate-section-title"><i class="fas fa-info-circle me-1"></i>Review (' + soft.length + ')</div>';
-                for (var s = 0; s < soft.length; s++) {
-                    softSection.appendChild(_createGateRow(soft[s], 'soft', onMatchResolved));
-                }
-                body.appendChild(softSection);
-            }
-
+            body.appendChild(itemsContainer);
             modal.appendChild(body);
 
-            // Footer
+            // Footer with bulk actions
             var footer = document.createElement('div');
             footer.className = 'pii-gate-footer';
 
-            // Confirm checkbox row
-            var confirmRow = document.createElement('div');
-            confirmRow.className = 'pii-gate-confirm-row';
-            confirmRow.innerHTML =
-                '<input type="checkbox" class="pii-gate-checkbox">' +
-                '<span>I confirm this does not contain protected health information (PHI). This will be logged.</span>';
-            footer.appendChild(confirmRow);
+            var bulkRow = document.createElement('div');
+            bulkRow.className = 'pii-gate-bulk-row';
 
-            var btnRow = document.createElement('div');
-            btnRow.className = 'pii-gate-btn-row';
-            btnRow.innerHTML =
-                '<button class="pii-gate-btn-cancel">Cancel</button>' +
-                '<button class="pii-gate-btn-remove-all">Remove All</button>' +
-                '<button class="pii-gate-btn-redact-all">Redact All & Continue</button>' +
-                '<button class="pii-gate-btn-override" disabled>Send Anyway</button>';
-            footer.appendChild(btnRow);
+            var cancelBtn = _btn('Cancel', 'pii-gate-btn-cancel');
+            var redactAllBtn = _btn('Redact All', 'pii-gate-btn-redact-all');
+            var removeAllBtn = _btn('Remove All', 'pii-gate-btn-remove-all');
+            var dismissAllBtn = _btn('Dismiss All', 'pii-gate-btn-dismiss-all');
+            var continueBtn = _btn('Continue', 'pii-gate-btn-continue');
+
+            bulkRow.appendChild(cancelBtn);
+            bulkRow.appendChild(redactAllBtn);
+            bulkRow.appendChild(removeAllBtn);
+            bulkRow.appendChild(dismissAllBtn);
+            bulkRow.appendChild(continueBtn);
+            footer.appendChild(bulkRow);
+
+            // Dismiss-all confirmation
+            var hasHigh = false;
+            for (var h = 0; h < _activeMatches.length; h++) {
+                if (_activeMatches[h].tier === PIIGuard.TIER_HIGH) { hasHigh = true; break; }
+            }
+
+            var dismissConfirm = document.createElement('div');
+            dismissConfirm.className = 'pii-gate-dismiss-confirm' + (hasHigh ? ' pii-high-warn' : '');
+            dismissConfirm.innerHTML =
+                '<div>' + (hasHigh
+                    ? '⚠ <strong>HIGH-sensitivity data detected</strong> (e.g. NHS numbers, MRNs). Dismissing all items will be audited and permanently logged.'
+                    : 'Dismissing all items will allow them through. This action will be audited.')
+                + '</div>'
+                + '<label style="display:flex;align-items:flex-start;gap:6px;font-size:0.72rem">'
+                + '<input type="checkbox" class="pii-gate-dismiss-cb" style="margin-top:2px">'
+                + '<span>I confirm this complies with data protection policy</span>'
+                + '</label>'
+                + '<button class="pii-gate-confirm-send" disabled>Confirm Dismiss All</button>';
+            footer.appendChild(dismissConfirm);
+
             modal.appendChild(footer);
-
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
 
             // Wire events
-            var closeBtn = modal.querySelector('.pii-gate-close');
-            var cancelBtn = modal.querySelector('.pii-gate-btn-cancel');
-            var redactAllBtn = modal.querySelector('.pii-gate-btn-redact-all');
-            var removeAllBtn = modal.querySelector('.pii-gate-btn-remove-all');
-            var overrideBtn = modal.querySelector('.pii-gate-btn-override');
-            var checkbox = modal.querySelector('.pii-gate-checkbox');
-
-            // Remaining match tracking
-            var remainingHard = hard.slice();
-            var remainingSoft = soft.slice();
-
-            function updateOverrideState() {
-                var canOverride = remainingHard.length === 0 && checkbox.checked;
-                overrideBtn.disabled = !canOverride;
-                // Hide override if there are still hard matches
-                overrideBtn.style.display = remainingHard.length > 0 ? 'none' : '';
-            }
-            updateOverrideState();
-
-            function onMatchResolved(match, action) {
-                // Apply action to textareas
-                var replacement = action === 'redact' ? '[REDACTED]' : '';
-                for (var t = 0; t < _textareas.length; t++) {
-                    var ta = _textareas[t];
-                    if (ta.value.indexOf(match.match) !== -1) {
-                        ta.value = ta.value.split(match.match).join(replacement);
-                        if (action === 'remove') ta.value = ta.value.replace(/  +/g, ' ');
-                    }
-                }
-                _logAction(action, [match.type], 1);
-
-                // Remove from tracking
-                remainingHard = remainingHard.filter(function(m) { return m.match !== match.match || m.type !== match.type; });
-                remainingSoft = remainingSoft.filter(function(m) { return m.match !== match.match || m.type !== match.type; });
-
-                // Update section counts
-                if (hardSection) {
-                    var hTitle = hardSection.querySelector('.pii-gate-section-title');
-                    hTitle.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Must Resolve (' + remainingHard.length + ')';
-                    if (remainingHard.length === 0) hardSection.style.display = 'none';
-                }
-                if (softSection) {
-                    var sTitle = softSection.querySelector('.pii-gate-section-title');
-                    sTitle.innerHTML = '<i class="fas fa-info-circle me-1"></i>Review (' + remainingSoft.length + ')';
-                    if (remainingSoft.length === 0) softSection.style.display = 'none';
-                }
-
-                // If all resolved, auto-close
-                if (remainingHard.length === 0 && remainingSoft.length === 0) {
-                    finish({ allowed: true, action: action });
-                    return;
-                }
-
-                updateOverrideState();
-            }
-
-            closeBtn.addEventListener('click', function() { finish({ allowed: false, reason: 'cancel' }); });
-            cancelBtn.addEventListener('click', function() { finish({ allowed: false, reason: 'cancel' }); });
+            modal.querySelector('.pii-gate-close').addEventListener('click', function() { finish({ allowed: false }); });
+            cancelBtn.addEventListener('click', function() { finish({ allowed: false }); });
 
             redactAllBtn.addEventListener('click', function() {
-                var allRemaining = remainingHard.concat(remainingSoft);
-                for (var t = 0; t < _textareas.length; t++) {
-                    _textareas[t].value = PIIGuard.redact(_textareas[t].value, allRemaining);
+                var pending = _getPending();
+                _batchAction('redact', pending);
+                for (var i = 0; i < itemStates.length; i++) {
+                    if (itemStates[i].status === 'pending') _markItemDone(itemStates[i], 'Redacted ✓');
                 }
-                var types = allRemaining.map(function(m) { return m.type; });
-                _logAction('batch_redact', types, allRemaining.length);
-                finish({ allowed: true, action: 'redact' });
+                _checkAllDone();
             });
 
             removeAllBtn.addEventListener('click', function() {
-                var allRemaining = remainingHard.concat(remainingSoft);
-                for (var t = 0; t < _textareas.length; t++) {
-                    _textareas[t].value = PIIGuard.remove(_textareas[t].value, allRemaining);
+                var pending = _getPending();
+                _batchAction('remove', pending);
+                for (var i = 0; i < itemStates.length; i++) {
+                    if (itemStates[i].status === 'pending') _markItemDone(itemStates[i], 'Removed ✓');
                 }
-                var types = allRemaining.map(function(m) { return m.type; });
-                _logAction('batch_remove', types, allRemaining.length);
-                finish({ allowed: true, action: 'remove' });
+                _checkAllDone();
             });
 
-            checkbox.addEventListener('change', function() { updateOverrideState(); });
-
-            overrideBtn.addEventListener('click', function() {
-                var types = remainingSoft.map(function(m) { return m.type; });
-                _logAction('override', types, remainingSoft.length);
-                finish({ allowed: true, action: 'override' });
+            dismissAllBtn.addEventListener('click', function() {
+                dismissConfirm.classList.add('visible');
+                dismissAllBtn.style.display = 'none';
             });
 
-            // Prevent closing on backdrop click (static backdrop)
+            var dismissCb = dismissConfirm.querySelector('.pii-gate-dismiss-cb');
+            var confirmSendBtn = dismissConfirm.querySelector('.pii-gate-confirm-send');
+
+            dismissCb.addEventListener('change', function() {
+                confirmSendBtn.disabled = !this.checked;
+            });
+
+            confirmSendBtn.addEventListener('click', function() {
+                if (!dismissCb.checked) return;
+                // Dismiss all pending
+                for (var i = 0; i < itemStates.length; i++) {
+                    if (itemStates[i].status === 'pending') {
+                        PIIGuard.dismiss(itemStates[i].match);
+                        _markItemDone(itemStates[i], 'Dismissed ✓');
+                    }
+                }
+                var types = _activeMatches.map(function(m) { return m.type; });
+                _logAction('batch_dismiss', types, _activeMatches.length);
+                dismissConfirm.classList.remove('visible');
+                _doScan();
+                _checkAllDone();
+            });
+
+            continueBtn.addEventListener('click', function() {
+                // All items addressed — check if any were dismissed (need override)
+                var hasDismissed = false;
+                for (var i = 0; i < itemStates.length; i++) {
+                    if (itemStates[i].statusText === 'Dismissed ✓') { hasDismissed = true; break; }
+                }
+                if (hasDismissed) PIIGuard.setOverride(true);
+                finish({ allowed: true, action: hasDismissed ? 'override' : 'redact' });
+            });
+
+            // Static backdrop shake
             overlay.addEventListener('click', function(e) {
                 if (e.target === overlay) {
                     modal.style.animation = 'none';
-                    modal.offsetHeight; // force reflow
+                    modal.offsetHeight;
                     modal.style.animation = 'piiGateShake 0.3s ease';
                 }
             });
-        }
 
-        function _createGateRow(match, hardOrSoft, onResolved) {
-            var row = document.createElement('div');
-            row.className = 'pii-gate-match-row';
+            // --- Helpers ---
 
-            var color = getTypeColor(match.type);
-            var dotColor = hardOrSoft === 'hard' ? '#dc3545' : '#e96304';
-            var dismissBtn = hardOrSoft === 'soft'
-                ? '<button class="gate-dismiss" data-action="dismiss">Dismiss</button>'
-                : '';
-
-            row.innerHTML =
-                '<span class="pii-gate-match-dot" style="background:' + dotColor + ';"></span>' +
-                '<span class="pii-gate-match-text">' +
-                    '<span class="pii-gate-match-type">' + escapeHtml(match.type) + ':</span>' +
-                    '<span class="pii-gate-match-preview">' + escapeHtml(maskText(match.match)) + '</span>' +
-                '</span>' +
-                '<span class="pii-gate-match-actions">' +
-                    '<button class="gate-redact" data-action="redact">Redact</button>' +
-                    '<button class="gate-remove" data-action="remove">Remove</button>' +
-                    dismissBtn +
-                '</span>';
-
-            row.querySelector('.gate-redact').addEventListener('click', function(e) {
-                e.stopPropagation();
-                row.classList.add('resolved');
-                onResolved(match, 'redact');
-            });
-            row.querySelector('.gate-remove').addEventListener('click', function(e) {
-                e.stopPropagation();
-                row.classList.add('resolved');
-                onResolved(match, 'remove');
-            });
-            var dismissEl = row.querySelector('.gate-dismiss');
-            if (dismissEl) {
-                dismissEl.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    _showDismissConfirm(function() {
-                        PIIGuard.dismiss(match);
-                        row.classList.add('resolved');
-                        onResolved(match, 'dismiss');
-                    });
-                });
+            function _btn(text, cls) {
+                var b = document.createElement('button');
+                b.className = cls;
+                b.textContent = text;
+                return b;
             }
 
-            return row;
+            function _markItemDone(state, label) {
+                state.status = 'done';
+                state.statusText = label;
+                state.actionsDiv.style.display = 'none';
+                state.statusSpan.textContent = label;
+                state.statusSpan.style.display = 'inline';
+                state.el.classList.add('pii-item-done');
+            }
+
+            function _getPending() {
+                var arr = [];
+                for (var i = 0; i < itemStates.length; i++) {
+                    if (itemStates[i].status === 'pending') arr.push(itemStates[i].match);
+                }
+                return arr;
+            }
+
+            function _checkAllDone() {
+                var pending = _getPending();
+                if (pending.length === 0) {
+                    // Hide bulk action buttons, show Continue
+                    redactAllBtn.style.display = 'none';
+                    removeAllBtn.style.display = 'none';
+                    dismissAllBtn.style.display = 'none';
+                    dismissConfirm.classList.remove('visible');
+                    continueBtn.classList.add('visible');
+                }
+            }
+
+            function _showItemDismissConfirm(state) {
+                var match = state.match;
+                var isHigh = match.tier === PIIGuard.TIER_HIGH;
+
+                // Replace action buttons with inline confirmation
+                state.actionsDiv.innerHTML =
+                    '<div style="display:flex;flex-direction:column;gap:3px;font-size:0.62rem;max-width:200px;white-space:normal">'
+                    + '<div style="color:' + (isHigh ? '#721c24;font-weight:600' : '#856404') + '">'
+                    + (isHigh ? '⚠ HIGH-sensitivity. Will be audited.' : 'Will be audited.')
+                    + '</div>'
+                    + '<label style="display:flex;align-items:flex-start;gap:4px">'
+                    + '<input type="checkbox" class="item-dismiss-cb" style="margin-top:1px">'
+                    + '<span>I confirm</span></label>'
+                    + '<button class="item-dismiss-ok" disabled style="font-size:0.58rem;padding:1px 6px;border-radius:3px;border:none;background:#28a745;color:#fff;cursor:pointer">OK</button>'
+                    + '</div>';
+
+                var cb = state.actionsDiv.querySelector('.item-dismiss-cb');
+                var okBtn = state.actionsDiv.querySelector('.item-dismiss-ok');
+
+                cb.addEventListener('change', function() { okBtn.disabled = !this.checked; });
+                okBtn.addEventListener('click', function() {
+                    PIIGuard.dismiss(match);
+                    _logAction('dismiss', [match.type], 1);
+                    _markItemDone(state, 'Dismissed ✓');
+                    _doScan();
+                    _checkAllDone();
+                });
+            }
         }
 
         // ===================== AUDIT LOGGING =====================
+
         function _logAction(action, types, count) {
             try {
                 fetch('/api/pii-override-log', {
@@ -779,23 +706,11 @@
         }
 
         // ===================== MISC =====================
+
         function _onDocClick(e) {
-            if (_detailPopover && !_detailPopover.contains(e.target)) {
-                var clickedWidget = false;
-                for (var id in _widgets) {
-                    if (_widgets[id].contains(e.target)) { clickedWidget = true; break; }
-                }
-                if (!clickedWidget && !(_badge && _badge.contains(e.target))) {
-                    _closeDetail();
-                }
+            if (_popover && !_popover.contains(e.target) && !e.target.classList.contains('pii-mark')) {
+                _closePopover();
             }
-        }
-
-        // ===================== PUBLIC CONTROLLER =====================
-        function scan() { _doScan(); }
-
-        function redactAll() {
-            _batchAction('redact');
         }
 
         function destroy() {
@@ -805,38 +720,29 @@
                 _textareas[t].removeEventListener('input', _onInput);
                 _textareas[t].removeEventListener('scroll', _onScroll);
             }
-            // Remove overlay elements
             for (var id in _overlays) {
                 var ov = _overlays[id];
                 ov.backdrop.remove();
-                ov.container.classList.remove('pii-has-matches', 'pii-overlay-container');
-                // Unwrap textarea if we wrapped it
+                ov.container.classList.remove('pii-has-matches', 'pii-all-dismissed', 'pii-overlay-container');
                 if (ov.container.classList.length === 0 && ov.container.childNodes.length === 1) {
                     ov.container.parentNode.insertBefore(ov.textarea, ov.container);
                     ov.container.remove();
                 }
             }
-            // Remove widgets
-            for (var wid in _widgets) { _widgets[wid].remove(); }
-            // Remove badge
-            if (_badge) _badge.remove();
-            _closeDetail();
+            if (_banner) _banner.remove();
+            _closePopover();
         }
 
         return {
             gate: gate,
-            scan: scan,
-            redactAll: redactAll,
-            destroy: destroy,
-            getState: function() {
-                return { blocked: _blocked, count: _allMatches.length, matches: _allMatches };
-            }
+            scan: function() { _doScan(); },
+            destroy: destroy
         };
     }
 
-    // ===================== PUBLIC NAMESPACE =====================
-    window.PIIGuardUI = {
-        attach: attach
-    };
+    // Inject protect() into PIIGuard namespace
+    if (window.PIIGuard) {
+        PIIGuard.protect = protect;
+    }
 
 })();

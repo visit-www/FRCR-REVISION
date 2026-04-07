@@ -626,8 +626,8 @@
                                     <div class="d-flex flex-wrap gap-1 align-items-center">
                                         <button type="button" class="btn-dictate" data-target="editorInput" title="Click to dictate"><i class="fas fa-microphone"></i></button>
                                         <span id="draftChipsContainer"></span>
-                                        <button class="btn btn-sm py-0 px-1" type="button" onclick="openChipSettings()" title="Customise insert chips" style="font-size: 0.65rem; color: #6c757d;"><i class="fas fa-cog"></i></button>
-                                        <button class="btn btn-sm py-0 px-1" type="button" onclick="openAutotextSettings()" title="Autotext shortcuts" style="font-size: 0.65rem; color: #6c757d;"><i class="fas fa-keyboard"></i></button>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="openChipSettings()" title="Customise insert chips" style="font-size: 0.72rem;"><i class="fas fa-cog"></i></button>
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="openAutotextSettings()" title="Autotext shortcuts — type a shortcut then press Space to expand" style="font-size: 0.72rem;"><i class="fas fa-keyboard me-1"></i>Autotext</button>
                                     </div>
                                     <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
@@ -1187,7 +1187,6 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: null,
         usageData: null,
-        piiOverride: false,
         // AI Assist state
         aiAssistResponseType: 'advisory',  // 'advisory' or 'full_report'
         aiAssistAnswer: '',
@@ -1275,64 +1274,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Build headers for Smart Reporter fetch calls, with optional PII override
-    function _srHeaders() {
-        var h = { 'Content-Type': 'application/json' };
-        if (state.piiOverride) {
-            h['X-PII-Override'] = '1';
-            state.piiOverride = false;
-        }
-        return h;
-    }
-
-    // Safety net for server-side PII catches (if client-side misses something)
-    function handlePIIResponse(data, retryFn) {
-        if (!data.pii_blocked) return false;
-        var editor = document.getElementById('editorInput');
-        var editorText = editor ? editor.value : '';
-        var clientMatches = (window.PIIGuard && editorText) ? PIIGuard.scan(editorText).matches : [];
-        var displayMatches = clientMatches.length > 0 ? clientMatches :
-            (data.pii_detected || []).map(function(d) {
-                return { type: d.type, match: d.match, description: d.type + ' detected' };
-            });
-
-        if (displayMatches.length > 0 && window.PIIGuard) {
-            // Add field for preview
-            var previewBody = editor ? { report_text: editor.value } : null;
-            var previewMatches = displayMatches.map(function(m) {
-                return { type: m.type, match: m.match, description: m.description || m.type, field: 'report_text' };
-            });
-            PIIGuard.showPIIModal(previewMatches, previewBody).then(function(action) {
-                if (!editor) return;
-                var matchesToClean = clientMatches.length > 0 ? clientMatches : displayMatches;
-                if (action === 'redact' || action === 'remove') {
-                    var transformFn = action === 'remove' ? PIIGuard.remove : PIIGuard.redact;
-                    var cleaned = transformFn(editor.value, matchesToClean);
-                    if (cleaned === editor.value) {
-                        var fb = editor.value;
-                        var rep = action === 'remove' ? '' : '[REDACTED]';
-                        for (var i = 0; i < matchesToClean.length; i++) {
-                            var mt = matchesToClean[i].match;
-                            if (mt && fb.indexOf(mt) !== -1) {
-                                fb = fb.split(mt).join(rep);
-                            }
-                        }
-                        if (action === 'remove') fb = fb.replace(/  +/g, ' ').trim();
-                        cleaned = fb;
-                    }
-                    editor.value = cleaned;
-                    var label = action === 'remove' ? 'removed from' : 'redacted in';
-                    showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
-                } else if (action === 'override' && retryFn) {
-                    state.piiOverride = true;
-                    retryFn();
-                }
-            });
-        } else {
-            showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');
-        }
-        return true;
-    }
+    // _srHeaders() and handlePIIResponse() removed in v2 — PII override via PIIGuard.setOverride() + fetch interceptor
 
     // ==================== SCENE MANAGEMENT ====================
 
@@ -1602,6 +1544,7 @@ document.addEventListener('DOMContentLoaded', function() {
         showScene('editor');
         const input = document.getElementById('editorInput');
         input.value = '';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
         input.placeholder = 'Paste or type your report here...';
         input.focus();
         return Promise.resolve();
@@ -1633,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
-            headers: _srHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 clinical_question: clinicalQuestion,
                 modality: modality,
@@ -1652,9 +1595,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
-            if (data.pii_blocked || data.error) {
+            if (data.pii_blocked) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                if (!handlePIIResponse(data, function() { generateTree(); })) showToast(data.error, 'error');
+                showToast('Server detected patient data. Please review and re-submit.', 'warning');
+                if (window._piiCtrl) _piiCtrl.scan();
+                return;
+            }
+            if (data.error) {
+                document.getElementById('walkthroughSetup').classList.remove('d-none');
+                showToast(data.error, 'error');
                 return;
             }
 
@@ -2445,8 +2394,9 @@ document.addEventListener('DOMContentLoaded', function() {
         try { sessionStorage.removeItem('sr_externalContext'); } catch(e) {}
         _clearAutosave();
 
-        // Clear PII dismissals for new session
-        if (window.PIIGuard && PIIGuard.clearDismissals) PIIGuard.clearDismissals();
+        // Clear PII dismissals for new session and rescan to clear overlay
+        if (window.PIIGuard) PIIGuard.clearDismissals();
+        if (window._piiCtrl) _piiCtrl.scan();
 
         // Clear UI
         var _banner = document.getElementById('reportCompleteBanner');
@@ -2823,7 +2773,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/quick-review', {
             method: 'POST',
-            headers: _srHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 report_text: text,
             }),
@@ -2839,8 +2789,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
-            if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data, function() { doReviewReport(); })) showToast(data.error, 'error');
+            if (data.pii_blocked) {
+                showToast('Server detected patient data. Please review and re-submit.', 'warning');
+                if (window._piiCtrl) _piiCtrl.scan();
+                return;
+            }
+            if (data.error) {
+                showToast(data.error, 'error');
                 return;
             }
 
@@ -2910,7 +2865,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!text) {
             return;
         }
-        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
+        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
         doReviewReport();
     };
 
@@ -3349,7 +3304,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!getCurrentReportText()) {
             return;
         }
-        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
+        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
 
         const btn = document.getElementById('btnAskClaude');
         _btnStartLoading(btn, '<i class="fas fa-spinner"></i>');
@@ -3382,7 +3337,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/ai-assist', {
             method: 'POST',
-            headers: _srHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assistPayload),
             signal: activeAIController.signal,
         })
@@ -3397,8 +3352,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
-            if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data, function() { askClaude(); })) showToast(data.error, 'error');
+            if (data.pii_blocked) {
+                showToast('Server detected patient data. Please review and re-submit.', 'warning');
+                if (window._piiCtrl) _piiCtrl.scan();
+                return;
+            }
+            if (data.error) {
+                showToast(data.error, 'error');
                 return;
             }
 
@@ -3481,7 +3441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!reportText) {
             return;
         }
-        if (window._piiUI) { var r = await _piiUI.gate(); if (!r.allowed) return; }
+        if (window._piiCtrl) { var r = await _piiCtrl.gate(); if (!r.allowed) return; }
 
         const meta = REPORT_ACTION_META[action];
         if (!meta) return;
@@ -3521,7 +3481,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/report-action', {
             method: 'POST',
-            headers: _srHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
             signal: activeAIController.signal,
         })
@@ -3536,8 +3496,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
-            if (data.pii_blocked || data.error) {
-                if (!handlePIIResponse(data, function() { submitReportAction(action); })) showToast(data.error, 'error');
+            if (data.pii_blocked) {
+                showToast('Server detected patient data. Please review and re-submit.', 'warning');
+                if (window._piiCtrl) _piiCtrl.scan();
+                return;
+            }
+            if (data.error) {
+                showToast(data.error, 'error');
                 return;
             }
 
@@ -5544,25 +5509,12 @@ document.addEventListener('DOMContentLoaded', function() {
         _autosaveDraft();
     });
 
-    // ==================== PII GUARD UI KIT ====================
-    if (window.PIIGuardUI) {
-        window._piiUI = PIIGuardUI.attach({
+    // ==================== PII GUARD v2 ====================
+    if (window.PIIGuard && window.PIIGuard.protect) {
+        window._piiCtrl = PIIGuard.protect({
             textareas: ['#editorInput', '#editorOutput'],
-            headerSelector: '.card:has(#editorInput) .card-header .d-flex',
-            auditContext: 'smart-reporter',
-            onStateChange: function(st) {
-                // Disable AI buttons when PII detected
-                ['btnReviewReport2','btnAskClaude'].forEach(function(id) {
-                    var b = document.getElementById(id);
-                    if (b) { b.disabled = st.blocked; b.style.opacity = st.blocked ? '0.4' : ''; b.style.pointerEvents = st.blocked ? 'none' : ''; }
-                });
-                document.querySelectorAll('.sr-ask-mirror-btn, .report-action-btn, #btnFinalizeToolbar').forEach(function(b) {
-                    if (b.dataset && b.dataset.action === 'vetting') return;
-                    b.disabled = st.blocked; b.style.opacity = st.blocked ? '0.4' : ''; b.style.pointerEvents = st.blocked ? 'none' : '';
-                });
-                var ai = document.getElementById('askClaudeInput');
-                if (ai) { ai.disabled = st.blocked; ai.style.opacity = st.blocked ? '0.4' : ''; }
-            }
+            bannerTarget: '.card:has(#editorInput) .card-header .d-flex',
+            auditContext: 'smart-reporter'
         });
     }
 
@@ -5831,9 +5783,24 @@ document.addEventListener('DOMContentLoaded', function() {
         overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
         var list = panel.querySelector('#autotextSettingsList');
-        (window._autotextEntries || []).forEach(function(entry) {
-            _addAutotextRowToList(list, entry.id, entry.shortcut, entry.expansion);
-        });
+        var entries = window._autotextEntries || [];
+        if (entries.length === 0) {
+            // Show empty-state help and auto-add a blank row
+            var help = document.createElement('div');
+            help.className = 'text-muted small mb-2 p-2 rounded';
+            help.style.cssText = 'background:#f8f9fa;';
+            help.innerHTML = '<i class="fas fa-lightbulb me-1" style="color:#ffc107;"></i>' +
+                'Example: shortcut <code>nkf</code> → expands to <em>"Normal kidneys with no focal lesion, hydronephrosis, or calculus."</em><br>' +
+                'Add your shortcuts below, then click <strong>Save All</strong>.';
+            list.appendChild(help);
+            _addAutotextRowToList(list, '', '', '');
+            var firstInput = list.querySelector('.autotext-shortcut');
+            if (firstInput) setTimeout(function() { firstInput.focus(); }, 100);
+        } else {
+            entries.forEach(function(entry) {
+                _addAutotextRowToList(list, entry.id, entry.shortcut, entry.expansion);
+            });
+        }
     };
 
     function _addAutotextRowToList(list, id, shortcut, expansion) {
@@ -5883,6 +5850,43 @@ document.addEventListener('DOMContentLoaded', function() {
         var seen = {};
         var hasError = false;
 
+        // Clear previous PII highlights
+        rows.forEach(function(row) {
+            row.style.background = '';
+            row.style.borderColor = '';
+            var oldLabel = row.querySelector('.autotext-pii-label');
+            if (oldLabel) oldLabel.remove();
+        });
+
+        // Pre-save PII scan per row
+        var piiBlocked = false;
+        if (window.PIIGuard) {
+            rows.forEach(function(row) {
+                var expansion = (row.querySelector('.autotext-expansion').value || '').trim();
+                if (!expansion) return;
+                var result = PIIGuard.scan(expansion);
+                if (result.hasPII && result.matches.length > 0) {
+                    piiBlocked = true;
+                    row.style.background = 'rgba(220,53,69,0.08)';
+                    row.style.borderColor = '#dc3545';
+                    var types = [];
+                    var seen = {};
+                    result.matches.forEach(function(m) {
+                        if (!seen[m.type]) { seen[m.type] = true; types.push(m.type); }
+                    });
+                    var label = document.createElement('div');
+                    label.className = 'autotext-pii-label';
+                    label.style.cssText = 'font-size:0.7rem;color:#dc3545;margin-top:2px;';
+                    label.innerHTML = '<i class="fas fa-shield-alt me-1"></i>PII detected: ' + types.join(', ');
+                    row.appendChild(label);
+                }
+            });
+        }
+        if (piiBlocked) {
+            showToast('Some autotext entries contain patient data. Please review highlighted rows.', 'error');
+            return;
+        }
+
         rows.forEach(function(row) {
             var shortcut = (row.querySelector('.autotext-shortcut').value || '').trim().toLowerCase();
             var expansion = (row.querySelector('.autotext-expansion').value || '').trim();
@@ -5920,7 +5924,33 @@ document.addEventListener('DOMContentLoaded', function() {
         Promise.all(promises).then(function(results) {
             var errors = results.filter(function(r) { return r.error; });
             if (errors.length) {
-                showToast(errors[0].error, 'error');
+                // Check for server-side PII rejection and highlight offending rows
+                var piiError = errors.find(function(r) { return r.pii_blocked; });
+                if (piiError && piiError.pii_detected) {
+                    var matchTexts = piiError.pii_detected.map(function(d) { return d.match; });
+                    rows.forEach(function(row) {
+                        var expansion = (row.querySelector('.autotext-expansion').value || '').trim();
+                        var found = matchTexts.some(function(mt) { return expansion.indexOf(mt) !== -1; });
+                        if (found) {
+                            row.style.background = 'rgba(220,53,69,0.08)';
+                            row.style.borderColor = '#dc3545';
+                            var types = piiError.pii_detected
+                                .filter(function(d) { return expansion.indexOf(d.match) !== -1; })
+                                .map(function(d) { return d.type; });
+                            var uniqueTypes = types.filter(function(t, i) { return types.indexOf(t) === i; });
+                            if (!row.querySelector('.autotext-pii-label')) {
+                                var label = document.createElement('div');
+                                label.className = 'autotext-pii-label';
+                                label.style.cssText = 'font-size:0.7rem;color:#dc3545;margin-top:2px;';
+                                label.innerHTML = '<i class="fas fa-shield-alt me-1"></i>PII detected: ' + uniqueTypes.join(', ');
+                                row.appendChild(label);
+                            }
+                        }
+                    });
+                    showToast('Server detected patient data in autotext. Review highlighted rows.', 'error');
+                } else {
+                    showToast(errors[0].error, 'error');
+                }
             } else {
                 showToast('Autotext saved!', 'success');
                 loadAutotext();
@@ -6259,7 +6289,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
-            headers: _srHeaders(),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 clinical_question: clinicalQuestion,
                 modality: modality,
@@ -6279,9 +6309,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
-            if (data.pii_blocked || data.error) {
+            if (data.pii_blocked) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                if (!handlePIIResponse(data, function() { generateFullReportDirectly(); })) showToast(data.error, 'error');
+                showToast('Server detected patient data. Please review and re-submit.', 'warning');
+                if (window._piiCtrl) _piiCtrl.scan();
+                return;
+            }
+            if (data.error) {
+                document.getElementById('walkthroughSetup').classList.remove('d-none');
+                showToast(data.error, 'error');
                 return;
             }
 
