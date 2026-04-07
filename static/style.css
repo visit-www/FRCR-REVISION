@@ -6147,6 +6147,22 @@ body {
     background: #f8f9fa;
 }
 
+/* AI answer markdown rendering */
+#aiAssistAnswer ol,
+#aiAssistAnswer ul {
+    margin: 0.4rem 0;
+    padding-left: 1.4rem;
+}
+#aiAssistAnswer li {
+    margin-bottom: 0.3rem;
+}
+#aiAssistAnswer p {
+    margin: 0.3rem 0;
+}
+#aiAssistAnswer strong {
+    color: #1a3a4a;
+}
+
 /* Auto-grow textareas — no nested scrollbar, only column panel scrolls */
 #editorInput,
 #editorOutput {
