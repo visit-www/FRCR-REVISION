@@ -3436,16 +3436,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const question = input.value.trim();
         if (!question) return;
 
-        // Capture and reset regenerate mode
+        // Capture and reset regenerate mode (button swap deferred to response handler)
         var _isRegenMode = state._regenerateMode;
         if (_isRegenMode) {
             state._regenerateMode = false;
             input.placeholder = 'Ask a follow-up question...';
             input.style.borderColor = '';
             input.style.boxShadow = '';
-            // Restore buttons: show Send, hide Go + Cancel
-            document.getElementById('btnAskClaude').classList.remove('d-none');
-            document.getElementById('btnRegenSend').classList.add('d-none');
+            // Hide Cancel immediately — Go button gets loading spinner
             document.getElementById('btnCancelRegen').classList.add('d-none');
         }
 
@@ -3517,6 +3515,11 @@ document.addEventListener('DOMContentLoaded', function() {
             activeAIController = null;
             _btnStopLoading(btn);
             _btnStopLoading(document.getElementById('btnFinalizeToolbar'));
+            // Restore Send button if Go was used (regen mode)
+            if (btn.id === 'btnRegenSend') {
+                document.getElementById('btnRegenSend').classList.add('d-none');
+                document.getElementById('btnAskClaude').classList.remove('d-none');
+            }
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
             if (data.upgrade_required) {
@@ -3618,6 +3621,11 @@ document.addEventListener('DOMContentLoaded', function() {
             activeAIController = null;
             _btnStopLoading(btn);
             _btnStopLoading(document.getElementById('btnFinalizeToolbar'));
+            // Restore Send button if Go was used (regen mode)
+            if (btn.id === 'btnRegenSend') {
+                document.getElementById('btnRegenSend').classList.add('d-none');
+                document.getElementById('btnAskClaude').classList.remove('d-none');
+            }
             document.getElementById('askClaudeLoading').classList.add('d-none');
             if (err.name === 'AbortError') {
                 showToast('Request cancelled.', 'info');
