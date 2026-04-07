@@ -454,12 +454,6 @@
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="quickAsk(this)">Missing?</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="quickAsk(this)">Differentials</button>
                             <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">Recommendations</button>
-                            <button id="btnRegenerateReport" class="btn btn-sm btn-brand-primary py-0 px-2 d-none"
-                                    style="font-size: 0.72rem; font-weight: 600;"
-                                    onclick="startRegenerate()"
-                                    title="Regenerate the finalized report with specific changes. Use this when you want to modify, add, or redo findings in the report.">
-                                <i class="fas fa-sync-alt me-1"></i>Regenerate
-                            </button>
                         </div>
                     </div>
                     <!-- Row 3: Ask RadInsights + Resource Search (always visible) -->
@@ -2425,11 +2419,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (window.PIIGuard) PIIGuard.clearDismissals();
         if (window._piiCtrl) _piiCtrl.scan();
 
-        // Reset regenerate mode
+        // Reset regenerate mode and restore Finalize button
         state._regenerateMode = false;
         state._wasAlreadyFinalized = false;
-        var _regenBtn = document.getElementById('btnRegenerateReport');
-        if (_regenBtn) _regenBtn.classList.add('d-none');
+        var _finBtnReset = document.getElementById('btnFinalizeToolbar');
+        if (_finBtnReset) {
+            _finBtnReset.classList.remove('btn-brand-primary');
+            _finBtnReset.classList.add('btn-success');
+            _finBtnReset.innerHTML = '<i class="fas fa-check-circle me-1"></i>Review &amp; Finalize';
+            _finBtnReset.title = 'AI Review & Finalize (Ctrl+Enter)';
+            _finBtnReset.setAttribute('data-instruction', 'Finalize this report');
+            _finBtnReset.onclick = function() { quickAsk(_finBtnReset); };
+        }
         var _askInput = document.getElementById('askClaudeInput');
         if (_askInput) _askInput.placeholder = 'Ask RadInsights Intelligence...';
 
@@ -2800,7 +2801,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn._origHTML) btn.innerHTML = btn._origHTML;
         // Restore original onclick
         if (btn.id === 'btnReviewReport2') btn.onclick = function() { reviewReport(); };
-        else if (btn.id === 'btnFinalizeToolbar') btn.onclick = function() { quickAsk(btn); };
+        else if (btn.id === 'btnFinalizeToolbar') btn.onclick = state.hasReceivedFinalizedReport ? function() { startRegenerate(); } : function() { quickAsk(btn); };
         else if (btn.id === 'btnAskClaude') btn.onclick = function() { askClaude(); };
         else if (btn._origOnclick) btn.onclick = btn._origOnclick;
     }
@@ -3346,8 +3347,12 @@ document.addEventListener('DOMContentLoaded', function() {
     window.startRegenerate = function() {
         var input = document.getElementById('askClaudeInput');
         state._regenerateMode = true;
-        input.placeholder = 'What changes do you want in the report?';
+        input.placeholder = 'Describe changes for regeneration (uses Pro model)...';
         input.focus();
+        // Highlight the input to signal regenerate mode
+        input.style.borderColor = 'var(--brand-primary)';
+        input.style.boxShadow = '0 0 0 0.15rem rgba(233, 99, 4, 0.25)';
+        showToast('Regenerate mode: type what you want changed, then press Send. Uses Pro model.', 'info', 4000);
     };
 
     window.askClaude = async function() {
@@ -3360,12 +3365,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (_isRegenMode) {
             state._regenerateMode = false;
             input.placeholder = 'Ask a follow-up question...';
+            input.style.borderColor = '';
+            input.style.boxShadow = '';
         }
 
         // Soft guard: redirect regen-like text to Regenerate button
         if (state.hasReceivedFinalizedReport && !_isRegenMode) {
             if (/\b(regenerat|finali[sz]ed?|redo|rewrite|update\s+(the\s+)?report|add\s+.+to\s+(the\s+)?report)\b/i.test(question)) {
-                showToast('To regenerate the report, click the orange Regenerate button first, then type your changes.', 'info', 5000);
+                showToast('To regenerate the report, click the Regenerate button (top toolbar) first, then type your changes.', 'info', 5000);
                 return;
             }
         }
@@ -3472,9 +3479,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (_banner) _banner.classList.remove('d-none');
                     var _prominentCopy = document.getElementById('prominentCopyBtn');
                     if (_prominentCopy) _prominentCopy.classList.remove('d-none');
-                    // Show Regenerate button
-                    var _regenBtn = document.getElementById('btnRegenerateReport');
-                    if (_regenBtn) _regenBtn.classList.remove('d-none');
+                    // Transform Finalize button → Regenerate button
+                    var _finBtn2 = document.getElementById('btnFinalizeToolbar');
+                    if (_finBtn2) {
+                        _finBtn2.classList.remove('btn-success');
+                        _finBtn2.classList.add('btn-brand-primary');
+                        _finBtn2.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate';
+                        _finBtn2.title = 'Regenerate the finalized report with changes';
+                        _finBtn2.setAttribute('data-instruction', '');
+                        _finBtn2.onclick = function() { startRegenerate(); };
+                    }
                     // Change Ask AI placeholder
                     var _askInput = document.getElementById('askClaudeInput');
                     if (_askInput) _askInput.placeholder = 'Ask a follow-up question...';
