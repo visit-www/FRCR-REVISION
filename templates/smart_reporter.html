@@ -2510,8 +2510,17 @@ document.addEventListener('DOMContentLoaded', function() {
         var parentHeight = parent.style.minHeight;
         parent.style.minHeight = parent.offsetHeight + 'px';
         el.style.height = '0';
-        el.style.height = Math.max(el.scrollHeight, 60) + 'px';
+        var newH = Math.max(el.scrollHeight, 60);
+        // Account for border when box-sizing: border-box (scrollHeight excludes border)
+        var cs = window.getComputedStyle(el);
+        if (cs.boxSizing === 'border-box') {
+            newH += (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+        }
+        el.style.height = newH + 'px';
         parent.style.minHeight = parentHeight || '';
+        // Reset internal scroll — height matches content so no scroll needed.
+        // Prevents top lines being cut off after height='0' causes browser to scroll to cursor.
+        el.scrollTop = 0;
     }
 
     // Insert text snippet at end of draft (used by quick-insert chips)
