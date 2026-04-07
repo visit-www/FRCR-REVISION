@@ -3405,6 +3405,9 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.startRegenerate = function() {
+        if (!confirm('Regenerating will replace the current PACS report with a new AI-generated version.\n\nCopy your current report first if you wish to keep it.\n\nProceed?')) {
+            return;
+        }
         var input = document.getElementById('askClaudeInput');
         state._regenerateMode = true;
         input.placeholder = 'Describe what you would like RadInsights Intelligence to focus on during regeneration...';
@@ -4337,23 +4340,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Layer 2: Report text
-        // First finalization: always auto-insert into PACS (replaces proofread)
-        // Regeneration (hasReceivedFinalizedReport already true): show preview box
+        // Both first finalization and regeneration auto-insert into PACS
+        // (User confirmed replacement via dialog before entering regen mode)
         const reportSection = document.getElementById('aiAssistReportSection');
         if (state.aiAssistReportText && isFullReport) {
-            const outputSection = document.getElementById('outputSection');
-            const output = document.getElementById('editorOutput');
-            const pacsHasContent = !outputSection.classList.contains('d-none') && (output.value || '').trim().length > 0;
-
-            if (pacsHasContent && state._wasAlreadyFinalized) {
-                // Regeneration: show in preview box — user decides whether to replace
-                document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
-                reportSection.classList.remove('d-none');
-            } else {
-                // First finalization or empty PACS: auto-insert
-                reportSection.classList.add('d-none');
-                insertReportText();
-            }
+            reportSection.classList.add('d-none');
+            insertReportText();
         } else if (state.aiAssistReportText) {
             document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
             reportSection.classList.remove('d-none');
