@@ -809,6 +809,16 @@
                             </div>
                         </div>
 
+                        <!-- Collapsed toggle for Answer section (shown when actions collapse it) -->
+                        <div id="aiAssistAnswerCollapsed" class="mb-2 d-none" style="cursor: pointer;" onclick="expandAnswerSection()">
+                            <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: #f0f7fa; border-left: 3px solid var(--brand-neutral); font-size: 0.75rem; color: #5E899E;">
+                                <i class="fas fa-comment-medical"></i>
+                                <span class="fw-semibold">Changes Made</span>
+                                <span class="text-muted" style="font-size: 0.65rem;">(click to expand)</span>
+                                <i class="fas fa-chevron-down ms-auto" style="font-size: 0.6rem;"></i>
+                            </div>
+                        </div>
+
                         <!-- Movable: Answer / Changes Rationale -->
                         <div id="aiAssistAnswerSection" class="mb-3 d-none">
                             <div class="card border-0 shadow-sm">
@@ -821,7 +831,7 @@
                                             <button id="goToReportBtn" class="btn btn-brand-primary py-0 px-2 me-1 d-none go-to-pacs-btn" style="font-size: 0.8rem; border-radius: 20px; font-weight: 600;">
                                                 <i class="fas fa-arrow-down me-1"></i>Go to PACS Report
                                             </button>
-                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none');" style="font-size: 0.7rem;">
+                                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="document.getElementById('aiAssistAnswerSection').classList.add('d-none'); document.getElementById('aiAssistAnswerCollapsed').classList.add('d-none');" style="font-size: 0.7rem;">
                                                 <i class="fas fa-times me-1"></i>Dismiss
                                             </button>
                                         </div>
@@ -2453,6 +2463,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistAnswerSection').classList.add('d-none');
+        document.getElementById('aiAssistAnswerCollapsed').classList.add('d-none');
         document.getElementById('aiAssistFillInsSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
@@ -3672,6 +3683,21 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirm('Your report hasn\'t been AI-reviewed yet. Generate ' + meta.label + ' from the unreviewed draft?')) return;
         }
 
+        // For MDT & emails: replace previous output of the same type (with warning)
+        // For SBA & viva: always stack new cards
+        var _replaceActions = ['mdt', 'email_colleague', 'email_patient'];
+        if (_replaceActions.indexOf(action) !== -1) {
+            var _existingIdx = -1;
+            for (var _ri = 0; _ri < state.reportActionHistory.length; _ri++) {
+                if (state.reportActionHistory[_ri].action === action) { _existingIdx = _ri; break; }
+            }
+            if (_existingIdx !== -1) {
+                if (!confirm('This will replace your existing ' + meta.label + ' output. Continue?')) return;
+                // Remove existing entry before generating new one
+                state.reportActionHistory.splice(_existingIdx, 1);
+            }
+        }
+
         // Disable all action buttons during request (skip vetting) + animate clicked one
         var _clickedActionBtn = document.querySelector('.report-action-btn[data-action="' + action + '"]');
         document.querySelectorAll('.report-action-btn').forEach(b => { if (b.dataset.action !== 'vetting') b.disabled = true; });
@@ -3768,6 +3794,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
             renderReportActionHistory();
+
+            // Collapse "Changes Made" section to make room for action output
+            collapseAnswerSection();
 
             var container = document.getElementById('reportActionResponse');
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -3921,6 +3950,24 @@ document.addEventListener('DOMContentLoaded', function() {
             initReportActionEditor('reportActionContent_0');
         }
     }
+
+    // Collapse the "Changes Made" answer section, show compact toggle
+    function collapseAnswerSection() {
+        var section = document.getElementById('aiAssistAnswerSection');
+        var toggle = document.getElementById('aiAssistAnswerCollapsed');
+        if (section && !section.classList.contains('d-none')) {
+            section.classList.add('d-none');
+            if (toggle) toggle.classList.remove('d-none');
+        }
+    }
+
+    // Expand the "Changes Made" answer section, hide compact toggle
+    window.expandAnswerSection = function() {
+        var section = document.getElementById('aiAssistAnswerSection');
+        var toggle = document.getElementById('aiAssistAnswerCollapsed');
+        if (section) section.classList.remove('d-none');
+        if (toggle) toggle.classList.add('d-none');
+    };
 
     window.toggleReportAction = function(index) {
         var bodyId = 'reportActionBody_' + index;
