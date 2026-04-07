@@ -461,6 +461,9 @@
                         <div class="input-group input-group-sm" style="flex: 1; min-width: 180px;">
                             <input type="text" id="askClaudeInput" class="form-control form-control-sm"
                                    placeholder="Ask RadInsights Intelligence..." maxlength="1000">
+                            <button class="btn btn-sm btn-outline-danger d-none" id="btnCancelRegen" onclick="cancelRegenerate()" title="Cancel regeneration mode (Esc)" style="font-size: 0.7rem;">
+                                <i class="fas fa-times"></i>
+                            </button>
                             <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()" title="Send (Enter)">
                                 <i class="fas fa-paper-plane"></i>
                             </button>
@@ -2422,6 +2425,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset regenerate mode and restore Finalize button
         state._regenerateMode = false;
         state._wasAlreadyFinalized = false;
+        var _cancelBtnReset = document.getElementById('btnCancelRegen');
+        if (_cancelBtnReset) _cancelBtnReset.classList.add('d-none');
         var _finBtnReset = document.getElementById('btnFinalizeToolbar');
         if (_finBtnReset) {
             _finBtnReset.classList.remove('btn-brand-primary');
@@ -3356,12 +3361,25 @@ document.addEventListener('DOMContentLoaded', function() {
     window.startRegenerate = function() {
         var input = document.getElementById('askClaudeInput');
         state._regenerateMode = true;
-        input.placeholder = 'Describe changes for regeneration (uses Pro model)...';
+        input.placeholder = 'Describe what you would like RadInsights Intelligence to focus on during regeneration...';
         input.focus();
         // Highlight the input to signal regenerate mode
         input.style.borderColor = 'var(--brand-primary)';
         input.style.boxShadow = '0 0 0 0.15rem rgba(233, 99, 4, 0.25)';
-        showToast('Regenerate mode: type what you want changed, then press Send. Uses Pro model.', 'info', 4000);
+        // Show cancel button
+        var cancelBtn = document.getElementById('btnCancelRegen');
+        if (cancelBtn) cancelBtn.classList.remove('d-none');
+        showToast('Regenerate mode: type what you want changed, then press Send. Uses RadInsights Intelligence Pro.', 'info', 4000);
+    };
+
+    window.cancelRegenerate = function() {
+        state._regenerateMode = false;
+        var input = document.getElementById('askClaudeInput');
+        input.placeholder = 'Ask a follow-up question...';
+        input.style.borderColor = '';
+        input.style.boxShadow = '';
+        var cancelBtn = document.getElementById('btnCancelRegen');
+        if (cancelBtn) cancelBtn.classList.add('d-none');
     };
 
     window.askClaude = async function() {
@@ -3376,6 +3394,8 @@ document.addEventListener('DOMContentLoaded', function() {
             input.placeholder = 'Ask a follow-up question...';
             input.style.borderColor = '';
             input.style.boxShadow = '';
+            var _cancelBtn = document.getElementById('btnCancelRegen');
+            if (_cancelBtn) _cancelBtn.classList.add('d-none');
         }
 
         // Soft guard: redirect regen-like text to Regenerate button
@@ -3547,11 +3567,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // Enter key to submit
+    // Enter key to submit, Escape to cancel regenerate mode
     document.getElementById('askClaudeInput').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             askClaude();
+        } else if (e.key === 'Escape' && state._regenerateMode) {
+            e.preventDefault();
+            cancelRegenerate();
         }
     });
 
