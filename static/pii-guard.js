@@ -138,8 +138,8 @@
         },
         {
             type: 'MRN / Hospital ID', tier: TIER_HIGH,
-            regex: /\b(?:MRN|UHID|ACCN|ACC\s*NO|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b/gi,
-            description: 'Medical Record Number detected'
+            regex: /\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b/gi,
+            description: 'Medical Record / Accession Number detected'
         },
         {
             type: 'Email Address', tier: TIER_HIGH,
@@ -244,7 +244,7 @@
         },
         {
             type: 'Doctor / Clinician Name', tier: TIER_MEDIUM,
-            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){0,3}/gi,
+            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?(?!(?:Radiologist|Physician|Surgeon|Oncologist|Pathologist|Paediatrician|Pediatrician|Cardiologist|Neurologist|Orthopaedic|Orthopedic|Anaesthetist|Anesthetist|Psychiatrist|Dermatologist|Gastroenterologist|Urologist|Nephrologist|Haematologist|Hematologist|Rheumatologist|Endocrinologist|Obstetrician|Gynaecologist|Gynecologist|Ophthalmologist|ENT|Opinion)\b)[A-Z][a-zA-Z'-]+(?:\s+[A-Z]\.?[a-zA-Z'-]*){0,3}/gi,
             description: 'Referring/reporting clinician name detected'
         },
         {
@@ -254,7 +254,7 @@
         },
         {
             type: 'Date of Birth', tier: TIER_MEDIUM,
-            regex: /\b(?:DOB|dob|D\.O\.B|born|date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/gi,
+            regex: /\b(?:DOB|dob|D\.O\.B|born|(?:patient'?s?\s+)?date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b/gi,
             description: 'Date of birth detected'
         },
         {

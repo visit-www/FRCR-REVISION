@@ -65,10 +65,10 @@ PII_PATTERNS = [
     ('NHS Number', re.compile(r'\b\d{3}[-\s]\d{3}[-\s]\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
     ('MRN / Hospital ID', re.compile(
-        r'\b(?:MRN|UHID|ACCN|ACC\s*NO|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b',
+        r'\b(?:MRN|UHID|ACCN|ACC\s*NO|accession\s*(?:no\.?|number|#)?|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*(?:id|no)|medical\s*record)[:\s#]*\d{4,10}\b',
         re.IGNORECASE)),
     ('Date of Birth', re.compile(
-        r'\b(?:DOB|dob|D\.O\.B|born|date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b',
+        r"\b(?:DOB|dob|D\.O\.B|born|(?:patient'?s?\s+)?date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b",
         re.IGNORECASE)),
     ('UK Postcode', re.compile(r'\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b', re.IGNORECASE)),
     ('Phone Number', re.compile(
@@ -114,7 +114,7 @@ PII_PATTERNS = [
         + r'(?=\s*,?\s+(?:a\s+|an\s+)?\d{1,3}[-\s]?years?[-\s]?old\b)'
     )),
     ('Doctor / Clinician Name', re.compile(
-        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z]\.?[a-zA-Z\'-]*){0,3}',
+        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?(?!(?:Radiologist|Physician|Surgeon|Oncologist|Pathologist|Paediatrician|Pediatrician|Cardiologist|Neurologist|Orthopaedic|Orthopedic|Anaesthetist|Anesthetist|Psychiatrist|Dermatologist|Gastroenterologist|Urologist|Nephrologist|Haematologist|Hematologist|Rheumatologist|Endocrinologist|Obstetrician|Gynaecologist|Gynecologist|Ophthalmologist|ENT|Opinion)\b)[A-Z][a-zA-Z\'-]+(?:\s+[A-Z]\.?[a-zA-Z\'-]*){0,3}',
         re.IGNORECASE)),
     ('Doctor / Clinician Name', re.compile(
         r'\bDr\.?\s+[A-Z][a-zA-Z\'-]+(?:\s+[A-Z]\.?[a-zA-Z\'-]*){1,3}\b')),
