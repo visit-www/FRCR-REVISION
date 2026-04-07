@@ -2411,6 +2411,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('aiAssistFillInsSection').classList.add('d-none');
         document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
+        var _brainBtn = document.getElementById('btnInsightsToggle');
+        if (_brainBtn) _brainBtn.classList.add('d-none');
+        // Remove corrections summary card if present
+        var _corrSummary = document.getElementById('correctionsSummaryCard');
+        if (_corrSummary) _corrSummary.remove();
         document.getElementById('aiHardBlockersBanner').classList.add('d-none');
         document.getElementById('aiSoftWarningsBanner').classList.add('d-none');
         destroyReportActionEditor();
@@ -3963,14 +3968,13 @@ document.addEventListener('DOMContentLoaded', function() {
         (state.aiAssistCorrections || []).forEach(function(c) {
             if (c.status === 'pending') { c.status = 'accepted'; _corrCount++; }
         });
+        // Show corrections summary card if any were auto-applied
+        if (_corrCount > 0) {
+            _renderCorrectionsSummary(state.aiAssistCorrections);
+        }
         // Show fill-in chips panel (textarea remains visible and editable)
         renderFillIns();
         _refreshSafetyBlockers();
-        if (_corrCount > 0) {
-            setTimeout(function() {
-                showToast(_corrCount + ' correction' + (_corrCount !== 1 ? 's' : '') + ' applied automatically.', 'info', 4000);
-            }, 1500);
-        }
         // Focus and scroll to PACS box
         var outputSection = document.getElementById('outputSection');
         if (outputSection) {
@@ -4140,6 +4144,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 setTimeout(function() { output.focus(); output.setSelectionRange(0, 0); }, 300);
                 _showUndoToast();
+                // Auto-accept corrections and show summary (same as insertReportText path)
+                var _replCorrCount = 0;
+                (state.aiAssistCorrections || []).forEach(function(c) {
+                    if (c.status === 'pending') { c.status = 'accepted'; _replCorrCount++; }
+                });
+                if (_replCorrCount > 0) {
+                    _renderCorrectionsSummary(state.aiAssistCorrections);
+                }
+                renderFillIns();
+                _refreshSafetyBlockers();
             } else {
                 insertReportText();
             }
@@ -4150,19 +4164,27 @@ document.addEventListener('DOMContentLoaded', function() {
             reportSection.classList.add('d-none');
         }
 
-        // Layer 3: Corrections + Fill-ins → unified PACS diff overlay
-        const correctionsSection = document.getElementById('aiAssistCorrectionsSection');
-        correctionsSection.classList.add('d-none'); // Never show separate panel
-        const fillInsSection = document.getElementById('aiAssistFillInsSection');
-        fillInsSection.classList.add('d-none'); // Never show separate panel
+        // Layer 3: Corrections auto-accepted + fill-in chips shown (no overlay)
+        document.getElementById('aiAssistCorrectionsSection').classList.add('d-none');
 
-        var hasPendingCorrections = state.aiAssistCorrections.some(function(c) { return c.status === 'pending'; });
-        var hasPendingFillIns = state.aiAssistFillIns.length > 0 && isFullReport;
+        // Auto-accept corrections (already applied in finalized text)
+        var _corrCount = 0;
+        (state.aiAssistCorrections || []).forEach(function(c) {
+            if (c.status === 'pending') { c.status = 'accepted'; _corrCount++; }
+        });
 
-        if (hasPendingCorrections || hasPendingFillIns) {
-            // Show diff overlay in PACS box
-            _renderPacsDiffView(state.aiAssistCorrections, 'finalize');
+        // Show corrections summary card if any were auto-applied
+        if (_corrCount > 0) {
+            _renderCorrectionsSummary(state.aiAssistCorrections);
         }
+
+        // Show fill-in chips panel (textarea stays visible and editable)
+        if (state.aiAssistFillIns.length > 0 && isFullReport) {
+            renderFillIns();
+        } else {
+            document.getElementById('aiAssistFillInsSection').classList.add('d-none');
+        }
+        _refreshSafetyBlockers();
 
         // Layer 4: Insights (persistent — rendered outside #aiAssistResponse)
         renderInsights();
@@ -4381,6 +4403,85 @@ document.addEventListener('DOMContentLoaded', function() {
         repositionCorrections();
         _refreshSafetyBlockers();
     }
+
+    // ── Corrections Summary Card (dismissible, above PACS textarea) ──
+    function _renderCorrectionsSummary(corrections) {
+        // Remove existing card if any
+        var existing = document.getElementById('correctionsSummaryCard');
+        if (existing) existing.remove();
+
+        var accepted = (corrections || []).filter(function(c) { return c.status === 'accepted'; });
+        if (accepted.length === 0) return;
+
+        var card = document.createElement('div');
+        card.id = 'correctionsSummaryCard';
+        card.className = 'corrections-summary-card';
+
+        // Header
+        var header = '<div class="summary-header">';
+        header += '<span class="summary-title"><i class="fas fa-check-circle me-1"></i>Changes Applied (' + accepted.length + ')</span>';
+        header += '<button class="btn btn-sm py-0 px-1" onclick="this.closest(\'.corrections-summary-card\').remove()" style="font-size: 0.7rem; color: #999; border: none; background: none;" title="Dismiss"><i class="fas fa-times"></i></button>';
+        header += '</div>';
+
+        // Items
+        var items = '';
+        var textarea = document.getElementById('editorOutput');
+        var pacsText = textarea ? textarea.value : '';
+
+        accepted.forEach(function(c, i) {
+            // Find position of the suggested (accepted) text in the PACS textarea
+            var pos = pacsText.indexOf(c.suggested);
+            var dataAttrs = pos >= 0 ? ' data-corr-pos="' + pos + '" data-corr-len="' + c.suggested.length + '"' : '';
+
+            items += '<div class="corrections-summary-item" onclick="_highlightCorrectionInPacs(this)"' + dataAttrs + '>';
+            items += '<i class="fas fa-check" style="color: var(--brand-neutral); font-size: 0.65rem; margin-right: 0.3rem;"></i>';
+
+            // Show context: "...text [old → new] text..."
+            var contextBefore = '';
+            var contextAfter = '';
+            if (pos >= 0) {
+                contextBefore = pacsText.substring(Math.max(0, pos - 15), pos).replace(/^\S*\s/, '');
+                var end = pos + c.suggested.length;
+                contextAfter = pacsText.substring(end, Math.min(pacsText.length, end + 15)).replace(/\s\S*$/, '');
+            }
+            if (contextBefore) items += '<span style="font-size: 0.75rem; color: #666;">…' + escapeHtml(contextBefore) + '</span>';
+            items += '<span class="corr-old">' + escapeHtml(c.original) + '</span>';
+            items += '<i class="fas fa-arrow-right corr-arrow"></i>';
+            items += '<span class="corr-new">' + escapeHtml(c.suggested) + '</span>';
+            if (contextAfter) items += '<span style="font-size: 0.75rem; color: #666;">' + escapeHtml(contextAfter) + '…</span>';
+
+            if (c.reason) {
+                items += '<span class="corr-reason">' + escapeHtml(c.reason) + '</span>';
+            }
+            items += '</div>';
+        });
+
+        card.innerHTML = header + items;
+
+        // Insert above textarea inside the card-body of the PACS output card
+        var cardBody = document.querySelector('.pacs-output-card .card-body');
+        if (cardBody) {
+            cardBody.insertBefore(card, cardBody.firstChild);
+        }
+    }
+
+    // Click handler: highlight the corrected text in the PACS textarea
+    window._highlightCorrectionInPacs = function(el) {
+        var pos = parseInt(el.getAttribute('data-corr-pos'));
+        var len = parseInt(el.getAttribute('data-corr-len'));
+        if (isNaN(pos) || isNaN(len)) return;
+
+        var textarea = document.getElementById('editorOutput');
+        if (!textarea) return;
+        textarea.focus();
+        textarea.setSelectionRange(pos, pos + len);
+
+        // Scroll textarea to show the selection
+        var lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight) || 20;
+        var charsPerLine = Math.floor(textarea.clientWidth / 8) || 80;
+        var approxLine = Math.floor(pos / charsPerLine);
+        textarea.scrollTop = Math.max(0, (approxLine - 3) * lineHeight);
+    };
 
     // Recalculate hard + soft blockers based on unresolved corrections.
     // Called after every accept/reject so pills + gates vanish once resolved.
@@ -5102,6 +5203,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderFillIns() {
         const list = document.getElementById('aiAssistFillInsList');
         if (!list) return;
+        // Show the fill-ins section if there are pending fill-ins
+        var section = document.getElementById('aiAssistFillInsSection');
+        var hasPending = state.aiAssistFillIns.some(function(fi) { return fi.status === 'pending'; });
+        if (section) {
+            if (hasPending) { section.classList.remove('d-none'); } else { section.classList.add('d-none'); }
+        }
         // Save current input values before re-rendering so user doesn't lose typed text
         var savedInputs = {};
         state.aiAssistFillIns.forEach(function(fi, i) {
