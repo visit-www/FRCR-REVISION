@@ -461,11 +461,14 @@
                         <div class="input-group input-group-sm" style="flex: 1; min-width: 180px;">
                             <input type="text" id="askClaudeInput" class="form-control form-control-sm"
                                    placeholder="Ask RadInsights Intelligence..." maxlength="1000">
-                            <button class="btn btn-sm btn-outline-danger d-none" id="btnCancelRegen" onclick="cancelRegenerate()" title="Cancel regeneration mode (Esc)" style="font-size: 0.7rem;">
-                                <i class="fas fa-times"></i>
-                            </button>
                             <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()" title="Send (Enter)">
                                 <i class="fas fa-paper-plane"></i>
+                            </button>
+                            <button class="btn btn-sm btn-brand-primary d-none" id="btnRegenSend" onclick="askClaude()" title="Regenerate report (Enter)" style="font-weight: 600;">
+                                <i class="fas fa-sync-alt me-1"></i>Go
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary d-none" id="btnCancelRegen" onclick="cancelRegenerate()" title="Cancel regeneration mode (Esc)" style="font-size: 0.72rem;">
+                                Cancel
                             </button>
                         </div>
                         <div class="input-group input-group-sm d-none d-md-flex" style="flex: 0 1 220px; min-width: 160px;">
@@ -2425,8 +2428,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset regenerate mode and restore Finalize button
         state._regenerateMode = false;
         state._wasAlreadyFinalized = false;
-        var _cancelBtnReset = document.getElementById('btnCancelRegen');
-        if (_cancelBtnReset) _cancelBtnReset.classList.add('d-none');
+        // Restore Ask AI buttons to default state
+        document.getElementById('btnAskClaude').classList.remove('d-none');
+        document.getElementById('btnRegenSend').classList.add('d-none');
+        document.getElementById('btnCancelRegen').classList.add('d-none');
         var _finBtnReset = document.getElementById('btnFinalizeToolbar');
         if (_finBtnReset) {
             _finBtnReset.classList.remove('btn-brand-primary');
@@ -2817,6 +2822,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn.id === 'btnReviewReport2') btn.onclick = function() { reviewReport(); };
         else if (btn.id === 'btnFinalizeToolbar') btn.onclick = state.hasReceivedFinalizedReport ? function() { startRegenerate(); } : function() { quickAsk(btn); };
         else if (btn.id === 'btnAskClaude') btn.onclick = function() { askClaude(); };
+        else if (btn.id === 'btnRegenSend') btn.onclick = function() { askClaude(); };
         else if (btn._origOnclick) btn.onclick = btn._origOnclick;
     }
 
@@ -3406,10 +3412,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Highlight the input to signal regenerate mode
         input.style.borderColor = 'var(--brand-primary)';
         input.style.boxShadow = '0 0 0 0.15rem rgba(233, 99, 4, 0.25)';
-        // Show cancel button
-        var cancelBtn = document.getElementById('btnCancelRegen');
-        if (cancelBtn) cancelBtn.classList.remove('d-none');
-        showToast('Regenerate mode: type what you want changed, then press Send. Uses RadInsights Intelligence Pro.', 'info', 4000);
+        // Swap buttons: hide Send, show Go + Cancel
+        document.getElementById('btnAskClaude').classList.add('d-none');
+        document.getElementById('btnRegenSend').classList.remove('d-none');
+        document.getElementById('btnCancelRegen').classList.remove('d-none');
+        showToast('Regenerate mode: type what you want changed, then press Go. Uses RadInsights Intelligence Pro.', 'info', 4000);
     };
 
     window.cancelRegenerate = function() {
@@ -3418,8 +3425,10 @@ document.addEventListener('DOMContentLoaded', function() {
         input.placeholder = 'Ask a follow-up question...';
         input.style.borderColor = '';
         input.style.boxShadow = '';
-        var cancelBtn = document.getElementById('btnCancelRegen');
-        if (cancelBtn) cancelBtn.classList.add('d-none');
+        // Swap buttons: show Send, hide Go + Cancel
+        document.getElementById('btnAskClaude').classList.remove('d-none');
+        document.getElementById('btnRegenSend').classList.add('d-none');
+        document.getElementById('btnCancelRegen').classList.add('d-none');
     };
 
     window.askClaude = async function() {
@@ -3434,8 +3443,10 @@ document.addEventListener('DOMContentLoaded', function() {
             input.placeholder = 'Ask a follow-up question...';
             input.style.borderColor = '';
             input.style.boxShadow = '';
-            var _cancelBtn = document.getElementById('btnCancelRegen');
-            if (_cancelBtn) _cancelBtn.classList.add('d-none');
+            // Restore buttons: show Send, hide Go + Cancel
+            document.getElementById('btnAskClaude').classList.remove('d-none');
+            document.getElementById('btnRegenSend').classList.add('d-none');
+            document.getElementById('btnCancelRegen').classList.add('d-none');
         }
 
         // Soft guard: redirect regen-like text to Regenerate button
@@ -3454,8 +3465,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        const btn = document.getElementById('btnAskClaude');
-        _btnStartLoading(btn, '<i class="fas fa-spinner"></i>');
+        const btn = document.getElementById(_isRegenMode ? 'btnRegenSend' : 'btnAskClaude');
+        _btnStartLoading(btn, _isRegenMode ? 'Regenerating...' : '<i class="fas fa-spinner"></i>');
         // Animate the Finalize button if it's in the instruction queue
         var _finBtn = document.getElementById('btnFinalizeToolbar');
         var _isFinalize = question.toLowerCase().indexOf('finalize') >= 0;
