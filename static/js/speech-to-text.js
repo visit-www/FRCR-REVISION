@@ -129,9 +129,14 @@
      * Built-in dictation text commands — processed BEFORE inserting text.
      * Returns { handled: true } if the transcript was fully consumed,
      * or { handled: false, text: processedText } for normal insertion.
+     *
+     * Normalization: strips trailing punctuation/whitespace and lowercases so
+     * that Safari transcripts like "Stop." or "New line," still match exactly.
      */
     function _processBuiltInCommands(transcript, textarea) {
-        var text = transcript.trim().toLowerCase();
+        var raw = (transcript || '').trim();
+        // Strip surrounding punctuation/whitespace for command matching
+        var text = raw.toLowerCase().replace(/^[\s.,;:!?]+|[\s.,;:!?]+$/g, '');
 
         // "stop listening" / "stop dictation" — end mic
         if (text === 'stop listening' || text === 'stop dictation') {
@@ -433,6 +438,11 @@
         var interimDiv = null;
         var currentInterim = ''; // Track current interim text
         var interimTimer = null; // Safari fallback: auto-commit after pause
+        // Safari double-insert guard: track the highest result-index already consumed
+        // by the 2s fallback commit, so when Safari later fires isFinal for the same
+        // utterance we skip it. resultIndex is a global counter across the session.
+        var _committedResultIdx = -1;
+        var _pendingCommitIdx = -1;
 
         // Create interim display below textarea
         interimDiv = document.createElement('div');
@@ -473,11 +483,16 @@
         recognition.onresult = function(event) {
             var interim = '';
             for (var i = event.resultIndex; i < event.results.length; i++) {
+                // Skip any result already consumed by the Safari 2s fallback
+                if (i <= _committedResultIdx) continue;
                 var transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
-                    // Clear any pending Safari fallback timer
+                    // Clear any pending Safari fallback timer + pending commit idx
                     if (interimTimer) { clearTimeout(interimTimer); interimTimer = null; }
+                    _pendingCommitIdx = -1;
                     currentInterim = '';
+                    // Mark this result index as committed to suppress any late duplicates
+                    if (i > _committedResultIdx) _committedResultIdx = i;
 
                     // 1. Check built-in dictation commands (stop, new line, delete, punctuation)
                     var builtin = _processBuiltInCommands(transcript, textarea);
@@ -507,14 +522,23 @@
             if (interim) {
                 currentInterim = interim;
                 insertBtn.classList.add('has-text');
+                // Remember which result index range is represented by this interim,
+                // so when the Safari fallback commits we can mark it as consumed.
+                _pendingCommitIdx = event.results.length - 1;
 
                 // Safari fallback: if interim text stops changing for 2s, auto-commit
                 // (Safari often doesn't fire isFinal in continuous mode)
                 if (interimTimer) clearTimeout(interimTimer);
                 interimTimer = setTimeout(function() {
                     if (currentInterim && _activeBtn === btn) {
+                        var committedIdx = _pendingCommitIdx;
                         _commitInterimText(currentInterim, textarea);
+                        // Suppress any late isFinal for the same result index(es)
+                        if (committedIdx > _committedResultIdx) {
+                            _committedResultIdx = committedIdx;
+                        }
                         currentInterim = '';
+                        _pendingCommitIdx = -1;
                         insertBtn.classList.remove('has-text');
                         if (span) span.textContent = 'Listening...';
                     }

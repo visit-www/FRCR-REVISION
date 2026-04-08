@@ -963,28 +963,12 @@
                             </div>
                         </div>
 
-                        <!-- Anatomy Panel (Phase 6: anatomy snippet from DB or AI) -->
-                        <div id="anatomyPanel" class="d-none mb-3">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-white border-0 py-2">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-bone me-1" style="color: #e96304;"></i><span id="anatomyPanelTitle">Anatomy Snippet</span></small>
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="hideAnatomyPanel()" title="Close" style="font-size: 0.7rem;">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body p-3">
-                                    <div id="anatomyPanelLoading" class="text-center py-4">
-                                        <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                                        <small class="text-muted ms-2">Loading anatomy snippet...</small>
-                                    </div>
-                                    <div id="anatomyPanelContent" class="d-none" style="font-size: 0.85rem; line-height: 1.5;"></div>
-                                    <div id="anatomyPanelSource" class="d-none mt-2">
-                                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i><span id="anatomySourceText"></span></small>
-                                    </div>
-                                </div>
-                            </div>
+                        <!-- Anatomy Snippet History (stacked — newest expanded, older collapsed) -->
+                        <div id="anatomyHistory" class="d-none mb-3"></div>
+                        <!-- Transient loading placeholder while a new snippet is fetched -->
+                        <div id="anatomyPanelLoading" class="d-none mb-3 text-center py-3">
+                            <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
+                            <small class="text-muted ms-2">Loading anatomy snippet...</small>
                         </div>
 
                         <!-- Anatomy Snippet Search (always bottom of right panel, above Clinical Insights) -->
@@ -1211,6 +1195,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: null,
         usageData: null,
+        // Anatomy snippet session history (stacked like reportActionHistory)
+        anatomySnippetHistory: [],
         // AI Assist state
         aiAssistResponseType: 'advisory',  // 'advisory' or 'full_report'
         aiAssistAnswer: '',
@@ -1949,8 +1935,8 @@ document.addEventListener('DOMContentLoaded', function() {
     var _toolPanelUrl = '';
 
     window.hideAllAdaptivePanels = function() {
+        // Note: anatomy snippet history persists across panel swaps; only dismissed via × or New Report
         document.getElementById('toolPanel').classList.add('d-none');
-        document.getElementById('anatomyPanel').classList.add('d-none');
         var iframe = document.getElementById('toolPanelIframe');
         iframe.src = '';
         iframe.classList.add('d-none');
@@ -2120,19 +2106,11 @@ document.addEventListener('DOMContentLoaded', function() {
     window.hideReferencePanel = function() { /* no-op, panel removed */ };
 
     window.showAnatomyPanel = function(topic) {
-        // Load anatomy snippet from DB or AI
+        // Load anatomy snippet from DB or AI; push to session history (stacked)
         hideAllAdaptivePanels();
 
-        var panel = document.getElementById('anatomyPanel');
         var loading = document.getElementById('anatomyPanelLoading');
-        var content = document.getElementById('anatomyPanelContent');
-        var source = document.getElementById('anatomyPanelSource');
-
-        panel.classList.remove('d-none');
         loading.classList.remove('d-none');
-        content.classList.add('d-none');
-        source.classList.add('d-none');
-        document.getElementById('anatomyPanelTitle').textContent = 'Anatomy: ' + topic;
 
         cancelAIRequest();
         activeAIController = new AbortController();
@@ -2149,13 +2127,11 @@ document.addEventListener('DOMContentLoaded', function() {
             loading.classList.add('d-none');
 
             if (data.upgrade_required) {
-                panel.classList.add('d-none');
                 showUpgradeModal(data.trial_expired ? 'trial_expired' : 'limit_reached', data);
                 return;
             }
 
             if (data.error) {
-                panel.classList.add('d-none');
                 showToast('Could not load anatomy snippet: ' + data.error, 'warning');
                 return;
             }
@@ -2167,17 +2143,33 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
-            content.innerHTML = data.content_html || '<p class="text-muted">No anatomy content available.</p>';
-            content.classList.remove('d-none');
-
+            var contentHtml = data.content_html || '<p class="text-muted">No anatomy content available.</p>';
             var sourceText = data.source === 'database' ? 'From verified database' : 'RadInsight Intelligence reference';
-            document.getElementById('anatomySourceText').textContent = sourceText;
-            source.classList.remove('d-none');
+
+            // Dedupe: if an entry with the same topic+source already exists, remove it before unshifting
+            var existingIdx = -1;
+            for (var i = 0; i < state.anatomySnippetHistory.length; i++) {
+                if (state.anatomySnippetHistory[i].topic.toLowerCase() === topic.toLowerCase()) {
+                    existingIdx = i; break;
+                }
+            }
+            if (existingIdx !== -1) state.anatomySnippetHistory.splice(existingIdx, 1);
+
+            state.anatomySnippetHistory.unshift({
+                topic: topic,
+                title: data.title || topic,
+                html: contentHtml,
+                sourceText: sourceText,
+                timestamp: new Date(),
+            });
+            renderAnatomyHistory();
+
+            var container = document.getElementById('anatomyHistory');
+            if (container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         })
         .catch(function(err) {
             activeAIController = null;
             loading.classList.add('d-none');
-            panel.classList.add('d-none');
             if (err.name === 'AbortError') {
                 showToast('Anatomy request cancelled.', 'info');
             } else {
@@ -2186,8 +2178,70 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
+    function renderAnatomyHistory() {
+        var container = document.getElementById('anatomyHistory');
+        if (!container) return;
+        if (!state.anatomySnippetHistory || state.anatomySnippetHistory.length === 0) {
+            container.innerHTML = '';
+            container.classList.add('d-none');
+            return;
+        }
+        container.classList.remove('d-none');
+
+        var html = '';
+        state.anatomySnippetHistory.forEach(function(item, i) {
+            var isLatest = (i === 0);
+            var collapsed = !isLatest;
+            var bodyId = 'anatomySnippetBody_' + i;
+            var contentId = 'anatomySnippetContent_' + i;
+
+            html += '<div class="card border-0 shadow-sm mb-2" style="border-left: 3px solid #e96304 !important;">';
+            html += '<div class="card-header bg-white border-0 py-2 d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleAnatomySnippet(' + i + ')">';
+            html += '<small class="fw-semibold" style="color: #e96304;">';
+            html += '<i class="fas fa-bone me-1"></i>Anatomy: ' + escapeHtml(item.title);
+            if (collapsed) {
+                html += ' <span class="text-muted" style="font-size: 0.65rem; font-weight: 400;">(click to expand)</span>';
+            }
+            html += '</small>';
+            html += '<div class="d-flex align-items-center gap-2">';
+            if (!isLatest) {
+                html += '<i class="fas fa-chevron-' + (collapsed ? 'down' : 'up') + ' text-muted" id="anatomySnippetChevron_' + i + '" style="font-size: 0.65rem;"></i>';
+            }
+            html += '<button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); removeAnatomySnippet(' + i + ')" title="Close" style="font-size: 0.7rem;"><i class="fas fa-times"></i></button>';
+            html += '</div></div>';
+
+            html += '<div id="' + bodyId + '" class="card-body p-3' + (collapsed ? ' d-none' : '') + '">';
+            html += '<div id="' + contentId + '" style="font-size: 0.85rem; line-height: 1.5;">' + item.html + '</div>';
+            html += '<div class="mt-2"><small class="text-muted"><i class="fas fa-info-circle me-1"></i>' + escapeHtml(item.sourceText) + '</small></div>';
+            html += '</div>';
+
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    }
+
+    window.toggleAnatomySnippet = function(index) {
+        var body = document.getElementById('anatomySnippetBody_' + index);
+        var chevron = document.getElementById('anatomySnippetChevron_' + index);
+        if (!body) return;
+        if (body.classList.contains('d-none')) {
+            body.classList.remove('d-none');
+            if (chevron) chevron.classList.replace('fa-chevron-down', 'fa-chevron-up');
+        } else {
+            body.classList.add('d-none');
+            if (chevron) chevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        }
+    };
+
+    window.removeAnatomySnippet = function(index) {
+        state.anatomySnippetHistory.splice(index, 1);
+        renderAnatomyHistory();
+    };
+
     window.hideAnatomyPanel = function() {
-        document.getElementById('anatomyPanel').classList.add('d-none');
+        // Legacy alias — now clears all anatomy snippets
+        state.anatomySnippetHistory = [];
+        renderAnatomyHistory();
     };
 
     // ==================== ANATOMY TYPEAHEAD ====================
@@ -2222,15 +2276,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         dropdown.classList.remove('d-none');
                         return;
                     }
-                    var html = '';
+                    // Build safely via DOM (avoid inline-onclick escaping issues that broke clicks)
+                    dropdown.innerHTML = '';
                     results.forEach(function(r) {
-                        html += '<div class="anatomy-suggest-item px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
-                                'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
-                                'onclick="pickAnatomySuggestion(\'' + r.title.replace(/'/g, "\\'") + '\')">' +
-                                '<i class="fas fa-database me-1" style="color: var(--brand-neutral);"></i>' +
-                                r.title + ' <span class="text-muted" style="font-size: 0.7rem;">— cached</span></div>';
+                        var item = document.createElement('div');
+                        item.className = 'anatomy-suggest-item px-3 py-2';
+                        item.style.cssText = 'cursor:pointer;font-size:0.8rem;border-bottom:1px solid #f0f0f0;';
+                        item.dataset.title = r.title;
+                        item.innerHTML = '<i class="fas fa-database me-1" style="color: var(--brand-neutral);"></i>' +
+                            (r.title || '').replace(/</g, '&lt;') +
+                            ' <span class="text-muted" style="font-size: 0.7rem;">— cached</span>';
+                        item.addEventListener('mouseover', function() { item.style.background = '#f0f7ff'; });
+                        item.addEventListener('mouseout', function() { item.style.background = '#fff'; });
+                        // Use mousedown so it fires before the outside-click handler hides the dropdown
+                        item.addEventListener('mousedown', function(ev) {
+                            ev.preventDefault();
+                            ev.stopPropagation();
+                            pickAnatomySuggestion(item.dataset.title);
+                        });
+                        dropdown.appendChild(item);
                     });
-                    dropdown.innerHTML = html;
                     dropdown.classList.remove('d-none');
                 })
                 .catch(function() { dropdown.classList.add('d-none'); });
@@ -2427,6 +2492,9 @@ document.addEventListener('DOMContentLoaded', function() {
         state.hardBlockers = [];
         state.softWarnings = [];
         state.reportActionHistory = [];
+        state.anatomySnippetHistory = [];
+        var _anatHist = document.getElementById('anatomyHistory');
+        if (_anatHist) { _anatHist.innerHTML = ''; _anatHist.classList.add('d-none'); }
         state.externalContext = null;
         try { sessionStorage.removeItem('sr_externalContext'); } catch(e) {}
         _clearAutosave();

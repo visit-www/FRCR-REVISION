@@ -4005,13 +4005,16 @@ def smart_reporter_anatomy_suggest():
     if len(q) < 2:
         return jsonify({'results': []})
 
+    # Match any anatomy entry regardless of origin (anatomy_cache, admin, manual).
+    # Also match against slug so legacy entries are findable.
+    like = f'%{q}%'
     matches = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.category == 'anatomy',
-        ReportingAlgorithm.origin == 'anatomy_cache',
         ReportingAlgorithm.is_available == True,
         db.or_(
-            ReportingAlgorithm.title.ilike(f'%{q}%'),
-            ReportingAlgorithm.keywords.ilike(f'%{q}%'),
+            ReportingAlgorithm.title.ilike(like),
+            ReportingAlgorithm.keywords.ilike(like),
+            ReportingAlgorithm.slug.ilike(like),
         ),
     ).order_by(ReportingAlgorithm.title).limit(8).all()
 
@@ -4093,6 +4096,7 @@ def smart_reporter_anatomy():
             'success': True,
             'cached': True,
             'title': cached.title,
+            'content_html': cached.template_html,
             'algorithm_id': cached.id,
             'is_ai_generated': cached.is_ai_generated,
             'source': 'database',
