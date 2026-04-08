@@ -153,12 +153,22 @@
                                 </label>
                                 <button type="button" class="btn btn-sm btn-outline-secondary vetting-safety-skip" onclick="skipSafetyCheck('pregnancy')">N/A</button>
                             </div>
-                            <select id="pregnancyInput" class="form-select form-select-sm mb-3">
+                            <select id="pregnancyInput" class="form-select form-select-sm mb-2" onchange="handlePregnancyChange()">
                                 <option value="">Select...</option>
                                 <option value="not_pregnant">Not pregnant / Not of childbearing age</option>
                                 <option value="possible">Possible pregnancy — discuss risk</option>
-                                <option value="pregnant">Pregnant</option>
+                                <option value="pregnant">Pregnant — requires rationale</option>
                             </select>
+                            <!-- Rationale box — shown only when "Pregnant" is selected -->
+                            <div id="pregnancyRationaleBox" class="d-none mb-3">
+                                <div class="alert alert-warning py-2 px-3 small mb-2">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Confirmed pregnancy — document clinical justification for imaging.
+                                </div>
+                                <textarea id="pregnancyRationale" class="form-select form-select-sm"
+                                          rows="2" placeholder="Clinical rationale (e.g. suspected life-threatening PE, consent obtained, low-dose protocol used)"
+                                          oninput="updateQuickCleanOutput()"></textarea>
+                            </div>
                         </div>
 
                         <!-- Allergy row -->
@@ -467,7 +477,7 @@ let _quickCleanMode = false;
 // PII override now handled by PIIGuard.setOverride() + fetch interceptor
 
 // Friendly labels for safety check display
-const _PREGNANCY_LABELS = { 'not_pregnant': 'Not applicable', 'possible': 'Possible pregnancy', 'pregnant': 'Pregnant', 'N/A': 'N/A' };
+const _PREGNANCY_LABELS = { 'not_pregnant': 'Not pregnant', 'possible': 'Possible pregnancy — discuss risk', 'pregnant': 'Pregnant', 'N/A': 'N/A' };
 const _ALLERGY_LABELS = { 'none': 'Unknown', 'mild': 'Mild reaction — premedicate', 'severe': 'Severe — avoid contrast', 'N/A': 'N/A' };
 
 // ── Scene Management ──
@@ -648,6 +658,11 @@ function populateScene2() {
     if (checks.pregnancy_check_required) {
         pregnancyRow.classList.remove('d-none');
         document.getElementById('pregnancyInput').value = '';
+        // Reset rationale UI on each scene
+        const rBox = document.getElementById('pregnancyRationaleBox');
+        const rTa = document.getElementById('pregnancyRationale');
+        if (rBox) rBox.classList.add('d-none');
+        if (rTa) { rTa.value = ''; rTa.disabled = false; }
     } else {
         pregnancyRow.classList.add('d-none');
     }
@@ -895,6 +910,11 @@ function _allSafetyChecksFilled() {
     if (checks.pregnancy_check_required) {
         const val = document.getElementById('pregnancyInput').value;
         if (!val && _safetyResponses.pregnancy !== 'N/A') return false;
+        // If user explicitly confirmed pregnancy, rationale is mandatory
+        if (val === 'pregnant') {
+            const rationale = (document.getElementById('pregnancyRationale') || {}).value;
+            if (!rationale || !rationale.trim()) return false;
+        }
     }
     if (checks.allergy_check_required) {
         const val = document.getElementById('allergyInput').value;
@@ -909,8 +929,14 @@ function _highlightUnfilledSafety() {
     if (checks.requires_egfr && !document.getElementById('egfrInput').value.trim() && _safetyResponses.egfr !== 'N/A') {
         fields.push(document.getElementById('egfrInput'));
     }
-    if (checks.pregnancy_check_required && !document.getElementById('pregnancyInput').value && _safetyResponses.pregnancy !== 'N/A') {
-        fields.push(document.getElementById('pregnancyInput'));
+    if (checks.pregnancy_check_required) {
+        const pregSel = document.getElementById('pregnancyInput');
+        if (!pregSel.value && _safetyResponses.pregnancy !== 'N/A') {
+            fields.push(pregSel);
+        } else if (pregSel.value === 'pregnant') {
+            const ta = document.getElementById('pregnancyRationale');
+            if (ta && !ta.value.trim()) fields.push(ta);
+        }
     }
     if (checks.allergy_check_required && !document.getElementById('allergyInput').value && _safetyResponses.allergy !== 'N/A') {
         fields.push(document.getElementById('allergyInput'));
@@ -938,6 +964,13 @@ function skipSafetyCheck(checkName) {
         el.disabled = true;
         el.classList.add('bg-light');
     }
+    // If skipping pregnancy, also hide and clear the rationale box
+    if (checkName === 'pregnancy') {
+        const box = document.getElementById('pregnancyRationaleBox');
+        const ta = document.getElementById('pregnancyRationale');
+        if (box) box.classList.add('d-none');
+        if (ta) { ta.value = ''; ta.disabled = true; }
+    }
     // Visual feedback on skip button
     const row = document.getElementById(checkName + 'Row');
     if (row) {
@@ -945,6 +978,30 @@ function skipSafetyCheck(checkName) {
         if (btn) { btn.classList.add('btn-secondary'); btn.classList.remove('btn-outline-secondary'); }
     }
     updateQuickCleanOutput();
+}
+
+// ── Pregnancy selection handler — show/hide rationale box, "do not insert unless confirmed" ──
+function handlePregnancyChange() {
+    const sel = document.getElementById('pregnancyInput');
+    const box = document.getElementById('pregnancyRationaleBox');
+    const ta = document.getElementById('pregnancyRationale');
+    if (!sel || !box) return;
+    if (sel.value === 'pregnant') {
+        box.classList.remove('d-none');
+        if (ta) { ta.disabled = false; setTimeout(() => ta.focus(), 50); }
+    } else {
+        box.classList.add('d-none');
+        if (ta) ta.value = '';
+    }
+    // Clear any N/A skip state if user picks a real value
+    if (sel.value && _safetyResponses.pregnancy === 'N/A') {
+        delete _safetyResponses.pregnancy;
+    }
+    updateQuickCleanOutput();
+    // Re-check whether all safety fields are filled so we can auto-advance
+    if (_allSafetyChecksFilled()) {
+        continueToProtocol();
+    }
 }
 
 // ── Flag interaction ──
@@ -1016,8 +1073,9 @@ function updateQuickCleanOutput() {
     // Safety summary line
     const safetyBits = [];
     if (sr.egfr !== undefined && sr.egfr !== null) safetyBits.push(`eGFR: ${sr.egfr}`);
-    if (sr.pregnancy) safetyBits.push(`Pregnancy: ${_PREGNANCY_LABELS[sr.pregnancy] || sr.pregnancy}`);
-    if (sr.allergy) safetyBits.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
+    const pregStr = _formatPregnancyForOutput(sr);
+    if (pregStr) safetyBits.push(`Pregnancy: ${pregStr}`);
+    if (sr.allergy && sr.allergy !== 'N/A') safetyBits.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
     if (safetyBits.length) parts.push('Safety: ' + safetyBits.join(', '));
 
     document.getElementById('quickCleanText').textContent = parts.join('\n');
@@ -1041,13 +1099,30 @@ function _collectSafetyResponses() {
         const val = document.getElementById('egfrInput').value.trim();
         responses.egfr = val ? parseFloat(val) : null;
     }
-    if (checks.pregnancy_check_required && !responses.pregnancy) {
+    if (checks.pregnancy_check_required && responses.pregnancy !== 'N/A') {
         responses.pregnancy = document.getElementById('pregnancyInput').value || null;
+        if (responses.pregnancy === 'pregnant') {
+            const ta = document.getElementById('pregnancyRationale');
+            responses.pregnancy_rationale = ta ? (ta.value || '').trim() : '';
+        } else {
+            responses.pregnancy_rationale = null;
+        }
     }
     if (checks.allergy_check_required && !responses.allergy) {
         responses.allergy = document.getElementById('allergyInput').value || null;
     }
     return responses;
+}
+
+// ── Build pregnancy display string respecting "do-not-insert-unless-confirmed" ──
+function _formatPregnancyForOutput(sr) {
+    // N/A, empty, null → do NOT emit anything
+    if (!sr.pregnancy || sr.pregnancy === 'N/A') return null;
+    if (sr.pregnancy === 'pregnant') {
+        if (!sr.pregnancy_rationale) return null; // Require rationale before insertion
+        return `Pregnant — ${sr.pregnancy_rationale}`;
+    }
+    return _PREGNANCY_LABELS[sr.pregnancy] || sr.pregnancy;
 }
 
 // ── Build enriched clinical text (original + resolved flag responses) ──
@@ -1155,11 +1230,12 @@ function renderScene3(protocol) {
 
     // Build clinical details (enriched text + safety responses + confirmed findings)
     let clinicalHtml = '<div class="mb-2">' + _escapeHtml(_buildEnrichedClinicalText()) + '</div>';
-    const sr = _safetyResponses;
+    const sr = _collectSafetyResponses();
     const safetyParts = [];
     if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
-    if (sr.pregnancy) safetyParts.push(`Pregnancy: ${_PREGNANCY_LABELS[sr.pregnancy] || sr.pregnancy}`);
-    if (sr.allergy) safetyParts.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
+    const pregStrFinal = _formatPregnancyForOutput(sr);
+    if (pregStrFinal) safetyParts.push(`Pregnancy: ${pregStrFinal}`);
+    if (sr.allergy && sr.allergy !== 'N/A') safetyParts.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
     if (safetyParts.length) {
         clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Safety Checks:</small><br>';
         clinicalHtml += safetyParts.map(s => `<small>${_escapeHtml(s)}</small>`).join(' &middot; ');

@@ -13,7 +13,8 @@ from flask_login import login_required, current_user
 
 from models import (
     db, RadIQQuery, RadIQFeedback, ClinicalProtocol, ReportingAlgorithm,
-    IncidentalFindingCalculator, RadiologyPearl, log_ai_usage, UserRole,
+    IncidentalFindingCalculator, RadiologyPearl, ImagingProtocol,
+    log_ai_usage, UserRole,
 )
 from ai_radiq import generate_radiq_response, RADIQ_CATEGORIES, RadIQError
 
@@ -329,6 +330,61 @@ def _find_relevant_db_content(question, category):
                 'icon': 'fa-brain',
                 'color': '#6b46c1',
             })
+
+        # 6. Imaging Protocols (vetting library) — gated on protocol-related keywords
+        # to avoid injecting protocol context into unrelated clinical queries.
+        q_lower = q.lower()
+        _PROTOCOL_KEYWORDS = (
+            'protocol', 'contrast', 'phase', 'delay', 'timing', 'dose',
+            'kvp', 'mas', 'coverage', 'reconstruction', 'scanner', 'acquisition',
+            'ctpa', 'kub', 'urogram', 'triphasic', 'angiography', 'bolus',
+            'arterial', 'portal venous', 'equilibrium', 'paediatric contrast',
+            'how to scan', 'how to image', 'imaging technique',
+        )
+        if any(kw in q_lower for kw in _PROTOCOL_KEYWORDS):
+            img_protocols = ImagingProtocol.query.filter_by(
+                origin='admin', is_published=True
+            ).filter(
+                db.or_(
+                    ImagingProtocol.title.ilike(f'%{q[:80]}%'),
+                    ImagingProtocol.keywords.ilike(f'%{q[:80]}%'),
+                    ImagingProtocol.shorthand_text.ilike(f'%{q[:80]}%'),
+                )
+            ).limit(3).all()
+
+            # Fallback to per-word matching if full-query match empty
+            if not img_protocols:
+                words = [w for w in q.split() if len(w) >= 3]
+                for word in words[:5]:
+                    found = ImagingProtocol.query.filter_by(
+                        origin='admin', is_published=True
+                    ).filter(
+                        db.or_(
+                            ImagingProtocol.title.ilike(f'%{word}%'),
+                            ImagingProtocol.keywords.ilike(f'%{word}%'),
+                            ImagingProtocol.shorthand_text.ilike(f'%{word}%'),
+                        )
+                    ).limit(2).all()
+                    for p in found:
+                        if p not in img_protocols:
+                            img_protocols.append(p)
+                    if len(img_protocols) >= 3:
+                        break
+
+            for p in img_protocols[:3]:
+                prompt_parts.append(
+                    f"[IMAGING PROTOCOL] {p.title} "
+                    f"({p.modality}, {p.body_section or 'general'})\n"
+                    f"Shorthand: {(p.shorthand_text or '')[:300]}\n"
+                    f"Notes: {(p.special_notes or '')[:300]}"
+                )
+                links.append({
+                    'type': 'Imaging Protocol',
+                    'title': p.title,
+                    'url': f'/vetting/protocols?search={p.slug}' if p.slug else '/vetting/protocols',
+                    'icon': 'fa-notes-medical',
+                    'color': '#5E899E',
+                })
 
     except Exception as e:
         logger.warning(f"DB content lookup for RadIQ failed (non-fatal): {e}")

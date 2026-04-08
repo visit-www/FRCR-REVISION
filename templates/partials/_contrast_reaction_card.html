@@ -486,6 +486,53 @@
           <i class="fas fa-arrow-up me-1"></i>Enter a weight to see all paediatric doses.
         </div>
       </div>
+
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <!-- KOC Omnipaque weight-based iodine calculator                  -->
+      <!-- ──────────────────────────────────────────────────────────── -->
+      <div class="crc-iodine-block mt-4">
+        <h6 class="crc-section-subtitle mb-2">
+          <i class="fas fa-flask me-1" style="color:#5E899E;"></i>
+          Omnipaque Iodine Dose (KOC weight-based)
+        </h6>
+        <div class="crc-section-intro">
+          Select concentration and target iodine dose; the table below returns
+          the volume (mL) and total iodine (mg I) scaled to the weight entered above.
+          Based on Kuwait Oil Company CT protocols (Omnipaque iohexol) and ACR 2025.
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-sm-6">
+            <label for="crc-omni-concentration" class="form-label fw-semibold mb-1 small">Concentration</label>
+            <select id="crc-omni-concentration" class="form-select form-select-sm">
+              <option value="240">Omnipaque 240 (240 mg I/mL)</option>
+              <option value="300" selected>Omnipaque 300 (300 mg I/mL)</option>
+              <option value="350">Omnipaque 350 (350 mg I/mL)</option>
+            </select>
+          </div>
+          <div class="col-sm-6">
+            <label for="crc-omni-target" class="form-label fw-semibold mb-1 small">Target iodine dose</label>
+            <select id="crc-omni-target" class="form-select form-select-sm">
+              <option value="1.2">1.2 g I/kg — low-dose / paediatric routine</option>
+              <option value="1.5" selected>1.5 g I/kg — routine CAP (adult)</option>
+              <option value="2.0">2.0 g I/kg — CTA / angiography</option>
+            </select>
+          </div>
+        </div>
+        <div id="crc-iodine-output" class="crc-calc-grid mt-3" aria-live="polite">
+          <div class="crc-calc-empty">
+            <i class="fas fa-arrow-up me-1"></i>Enter a weight above to calculate iodine dose.
+          </div>
+        </div>
+        <div class="crc-iodine-ref mt-2 small">
+          <strong>Reference (ACR 2025 / KOC CT protocols):</strong>
+          <ul class="mb-0 ps-3">
+            <li>Routine CAP (adult): ~1.5 g I/kg — typical max ~40 g I total</li>
+            <li>CTA / angiography: up to 2 g I/kg — max total per local protocol</li>
+            <li>Paediatric routine: 1.2 – 2.0 mL/kg Omnipaque 300 (cap at adult dose)</li>
+            <li>Concentration mapping: Omnipaque 240 / 300 / 350 = 240 / 300 / 350 mg I/mL</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -594,6 +641,31 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     font-size: 0.95rem;
+}
+.crc-section-subtitle {
+    color: #5E899E;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid #e9ecef;
+    padding-top: 0.75rem;
+}
+.crc-iodine-block {
+    background: #fafbfc;
+    border: 1px solid #e9ecef;
+    border-radius: 0.4rem;
+    padding: 0.85rem;
+}
+.crc-iodine-ref {
+    background: #fff8e6;
+    border-left: 3px solid #ffc107;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.25rem;
+    color: #6c5d2e;
+}
+.crc-iodine-ref ul {
+    font-size: 0.78rem;
+    line-height: 1.5;
 }
 .crc-grid-2 {
     display: grid;
@@ -895,6 +967,9 @@
     // ────────── Paediatric calculator (Tab 6) ──────────
     var weightInput = document.getElementById('crc-paed-weight');
     var outputs = document.getElementById('crc-calc-outputs');
+    var omniConc = document.getElementById('crc-omni-concentration');
+    var omniTarget = document.getElementById('crc-omni-target');
+    var iodineOut = document.getElementById('crc-iodine-output');
     if (!weightInput || !outputs) return;
 
     function _round(n, dp) {
@@ -910,6 +985,9 @@
 
     function clearOutputs() {
         outputs.innerHTML = '<div class="crc-calc-empty"><i class="fas fa-arrow-up me-1"></i>Enter a weight to see all paediatric doses.</div>';
+        if (iodineOut) {
+            iodineOut.innerHTML = '<div class="crc-calc-empty"><i class="fas fa-arrow-up me-1"></i>Enter a weight above to calculate iodine dose.</div>';
+        }
     }
 
     function buildCard(label, value, detail, variant) {
@@ -1007,9 +1085,40 @@
             '0.5 – 0.7 mg/kg PO (max 50 mg) at 13 / 7 / 1 h pre',
             'premed'
         ));
+
+        // ── KOC Omnipaque iodine calculator ──
+        if (iodineOut && omniConc && omniTarget) {
+            var concMgPerMl = parseFloat(omniConc.value);   // mg I / mL
+            var targetGperKg = parseFloat(omniTarget.value); // g I / kg
+            if (!isNaN(concMgPerMl) && !isNaN(targetGperKg) && concMgPerMl > 0) {
+                var totalIodineMg = targetGperKg * 1000 * kg;      // mg I
+                var totalIodineG  = totalIodineMg / 1000;          // g I
+                var volumeMl      = totalIodineMg / concMgPerMl;   // mL
+                var iodinePerKg   = targetGperKg * 1000;           // mg I / kg (constant echo)
+
+                iodineOut.innerHTML = '';
+                iodineOut.appendChild(buildCard(
+                    'Omnipaque volume',
+                    _fmt(volumeMl, 1) + ' mL',
+                    'Omnipaque ' + omniConc.value + ' at ' + targetGperKg + ' g I/kg'
+                ));
+                iodineOut.appendChild(buildCard(
+                    'Total iodine',
+                    _fmt(totalIodineG, 1) + ' g I',
+                    '= ' + _fmt(totalIodineMg, 0) + ' mg I total'
+                ));
+                iodineOut.appendChild(buildCard(
+                    'Iodine / kg',
+                    _fmt(iodinePerKg, 0) + ' mg I/kg',
+                    'Target dose ' + targetGperKg + ' g I/kg'
+                ));
+            }
+        }
     }
 
     weightInput.addEventListener('input', recalc);
+    if (omniConc) omniConc.addEventListener('change', recalc);
+    if (omniTarget) omniTarget.addEventListener('change', recalc);
     clearOutputs();
 })();
 </script>
