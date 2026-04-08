@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **68** / 97 |
-| WONTFIX | 2 / 97 |
-| TODO | **27** / 97 |
-| **Completion** | **70%** |
+| DONE | **68** / 106 |
+| WONTFIX | 2 / 106 |
+| TODO | **36** / 106 |
+| **Completion** | **64%** |
 
 ---
 
@@ -330,9 +330,43 @@ After each content-expansion deploy, the dynamic sitemap grows. Items to action:
 - **#92** Submit `/contrast-reaction-card` + 7 new protocols to Bing Webmaster Tools
 - **#93** Add RSS/Atom feed for new pearls + protocols (indexation accelerator)
 
+---
+
+## NEXT SPRINT — Apr 8, 2026 User Report (DO NEXT)
+
+These items come from direct user testing on Apr 8. They are **the next priority** after the vetting gaps closeout deploy has stabilised.
+
+### Smart Reporter — Anatomy Snippet + Action Persistence
+
+- **#94** Anatomy snippet DB search unreliable — existing snippets in DB sometimes not returned by search; when a match IS found the UI still shows "no snippet found" banner, and the rendered result is not clickable. Need to audit `/api/anatomy/search` (or equivalent) response handling in Smart Reporter frontend, and fix the state where a match exists but the UI reports none.
+- **#95** Anatomy snippet session persistence — if user generates more than one anatomy snippet in a single session, keep the earlier snippets rendered but auto-collapse them (pattern: mirror Changes Made / action card collapse behaviour). New generation should expand, previous should collapse.
+- **#96** Universal session-output persistence — ALL generated outputs in a Smart Reporter session (anatomy snippets, MDT notes, Email Colleague, Email Patient, SBA, Viva, every action button output) should persist in the UI (collapsed if not currently active) until the user explicitly clicks Dismiss / Close. Currently some outputs disappear on re-action. Audit `askClaude` + report-action response handlers.
+
+### Smart Reporter — Safari Dictation
+
+- **#97** Safari: dictation text is being auto-inserted **twice** into the report text area. Likely a duplicate event listener or race between Web Speech API `result` and `speechend` callbacks on WebKit. Need Safari-specific event dedup (the fix probably belongs in `static/js/dictation.js` or wherever the SpeechRecognition bindings live).
+- **#98** "stop" voice command not working — currently literally types the word "stop" instead of terminating dictation. Need to intercept the transcript before insertion and match command keywords (`stop`, `end`, `finish`).
+- **#99** "new line" voice command not working — nothing happens; should insert `\n` at cursor. Add to the voice-command interceptor alongside "stop".
+
+### Vetting — Protocol Matching Miss
+
+- **#100** Appendicitis test case returns "No library protocol matched" despite DB containing a CT Abdomen/Pelvis with IV contrast protocol. Test referral: *"65-year-old male presented with abdominal pain. Initially central but then progressed to right iliac fossa. One episode of vomiting. Low-grade fever. White blood cell count 14, C-reactive protein 34."* AI correctly cites **RCR iRefer CT abdomen pelvis with IV contrast for suspected appendicitis in adults with clinical features** but the library match fails and falls back to AI generation. Audit `vetting_routes.py::_search_protocols` + the AI protocol-matching step — likely the appendicitis protocol has a slug/title that doesn't match the indication keywords. May need to add "appendicitis" to `keywords` or `indication_json.symptoms` on the CT AP with IV contrast row.
+
+### ImagingProtocol DB Cleanup — KOC Replacement + Aberdeen ARI Scrub
+
+- **#101** Identify all ImagingProtocol rows where `detailed_protocol_html` or `positioning` section contains the literal string **"Use the image on the right as a guide."** (KOC-style phrasing). Alternatively, directly list all protocols whose source / origin is KOC CT protocols docx. Query Neon and provide the list. These are to be REPLACED with Swansea / Radiology Assistant / UK NHS Trust equivalents in a follow-up migration block.
+- **#102** Search the ImagingProtocol DB for all occurrences of **"Aberdeen ARI"** (across title, detailed_protocol_html, special_notes, any text column) and replace with blank space (empty string). Idempotent migration block with sentinel marker.
+
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (27 total, 97 overall)
+### Remaining TODO Items (36 total, 106 overall)
+
+**Next Sprint — Apr 8 user report (START HERE):**
+- **#94–96** Smart Reporter anatomy snippet search + session output persistence
+- **#97–99** Safari dictation fixes (double-insert, stop command, new line command)
+- **#100** Vetting appendicitis protocol match miss
+- **#101** KOC protocol replacement (find by "Use the image on the right as a guide.")
+- **#102** Aberdeen ARI string scrub in ImagingProtocol DB
 
 **Tier 3 — Medium Priority:**
 - **#33** Split `app.py` (~7000 lines) into route modules
