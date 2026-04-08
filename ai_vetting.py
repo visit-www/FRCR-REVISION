@@ -215,6 +215,58 @@ ACR MANUAL ON CONTRAST MEDIA (2025 ed.) — AUTHORITATIVE REFERENCE FOR CONTRAST
 """
 
 
+# ── RCR Whole-Body CT Trauma Triage Block ────────────────────────────
+# Distilled from the Royal College of Radiologists' Major Adult Trauma
+# Guidance (2024). Used only in ANALYSIS_SYSTEM_PROMPT (indication-level
+# vetting) — NOT in the protocol prompt where scanner parameters live.
+# Purpose: give the AI the exact triage thresholds so it does not
+# paraphrase or miss specific vital-sign cut-offs when advising WBCT.
+
+_WBCT_CRITERIA_BLOCK = """
+
+RCR MAJOR ADULT TRAUMA GUIDANCE 2024 — WHOLE-BODY CT (WBCT) TRIAGE CRITERIA:
+
+A whole-body CT (head + cervical spine + thoracoabdominal + pelvis, usually with IV
+contrast from the arch to the pubic symphysis) is indicated in major adult trauma when
+ONE OR MORE of the following criteria are met. Cite this reference explicitly when
+recommending or vetting WBCT for polytrauma.
+
+1. HIGH-RISK MECHANISM (any one):
+   - Fall from height > 3 metres
+   - Pedestrian or cyclist struck by motor vehicle
+   - Ejection from a vehicle
+   - Death of another occupant in the same vehicle
+   - Prolonged entrapment or extrication
+   - Road traffic collision with significant intrusion, rollover, or high speed
+
+2. APPARENT SIGNIFICANT INJURY (any one):
+   - Injury to more than one body region (polytrauma)
+   - Suspected pelvic fracture
+   - Suspected major chest injury (flail chest, multiple rib fractures, haemo/pneumothorax)
+   - Suspected abdominal injury (seat-belt sign, abdominal distension, peritonism)
+   - Suspected spinal-cord injury or unstable spinal fracture
+   - Severe head injury (GCS <= 13 after initial resuscitation)
+   - Open long-bone fracture or amputation proximal to wrist or ankle
+   - Burn > 20% BSA with associated trauma
+
+3. ABNORMAL PHYSIOLOGY AFTER INITIAL RESUSCITATION (any one):
+   - GCS < 14
+   - Systolic BP < 90 mmHg
+   - Respiratory rate < 10 or > 29 per minute
+   - SaO2 < 93% on air
+   - Heart rate > 120 bpm with signs of shock
+
+RULES FOR THE AI:
+- If ANY single criterion from ANY category is present, WBCT is indicated per RCR 2024.
+- Haemodynamically unstable patients who cannot tolerate CT should be managed by
+  damage-control surgery or IR per trauma team discretion — CT is NOT a substitute
+  for resuscitation.
+- Paediatric trauma does NOT follow this criteria set — use the separate paediatric
+  major trauma pathway (APLS + RCEM).
+- When quoting a criterion, cite 'RCR Major Adult Trauma Guidance 2024'.
+"""
+
+
 # ── System Prompts ─────────────────────────────────────────────────────
 
 ANALYSIS_SYSTEM_PROMPT = (
@@ -244,6 +296,7 @@ ANALYSIS_SYSTEM_PROMPT = (
     + _EVIDENCE_BLOCK
     + _REFERENCE_LAYER_BLOCK
     + _ACR_CONTRAST_BLOCK
+    + _WBCT_CRITERIA_BLOCK
 )
 
 PROTOCOL_SYSTEM_PROMPT = (

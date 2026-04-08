@@ -1259,6 +1259,335 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR1 imaging protocol seed skipped: %s', _pr1_err)
 
+        # -- PR2 / N1: add CT Pulmonary Angiography — Pregnancy imaging protocol --
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                import json as _json2
+                from models import ImagingProtocol as _IP2
+                _preg_slug = 'ct-pulmonary-angiography-pregnancy'
+                if not _IP2.query.filter_by(slug=_preg_slug).first():
+                    _preg_html = (
+                        "<div class='vetting-protocol-content'>"
+                        "<p><strong>Purpose:</strong> Confirmation or exclusion of pulmonary "
+                        "embolism in pregnant patients in whom V/Q is unavailable, non-diagnostic, "
+                        "or contraindicated. Per NICE NG158, imaging should be guided by the clinical "
+                        "probability (Wells) and availability.</p>"
+                        "<p><strong>Patient preparation:</strong> 18G cannula in the antecubital "
+                        "fossa. Position supine, arms above head. Abdominal bismuth shielding is "
+                        "NOT recommended routinely (evidence suggests minimal foetal dose reduction "
+                        "with potential for artefact).</p>"
+                        "<p><strong>Contrast:</strong> Iomeron-400 / Omnipaque-350, 60–80 mL "
+                        "@ 4 mL/s with saline chaser. Iodinated contrast is acceptable in pregnancy "
+                        "when clinically indicated (ACR 2025); single maternal dose has no effect "
+                        "on neonatal thyroid function.</p>"
+                        "<h6 class='mt-3'>Acquisition phases</h6>"
+                        "<table class='table table-sm vetting-protocol-table'>"
+                        "<thead><tr><th>Phase</th><th>Coverage</th><th>Timing</th>"
+                        "<th>Reconstructions</th></tr></thead><tbody>"
+                        "<tr><td>Arterial (pulmonary)</td><td>Lung apices to diaphragm</td>"
+                        "<td>Bolus-trigger on main pulmonary trunk (150 HU)</td>"
+                        "<td>Ax 1 mm + Cor/Sag MPR</td></tr>"
+                        "</tbody></table>"
+                        "<p class='small text-muted mt-2'><strong>Dose optimisation:</strong> "
+                        "Reduce kVp to 100 (or 80 in small patients), use iterative reconstruction, "
+                        "limit FOV to the lungs, and avoid a scout abdomen. Typical foetal dose "
+                        "&lt; 0.1 mGy — well below the threshold for deterministic risk.</p>"
+                        "<div class='alert alert-info mt-3 mb-2'><strong>Clinical notes:</strong> "
+                        "Consent the patient for contrast and discuss the low foetal dose. "
+                        "Document pregnancy status and clinical justification. Breastfeeding can "
+                        "continue without interruption (ACR 2025). Reference: Litmanovich D et al., "
+                        "AJR 2009; 193(4): 1109–1112. DOI: 10.2214/AJR.10.5385.</div>"
+                        "<p class='small mt-2'><strong>Guidelines:</strong> NICE NG158; ACR Manual "
+                        "on Contrast Media 2025; RCR iRefer 8th Ed.</p>"
+                        "</div>"
+                        "<!-- src:radinsight-v1 -->"
+                        "<p class='text-muted small mt-2'><em>Source: <strong>RadInsights Protocols"
+                        "</strong> &mdash; enriched by publicly available guidelines and resources. "
+                        "Verify against local policy.</em></p>"
+                    )
+                    _preg_row = _IP2(
+                        title='CT Pulmonary Angiography — Pregnancy',
+                        slug=_preg_slug,
+                        modality='CT',
+                        body_section='Thorax',
+                        keywords='ctpa, pregnancy, pe, pulmonary embolism, vte, maternal, foetal dose',
+                        shorthand_text=(
+                            'CTPA in pregnancy — 60–80 mL @ 4 mL/s. kVp 100, IR on, lung coverage '
+                            'only, no bismuth. Foetal dose <0.1 mGy.'
+                        ),
+                        detailed_protocol_html=_preg_html,
+                        special_notes=(
+                            'Pregnancy-specific low-dose CTPA. Reduce kVp to 100, use iterative '
+                            'reconstruction, lung FOV only. Foetal dose <0.1 mGy per Litmanovich '
+                            'et al., AJR 2009; 193(4): 1109-1112 (DOI: 10.2214/AJR.10.5385). '
+                            'Iodinated contrast safe per ACR 2025.'
+                        ),
+                        indication_json=_json2.dumps([
+                            'Suspected PE in pregnancy',
+                            'Positive Wells score with non-diagnostic V/Q',
+                            'VTE in pregnancy (NICE NG158)',
+                            'Pregnancy with acute chest pain / dyspnoea requiring PE exclusion',
+                        ]),
+                        validation_json=_json2.dumps({
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['NICE NG158', 'ACR 2025', 'Litmanovich AJR 2009'],
+                        }),
+                        origin='admin',
+                        is_published=True,
+                        is_verified=True,
+                        is_emergency=True,
+                        is_paediatric=False,
+                    )
+                    db.session.add(_preg_row)
+                    db.session.commit()
+                    logger.info('PR2 N1: added CT Pulmonary Angiography — Pregnancy protocol')
+        except Exception as _n1_err:
+            db.session.rollback()
+            logger.warning('PR2 N1 pregnancy CTPA seed skipped: %s', _n1_err)
+
+        # -- PR2 / N3: backfill AJR DOI citations on split-bolus urogram and CTPA --
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                from models import ImagingProtocol as _IP3
+                _N3_DOI_MARKER = '10.2214/AJR'
+                _n3_updated = 0
+                # Bladder cancer split-bolus (AJR 2008 — Chow et al.)
+                _bl = _IP3.query.filter_by(slug='ct-bladder-cancer').first()
+                if _bl:
+                    _sn = _bl.special_notes or ''
+                    if _N3_DOI_MARKER not in _sn:
+                        _bl.special_notes = (
+                            _sn.rstrip()
+                            + (' ' if _sn and not _sn.endswith(' ') else '')
+                            + 'Reference: Chow LC et al., Split-bolus MDCT urography, '
+                            + 'AJR 2008; 191(2): 314-322. DOI: 10.2214/AJR.07.2288.'
+                        )
+                        _n3_updated += 1
+                # Standard CTPA (ID 9) — add pregnancy AJR DOI
+                _ctpa = _IP3.query.filter_by(slug='ct-pulmonary-angiography').first()
+                if _ctpa:
+                    _sn = _ctpa.special_notes or ''
+                    if _N3_DOI_MARKER not in _sn:
+                        _ctpa.special_notes = (
+                            _sn.rstrip()
+                            + (' ' if _sn and not _sn.endswith(' ') else '')
+                            + 'For pregnancy variant see CT Pulmonary Angiography — Pregnancy '
+                            + '(low-dose, kVp 100, lung FOV; foetal dose <0.1 mGy per Litmanovich '
+                            + 'et al., AJR 2009; 193(4): 1109-1112. DOI: 10.2214/AJR.10.5385).'
+                        )
+                        _n3_updated += 1
+                if _n3_updated:
+                    db.session.commit()
+                    logger.info('PR2 N3: appended AJR DOI citations to %d protocols', _n3_updated)
+        except Exception as _n3_err:
+            db.session.rollback()
+            logger.warning('PR2 N3 DOI backfill skipped: %s', _n3_err)
+
+        # -- PR2 / I3: add RCR Major Trauma reporting templates --
+        try:
+            if 'radiology_template' in insp.get_table_names():
+                from models import RadiologyTemplate as _RT
+                _RCR_TRAUMA_SOURCE = (
+                    'Structure aligned with the Royal College of Radiologists Major '
+                    'Adult Trauma Guidance 2024. Verify against local trauma network '
+                    'reporting proforma before use.'
+                )
+                _primary_text = (
+                    "=== PRIMARY SURVEY — WHOLE-BODY CT TRAUMA REPORT ===\n"
+                    "\n"
+                    "CLINICAL INFORMATION: [mechanism, vital signs, GCS]\n"
+                    "\n"
+                    "TECHNIQUE: Whole-body CT from the vertex to the pubic symphysis "
+                    "with intravenous contrast. Reconstructions in axial, coronal and "
+                    "sagittal planes, bone and soft-tissue windows.\n"
+                    "\n"
+                    "=== LIFE-THREATENING FINDINGS (PRIMARY SURVEY) ===\n"
+                    "\n"
+                    "A. AIRWAY / CERVICAL SPINE ALIGNMENT:\n"
+                    "   - Airway patency: [patent / obstructed / intubated]\n"
+                    "   - C-spine alignment: [normal / malalignment at ___ ]\n"
+                    "   - Unstable fracture: [none / ___ ]\n"
+                    "\n"
+                    "B. BREATHING / CHEST:\n"
+                    "   - Pneumothorax: [none / small / large / tension — side]\n"
+                    "   - Haemothorax: [none / volume / side]\n"
+                    "   - Pulmonary contusion / laceration: [none / region]\n"
+                    "   - Flail segment or multiple rib fractures: [none / ___ ]\n"
+                    "   - Tracheobronchial injury: [none / suspected]\n"
+                    "   - Diaphragmatic rupture: [none / suspected]\n"
+                    "\n"
+                    "C. CIRCULATION / VASCULAR:\n"
+                    "   - Active arterial extravasation: [none / site]\n"
+                    "   - Aortic injury (contour, flap, intramural haematoma): [none / ___ ]\n"
+                    "   - Great-vessel injury: [none / ___ ]\n"
+                    "   - Haemopericardium / cardiac injury: [none / ___ ]\n"
+                    "   - Solid-organ injury with active bleeding (AAST grade): [none / ___ ]\n"
+                    "   - Pelvic fracture with arterial bleed: [none / ___ ]\n"
+                    "\n"
+                    "D. DISABILITY / CNS:\n"
+                    "   - Intracranial haemorrhage (EDH / SDH / SAH / contusion / IVH): [none / ___ ]\n"
+                    "   - Mass effect / midline shift: [none / ___ mm]\n"
+                    "   - Herniation: [none / ___ ]\n"
+                    "   - Skull fracture: [none / vault / base]\n"
+                    "   - Spinal cord injury / canal compromise: [none / level]\n"
+                    "\n"
+                    "E. EXPOSURE / OTHER MAJOR INJURY:\n"
+                    "   - Pelvic ring disruption: [none / stable / unstable]\n"
+                    "   - Solid-organ injury without active bleed: [none / organ + AAST grade]\n"
+                    "   - Hollow-viscus injury (free gas/fluid, wall defect): [none / ___ ]\n"
+                    "\n"
+                    "=== IMMEDIATE CONCLUSION (for trauma team) ===\n"
+                    "1. [Most life-threatening finding — requires immediate action]\n"
+                    "2. [Second priority finding]\n"
+                    "3. [Third priority finding]\n"
+                    "\n"
+                    "A SECONDARY SURVEY REPORT WILL FOLLOW.\n"
+                )
+                _secondary_text = (
+                    "=== SECONDARY SURVEY — DETAILED WHOLE-BODY CT TRAUMA REPORT ===\n"
+                    "\n"
+                    "This report supplements the primary survey and provides a detailed, "
+                    "systematic review of all body regions.\n"
+                    "\n"
+                    "CLINICAL INFORMATION: [mechanism, vital signs, GCS, primary-survey findings]\n"
+                    "\n"
+                    "TECHNIQUE: Whole-body CT from the vertex to the pubic symphysis "
+                    "with intravenous contrast. Axial, coronal, sagittal reconstructions; "
+                    "bone and soft-tissue windows; thin-section reformats of spine.\n"
+                    "\n"
+                    "=== HEAD ===\n"
+                    "- Brain parenchyma: [normal / contusion / haemorrhage / oedema]\n"
+                    "- Extra-axial spaces: [normal / EDH / SDH / SAH — location, volume]\n"
+                    "- Ventricles / basal cisterns: [normal / effacement / IVH]\n"
+                    "- Skull vault / base: [normal / fracture — location]\n"
+                    "- Facial bones / orbits / sinuses: [normal / ___ ]\n"
+                    "- Temporal bones: [normal / fracture / ossicular injury]\n"
+                    "\n"
+                    "=== NECK / CERVICAL SPINE ===\n"
+                    "- C-spine alignment and vertebral integrity C1–T1\n"
+                    "- Pre-vertebral soft tissue swelling\n"
+                    "- Larynx / hyoid / thyroid cartilage\n"
+                    "- Airway patency and position of ETT if intubated\n"
+                    "- Vascular (carotid/vertebral — if CTA performed)\n"
+                    "\n"
+                    "=== CHEST ===\n"
+                    "- Lungs: contusion, laceration, aspiration\n"
+                    "- Pleural spaces: pneumothorax, haemothorax (volume, side)\n"
+                    "- Mediastinum: haematoma, aortic contour, pneumomediastinum\n"
+                    "- Heart / pericardium: haemopericardium, cardiac silhouette\n"
+                    "- Tracheobronchial tree\n"
+                    "- Diaphragm: contour, herniation\n"
+                    "- Ribs / sternum / clavicles / scapulae: fractures, flail segment\n"
+                    "- Thoracic spine: alignment, vertebral integrity\n"
+                    "\n"
+                    "=== ABDOMEN ===\n"
+                    "- Liver (AAST grade): [___]\n"
+                    "- Spleen (AAST grade): [___]\n"
+                    "- Pancreas (AAST grade, ductal integrity): [___]\n"
+                    "- Kidneys (AAST grade, collecting system, vascular pedicle): [___]\n"
+                    "- Adrenal glands\n"
+                    "- Hollow viscera: free gas, free fluid, wall thickening/defect, "
+                    "mesenteric stranding or haematoma\n"
+                    "- Retroperitoneum: haemorrhage, gas\n"
+                    "- Vessels: aorta, IVC, mesenteric\n"
+                    "\n"
+                    "=== PELVIS ===\n"
+                    "- Pelvic ring (Young-Burgess / Tile classification)\n"
+                    "- Acetabula, femoral heads\n"
+                    "- Bladder (contusion, rupture — intraperitoneal/extraperitoneal)\n"
+                    "- Urethra (if CT cystogram performed)\n"
+                    "- Rectum, sigmoid\n"
+                    "- Active extravasation and volume of pelvic haematoma\n"
+                    "\n"
+                    "=== SPINE (thoracolumbar) ===\n"
+                    "- Vertebral body integrity T1–L5 and sacrum\n"
+                    "- AO / TLICS classification of any fracture\n"
+                    "- Canal compromise, retropulsion\n"
+                    "- Paraspinal haematoma\n"
+                    "\n"
+                    "=== EXTREMITIES (as covered) ===\n"
+                    "- Long bones and joints in the scan volume\n"
+                    "- Vascular injury (CTA if performed)\n"
+                    "\n"
+                    "=== TUBES, LINES, DEVICES ===\n"
+                    "- ETT, NG tube, ICDs, central lines, IABP, ECMO cannulae — position\n"
+                    "\n"
+                    "=== INCIDENTAL FINDINGS ===\n"
+                    "[List any non-trauma findings for follow-up.]\n"
+                    "\n"
+                    "=== IMPRESSION ===\n"
+                    "1. [Major finding + AAST grade / classification]\n"
+                    "2. [Second finding]\n"
+                    "3. [Third finding]\n"
+                    "4. [Incidental findings requiring follow-up]\n"
+                )
+                _trauma_tpls = [
+                    {
+                        'slug': 'rcr-trauma-primary-survey-wbct',
+                        'title': 'RCR Primary Survey Trauma Report (WBCT)',
+                        'category': 'trauma',
+                        'body_section': 'Multisystem',
+                        'description': (
+                            'Structured primary-survey report template for whole-body CT in '
+                            'major adult trauma, following the RCR Major Adult Trauma Guidance '
+                            '2024 framework. Emphasises life-threatening findings for immediate '
+                            'communication to the trauma team.'
+                        ),
+                        'keywords': (
+                            'trauma, wbct, whole body ct, polytrauma, primary survey, '
+                            'rcr, major trauma, ATLS, TARN, resuscitation'
+                        ),
+                        'template_text': _primary_text,
+                    },
+                    {
+                        'slug': 'rcr-trauma-secondary-survey-wbct',
+                        'title': 'RCR Secondary Survey Trauma Report (WBCT)',
+                        'category': 'trauma',
+                        'body_section': 'Multisystem',
+                        'description': (
+                            'Detailed secondary-survey report template for whole-body CT in '
+                            'major adult trauma, following the RCR Major Adult Trauma Guidance '
+                            '2024 framework. Systematic head-to-toe assessment of all body '
+                            'regions with AAST grading prompts.'
+                        ),
+                        'keywords': (
+                            'trauma, wbct, whole body ct, polytrauma, secondary survey, '
+                            'rcr, major trauma, AAST, staging, systematic'
+                        ),
+                        'template_text': _secondary_text,
+                    },
+                ]
+                _tpl_added = 0
+                for _spec in _trauma_tpls:
+                    if _RT.query.filter_by(slug=_spec['slug']).first():
+                        continue
+                    _row = _RT(
+                        slug=_spec['slug'],
+                        title=_spec['title'],
+                        origin='admin',
+                        category=_spec['category'],
+                        body_section=_spec['body_section'],
+                        description=_spec['description'],
+                        keywords=_spec['keywords'],
+                        template_text=_spec['template_text'],
+                        content_format='plain_text',
+                        source_citation=_RCR_TRAUMA_SOURCE,
+                        guideline_version='RCR Major Adult Trauma Guidance 2024',
+                        is_available=True,
+                        is_ai_generated=False,
+                    )
+                    db.session.add(_row)
+                    _tpl_added += 1
+                if _tpl_added:
+                    db.session.commit()
+                    logger.info('PR2 I3: added %d RCR trauma reporting templates', _tpl_added)
+        except Exception as _i3_err:
+            db.session.rollback()
+            logger.warning('PR2 I3 trauma template seed skipped: %s', _i3_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
