@@ -79,6 +79,12 @@ cache/tcia/*.json
 !cache/.gitkeep
 !cache/pubmed/.gitkeep
 !cache/tcia/.gitkeep
+
+# NICE guideline cache — LOCAL reference material only, never commit
+# (scraped by scripts/nice_cache.py for consultant manual authoring use)
+data/nice_cache/
+data/drafts/
+
 .env.vercel
 .env.vercel
 .ajcc_cookies.json

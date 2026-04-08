@@ -862,6 +862,40 @@ with app.app_context():
         # -- imaging_protocol --
         _add_col_if_missing('imaging_protocol', 'is_paediatric', 'is_paediatric BOOLEAN DEFAULT false NOT NULL')
 
+        # -- Rebrand all imaging_protocol source attributions to canonical RadInsights line --
+        # Idempotent: the sentinel <!-- src:radinsight-v1 --> marks rows that have
+        # already been rewritten so subsequent deploys skip them.
+        try:
+            _RADINSIGHT_SOURCE_SENTINEL = "<!-- src:radinsight-v1 -->"
+            _RADINSIGHT_SOURCE_FOOTER = (
+                _RADINSIGHT_SOURCE_SENTINEL
+                + "<p class='text-muted small mt-2'><em>Source: "
+                + "<strong>RadInsights Protocols</strong> &mdash; enriched by publicly "
+                + "available guidelines and resources. Verify against local policy.</em></p>"
+            )
+            if 'imaging_protocol' in insp.get_table_names():
+                from models import ImagingProtocol as _IP
+                _updated = 0
+                _existing_source_re = _re.compile(
+                    r"<p[^>]*>\s*<em>\s*Sources?:.*?</em>\s*</p>",
+                    _re.IGNORECASE | _re.DOTALL,
+                )
+                for _p in _IP.query.all():
+                    _html = _p.detailed_protocol_html or ''
+                    if _RADINSIGHT_SOURCE_SENTINEL in _html:
+                        continue  # already rebranded
+                    # Strip any existing "Sources: ..." footer paragraph
+                    _new_html = _existing_source_re.sub('', _html).rstrip()
+                    # Append the canonical source footer
+                    _p.detailed_protocol_html = _new_html + _RADINSIGHT_SOURCE_FOOTER
+                    _updated += 1
+                if _updated:
+                    db.session.commit()
+                    logger.info('Rebranded source attribution on %d imaging protocols', _updated)
+        except Exception as _src_err:
+            db.session.rollback()
+            logger.warning('Imaging protocol source rebrand skipped: %s', _src_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
