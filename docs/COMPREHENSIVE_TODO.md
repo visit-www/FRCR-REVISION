@@ -1,16 +1,16 @@
 # RadInsights — Comprehensive TODO & Roadmap
 
-**Generated:** 2026-03-13 | **Last updated:** 2026-04-07
-**Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit
+**Generated:** 2026-03-13 | **Last updated:** 2026-04-08
+**Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit, Vetting Gaps Closeout Audit (Apr 2026)
 
 ### Progress Summary
 
 | Status | Count |
 |--------|-------|
-| DONE | **57** / 86 |
-| WONTFIX | 2 / 86 |
-| TODO | **27** / 86 |
-| **Completion** | **66%** |
+| DONE | **68** / 97 |
+| WONTFIX | 2 / 97 |
+| TODO | **27** / 97 |
+| **Completion** | **70%** |
 
 ---
 
@@ -248,9 +248,9 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ---
 
-## COMPLETED ITEMS (Mar 2026 Sessions)
+## COMPLETED ITEMS (Mar – Apr 2026 Sessions)
 
-57 of 86 items completed. Key implementations:
+68 of 97 items completed. Key implementations:
 
 1. **PII Guard email bypass fix** — removed `'email'` from SKIP_KEYS in both layers
 2. **PII Guard NINO pattern** — added `[A-Z]{2}\d{6}[A-D]` detection
@@ -305,12 +305,34 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 51. **Smart Reporter Regeneration workflow** — Finalize→Regenerate button transformation, confirm dialog, Go+Cancel buttons, regen question prefix, auto-insert into PACS, Opus routing via `_isRegenMode`
 52. **Smart Reporter post-finalization UX** — Sonnet full_report guard (frontend blocks unwanted PACS replacement), stale report text cleanup, model badge on report actions, Changes Made auto-collapse on action generation
 53. **Smart Reporter action card management** — MDT/Email replace-on-regen with confirmation, SBA/Viva stack new cards, collapsible action history with expand/collapse toggle
+54. **Vetting source rebrand** — 124 ImagingProtocol rows rebranded to canonical "RadInsights Protocols — enriched by publicly available guidelines and resources" (idempotent migration with `<!-- src:radinsight-v1 -->` sentinel)
+55. **Vetting Gaps PR1 — imaging protocols** (commit `1be7120`) — 7 new protocols added via idempotent migration: CT GI Bleed, CT Brain Dementia, CT Anastomosis Leak, CT Liver 4-Phase HCC, CT IAMs, CT Subclavian Angio, CT Renal Cyst Characterisation
+56. **Vetting Gaps PR2 — prompt + templates** (commit `0290bbb`) — `_WBCT_CRITERIA_BLOCK` in ai_vetting.py (RCR 2024 triage verbatim, GCS<14/SBP<90/RR<10>29/SaO2<93%); CTPA-pregnancy protocol (Litmanovich AJR 2009); AJR DOI backfill on bladder-cancer + CTPA; 2 RCR trauma report templates (Primary + Secondary Survey WBCT) in `radiology_template` table
+57. **Vetting Gaps PR3 — RadiQ + UX + calculator** (commit `49cbe83`) — RadiQ `_find_relevant_db_content` now searches `ImagingProtocol` on 24 protocol-related keywords and surfaces matches as links; Pregnancy "do-not-insert-unless-confirmed" UX with mandatory rationale textarea; KOC Omnipaque weight-based iodine calculator in Contrast Card Tab 6 (concentration 240/300/350, target 1.2/1.5/2.0 g I/kg, live volume/total iodine/mg I/kg output)
+58. **NICE cache scraper** — `scripts/nice_cache.py` local-only scraper (not committed) with robots.txt+rate-limit+checksum-dedup; `data/nice_cache/` gitignored; hybrid path for internal admin-only JSON decision trees
+59. **ACR Contrast Block** — `docs/vetting/ACR_CONTRAST_BLOCK_2025.md` committed; `_ACR_CONTRAST_BLOCK` wired into `ANALYSIS_SYSTEM_PROMPT` + `PROTOCOL_SYSTEM_PROMPT` in ai_vetting.py
+60. **Contrast Reaction Card module** — 6-tab unified module (`_contrast_reaction_card.html`): Premedication / Acute Reactions / Extravasation / Renal+CI-AKI / Special Populations / Paediatric Calculator; used in vetting drawer, protocols #1/#11, standalone `/contrast-reaction-card` public SEO page
 
 ---
 
+## SEO / Google Search Console — Pending (Apr 2026)
+
+After each content-expansion deploy, the dynamic sitemap grows. Items to action:
+
+- **#84** Resubmit `sitemap.xml` in Google Search Console (https://search.google.com/search-console) after the Apr 8 vetting gaps deploy — new URLs: 7 imaging protocols, 2 trauma templates, CTPA-pregnancy protocol, contrast reaction card public page
+- **#85** Verify indexation of `/contrast-reaction-card` (should be indexed with Schema.org `LearningResource`)
+- **#86** Verify indexation of `/vetting/protocols` browse page and child `/vetting/protocols?search=<slug>` deep links
+- **#87** Run GSC "URL Inspection" tool on 3 sample new protocol URLs to confirm `<lastmod>` is honoured
+- **#88** Review GSC Coverage report for any 404 / soft-404 regressions from the source rebrand migration (should be none — URLs unchanged)
+- **#89** Follow `docs/plans/SEO_MASTER_PLAN.md` Phases 2-6 (keyword: `RADINSIGHTS-SEO-2026`) — Phase 1 complete; Phase 2 (internal linking), Phase 3 (E-A-T signals), Phase 4 (schema upgrades), Phase 5 (link building), Phase 6 (analytics)
+- **#90** Add canonical URL tags to all paginated browse pages (currently only browse root is canonical)
+- **#91** Audit Core Web Vitals on GSC Experience report; address any LCP/CLS regressions from the new Contrast Reaction Card drawer
+- **#92** Submit `/contrast-reaction-card` + 7 new protocols to Bing Webmaster Tools
+- **#93** Add RSS/Atom feed for new pearls + protocols (indexation accelerator)
+
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (27 total, 86 overall)
+### Remaining TODO Items (27 total, 97 overall)
 
 **Tier 3 — Medium Priority:**
 - **#33** Split `app.py` (~7000 lines) into route modules
