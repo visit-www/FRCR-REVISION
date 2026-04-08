@@ -859,6 +859,9 @@ with app.app_context():
         _add_col_if_missing('clinical_protocol', 'updated_at', 'updated_at TIMESTAMP')
         _widen_col_to_text('clinical_protocol', 'source_citation')
 
+        # -- imaging_protocol --
+        _add_col_if_missing('imaging_protocol', 'is_paediatric', 'is_paediatric BOOLEAN DEFAULT false NOT NULL')
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
@@ -973,10 +976,58 @@ with app.app_context():
 
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
-        
+
         # Ensure superadmin account exists
         _ensure_superadmin_exists()
-        
+
+        # -- Ensure contrast reaction card protocols (IDs 1 & 11) are
+        #    present, published, and categorised. Content is rendered from
+        #    the shared partial via route override in protocol_routes.py;
+        #    the DB rows just need to exist so the view_protocol() route
+        #    finds them. Idempotent.
+        try:
+            from models import ClinicalProtocol
+            _crc_rows = [
+                (1, 'Contrast Reaction Card — Adult',
+                 'Adult contrast reaction management: premedication, acute reactions, extravasation, renal safety, special populations.'),
+                (11, 'Contrast Reaction Card — Paediatric',
+                 'Paediatric contrast reaction management with weight-based dose calculator.'),
+            ]
+            _crc_placeholder = (
+                '<!-- CRC --><p>This protocol renders the shared Contrast Reaction Card '
+                '(6 tabs: premedication, acute reactions, extravasation, renal/CI-AKI, '
+                'special populations, paediatric calculator).</p>'
+            )
+            _crc_citation = 'ACR Manual on Contrast Media 2025; RCR iRefer 8th Ed; ESUR iGuide'
+            _crc_keywords = 'contrast reaction, premedication, anaphylaxis, extravasation, iodinated contrast, gadolinium, ACR, eGFR, metformin'
+            for _pid, _title, _summary in _crc_rows:
+                p = db.session.get(ClinicalProtocol, _pid)
+                if p is None:
+                    p = ClinicalProtocol(
+                        id=_pid,
+                        title=_title,
+                        category='contrast_safety',
+                        content_html=_crc_placeholder,
+                        keywords=_crc_keywords,
+                        source_citation=_crc_citation,
+                        is_published=True,
+                    )
+                    db.session.add(p)
+                else:
+                    p.title = _title
+                    p.category = 'contrast_safety'
+                    p.is_published = True
+                    if not p.keywords:
+                        p.keywords = _crc_keywords
+                    if not p.source_citation:
+                        p.source_citation = _crc_citation
+                    if not p.content_html or '<!-- CRC -->' not in (p.content_html or ''):
+                        p.content_html = _crc_placeholder
+            db.session.commit()
+        except Exception as _crc_err:
+            db.session.rollback()
+            logger.warning('Contrast reaction card protocol migration skipped: %s', _crc_err)
+
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
         raise
@@ -7162,6 +7213,7 @@ Allow: /radiology-protocols
 Allow: /radiology-protocols/view/
 Allow: /knowledge-hub
 Allow: /anatomy-snippets/
+Allow: /contrast-reaction-card
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
@@ -7226,6 +7278,7 @@ def sitemap_xml():
         (f'{BASE}/incidental-findings', '0.8', 'weekly'),
         (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
         (f'{BASE}/radiology-pearls', '0.7', 'weekly'),
+        (f'{BASE}/contrast-reaction-card', '0.8', 'monthly'),
         (f'{BASE}/learn/sba', '0.6', 'weekly'),
         (f'{BASE}/learn/viva', '0.6', 'weekly'),
         (f'{BASE}/privacy-policy', '0.3', 'yearly'),

@@ -59,6 +59,162 @@ _EVIDENCE_BLOCK = (
 )
 
 
+# ── Reference Layer Block (UK authoritative sources) ─────────────────
+# Anchors the AI to published guidelines so it does not drift onto
+# obsolete US/training-data practice (e.g. oral contrast for appendicitis).
+# Four-layer framework distilled from docs/vetting/GUIDELINE_LAYER_MAP.md.
+
+_REFERENCE_LAYER_BLOCK = (
+    "\n\nREFERENCE LAYERS (UK PRACTICE — cite the layer your recommendation follows):\n"
+    "1. NICE (what/when to scan):\n"
+    "   - NG143 (renal/ureteric stones — non-contrast CT KUB first-line)\n"
+    "   - NG12 (suspected cancer 2WW pathway)\n"
+    "   - NG158 / NG179 (VTE / pulmonary embolism — Wells → D-dimer → CTPA)\n"
+    "   - NG232 (stroke and TIA — immediate NCCT then CTA)\n"
+    "   - NG45 (major trauma assessment)\n"
+    "   - CG176 (head injury — NICE head CT criteria)\n"
+    "   - NG41 (headaches in >12s)\n"
+    "   - NG127 (suspected sepsis)\n"
+    "2. RCR iRefer 8th Ed (2017) — general appropriateness across 800+ scenarios.\n"
+    "3. RCR Major Adult Trauma Guidance 2024 — WBCT triage criteria & trauma protocol.\n"
+    "4. IR(ME)R 2017 (justification & optimisation) + UKHSA National DRL 2022 "
+    "(CT DLP reference levels per study).\n"
+    "5. ACR Manual on Contrast Media 2025 — contrast safety (eGFR, allergy, pregnancy, premed).\n\n"
+    "REFERENCE LAYER RULES:\n"
+    "- Cite the specific layer and document you follow for each recommendation "
+    "(e.g. 'NICE NG143 — non-contrast CT KUB').\n"
+    "- Where a UK NICE or RCR document directly answers the question, PREFER it over ACR.\n"
+    "- For protocol parameters (contrast volume, phases, delays), follow the internal "
+    "protocol library served by the calling code. If no library match, cite the physiology "
+    "principle (e.g. 'PV 70 s per standard abdominal CT physiology').\n"
+    "- Do NOT invent document numbers or editions. If unsure of the exact NICE guideline "
+    "number, cite the generic source ('NICE stroke guidance') rather than guess.\n"
+    "- Do NOT recommend OBSOLETE practices. Examples of obsolete practice the AI must AVOID:\n"
+    "  * Oral contrast is NOT used for acute appendicitis in current UK practice (IV contrast only).\n"
+    "  * Oral contrast is NOT routinely used for acute abdominal pain CT in the ED.\n"
+    "  * N-acetylcysteine is NOT recommended for contrast-induced AKI prevention.\n"
+    "  * Contrast dose reduction is NOT recommended for high-risk eGFR patients — use standard dose "
+    "or choose a non-contrast alternative.\n"
+    "  * Metformin withholding is NOT required if eGFR >= 30.\n"
+)
+
+
+# ── ACR Contrast Block — authoritative numeric reference ─────────────
+# Distilled from ACR Manual on Contrast Media (2025 ed., Jan 2025, 122 pp).
+# Source of truth: docs/vetting/ACR_CONTRAST_BLOCK_2025.md — when that file
+# is updated, copy the block below verbatim. Same numbers are surfaced in
+# templates/partials/_contrast_reaction_card.html so the vetting AI and the
+# visible Contrast Reaction Card never drift apart.
+
+_ACR_CONTRAST_BLOCK = """
+
+ACR MANUAL ON CONTRAST MEDIA (2025 ed.) — AUTHORITATIVE REFERENCE FOR CONTRAST SAFETY:
+
+1. CORTICOSTEROID PREMEDICATION (prior allergic-like reaction to same class of contrast):
+   A. Elective 12-13 h ORAL (either regimen):
+      - Prednisone 50 mg PO at 13 h, 7 h, and 1 h pre-contrast + diphenhydramine 50 mg PO/IM/IV at 1 h; OR
+      - Methylprednisolone 32 mg PO at 12 h and 2 h pre-contrast (+/- diphenhydramine 50 mg).
+      If unable to take PO: substitute hydrocortisone 200 mg IV for each oral prednisone dose.
+   B. Accelerated IV (urgent, 4-5 h duration, in decreasing order of preference):
+      1. Methylprednisolone Na succinate (Solu-Medrol) 40 mg IV OR hydrocortisone Na succinate (Solu-Cortef)
+         200 mg IV immediately, then every 4 h until contrast + diphenhydramine 50 mg IV 1 h pre-contrast.
+      2. Dexamethasone Na sulfate (Decadron) 7.5 mg IV immediately, then every 4 h + diphenhydramine 50 mg IV 1 h pre.
+      3. Same drugs each 1 h pre-contrast — <4 h regimens have NO evidence of efficacy; only in true emergencies.
+   C. Paediatric:
+      - Elective: Prednisone 0.5-0.7 mg/kg PO (max 50 mg) at 13/7/1 h + diphenhydramine 1.25 mg/kg PO (max 50 mg) at 1 h.
+      - Urgent/ED/NPO: Hydrocortisone 2 mg/kg IV (max 200 mg) at 5 h and 1 h + diphenhydramine 1 mg/kg IV (max 50 mg) at 1 h.
+   Premedication is NOT indicated for shellfish/seafood allergy, topical iodine allergy, asthma alone, or prior
+   reaction to a different class of contrast. Cross-reactivity iodinated<->gadolinium is NOT established.
+
+2. POST-CONTRAST AKI (PC-AKI) / CI-AKI — IV iodinated contrast:
+   - Single evidence-based threshold: eGFR 30 mL/min/1.73m^2. Above 30 -> IV iodinated contrast is NOT an independent
+     nephrotoxic risk factor (level 1 evidence, Davenport/McDonald/Hinson 2013-2014 propensity-matched studies).
+   - eGFR 30-44: borderline, not statistically significant risk; give contrast if clinically indicated at STANDARD dose.
+   - eGFR <30 or AKI: weigh risks and benefits; prophylactic IV 0.9% saline (periprocedural volume expansion) may be
+     considered. NOT an absolute contraindication.
+   - PROPHYLAXIS: IV 0.9% saline only. Sodium bicarbonate is no better than saline. N-acetylcysteine is NOT recommended
+     (no efficacy). Diuretics/mannitol NOT recommended. DO NOT reduce contrast dose to mitigate risk — it produces
+     non-diagnostic scans without changing CI-AKI risk.
+   - Screening eGFR only required if: CKD, remote AKI, dialysis, kidney surgery/ablation, albuminuria, or metformin use
+     (+/- diabetes mellitus as optional risk factor). Routine patients without risk factors do NOT need baseline creatinine.
+
+3. METFORMIN (ACR Categories):
+   - Category I (eGFR >=30 and no AKI): NO need to discontinue metformin before or after IV iodinated contrast,
+     NO need to re-check renal function afterwards.
+   - Category II (eGFR <30, AKI, OR intra-arterial study with potential renal artery embolisation): STOP metformin at
+     time of procedure, withhold 48 h, restart only after renal function rechecked and confirmed normal.
+   - Gadolinium at standard MRI dose (0.1-0.3 mmol/kg): no metformin interruption needed.
+
+4. GADOLINIUM-BASED CONTRAST AGENTS (GBCA) & NSF RISK:
+   - Group I (greatest NSF risk — contraindicated in eGFR <30/AKI/dialysis):
+     Gadodiamide (Omniscan), Gadopentetate (Magnevist), Gadoversetamide (OptiMARK).
+   - Group II (few/no unconfounded NSF cases — safe at standard dose in CKD/AKI/dialysis; screening eGFR is OPTIONAL):
+     Gadobenate (MultiHance), Gadobutrol (Gadavist/Gadovist), Gadoteric acid (Dotarem/Clariscan),
+     Gadoteridol (ProHance), Gadopiclenol (Elucirem/Vueway), Gadoxetate disodium (Eovist/Primovist).
+   - Group III: no agents currently classified.
+   - For Group II agents, ACR states renal function screening is OPTIONAL and contrast-enhanced MRI is NOT
+     contraindicated at standard dose in eGFR <30, AKI, or on dialysis. Use lowest diagnostic dose.
+   - In UK practice, Group II macrocyclic agents (Dotarem/Gadavist/ProHance) are standard; linear Group I agents are
+     largely withdrawn (EMA 2017).
+
+5. EXTRAVASATION (peripheral IV contrast):
+   - Initial management: STOP injection, elevate affected limb above heart, apply cold OR warm compresses.
+     No medical intervention (hyaluronidase, steroids, anticoagulants) has been shown effective. Hyaluronidase is NOT recommended.
+   - Surgical consultation: based on CLINICAL SIGNS, not volume threshold. Obtain urgent surgical/plastics review if:
+     severe pain, progressive swelling, decreased capillary refill, altered sensation, worsening active/passive range
+     of motion, skin ulceration or blistering. Most common severe complication = compartment syndrome.
+   - Volume thresholds (e.g. 100-150 mL) should NOT be used as a sole trigger for surgical consult.
+   - Outpatients must be given written instructions to return for worsening pain, paraesthesia, reduced movement,
+     or skin changes (severe injuries may develop hours later).
+
+6. PAEDIATRIC IODINATED CONTRAST:
+   - Typical dose: 1.5-2 mL/kg IV iodinated contrast (neonates/infants lower end).
+   - 24G peripheral cannulae can be safely power-injected up to ~1.5 mL/s, <=150 psi.
+   - Extravasation rate ~0.3-0.7% (similar to adults); most resolve without sequelae.
+   - Contrast reaction treatment algorithms and drug doses (weight-based) are the same protocol as adults with
+     paediatric weight adjustments.
+
+7. ACUTE CONTRAST REACTIONS — key doses (ACR Tables 2025):
+   - Hives/urticaria (mild-moderate): Diphenhydramine 1 mg/kg PO/IM/IV (max 50 mg), IV slowly over 1-2 min.
+   - Bronchospasm (mild): Albuterol MDI 2 puffs x up to 3.
+   - Bronchospasm (moderate/severe) OR laryngeal oedema OR anaphylactic shock — EPINEPHRINE is first-line:
+     * IV: 0.1 mL/kg of 1:10,000 (0.1 mg/mL) = 0.01 mg/kg slow IV into running drip; max single 1.0 mL (0.1 mg);
+           repeat every 5-15 min; max total 1 mg.
+     * IM: 0.01 mL/kg of 1:1,000 (1.0 mg/mL) = 0.01 mg/kg; max single 0.30 mL (0.30 mg); repeat every 5-15 min;
+           max total 1 mL (1 mg).
+     * Auto-injector: EpiPen Jr 0.15 mg (<30 kg), EpiPen 0.30 mg (>=30 kg).
+   - Hypotension: 0.9% saline 10-20 mL/kg IV bolus (max 500-1000 mL initial), legs elevated; epinephrine if refractory.
+   - O2 6-10 L/min by mask in all moderate/severe reactions.
+   - Call emergency response team / 999 for all severe reactions.
+
+8. BREAST-FEEDING AFTER IODINATED OR GBCA CONTRAST:
+   - <0.01% of maternal IV iodinated contrast dose reaches breast milk; <1% of that is absorbed by the infant's gut.
+   - <0.04% of maternal GBCA dose reaches breast milk; systemic infant dose <0.0004% of maternal dose.
+   - Recommendation: BREAST-FEEDING CAN CONTINUE without interruption after maternal IV iodinated or GBCA contrast.
+   - A 12-24 h pause is OPTIONAL at maternal preference only; there is no medical benefit beyond 24 h.
+   - Routine neonatal thyroid function testing is NOT recommended after maternal iodinated contrast.
+
+9. THYROID DISEASE:
+   - Hyperthyroidism alone is NOT a contraindication to iodinated contrast and does NOT require premedication.
+   - In acute thyroid storm, AVOID iodinated contrast (can potentiate thyrotoxicosis); steroid premedication is
+     unlikely to help.
+   - Before radioactive iodine therapy/imaging, observe a washout period after iodinated contrast: ~3-4 weeks for
+     hyperthyroidism, ~6 weeks for hypothyroidism.
+   - A single maternal dose of iodinated contrast in pregnancy has NO effect on neonatal thyroid function.
+   - Iodinated contrast does NOT affect thyroid function tests in patients with normal thyroid function.
+
+10. OBSOLETE / NON-RECOMMENDED PRACTICES (per ACR 2025):
+    - N-acetylcysteine for CI-AKI prevention — NOT effective, NOT recommended.
+    - Dose reduction of iodinated contrast in high-risk eGFR patients — NOT recommended (non-diagnostic scans).
+    - Withholding metformin at eGFR >=30 — NOT required.
+    - Prophylactic premedication for shellfish/seafood allergy — NOT indicated.
+    - Topical iodine (povidone-iodine) allergy — NOT cross-reactive with iodinated contrast.
+    - Hyaluronidase for extravasation — NOT recommended.
+    - Routine breast-milk pumping/discard after contrast — NOT required.
+    - Volume thresholds (100-150 mL) as sole trigger for surgical extravasation review — NOT recommended.
+"""
+
+
 # ── System Prompts ─────────────────────────────────────────────────────
 
 ANALYSIS_SYSTEM_PROMPT = (
@@ -86,6 +242,8 @@ ANALYSIS_SYSTEM_PROMPT = (
     "- UK NHS context. British English.\n"
     "- Be precise and concise.\n"
     + _EVIDENCE_BLOCK
+    + _REFERENCE_LAYER_BLOCK
+    + _ACR_CONTRAST_BLOCK
 )
 
 PROTOCOL_SYSTEM_PROMPT = (
@@ -108,6 +266,8 @@ PROTOCOL_SYSTEM_PROMPT = (
     "If any safety checks are needed, include them in the validation config.\n"
     "- UK NHS context. British English.\n"
     + _EVIDENCE_BLOCK
+    + _REFERENCE_LAYER_BLOCK
+    + _ACR_CONTRAST_BLOCK
 )
 
 SHORTHAND_SYSTEM_PROMPT = (
@@ -151,6 +311,7 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
         '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem (use Multisystem for e.g. CT CAP)",\n'
+        '  "is_paediatric": true/false (true if patient age < 16 years, or described as child/infant/neonate/paediatric/toddler; false if adult, unknown age, or not stated),\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
         '    "egfr_threshold": 30 or 45 or null,\n'
@@ -159,7 +320,11 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         '  },\n'
         '  "ai_flags": [\n'
         '    {"flag": "short description of missing/needed info", "reason": "why this matters"}\n'
-        '  ]\n'
+        '  ],\n'
+        '  "guideline_citation": "specific UK guideline layer and document anchoring '
+        'this recommendation, e.g. NICE NG143 — non-contrast CT KUB first-line, or '
+        'RCR iRefer 8th Ed — CTPA if Wells >4 + positive D-dimer. Use null only if '
+        'no named guideline applies."\n'
         "}\n\n"
         "GUIDELINES FOR ai_flags (0-4 items only):\n"
         "- Flag genuinely important missing clinical information for the specific study.\n"
@@ -171,8 +336,8 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
     text, model_used, tokens = call_claude(
         system_prompt=ANALYSIS_SYSTEM_PROMPT,
         user_prompt=user_prompt,
-        max_tokens=800,
-        temperature=0.2,
+        max_tokens=900,
+        temperature=0.1,
         timeout=30,
         error_class=VettingAIError,
         skip_preamble=True,
@@ -240,7 +405,11 @@ def generate_vetting_protocol(study_type, modality, clinical_context=None, algor
         '    "egfr_threshold": 30 or 45 or null,\n'
         '    "pregnancy_check_required": true/false,\n'
         '    "allergy_check_required": true/false\n'
-        '  }\n'
+        '  },\n'
+        '  "guideline_citation": "specific UK guideline layer and document anchoring '
+        'this protocol, e.g. NICE NG143 — non-contrast CT KUB first-line, or '
+        'Swansea NHS Trust CT protocol library — standard triphasic liver. Use null '
+        'only if no named guideline applies."\n'
         "}\n\n"
         "SHORTHAND STYLE EXAMPLES:\n"
         "CT Head: CT Brain / Non-contrast / Skull base to vertex\n"
@@ -258,8 +427,8 @@ def generate_vetting_protocol(study_type, modality, clinical_context=None, algor
     text, model_used, tokens = call_claude(
         system_prompt=PROTOCOL_SYSTEM_PROMPT,
         user_prompt=user_prompt,
-        max_tokens=1500,
-        temperature=0.2,
+        max_tokens=1600,
+        temperature=0.1,
         timeout=45,
         error_class=VettingAIError,
         skip_preamble=True,

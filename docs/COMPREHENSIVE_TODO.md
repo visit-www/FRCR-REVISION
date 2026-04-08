@@ -1,16 +1,16 @@
 # RadInsights — Comprehensive TODO & Roadmap
 
-**Generated:** 2026-03-13 | **Last updated:** 2026-03-31
+**Generated:** 2026-03-13 | **Last updated:** 2026-04-07
 **Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit
 
 ### Progress Summary
 
 | Status | Count |
 |--------|-------|
-| DONE | **54** / 83 |
-| WONTFIX | 2 / 83 |
-| TODO | **27** / 83 |
-| **Completion** | **65%** |
+| DONE | **57** / 86 |
+| WONTFIX | 2 / 86 |
+| TODO | **27** / 86 |
+| **Completion** | **66%** |
 
 ---
 
@@ -184,6 +184,9 @@
 | 81 | Vetting Tool — Protocol Usage Analytics | TODO | Track which protocols are used most frequently via VettingSession.protocol_id. Display usage count in admin protocol list. |
 | 82 | Create Elite Pro price in Stripe dashboard | TODO | Create a new recurring price in Stripe for Elite Pro tier: £99/mo (launch) / £120/mo (post-launch). Note the price ID. |
 | 83 | Set STRIPE_ELITE_PRO_PRICE_ID env var on Vercel | TODO | After creating the Stripe price (#82), set `STRIPE_ELITE_PRO_PRICE_ID` env var in Vercel project settings. Code in `stripe_routes.py` already reads this var. |
+| 84 | Smart Reporter — Regeneration workflow | DONE | Finalize→Regenerate button transformation, confirm dialog, Go+Cancel buttons, regen question prefix ("Rewrite and finalize..."), auto-insert into PACS, Opus routing. E2E tested Apr 2026. |
+| 85 | Smart Reporter — Post-finalization UX polish | DONE | Sonnet full_report frontend guard, stale report text cleanup, model badge on all endpoints, Changes Made auto-collapse, markdown rendering, fill-in edit guard, textarea resize fix. |
+| 86 | Smart Reporter — Action card management | DONE | MDT/Email replace-on-regen with confirmation, SBA/Viva always stack new cards, collapsible action history, MDT switched from Haiku to Sonnet. |
 
 ### 4.4 Performance
 
@@ -247,7 +250,7 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ## COMPLETED ITEMS (Mar 2026 Sessions)
 
-53 of 75 items completed. Key implementations:
+57 of 86 items completed. Key implementations:
 
 1. **PII Guard email bypass fix** — removed `'email'` from SKIP_KEYS in both layers
 2. **PII Guard NINO pattern** — added `[A-Z]{2}\d{6}[A-D]` detection
@@ -299,12 +302,15 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 48. **Dynamic sitemap expansion** — sitemap now includes published cases, algorithms, templates, anatomy snippets. Expanded from ~43 to 100+ URLs.
 49. **OG/Twitter Card meta tags** — all public templates now have Open Graph + Twitter Card tags via `{% block og_title/og_description %}`
 50. **noindex on auth pages** — login, register, forgot-password, reset-password, verify-2fa, account-deactivated templates now have `noindex, nofollow`
+51. **Smart Reporter Regeneration workflow** — Finalize→Regenerate button transformation, confirm dialog, Go+Cancel buttons, regen question prefix, auto-insert into PACS, Opus routing via `_isRegenMode`
+52. **Smart Reporter post-finalization UX** — Sonnet full_report guard (frontend blocks unwanted PACS replacement), stale report text cleanup, model badge on report actions, Changes Made auto-collapse on action generation
+53. **Smart Reporter action card management** — MDT/Email replace-on-regen with confirmation, SBA/Viva stack new cards, collapsible action history with expand/collapse toggle
 
 ---
 
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (27 total)
+### Remaining TODO Items (27 total, 86 overall)
 
 **Tier 3 — Medium Priority:**
 - **#33** Split `app.py` (~7000 lines) into route modules

@@ -34,6 +34,10 @@
         <a href="/vetting/protocols" class="btn btn-sm btn-outline-secondary mt-2">
             <i class="fas fa-book-medical me-1"></i>Protocol Library
         </a>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
+                data-bs-toggle="offcanvas" data-bs-target="#contrastCardDrawer">
+            <i class="fas fa-flask me-1"></i>Contrast Card
+        </button>
     </div>
     {% endif %}
 
@@ -108,6 +112,12 @@
                     <small class="text-muted d-block">Cleaned Clinical Text</small>
                     <div id="cleanedTextDisplay" class="border rounded p-2 bg-light small mb-2"></div>
 
+                    <!-- Guideline citation -->
+                    <div id="guidelineCitationContainer" class="d-none mb-2">
+                        <small class="text-muted d-block"><i class="fas fa-book-medical me-1" style="color: #5E899E;"></i>Guideline Citation</small>
+                        <div id="guidelineCitationDisplay" class="border rounded p-2 bg-light small" style="border-left: 3px solid #5E899E !important;"></div>
+                    </div>
+
                     <!-- AI Flags -->
                     <div id="aiFlagsContainer" class="d-none">
                         <small class="text-muted d-block mb-1"><i class="fas fa-exclamation-triangle me-1" style="color: #e96304;"></i>Items to Confirm</small>
@@ -165,6 +175,12 @@
                                 <option value="mild">Mild previous reaction — premedicate</option>
                                 <option value="severe">Severe/anaphylaxis — avoid contrast</option>
                             </select>
+                            <a href="#" class="small text-decoration-none"
+                               style="color: #5E899E;"
+                               data-bs-toggle="offcanvas" data-bs-target="#contrastCardDrawer"
+                               onclick="setTimeout(function(){var t=document.querySelector('[data-bs-target=\'#crc-tab2\']');if(t)t.click();},250);">
+                                <i class="fas fa-external-link-alt me-1"></i>View management &amp; premedication →
+                            </a>
                         </div>
 
                         <!-- AI-flagged additional checks (dynamic) -->
@@ -332,6 +348,20 @@
 
 </div>
 
+<!-- ==================== CONTRAST REACTION CARD DRAWER ==================== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="contrastCardDrawer"
+     style="width: min(760px, 96vw);" aria-labelledby="contrastCardDrawerLabel">
+    <div class="offcanvas-header" style="background: #5E899E; color: #fff;">
+        <h5 class="offcanvas-title" id="contrastCardDrawerLabel">
+            <i class="fas fa-flask me-2"></i>Contrast Reaction Card
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        {% include 'partials/_contrast_reaction_card.html' %}
+    </div>
+</div>
+
 <style>
 /* Vetting Tool custom styles */
 .vetting-safety-row {
@@ -397,6 +427,15 @@
 }
 .protocol-admin { border-left: 4px solid #5E899E !important; }
 .protocol-personal { border-left: 4px solid #0d6efd !important; }
+.protocol-paediatric {
+    background: #f4faf6;
+    border-left: 4px solid #a8d5ba !important;
+}
+.protocol-paediatric:hover,
+.protocol-paediatric.selected {
+    background: #e9f5ed;
+    border-color: #a8d5ba !important;
+}
 .vetting-safety-highlight {
     animation: safetyPulse 0.6s ease-in-out 2;
     border-color: #e96304 !important;
@@ -549,6 +588,16 @@ function populateScene2() {
     document.getElementById('modalityDisplay').textContent = a.modality;
     document.getElementById('cleanedTextDisplay').textContent = a.cleaned_clinical_text;
 
+    // Guideline citation (optional)
+    const citationContainer = document.getElementById('guidelineCitationContainer');
+    const citationDisplay = document.getElementById('guidelineCitationDisplay');
+    if (a.guideline_citation && typeof a.guideline_citation === 'string' && a.guideline_citation.trim()) {
+        citationDisplay.textContent = a.guideline_citation.trim();
+        citationContainer.classList.remove('d-none');
+    } else {
+        citationContainer.classList.add('d-none');
+    }
+
     // AI flags — interactive dismiss / resolve
     const flags = a.ai_flags || [];
     const flagsContainer = document.getElementById('aiFlagsContainer');
@@ -666,7 +715,8 @@ function populateProtocolMatches() {
     _matchedProtocols.forEach((p, i) => {
         const div = document.createElement('div');
         const originClass = p.origin === 'personal' ? 'protocol-personal' : 'protocol-admin';
-        div.className = 'protocol-match-option ' + originClass + (i === 0 ? ' selected' : '');
+        const paedClass = p.is_paediatric ? ' protocol-paediatric' : '';
+        div.className = 'protocol-match-option ' + originClass + paedClass + (i === 0 ? ' selected' : '');
         div.dataset.index = i;
 
         const sourceBadge = p.origin === 'personal'
@@ -675,11 +725,14 @@ function populateProtocolMatches() {
         const emergencyBadge = p.is_emergency
             ? ' <span class="badge bg-danger">Emergency</span>'
             : '';
+        const paedBadge = p.is_paediatric
+            ? ' <span class="badge" style="background:#a8d5ba;color:#0a3b1f;"><i class="fas fa-child me-1"></i>Paediatric</span>'
+            : '';
 
         div.innerHTML = `
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <strong>${p.title}</strong> ${sourceBadge}${emergencyBadge}
+                    <strong>${p.title}</strong> ${sourceBadge}${emergencyBadge}${paedBadge}
                     <br><small class="text-muted">${p.modality} &middot; ${p.body_section || ''}</small>
                 </div>
                 <i class="fas fa-chevron-right text-muted"></i>
@@ -1176,12 +1229,16 @@ async function searchProtocols() {
         results.forEach(p => {
             const div = document.createElement('div');
             const originClass = p.origin === 'personal' ? 'protocol-personal' : 'protocol-admin';
-            div.className = 'protocol-match-option ' + originClass;
+            const paedClass = p.is_paediatric ? ' protocol-paediatric' : '';
+            div.className = 'protocol-match-option ' + originClass + paedClass;
             const badge = p.origin === 'personal'
                 ? '<span class="badge bg-info"><i class="fas fa-user me-1"></i>My Protocol</span>'
                 : '<span class="badge" style="background:#5E899E;color:#fff;"><i class="fas fa-check-circle me-1"></i>Verified</span>';
+            const paedBadge = p.is_paediatric
+                ? ' <span class="badge" style="background:#a8d5ba;color:#0a3b1f;"><i class="fas fa-child me-1"></i>Paediatric</span>'
+                : '';
             div.innerHTML = `
-                <strong>${_escapeHtml(p.title)}</strong> ${badge}
+                <strong>${_escapeHtml(p.title)}</strong> ${badge}${paedBadge}
                 <br><small class="text-muted">${p.modality}${p.body_section ? ' &middot; ' + _escapeHtml(p.body_section) : ''}</small>
             `;
             div.addEventListener('click', () => {

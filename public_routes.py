@@ -56,3 +56,9 @@ def case_preview(case_id):
                            images=images,
                            discussion_teaser=discussion_teaser,
                            question_count=question_count)
+
+
+@public_bp.route('/contrast-reaction-card')
+def contrast_reaction_card():
+    """Public contrast reaction card — ACR-aligned quick reference."""
+    return render_template('contrast_reaction_card.html')

@@ -36,12 +36,15 @@ def _check_vetting_rate_limit():
     return _check_ai_rate_limit('radiq')
 
 
-def _search_protocols(study_type, modality, user_id=None, body_section=None):
+def _search_protocols(study_type, modality, user_id=None, body_section=None, is_paediatric=None):
     """Search ImagingProtocol by title/keywords/shorthand/indications/modality.
 
     Returns personal matches first, then admin published, scored by relevance.
     When body_section is available, uses it as a hard filter to narrow results.
     Individual-word ILIKE is only used when body_section constrains or query is single-word.
+    When is_paediatric is True, restricts to paediatric protocols.
+    When is_paediatric is False, restricts to adult protocols.
+    When is_paediatric is None, returns both.
     """
     results = []
 
@@ -61,6 +64,11 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None):
 
         if body_section:
             query_obj = query_obj.filter(model_cls.body_section.ilike(f'%{body_section}%'))
+
+        if is_paediatric is True:
+            query_obj = query_obj.filter(model_cls.is_paediatric == True)
+        elif is_paediatric is False:
+            query_obj = query_obj.filter(model_cls.is_paediatric == False)
 
         text_filters = []
 
@@ -245,8 +253,12 @@ def vetting_analyse():
         study_type = result.get('study_type', '')
         modality = result.get('modality', '')
         body_section = result.get('body_section') or None
+        # Only restrict to paediatric when AI is confident; otherwise leave None
+        # to return both (ensures backwards-compatible behaviour for adults).
+        paed_flag = True if result.get('is_paediatric') is True else None
         matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
-                                              body_section=body_section)
+                                              body_section=body_section,
+                                              is_paediatric=paed_flag)
 
         # Search for matching clinical algorithms
         cleaned_text = result.get('cleaned_clinical_text', '')
@@ -357,9 +369,14 @@ def vetting_search_protocols():
 @vetting_bp.route('/api/vetting/protocols', methods=['GET'])
 @login_required
 def list_protocols():
-    """List personal + admin published protocols."""
+    """List personal + admin published protocols.
+
+    Filters:
+      modality, body_section, age_group (adult|paediatric|all — default all)
+    """
     modality_filter = request.args.get('modality', '').strip()
     body_section_filter = request.args.get('body_section', '').strip()
+    age_group = (request.args.get('age_group', 'all') or 'all').strip().lower()
 
     # Personal protocols
     personal_q = ImagingProtocol.query.filter_by(origin='personal', user_id=current_user.id)
@@ -372,6 +389,12 @@ def list_protocols():
     if body_section_filter:
         personal_q = personal_q.filter(ImagingProtocol.body_section.ilike(f'%{body_section_filter}%'))
         admin_q = admin_q.filter(ImagingProtocol.body_section.ilike(f'%{body_section_filter}%'))
+    if age_group == 'adult':
+        personal_q = personal_q.filter(ImagingProtocol.is_paediatric == False)
+        admin_q = admin_q.filter(ImagingProtocol.is_paediatric == False)
+    elif age_group == 'paediatric':
+        personal_q = personal_q.filter(ImagingProtocol.is_paediatric == True)
+        admin_q = admin_q.filter(ImagingProtocol.is_paediatric == True)
 
     personal = personal_q.order_by(ImagingProtocol.title).all()
     admin = admin_q.order_by(ImagingProtocol.title).all()
@@ -578,6 +601,7 @@ def admin_create_protocol():
         origin='admin',
         is_published=False,
         is_emergency=data.get('is_emergency', False),
+        is_paediatric=data.get('is_paediatric', False),
     )
     db.session.add(protocol)
     try:
@@ -626,6 +650,8 @@ def admin_update_protocol(protocol_id):
         protocol.search_config_json = json.dumps(data['search_config_json']) if data['search_config_json'] else None
     if 'is_emergency' in data:
         protocol.is_emergency = bool(data['is_emergency'])
+    if 'is_paediatric' in data:
+        protocol.is_paediatric = bool(data['is_paediatric'])
 
     try:
         db.session.commit()

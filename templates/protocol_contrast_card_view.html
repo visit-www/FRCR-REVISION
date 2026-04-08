@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}{{ protocol.title }} — RadInsights{% endblock %}
+{% block meta_description %}{{ protocol.title }} — ACR-aligned contrast reaction card. Premedication, acute reactions, extravasation, renal/metformin rules, special populations, paediatric dose calculator.{% endblock %}
+
+{% block og_title %}{{ protocol.title }} — RadInsights{% endblock %}
+{% block og_description %}ACR-aligned contrast reaction card: premedication, acute reactions, extravasation, special populations, and a paediatric weight-based dose calculator.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(
+    protocol.title,
+    'ACR-aligned contrast reaction quick reference: premedication, acute reactions, extravasation, renal/metformin, special populations, paediatric calculator.',
+    'https://www.radinsights.xyz/radiology-protocols/view/' ~ protocol.id
+) }}
+{% endblock %}
+
+{% block tool_active_protocols %}active{% endblock %}
+{% block mobile_active_protocols %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/radiology-protocols" class="text-white text-decoration-none">Protocols</a>
+</li>
+<li class="breadcrumb-item active text-white-50">{{ protocol.title[:40] }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+
+            <!-- Navigation -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                {% endif %}
+                <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-clipboard-list me-1"></i>Protocols
+                </a>
+                <a href="/contrast-reaction-card" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-flask me-1"></i>Standalone Card
+                </a>
+            </div>
+
+            <!-- Protocol Header -->
+            <div class="mb-3 text-center">
+                <i class="fas fa-flask" style="font-size: 2rem; color: #e96304;"></i>
+                <h4 class="mt-2 mb-1">{{ protocol.title }}</h4>
+                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-center">
+                    {% if protocol.category %}
+                    {% set cat_info = category_map.get(protocol.category, {}) %}
+                    <span class="badge" style="background: {{ cat_info.get('color', '#5E899E') }};">
+                        <i class="fas {{ cat_info.get('icon', 'fa-file-alt') }} me-1"></i>{{ cat_info.get('name', protocol.category) }}
+                    </span>
+                    {% endif %}
+                    {% if protocol.verified_at %}
+                    <span class="text-success small"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    {% endif %}
+                </div>
+                <p class="text-muted mt-2 mb-0 small">ACR Manual on Contrast Media 2025 — quick reference</p>
+            </div>
+
+            {# The shared partial supplies all six tabs, the wizard modal,
+               scoped CSS and the paediatric calculator JS. #}
+            {% include 'partials/_contrast_reaction_card.html' %}
+
+            <!-- Clinical Disclaimer -->
+            <div class="mt-4 p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                <small class="text-muted">
+                    <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+                    <strong>Clinical Decision Support Tool</strong> — This card is for educational and reference
+                    purposes. Always verify against current guidelines and institutional protocols before clinical use.
+                    Source: ACR Manual on Contrast Media 2025; RCR iRefer 8th Ed; ESUR iGuide.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include 'partials/_public_cta.html' %}
+{% endblock %}

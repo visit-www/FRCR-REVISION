@@ -3514,6 +3514,7 @@ class ImagingProtocol(db.Model):
     verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
     is_emergency = db.Column(db.Boolean, default=False, nullable=False)
+    is_paediatric = db.Column(db.Boolean, default=False, nullable=False, index=True)
 
     # Audit
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -3567,6 +3568,7 @@ class ImagingProtocol(db.Model):
             'is_published': self.is_published,
             'is_verified': self.is_verified,
             'is_emergency': self.is_emergency,
+            'is_paediatric': self.is_paediatric,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }

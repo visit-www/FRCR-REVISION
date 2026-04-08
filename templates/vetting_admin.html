@@ -12,6 +12,15 @@
 {% endblock %}
 
 {% block content %}
+<style>
+.protocol-row-paed td {
+    background-color: #f4faf6 !important;
+    border-left: 3px solid #a8d5ba;
+}
+.protocol-row-paed:hover td {
+    background-color: #e9f5ed !important;
+}
+</style>
 <div class="container py-4">
 
     <!-- Header -->
@@ -39,7 +48,7 @@
         <div class="card-body py-2 px-3">
             <div class="d-flex flex-wrap gap-2 align-items-center">
                 <span class="small text-muted me-2">Filter:</span>
-                <select id="modalityFilter" class="form-select form-select-sm" style="min-width: 150px; width: auto;" onchange="loadAdminProtocols()">
+                <select id="modalityFilter" class="form-select form-select-sm" style="min-width: 150px; width: auto;" onchange="renderTable()">
                     <option value="">All Modalities</option>
                     <option value="CT">CT</option>
                     <option value="MRI">MRI</option>
@@ -47,6 +56,11 @@
                     <option value="XR">XR</option>
                     <option value="NM">NM</option>
                     <option value="Fluoro">Fluoro</option>
+                </select>
+                <select id="ageGroupFilter" class="form-select form-select-sm" style="min-width: 140px; width: auto;" onchange="renderTable()">
+                    <option value="all">Adult + Paediatric</option>
+                    <option value="adult">Adult only</option>
+                    <option value="paediatric">Paediatric only</option>
                 </select>
                 <input type="text" id="searchInput" class="form-control form-control-sm" style="width: 200px;"
                     placeholder="Search..." oninput="filterTable()">
@@ -130,6 +144,10 @@
                         <div class="form-check mt-2">
                             <input type="checkbox" id="formEmergency" class="form-check-input">
                             <label class="form-check-label" for="formEmergency">Emergency protocol</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" id="formPaediatric" class="form-check-input">
+                            <label class="form-check-label" for="formPaediatric">Paediatric protocol</label>
                         </div>
                     </div>
                 </div>
@@ -346,10 +364,13 @@ async function loadAdminProtocols() {
 
 function renderTable() {
     const modality = document.getElementById('modalityFilter').value;
+    const ageGroup = document.getElementById('ageGroupFilter').value;
     const search = (document.getElementById('searchInput').value || '').toLowerCase();
 
     const filtered = _adminProtocols.filter(p => {
         if (modality && p.modality !== modality) return false;
+        if (ageGroup === 'adult' && p.is_paediatric) return false;
+        if (ageGroup === 'paediatric' && !p.is_paediatric) return false;
         if (search && !p.title.toLowerCase().includes(search)
             && !(p.keywords || '').toLowerCase().includes(search)
             && !(p.shorthand_text || '').toLowerCase().includes(search)) return false;
@@ -365,10 +386,11 @@ function renderTable() {
     }
 
     tbody.innerHTML = filtered.map(p => `
-        <tr>
+        <tr${p.is_paediatric ? ' class="protocol-row-paed"' : ''}>
             <td>
                 <strong>${escapeHtml(p.title)}</strong>
                 ${p.is_emergency ? '<span class="badge bg-danger ms-1">Emergency</span>' : ''}
+                ${p.is_paediatric ? '<span class="badge ms-1" style="background:#a8d5ba;color:#0a3b1f;"><i class="fas fa-child me-1"></i>Paediatric</span>' : ''}
             </td>
             <td><span class="badge bg-secondary">${p.modality}</span></td>
             <td>${escapeHtml(p.body_section || '—')}</td>
@@ -407,6 +429,7 @@ function resetModal() {
     else document.getElementById('formDetailedHtml').value = '';
     document.getElementById('formSpecialNotes').value = '';
     document.getElementById('formEmergency').checked = false;
+    document.getElementById('formPaediatric').checked = false;
     document.getElementById('valEgfr').checked = false;
     document.getElementById('valEgfrThreshold').value = '';
     document.getElementById('valPregnancy').checked = false;
@@ -428,6 +451,7 @@ function editProtocol(id) {
     document.getElementById('formDetailedHtml').value = p.detailed_protocol_html || '';
     document.getElementById('formSpecialNotes').value = p.special_notes || '';
     document.getElementById('formEmergency').checked = p.is_emergency;
+    document.getElementById('formPaediatric').checked = !!p.is_paediatric;
 
     const val = p.validation_json || {};
     document.getElementById('valEgfr').checked = !!val.requires_egfr;
@@ -456,6 +480,7 @@ async function saveProtocol() {
         detailed_protocol_html: (tinymce.get('formDetailedHtml') ? tinymce.get('formDetailedHtml').getContent() : document.getElementById('formDetailedHtml').value),
         special_notes: document.getElementById('formSpecialNotes').value,
         is_emergency: document.getElementById('formEmergency').checked,
+        is_paediatric: document.getElementById('formPaediatric').checked,
         validation_json: {
             requires_egfr: document.getElementById('valEgfr').checked,
             egfr_threshold: parseInt(document.getElementById('valEgfrThreshold').value) || null,

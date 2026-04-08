@@ -198,6 +198,15 @@ def view_protocol(protocol_id):
         id=protocol_id, is_published=True
     ).first_or_404()
 
+    # Special-case: contrast reaction card protocols render the shared partial
+    if protocol.id in (1, 11):
+        return render_template(
+            'protocol_contrast_card_view.html',
+            protocol=protocol,
+            category_map=CATEGORY_MAP,
+            is_public_preview=not current_user.is_authenticated,
+        )
+
     # Parse resources from source_citation (JSON format)
     resources = None
     if protocol.source_citation:

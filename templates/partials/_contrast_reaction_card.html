@@ -1,0 +1,1015 @@
+{#
+  Contrast Reaction Card — Single Source of Truth
+  ------------------------------------------------
+  6-tab partial. Self-contained: HTML + scoped CSS + scoped JS.
+  Used by:
+    1. templates/vetting.html              (offcanvas drawer)
+    2. templates/contrast_reaction_card.html (public standalone page)
+    3. templates/protocol_contrast_card_view.html (protocol IDs 1 & 11 override)
+
+  Content sources: ACR Manual on Contrast Media 2025
+  (see docs/vetting/ACR_CONTRAST_BLOCK_2025.md).
+
+  Brand palette only — no inline colours other than the severity ramp on
+  Tab 2 reaction cards (green / yellow / teal / orange / red).
+#}
+<div class="crc-root" id="contrastReactionCard">
+
+  <!-- ============================================================ -->
+  <!-- TAB NAV                                                       -->
+  <!-- ============================================================ -->
+  <ul class="nav nav-tabs crc-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="crc-tab1-btn" data-bs-toggle="tab" data-bs-target="#crc-tab1" type="button" role="tab">
+        <i class="fas fa-pills me-1"></i><span class="crc-tab-label">Premedication</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="crc-tab2-btn" data-bs-toggle="tab" data-bs-target="#crc-tab2" type="button" role="tab">
+        <i class="fas fa-heartbeat me-1"></i><span class="crc-tab-label">Acute Reactions</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="crc-tab3-btn" data-bs-toggle="tab" data-bs-target="#crc-tab3" type="button" role="tab">
+        <i class="fas fa-syringe me-1"></i><span class="crc-tab-label">Extravasation</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="crc-tab4-btn" data-bs-toggle="tab" data-bs-target="#crc-tab4" type="button" role="tab">
+        <i class="fas fa-tint me-1"></i><span class="crc-tab-label">Renal / CI-AKI</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="crc-tab5-btn" data-bs-toggle="tab" data-bs-target="#crc-tab5" type="button" role="tab">
+        <i class="fas fa-users me-1"></i><span class="crc-tab-label">Special Populations</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="crc-tab6-btn" data-bs-toggle="tab" data-bs-target="#crc-tab6" type="button" role="tab">
+        <i class="fas fa-calculator me-1"></i><span class="crc-tab-label">Paed Calculator</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content crc-content">
+
+    <!-- ============================================================ -->
+    <!-- TAB 1 · PREMEDICATION                                         -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade show active" id="crc-tab1" role="tabpanel">
+      <div class="crc-section-intro">
+        <strong>When to premedicate</strong> — prior allergic-like reaction to the
+        <em>same class</em> of contrast (iodinated→iodinated, gadolinium→gadolinium).
+        <span class="crc-warn-inline">NOT indicated</span> for shellfish/seafood, topical iodine,
+        asthma alone, or reactions to a <em>different</em> class.
+      </div>
+
+      <h6 class="crc-h6"><i class="fas fa-user me-1"></i>Adult — Elective (12–13 h Oral)</h6>
+      <div class="crc-grid-2">
+        <div class="crc-regimen-card">
+          <div class="crc-regimen-title">Prednisone Regimen</div>
+          <ul class="crc-list">
+            <li><strong>Prednisone 50 mg PO</strong> at <strong>13 h</strong>, <strong>7 h</strong>, and <strong>1 h</strong> pre-contrast</li>
+            <li><strong>+ Diphenhydramine 50 mg</strong> PO/IM/IV at 1 h pre-contrast</li>
+          </ul>
+          <div class="crc-foot-note">If unable to take PO: substitute hydrocortisone 200 mg IV for each oral prednisone dose.</div>
+        </div>
+        <div class="crc-regimen-card">
+          <div class="crc-regimen-title">Methylprednisolone Regimen</div>
+          <ul class="crc-list">
+            <li><strong>Methylprednisolone 32 mg PO</strong> at <strong>12 h</strong> and <strong>2 h</strong> pre-contrast</li>
+            <li><strong>± Diphenhydramine 50 mg</strong> at 1 h pre-contrast</li>
+          </ul>
+        </div>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-bolt me-1"></i>Adult — Accelerated IV (Urgent, 4–5 h)</h6>
+      <div class="crc-regimen-card">
+        <ol class="crc-list crc-list-ordered">
+          <li>
+            <strong>Methylprednisolone Na succinate 40 mg IV</strong> <em>or</em>
+            <strong>Hydrocortisone Na succinate 200 mg IV</strong> immediately, then <strong>every 4 h</strong> until contrast<br>
+            <span class="crc-sub">+ Diphenhydramine 50 mg IV 1 h pre-contrast</span>
+          </li>
+          <li>
+            <strong>Dexamethasone Na sulfate 7.5 mg IV</strong> immediately, then <strong>every 4 h</strong><br>
+            <span class="crc-sub">+ Diphenhydramine 50 mg IV 1 h pre-contrast</span>
+          </li>
+          <li>
+            Same drugs each <strong>1 h pre-contrast</strong> — <span class="crc-warn-inline">&lt;4 h regimens have NO evidence of efficacy</span>; only in true emergencies.
+          </li>
+        </ol>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-child me-1"></i>Paediatric (ACR Tables A/B)</h6>
+      <div class="crc-grid-2">
+        <div class="crc-regimen-card crc-regimen-paed">
+          <div class="crc-regimen-title">Elective (Oral)</div>
+          <ul class="crc-list">
+            <li><strong>Prednisone 0.5–0.7 mg/kg PO</strong> (max 50 mg) at 13 h / 7 h / 1 h</li>
+            <li><strong>+ Diphenhydramine 1.25 mg/kg PO</strong> (max 50 mg) at 1 h</li>
+          </ul>
+        </div>
+        <div class="crc-regimen-card crc-regimen-paed">
+          <div class="crc-regimen-title">Urgent / ED / NPO (IV)</div>
+          <ul class="crc-list">
+            <li><strong>Hydrocortisone 2 mg/kg IV</strong> (max 200 mg) at 5 h and 1 h</li>
+            <li><strong>+ Diphenhydramine 1 mg/kg IV</strong> (max 50 mg) at 1 h</li>
+          </ul>
+          <div class="crc-foot-note">Use the Paed Calculator tab for automated weight-based doses.</div>
+        </div>
+      </div>
+
+      <div class="crc-callout crc-callout-obsolete mt-3">
+        <strong><i class="fas fa-ban me-1"></i>NOT indicated for premedication:</strong>
+        shellfish/seafood allergy · topical iodine (povidone-iodine) allergy · isolated asthma ·
+        reaction to a <em>different</em> class of contrast. Iodinated↔gadolinium cross-reactivity is NOT established.
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 2 · ACUTE REACTIONS                                       -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="crc-tab2" role="tabpanel">
+
+      <!-- Adult / Paed toggle -->
+      <div class="crc-toggle-bar">
+        <span class="crc-toggle-label">Patient group:</span>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Patient group">
+          <button type="button" class="btn btn-brand-neutral active" data-crc-group="adult">
+            <i class="fas fa-user me-1"></i>Adult
+          </button>
+          <button type="button" class="btn btn-outline-secondary" data-crc-group="paed">
+            <i class="fas fa-child me-1"></i>Paediatric
+          </button>
+        </div>
+        <span class="crc-toggle-help">Doses below switch in place</span>
+      </div>
+
+      <div class="crc-reaction-grid">
+
+        <!-- 1 · Hives / Urticaria -->
+        <div class="crc-reaction-card crc-sev-1" id="crc-rxn-hives">
+          <div class="crc-reaction-head">
+            <i class="fas fa-allergies me-2"></i>
+            <strong>Hives / Urticaria</strong>
+            <span class="crc-sev-badge">Mild</span>
+          </div>
+          <div class="crc-reaction-body">
+            <ul class="crc-list">
+              <li>Stop or slow injection if active.</li>
+              <li>Reassure; observe.</li>
+              <li>If symptomatic / progressing:
+                <span class="crc-dose" data-adult>Diphenhydramine <strong>25–50 mg</strong> PO/IM/IV (slow over 1–2 min)</span>
+                <span class="crc-dose" data-paed>Diphenhydramine <strong>1 mg/kg</strong> PO/IM/IV (max 50 mg)</span>
+              </li>
+              <li>Watch for progression to bronchospasm / laryngeal oedema.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 2 · Bronchospasm -->
+        <div class="crc-reaction-card crc-sev-2" id="crc-rxn-bronchospasm">
+          <div class="crc-reaction-head">
+            <i class="fas fa-lungs me-2"></i>
+            <strong>Bronchospasm</strong>
+            <span class="crc-sev-badge">Mild → Severe</span>
+          </div>
+          <div class="crc-reaction-body">
+            <ul class="crc-list">
+              <li>O₂ 6–10 L/min by mask.</li>
+              <li><strong>Mild:</strong> Salbutamol/Albuterol MDI <strong>2 puffs × up to 3</strong>.</li>
+              <li><strong>Moderate / severe (no response):</strong>
+                <span class="crc-dose" data-adult>Epinephrine <strong>IM 0.3 mg</strong> (1:1,000) lateral thigh — repeat q5–15 min</span>
+                <span class="crc-dose" data-paed>Epinephrine IM <strong>0.01 mg/kg</strong> (1:1,000), max single 0.3 mg</span>
+              </li>
+              <li>Call emergency response team.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 3 · Hypotension + bradycardia (vasovagal) -->
+        <div class="crc-reaction-card crc-sev-3" id="crc-rxn-vasovagal">
+          <div class="crc-reaction-head">
+            <i class="fas fa-heart me-2"></i>
+            <strong>Hypotension + Bradycardia</strong>
+            <span class="crc-sev-badge">Vasovagal</span>
+          </div>
+          <div class="crc-reaction-body">
+            <ul class="crc-list">
+              <li>Legs elevated (Trendelenburg).</li>
+              <li>O₂ 6–10 L/min by mask.</li>
+              <li>IV fluids:
+                <span class="crc-dose" data-adult>0.9% saline <strong>500–1000 mL</strong> rapid bolus</span>
+                <span class="crc-dose" data-paed>0.9% saline <strong>10–20 mL/kg</strong> bolus (max 500–1000 mL)</span>
+              </li>
+              <li>If persistent / symptomatic:
+                <span class="crc-dose" data-adult>Atropine <strong>0.6–1 mg IV</strong>, may repeat to 3 mg total</span>
+                <span class="crc-dose" data-paed>Atropine <strong>0.02 mg/kg IV</strong> (min 0.1 mg, max 0.6 mg)</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 4 · Laryngeal oedema -->
+        <div class="crc-reaction-card crc-sev-4" id="crc-rxn-laryngeal">
+          <div class="crc-reaction-head">
+            <i class="fas fa-lungs-virus me-2"></i>
+            <strong>Laryngeal Oedema</strong>
+            <span class="crc-sev-badge">Severe</span>
+          </div>
+          <div class="crc-reaction-body">
+            <ul class="crc-list">
+              <li>O₂ 6–10 L/min by mask.</li>
+              <li>Epinephrine — first line:
+                <span class="crc-dose" data-adult>IM <strong>0.3 mg</strong> (1:1,000) lateral thigh — repeat q5–15 min</span>
+                <span class="crc-dose" data-paed>IM <strong>0.01 mg/kg</strong> (1:1,000), max 0.3 mg single dose</span>
+              </li>
+              <li>Call emergency response team / anaesthesia / ENT.</li>
+              <li>Prepare for airway management.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 5 · Anaphylaxis -->
+        <div class="crc-reaction-card crc-sev-5" id="crc-rxn-anaphylaxis">
+          <div class="crc-reaction-head">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Anaphylaxis</strong>
+            <span class="crc-sev-badge">Life-threatening</span>
+          </div>
+          <div class="crc-reaction-body">
+            <ul class="crc-list">
+              <li><strong>Call resus / 999 immediately.</strong></li>
+              <li>O₂ 6–10 L/min by mask. Legs elevated.</li>
+              <li>Epinephrine FIRST line:
+                <span class="crc-dose" data-adult>
+                  IM <strong>0.3 mg</strong> (1:1,000) lateral thigh — repeat q5–15 min, max 1 mg total<br>
+                  <span class="crc-sub">IV (with monitoring): 0.1 mg slow over 1–2 min from 1:10,000</span>
+                </span>
+                <span class="crc-dose" data-paed>
+                  IM <strong>0.01 mg/kg</strong> (1:1,000), max single 0.3 mg, repeat q5–15 min<br>
+                  <span class="crc-sub">Auto-injector: <strong>EpiPen Jr 0.15 mg</strong> if &lt;30 kg · <strong>EpiPen 0.3 mg</strong> if ≥30 kg</span>
+                </span>
+              </li>
+              <li>IV fluids — large-volume rapid bolus:
+                <span class="crc-dose" data-adult>0.9% saline <strong>1 L</strong> rapid; repeat as needed</span>
+                <span class="crc-dose" data-paed>0.9% saline <strong>10–20 mL/kg</strong> rapid; repeat</span>
+              </li>
+              <li>Diphenhydramine and steroids are <strong>adjuncts only</strong> — never delay epinephrine.</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="text-center mt-3">
+        <button type="button" class="btn btn-brand-primary" id="crc-wizard-open">
+          <i class="fas fa-magic me-1"></i>Start Reaction Wizard
+        </button>
+        <div class="crc-wizard-help small text-muted mt-1">Symptom-led navigation to the right card</div>
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 3 · EXTRAVASATION                                         -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="crc-tab3" role="tabpanel">
+      <div class="crc-section-intro">
+        Extravasation rate ~0.3–0.7% with peripheral IV iodinated contrast.
+        Most resolve without sequelae; severe complications (compartment syndrome, ulceration) are
+        triggered by clinical signs, <em>not</em> by extravasated volume alone.
+      </div>
+
+      <h6 class="crc-h6"><i class="fas fa-first-aid me-1"></i>Initial Management</h6>
+      <div class="crc-regimen-card">
+        <ul class="crc-list">
+          <li><strong>STOP injection</strong> immediately.</li>
+          <li><strong>Elevate</strong> the affected limb above heart level.</li>
+          <li>Apply <strong>cold OR warm compresses</strong> (either acceptable; relieve symptoms).</li>
+          <li>Document: site, estimated volume, contrast type, time, immediate clinical signs.</li>
+          <li>Reassure the patient and explain follow-up.</li>
+        </ul>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-user-md me-1"></i>Urgent Surgical / Plastics Consult — based on signs, NOT volume</h6>
+      <div class="crc-regimen-card">
+        <div class="crc-foot-note mb-2">Obtain urgent review if <strong>any</strong> of the following develop:</div>
+        <ul class="crc-list">
+          <li>Severe or progressive pain.</li>
+          <li>Progressive swelling or tense compartment.</li>
+          <li>Decreased capillary refill or altered perfusion.</li>
+          <li>Altered sensation or paraesthesia.</li>
+          <li>Worsening active or passive range of motion.</li>
+          <li>Skin blistering or ulceration.</li>
+        </ul>
+        <div class="crc-foot-note">Most common severe complication: <strong>compartment syndrome</strong>.</div>
+      </div>
+
+      <div class="crc-callout crc-callout-obsolete mt-3">
+        <strong><i class="fas fa-ban me-1"></i>NOT recommended:</strong>
+        hyaluronidase · steroids · anticoagulants · using a fixed
+        <strong>volume threshold</strong> (e.g. 100–150 mL) as the sole trigger for surgical consultation.
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-home me-1"></i>Outpatient Discharge</h6>
+      <div class="crc-regimen-card">
+        Provide <strong>written instructions</strong> to return for worsening pain, paraesthesia,
+        reduced movement, or skin changes. Severe injury may evolve over hours.
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 4 · RENAL / CI-AKI                                        -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="crc-tab4" role="tabpanel">
+      <div class="crc-section-intro">
+        ACR 2025 single threshold: <strong>eGFR 30 mL/min/1.73 m²</strong>.
+        Above 30, IV iodinated contrast is <em>not</em> an independent nephrotoxic risk factor
+        (level-1 evidence, Davenport / McDonald / Hinson 2013–2014 propensity-matched studies).
+      </div>
+
+      <h6 class="crc-h6"><i class="fas fa-tint me-1"></i>eGFR Thresholds</h6>
+      <div class="crc-grid-3">
+        <div class="crc-regimen-card crc-egfr-safe">
+          <div class="crc-regimen-title">eGFR ≥ 45</div>
+          <div>Standard dose contrast — no prophylaxis required.</div>
+        </div>
+        <div class="crc-regimen-card crc-egfr-borderline">
+          <div class="crc-regimen-title">eGFR 30 – 44</div>
+          <div>Borderline; <strong>not</strong> a statistically significant risk. Give contrast at <strong>standard dose</strong> if clinically indicated.</div>
+        </div>
+        <div class="crc-regimen-card crc-egfr-risk">
+          <div class="crc-regimen-title">eGFR &lt; 30 or AKI</div>
+          <div>Weigh risks/benefits. Consider IV 0.9% saline prophylaxis. <strong>Not</strong> an absolute contraindication.</div>
+        </div>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-prescription-bottle me-1"></i>Metformin (ACR Categories)</h6>
+      <div class="crc-grid-2">
+        <div class="crc-regimen-card crc-egfr-safe">
+          <div class="crc-regimen-title">Category I — eGFR ≥ 30 &amp; no AKI</div>
+          <ul class="crc-list">
+            <li><strong>Continue metformin</strong> normally.</li>
+            <li>No need to recheck renal function after contrast.</li>
+          </ul>
+        </div>
+        <div class="crc-regimen-card crc-egfr-risk">
+          <div class="crc-regimen-title">Category II — eGFR &lt; 30, AKI, or intra-arterial study</div>
+          <ul class="crc-list">
+            <li><strong>Stop</strong> metformin at the time of the procedure.</li>
+            <li>Withhold for <strong>48 h</strong>.</li>
+            <li>Restart only after renal function rechecked &amp; confirmed normal.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="crc-foot-note mt-1">Gadolinium at standard MRI dose (0.1–0.3 mmol/kg): <strong>no metformin interruption needed.</strong></div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-magnet me-1"></i>Gadolinium-Based Contrast (GBCA) &amp; NSF Risk</h6>
+      <div class="crc-grid-3">
+        <div class="crc-regimen-card crc-egfr-risk">
+          <div class="crc-regimen-title">Group I — Greatest NSF risk</div>
+          <div class="crc-foot-note">Contraindicated if eGFR &lt;30, AKI or dialysis.</div>
+          <ul class="crc-list crc-list-tight">
+            <li>Gadodiamide (Omniscan)</li>
+            <li>Gadopentetate (Magnevist)</li>
+            <li>Gadoversetamide (OptiMARK)</li>
+          </ul>
+        </div>
+        <div class="crc-regimen-card crc-egfr-safe">
+          <div class="crc-regimen-title">Group II — Few/no unconfounded NSF cases</div>
+          <div class="crc-foot-note">Safe at standard dose in CKD/AKI/dialysis. eGFR screening optional.</div>
+          <ul class="crc-list crc-list-tight">
+            <li>Gadobutrol (Gadavist/Gadovist)</li>
+            <li>Gadoteric acid (Dotarem/Clariscan)</li>
+            <li>Gadoteridol (ProHance)</li>
+            <li>Gadobenate (MultiHance)</li>
+            <li>Gadopiclenol (Elucirem/Vueway)</li>
+            <li>Gadoxetate (Eovist/Primovist)</li>
+          </ul>
+        </div>
+        <div class="crc-regimen-card">
+          <div class="crc-regimen-title">Group III</div>
+          <div>No agents currently classified (Apr 2024).</div>
+        </div>
+      </div>
+      <div class="crc-foot-note mt-1">
+        <strong>UK practice:</strong> macrocyclic Group II agents (Dotarem / Gadavist / ProHance) are standard;
+        linear Group I agents are largely withdrawn (EMA 2017).
+      </div>
+
+      <div class="crc-callout crc-callout-obsolete mt-3">
+        <strong><i class="fas fa-ban me-1"></i>NOT recommended (per ACR 2025):</strong>
+        N-acetylcysteine for CI-AKI prevention · sodium bicarbonate (no better than saline) ·
+        contrast dose reduction in high-risk patients (produces non-diagnostic scans without
+        changing risk) · diuretics or mannitol prophylaxis · routine baseline creatinine in
+        patients without renal risk factors.
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 5 · SPECIAL POPULATIONS                                   -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="crc-tab5" role="tabpanel">
+
+      <h6 class="crc-h6"><i class="fas fa-baby me-1"></i>Pregnancy</h6>
+      <div class="crc-regimen-card">
+        <ul class="crc-list">
+          <li><strong>Iodinated contrast</strong> — acceptable if the indication is warranted; the benefit of timely diagnosis usually outweighs theoretical fetal risk.</li>
+          <li><strong>Gadolinium (GBCA)</strong> — only if benefit substantially outweighs the (uncertain) fetal risk; prefer non-contrast MRI when possible.</li>
+          <li>Discuss with the referrer; document risk/benefit conversation in the report.</li>
+        </ul>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-baby-carriage me-1"></i>Breast-Feeding</h6>
+      <div class="crc-regimen-card crc-egfr-safe">
+        <ul class="crc-list">
+          <li><strong>&lt;0.01%</strong> of maternal IV iodinated contrast dose reaches breast milk; <strong>&lt;1%</strong> of that is absorbed by the infant gut.</li>
+          <li><strong>&lt;0.04%</strong> of maternal GBCA dose reaches breast milk; systemic infant dose <strong>&lt;0.0004%</strong>.</li>
+          <li><strong>Continue breast-feeding without interruption</strong> after maternal iodinated or GBCA contrast.</li>
+          <li>A 12–24 h pause is <em>optional at maternal preference only</em>; no medical benefit beyond 24 h.</li>
+          <li>Routine neonatal thyroid function testing is <strong>NOT required</strong>.</li>
+        </ul>
+      </div>
+
+      <h6 class="crc-h6 mt-3"><i class="fas fa-leaf me-1"></i>Thyroid Disease</h6>
+      <div class="crc-regimen-card">
+        <ul class="crc-list">
+          <li><strong>Hyperthyroidism alone</strong> is <em>not</em> a contraindication and does <em>not</em> require premedication.</li>
+          <li><strong>Acute thyroid storm:</strong> <span class="crc-warn-inline">avoid iodinated contrast</span> — can potentiate thyrotoxicosis. Steroid premedication will not help.</li>
+          <li>Before <strong>radioactive iodine</strong> therapy or imaging — washout after iodinated contrast:
+            <ul class="crc-list">
+              <li><strong>3–4 weeks</strong> for hyperthyroidism</li>
+              <li><strong>6 weeks</strong> for hypothyroidism</li>
+            </ul>
+          </li>
+          <li>A single maternal dose of iodinated contrast in pregnancy has <strong>no effect</strong> on neonatal thyroid function.</li>
+          <li>Iodinated contrast does not affect TFTs in patients with normal thyroid function.</li>
+        </ul>
+      </div>
+
+      <div class="crc-callout crc-callout-obsolete mt-3">
+        <strong><i class="fas fa-ban me-1"></i>NOT contraindications / NOT cross-reactive:</strong>
+        shellfish or seafood allergy · topical iodine (povidone-iodine) allergy · isolated asthma.
+        These should never be used to justify withholding contrast or premedication.
+      </div>
+    </div>
+
+
+    <!-- ============================================================ -->
+    <!-- TAB 6 · PAEDIATRIC CALCULATOR                                 -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="crc-tab6" role="tabpanel">
+      <div class="crc-section-intro">
+        Enter the child's <strong>weight in kg</strong> for live, weight-based contrast-reaction
+        and premedication doses. All values are clamped to the per-drug maximum where applicable.
+        Always cross-check against your local paediatric protocol.
+      </div>
+
+      <div class="crc-calc-input-row">
+        <label for="crc-paed-weight" class="form-label fw-semibold mb-1">Weight (kg)</label>
+        <div class="input-group">
+          <input type="number" id="crc-paed-weight" class="form-control"
+                 min="1" max="150" step="0.1" placeholder="e.g. 25" autocomplete="off">
+          <span class="input-group-text">kg</span>
+        </div>
+        <div class="form-text crc-foot-note">Range 1 – 150 kg.</div>
+      </div>
+
+      <div id="crc-calc-outputs" class="crc-calc-grid mt-3" aria-live="polite">
+        <!-- populated by JS -->
+        <div class="crc-calc-empty">
+          <i class="fas fa-arrow-up me-1"></i>Enter a weight to see all paediatric doses.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- FOOTER                                                        -->
+  <!-- ============================================================ -->
+  <div class="crc-footer">
+    <small class="text-muted d-block">
+      <i class="fas fa-book-medical me-1"></i>
+      Sources: ACR Manual on Contrast Media 2025 · RCR iRefer 8th Ed · ESUR iGuide
+    </small>
+    <small class="text-muted d-block">
+      <i class="fas fa-shield-alt me-1"></i>
+      For reference only. Always verify against local policy and current institutional protocols.
+    </small>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- REACTION WIZARD MODAL                                         -->
+<!-- ============================================================ -->
+<div class="modal fade" id="crcReactionWizardModal" tabindex="-1" aria-labelledby="crcReactionWizardLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content crc-wizard-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="crcReactionWizardLabel">
+          <i class="fas fa-magic me-2"></i>Reaction Wizard
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3 small">What is the dominant symptom right now?</p>
+        <div class="d-grid gap-2">
+          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-hives">
+            <i class="fas fa-allergies me-2"></i>Hives / itching / urticaria
+          </button>
+          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-bronchospasm">
+            <i class="fas fa-lungs me-2"></i>Wheeze / cough / bronchospasm
+          </button>
+          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-laryngeal">
+            <i class="fas fa-lungs-virus me-2"></i>Stridor / hoarseness / throat tightness
+          </button>
+          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-vasovagal">
+            <i class="fas fa-heart me-2"></i>Hypotension + bradycardia (vasovagal)
+          </button>
+          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-anaphylaxis">
+            <i class="fas fa-exclamation-triangle me-2"></i>Collapse / multi-system / anaphylaxis
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SCOPED CSS                                                    -->
+<!-- ============================================================ -->
+<style>
+.crc-root {
+    font-size: 0.9rem;
+    color: #2c3e50;
+}
+.crc-tabs {
+    border-bottom: 2px solid #e9ecef;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+}
+.crc-tabs .nav-link {
+    color: #5E899E;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+}
+.crc-tabs .nav-link:hover {
+    background: #f0f7fa;
+    color: #2c3e50;
+}
+.crc-tabs .nav-link.active {
+    background: #5E899E;
+    color: #fff;
+    border-color: #5E899E;
+}
+.crc-content {
+    padding: 1rem 0.25rem 0.5rem;
+}
+.crc-section-intro {
+    background: #f0f7fa;
+    border-left: 4px solid #5E899E;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+.crc-h6 {
+    color: #5E899E;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+.crc-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+.crc-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+@media (max-width: 720px) {
+    .crc-grid-2, .crc-grid-3 { grid-template-columns: 1fr; }
+}
+.crc-regimen-card {
+    background: #fff;
+    border: 1px solid #e1e8ee;
+    border-left: 3px solid #5E899E;
+    border-radius: 0.4rem;
+    padding: 0.7rem 0.85rem;
+}
+.crc-regimen-card.crc-regimen-paed {
+    border-left-color: #a8d5ba;
+    background: #f4faf6;
+}
+.crc-regimen-title {
+    font-weight: 600;
+    color: #5E899E;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+}
+.crc-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    line-height: 1.55;
+}
+.crc-list li {
+    margin-bottom: 0.25rem;
+}
+.crc-list-tight li {
+    margin-bottom: 0.1rem;
+    font-size: 0.82rem;
+}
+.crc-list-ordered {
+    padding-left: 1.4rem;
+}
+.crc-foot-note {
+    font-size: 0.78rem;
+    color: #6c757d;
+    margin-top: 0.4rem;
+}
+.crc-sub {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: block;
+    margin-top: 0.1rem;
+}
+.crc-warn-inline {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* Callout boxes */
+.crc-callout {
+    border-radius: 0.4rem;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.83rem;
+    line-height: 1.5;
+}
+.crc-callout-obsolete {
+    background: #fdeee4;
+    border: 1px solid #f6c8a3;
+    color: #7a3d10;
+}
+
+/* Adult/Paed toggle */
+.crc-toggle-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f0f7fa;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+.crc-toggle-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+.crc-toggle-help {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-left: auto;
+}
+
+/* Reaction grid (Tab 2) */
+.crc-reaction-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+@media (max-width: 720px) {
+    .crc-reaction-grid { grid-template-columns: 1fr; }
+}
+.crc-reaction-card {
+    background: #fff;
+    border: 1px solid #e1e8ee;
+    border-left: 4px solid #5E899E;
+    border-radius: 0.4rem;
+    transition: box-shadow .2s;
+}
+.crc-reaction-card.crc-flash {
+    box-shadow: 0 0 0 3px rgba(233,99,4,0.55);
+    animation: crcFlash 0.6s ease-in-out 2;
+}
+@keyframes crcFlash {
+    0%,100% { box-shadow: 0 0 0 3px rgba(233,99,4,0.55); }
+    50%     { box-shadow: 0 0 0 6px rgba(233,99,4,0.25); }
+}
+.crc-reaction-head {
+    background: #f0f7fa;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.4rem 0.4rem 0 0;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+}
+.crc-reaction-body {
+    padding: 0.6rem 0.85rem;
+}
+.crc-sev-badge {
+    margin-left: auto;
+    font-size: 0.7rem;
+    background: #fff;
+    border: 1px solid currentColor;
+    color: #5E899E;
+    padding: 0.1rem 0.45rem;
+    border-radius: 1rem;
+    font-weight: 600;
+}
+
+/* Severity ramp (brand-aligned) */
+.crc-sev-1 { border-left-color: #a8d5ba; }      /* green - mild */
+.crc-sev-1 .crc-reaction-head { background: #ebf5ee; color: #1f5132; }
+.crc-sev-1 .crc-sev-badge     { color: #1f5132; }
+
+.crc-sev-2 { border-left-color: #ffc107; }      /* yellow - mild→sev */
+.crc-sev-2 .crc-reaction-head { background: #fff8e1; color: #7a5a00; }
+.crc-sev-2 .crc-sev-badge     { color: #7a5a00; }
+
+.crc-sev-3 { border-left-color: #5E899E; }      /* teal - vasovagal */
+.crc-sev-3 .crc-reaction-head { background: #eaf2f5; color: #2e4f5c; }
+.crc-sev-3 .crc-sev-badge     { color: #2e4f5c; }
+
+.crc-sev-4 { border-left-color: #e96304; }      /* orange - severe */
+.crc-sev-4 .crc-reaction-head { background: #fdeee4; color: #7a3d10; }
+.crc-sev-4 .crc-sev-badge     { color: #7a3d10; }
+
+.crc-sev-5 { border-left-color: #dc3545; }      /* red - life-threatening */
+.crc-sev-5 .crc-reaction-head { background: #f9e1e3; color: #7a1a23; }
+.crc-sev-5 .crc-sev-badge     { color: #7a1a23; }
+
+/* Dose toggle (adult/paed) */
+.crc-dose {
+    display: block;
+    margin-top: 0.2rem;
+}
+.crc-dose[data-paed] { display: none; }
+.crc-root[data-crc-mode="paed"] .crc-dose[data-adult] { display: none; }
+.crc-root[data-crc-mode="paed"] .crc-dose[data-paed]  { display: block; }
+
+/* Tab 4 eGFR colour cards */
+.crc-egfr-safe       { border-left-color: #a8d5ba; background: #f4faf6; }
+.crc-egfr-borderline { border-left-color: #ffc107; background: #fff8e1; }
+.crc-egfr-risk       { border-left-color: #dc3545; background: #fbecee; }
+
+/* Tab 6 calculator */
+.crc-calc-input-row {
+    max-width: 280px;
+}
+.crc-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.6rem;
+}
+.crc-calc-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.85rem;
+    background: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 0.4rem;
+    padding: 1rem;
+}
+.crc-calc-card {
+    background: #fff;
+    border: 1px solid #e1e8ee;
+    border-left: 3px solid #5E899E;
+    border-radius: 0.4rem;
+    padding: 0.55rem 0.7rem;
+}
+.crc-calc-card.crc-calc-emergency {
+    border-left-color: #dc3545;
+    background: #fbecee;
+}
+.crc-calc-card.crc-calc-premed {
+    border-left-color: #a8d5ba;
+    background: #f4faf6;
+}
+.crc-calc-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+.crc-calc-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+.crc-calc-detail {
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-top: 0.1rem;
+}
+
+/* Footer */
+.crc-footer {
+    margin-top: 1.25rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Wizard modal sits above offcanvas */
+.crc-wizard-modal { z-index: auto; }
+#crcReactionWizardModal { z-index: 1080 !important; }
+#crcReactionWizardModal + .modal-backdrop { z-index: 1075 !important; }
+</style>
+
+
+<!-- ============================================================ -->
+<!-- SCOPED JS — pediatric calculator + adult/paed toggle + wizard -->
+<!-- ============================================================ -->
+<script>
+(function() {
+    if (window._crcInit) return;
+    window._crcInit = true;
+
+    // ────────── Adult / Paediatric dose toggle (Tab 2) ──────────
+    var root = document.getElementById('contrastReactionCard');
+    if (!root) return;
+    root.dataset.crcMode = 'adult';
+
+    var toggleBtns = root.querySelectorAll('[data-crc-group]');
+    toggleBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var mode = btn.dataset.crcGroup;
+            root.dataset.crcMode = mode;
+            toggleBtns.forEach(function(b) {
+                if (b === btn) {
+                    b.classList.add('btn-brand-neutral', 'active');
+                    b.classList.remove('btn-outline-secondary');
+                } else {
+                    b.classList.remove('btn-brand-neutral', 'active');
+                    b.classList.add('btn-outline-secondary');
+                }
+            });
+        });
+    });
+
+    // ────────── Reaction Wizard ──────────
+    var wizardOpen = document.getElementById('crc-wizard-open');
+    var wizardModalEl = document.getElementById('crcReactionWizardModal');
+    var wizardModal = null;
+    if (wizardOpen && wizardModalEl && window.bootstrap && bootstrap.Modal) {
+        wizardModal = new bootstrap.Modal(wizardModalEl);
+        wizardOpen.addEventListener('click', function() { wizardModal.show(); });
+    }
+    var wizardPicks = document.querySelectorAll('.crc-wizard-pick');
+    wizardPicks.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var targetId = btn.dataset.target;
+            if (wizardModal) wizardModal.hide();
+            // After modal closes, scroll the card into view + flash highlight
+            setTimeout(function() {
+                var card = document.getElementById(targetId);
+                if (!card) return;
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.classList.add('crc-flash');
+                setTimeout(function() { card.classList.remove('crc-flash'); }, 1400);
+            }, 250);
+        });
+    });
+
+    // ────────── Paediatric calculator (Tab 6) ──────────
+    var weightInput = document.getElementById('crc-paed-weight');
+    var outputs = document.getElementById('crc-calc-outputs');
+    if (!weightInput || !outputs) return;
+
+    function _round(n, dp) {
+        var f = Math.pow(10, dp);
+        return Math.round(n * f) / f;
+    }
+    function _fmt(n, dp) {
+        if (typeof dp === 'undefined') dp = 2;
+        var v = _round(n, dp);
+        // Strip trailing zeros for cleanliness
+        return parseFloat(v.toFixed(dp)).toString();
+    }
+
+    function clearOutputs() {
+        outputs.innerHTML = '<div class="crc-calc-empty"><i class="fas fa-arrow-up me-1"></i>Enter a weight to see all paediatric doses.</div>';
+    }
+
+    function buildCard(label, value, detail, variant) {
+        var cls = 'crc-calc-card';
+        if (variant === 'emergency') cls += ' crc-calc-emergency';
+        else if (variant === 'premed') cls += ' crc-calc-premed';
+        var div = document.createElement('div');
+        div.className = cls;
+        div.innerHTML =
+            '<div class="crc-calc-label">' + label + '</div>' +
+            '<div class="crc-calc-value">' + value + '</div>' +
+            '<div class="crc-calc-detail">' + detail + '</div>';
+        return div;
+    }
+
+    function recalc() {
+        var raw = weightInput.value.trim();
+        var kg = parseFloat(raw);
+        if (!raw || isNaN(kg) || kg <= 0 || kg > 150) {
+            clearOutputs();
+            return;
+        }
+
+        // ── Emergency / acute reaction doses ──
+        var epiIvMg   = Math.min(_round(0.01 * kg, 2), 0.1);   // 0.01 mg/kg, max 0.1 mg
+        var epiImMg   = Math.min(_round(0.01 * kg, 2), 0.3);   // 0.01 mg/kg, max 0.3 mg
+        var benadryl  = Math.min(Math.round(1 * kg), 50);      // 1 mg/kg, max 50 mg
+        var nsLow     = Math.min(Math.round(10 * kg), 500);
+        var nsHigh    = Math.min(Math.round(20 * kg), 1000);
+        var atropine  = _round(0.02 * kg, 2);                  // 0.02 mg/kg
+
+        // ── Premedication doses ──
+        var hydrocort = Math.min(Math.round(2 * kg), 200);     // 2 mg/kg, max 200 mg
+        var prednLow  = Math.min(_round(0.5 * kg, 1), 50);     // 0.5 mg/kg, max 50 mg
+        var prednHigh = Math.min(_round(0.7 * kg, 1), 50);     // 0.7 mg/kg, max 50 mg
+
+        // ── Auto-injector selection ──
+        var autoInj, autoDetail;
+        if (kg < 15) {
+            autoInj    = 'Per protocol';
+            autoDetail = '&lt;15 kg — follow institutional guidelines';
+        } else if (kg < 30) {
+            autoInj    = 'EpiPen Jr 0.15 mg';
+            autoDetail = '15 – &lt;30 kg';
+        } else {
+            autoInj    = 'EpiPen 0.3 mg';
+            autoDetail = '≥30 kg';
+        }
+
+        outputs.innerHTML = '';
+        // Emergency cards
+        outputs.appendChild(buildCard(
+            'Epinephrine — IM',
+            _fmt(epiImMg) + ' mg',
+            '0.01 mg/kg of 1:1,000 (max 0.3 mg single)',
+            'emergency'
+        ));
+        outputs.appendChild(buildCard(
+            'Epinephrine — IV',
+            _fmt(epiIvMg) + ' mg',
+            '0.01 mg/kg of 1:10,000 (max 0.1 mg single)',
+            'emergency'
+        ));
+        outputs.appendChild(buildCard(
+            'Auto-injector',
+            autoInj,
+            autoDetail,
+            'emergency'
+        ));
+        outputs.appendChild(buildCard(
+            'Diphenhydramine',
+            benadryl + ' mg',
+            '1 mg/kg PO/IM/IV (max 50 mg)'
+        ));
+        outputs.appendChild(buildCard(
+            '0.9% Saline bolus',
+            nsLow + ' – ' + nsHigh + ' mL',
+            '10 – 20 mL/kg (capped at 500 – 1000 mL)'
+        ));
+        outputs.appendChild(buildCard(
+            'Atropine',
+            _fmt(atropine) + ' mg',
+            '0.02 mg/kg IV — for vasovagal bradycardia'
+        ));
+        // Premed cards
+        outputs.appendChild(buildCard(
+            'Hydrocortisone (premed)',
+            hydrocort + ' mg',
+            '2 mg/kg IV (max 200 mg) at 5 h &amp; 1 h pre',
+            'premed'
+        ));
+        outputs.appendChild(buildCard(
+            'Prednisone (premed)',
+            _fmt(prednLow, 1) + ' – ' + _fmt(prednHigh, 1) + ' mg',
+            '0.5 – 0.7 mg/kg PO (max 50 mg) at 13 / 7 / 1 h pre',
+            'premed'
+        ));
+    }
+
+    weightInput.addEventListener('input', recalc);
+    clearOutputs();
+})();
+</script>
