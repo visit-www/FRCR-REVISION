@@ -1,0 +1,677 @@
+{#
+  Vetting Essentials Card — Single Source of Truth
+  -------------------------------------------------
+  5-tab partial. Self-contained: HTML + scoped CSS + scoped JS.
+  Used by:
+    1. templates/vetting.html  (offcanvas drawer)
+    2. templates/vetting_essentials.html  (public standalone page)
+
+  Content: CT contrast pharmacokinetics, scan timing interactions, oral/rectal
+  contrast selection, and liver dual-supply lesion characterisation.
+
+  Brand palette only — mirrors the contrast reaction card styling.
+#}
+<div class="ve-root" id="vettingEssentialsCard">
+
+  <!-- ============================================================ -->
+  <!-- TAB NAV                                                       -->
+  <!-- ============================================================ -->
+  <ul class="nav nav-tabs ve-tabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="ve-tab1-btn" data-bs-toggle="tab" data-bs-target="#ve-tab1" type="button" role="tab">
+        <i class="fas fa-wave-square me-1"></i><span class="ve-tab-label">Phases</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="ve-tab2-btn" data-bs-toggle="tab" data-bs-target="#ve-tab2" type="button" role="tab">
+        <i class="fas fa-stopwatch me-1"></i><span class="ve-tab-label">CECT Timing</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="ve-tab3-btn" data-bs-toggle="tab" data-bs-target="#ve-tab3" type="button" role="tab">
+        <i class="fas fa-glass-whiskey me-1"></i><span class="ve-tab-label">Oral Contrast</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="ve-tab4-btn" data-bs-toggle="tab" data-bs-target="#ve-tab4" type="button" role="tab">
+        <i class="fas fa-prescription-bottle me-1"></i><span class="ve-tab-label">Rectal Contrast</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="ve-tab5-btn" data-bs-toggle="tab" data-bs-target="#ve-tab5" type="button" role="tab">
+        <i class="fas fa-heart me-1"></i><span class="ve-tab-label">Liver Dual Supply</span>
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content ve-content">
+
+    <!-- ============================================================ -->
+    <!-- TAB 1 · PHASES OF CONTRAST ENHANCEMENT                       -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade show active" id="ve-tab1" role="tabpanel">
+      <div class="ve-section-intro">
+        <h6 class="ve-section-title"><i class="fas fa-wave-square me-1"></i>Phases of contrast enhancement</h6>
+        <p class="ve-section-lead">After IV iodinated contrast, six distinct phases can be imaged. Timing is measured from the start of injection (p.i.) or from bolus tracking trigger.</p>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm ve-table">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Timing (p.i.)</th>
+              <th>Shows</th>
+              <th>Clinical use</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fw-semibold">Non-enhanced (NECT)</td>
+              <td>Baseline — no contrast</td>
+              <td>Calcifications, fat in tumours, fat-stranding, acute haemorrhage</td>
+              <td>Appendicitis, diverticulitis, omental infarction, stone disease, acute stroke</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Early arterial</td>
+              <td>15–20 s p.i. or immediately after bolus tracking</td>
+              <td>Contrast in arteries only — parenchyma not yet enhanced</td>
+              <td>Arterial visualisation for CT angiography</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Late arterial</td>
+              <td>35–40 s p.i. or 15–20 s after bolus tracking</td>
+              <td>Optimal arterial supply to organs; hypervascular lesion conspicuity</td>
+              <td>HCC, FNH, adenoma, haemangioma, hypervascular metastases (RCC, NET, thyroid, melanoma, choriocarcinoma)</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Hepatic / late portal venous</td>
+              <td>70–80 s p.i. or 50–60 s after bolus tracking</td>
+              <td>Liver parenchyma fully enhanced via portal vein; hepatic veins visible</td>
+              <td>Hypovascular lesion detection (metastases, abscess, cyst), general surveillance CAP</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Nephrogenic</td>
+              <td>100 s p.i. or 80 s after bolus tracking</td>
+              <td>Complete renal parenchymal enhancement including medulla</td>
+              <td>Small RCC detection; confirming enhancement of indeterminate renal lesion</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Delayed / equilibrium</td>
+              <td>6–10 min p.i.</td>
+              <td>Contrast washout from normal tissue; retention in fibrotic tissue</td>
+              <td>Cholangiocarcinoma, fibrotic metastases, adrenal washout, scar/fibrosis</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert ve-alert ve-alert-info mt-3">
+        <i class="fas fa-lightbulb me-1"></i>
+        <strong>Bolus tracking vs fixed delay:</strong> bolus tracking (ROI placed in aorta, trigger at ~100 HU) is more reproducible across patients than a fixed delay, because it automatically compensates for differences in cardiac output, injection site, and cannula calibre.
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2 · TIMING OF CECT — INTERACTIVE                         -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="ve-tab2" role="tabpanel">
+      <div class="ve-section-intro">
+        <h6 class="ve-section-title"><i class="fas fa-stopwatch me-1"></i>Timing of CECT — how scanner speed, rate, volume &amp; delay interact</h6>
+        <p class="ve-section-lead">Pick your scanner and patient weight — the calculator shows the recommended volume, injection rate, and scan start time for the late arterial and portal venous phases.</p>
+      </div>
+
+      <!-- Interactive CECT timing calculator -->
+      <div class="ve-timing-calc">
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label ve-form-label">Scanner speed</label>
+            <select class="form-select form-select-sm" id="ve-scanner">
+              <option value="single">Single-slice (~20 s for liver)</option>
+              <option value="16">16-slice (~8 s for liver)</option>
+              <option value="64" selected>64-slice (~4 s for liver)</option>
+              <option value="256">128–256 slice (~2 s for liver)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label ve-form-label">Patient weight</label>
+            <select class="form-select form-select-sm" id="ve-weight">
+              <option value="small"> &lt; 75 kg</option>
+              <option value="medium" selected>75–90 kg</option>
+              <option value="large"> &gt; 90 kg</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label ve-form-label">Injection rate</label>
+            <select class="form-select form-select-sm" id="ve-rate">
+              <option value="5" selected>5 mL/s (18 G cannula)</option>
+              <option value="4">4 mL/s (18 G cannula)</option>
+              <option value="3">3 mL/s (20 G pink venflon)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label ve-form-label">Phase of interest</label>
+            <select class="form-select form-select-sm" id="ve-phase">
+              <option value="early_art">Early arterial (CTA)</option>
+              <option value="late_art" selected>Late arterial (hepatic tumours)</option>
+              <option value="pv">Portal venous (liver, CAP)</option>
+              <option value="neph">Nephrogenic (small RCC)</option>
+              <option value="delay">Delayed (washout, fibrosis)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ve-calc-output" id="ve-calc-output">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="alert ve-alert ve-alert-teal mt-3">
+          <i class="fas fa-info-circle me-1"></i>
+          <strong>Key interactions:</strong>
+          <ul class="mb-0 ps-3">
+            <li><strong>Faster scanner → wait longer.</strong> A 64-slice scanner finishes the liver in ~4 s, so start closer to the target phase centre. A single-slice scanner takes ~20 s, so start earlier so the acquisition straddles the target time.</li>
+            <li><strong>Higher rate → earlier peak.</strong> At 5 mL/s the aortic peak arrives ~5 s earlier than at 3 mL/s for the same volume.</li>
+            <li><strong>Higher volume → longer plateau.</strong> 150 mL gives a longer steady-state window than 100 mL, useful for dual-energy or split-bolus techniques.</li>
+            <li><strong>Cardiac output matters.</strong> Poor CO delays the bolus by 5–10 s. Use bolus tracking rather than fixed delay in cardiac failure.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 3 · ORAL CONTRAST                                        -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="ve-tab3" role="tabpanel">
+      <div class="ve-section-intro">
+        <h6 class="ve-section-title"><i class="fas fa-glass-whiskey me-1"></i>Oral contrast — types, indications &amp; caveats</h6>
+        <p class="ve-section-lead">Three broad classes based on attenuation. Choice depends on whether you need to mark the bowel lumen or preserve the ability to see bowel-wall enhancement.</p>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm ve-table">
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Examples</th>
+              <th>Attenuation</th>
+              <th>When to use</th>
+              <th>Caveats</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fw-semibold">Positive</td>
+              <td>Dilute iodinated contrast (Gastrografin / Urografin), dilute barium sulphate</td>
+              <td>High (+100 to +400 HU)</td>
+              <td>Suspected bowel perforation, anastomotic leak, fistula tracking, differentiation of collapsed bowel from a mass</td>
+              <td>Partial bowel filling; obscures bowel-wall enhancement; higher radiation dose required to see through high HU; avoid before CT colonography</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Neutral</td>
+              <td>Water, methylcellulose, polyethylene glycol (PEG), dilute (2 %) mannitol, Volumen® (low-density barium)</td>
+              <td>Low (~0 HU)</td>
+              <td>CT enterography / enteroclysis, mesenteric ischaemia, acute abdomen when bowel-wall enhancement needed</td>
+              <td>Needs cooperative patient (large volume, timed drinking); mannitol can cause diarrhoea and cramping</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Negative</td>
+              <td>Air, CO₂ insufflation</td>
+              <td>Very low (−1000 HU)</td>
+              <td>CT colonography, virtual colonoscopy, rarely stomach distension</td>
+              <td>Requires rectal tube and insufflator; patient discomfort; not for perforation workup</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert ve-alert ve-alert-warning mt-3">
+        <i class="fas fa-exclamation-triangle me-1"></i>
+        <strong>Acute abdomen / appendicitis:</strong> most modern protocols use <em>no oral contrast</em> or water only — delay from oral contrast (45–90 min) is unacceptable, and IV contrast + thin-section MDCT is diagnostic without it.
+      </div>
+
+      <div class="alert ve-alert ve-alert-info mt-2">
+        <i class="fas fa-lightbulb me-1"></i>
+        <strong>Water loading trick:</strong> 500–1000 mL water 30–60 min before scan distends the stomach and proximal small bowel, improving visualisation of the gastric and pancreatic regions without obscuring bowel-wall enhancement.
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 4 · RECTAL CONTRAST                                      -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="ve-tab4" role="tabpanel">
+      <div class="ve-section-intro">
+        <h6 class="ve-section-title"><i class="fas fa-prescription-bottle me-1"></i>Rectal contrast — when to use it</h6>
+        <p class="ve-section-lead">Rectal contrast is retrograde filling of the colon/rectum via a rectal tube. Positive contrast (water-soluble iodinated) is standard. Reserve for specific indications.</p>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="ve-card">
+            <div class="ve-card-header"><i class="fas fa-flask me-1"></i>Preparation</div>
+            <div class="ve-card-body">
+              <ul class="mb-0 ps-3">
+                <li><strong>Dilution:</strong> 50 mL non-ionic water-soluble iodinated contrast in 750 mL water (≈ 6 % dilution).</li>
+                <li><strong>Volume:</strong> up to 800 mL instilled via rectal tube — stop when flow stops, at 350 mL, or when patient can no longer tolerate.</li>
+                <li><strong>Timing:</strong> instil immediately before scanning; IV contrast given right after rectal instillation.</li>
+                <li><strong>Post-scan:</strong> enter the room promptly and release rectal contrast.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="ve-card">
+            <div class="ve-card-header"><i class="fas fa-stethoscope me-1"></i>Indications</div>
+            <div class="ve-card-body">
+              <ul class="mb-0 ps-3">
+                <li><strong>Suspected anastomotic leak</strong> (post-colorectal surgery) — most common indication.</li>
+                <li><strong>Penetrating abdominal trauma</strong> — to detect occult bowel perforation when there is no other indication for laparotomy.</li>
+                <li><strong>Colonic fistula</strong> (enterocutaneous, colovesical, colovaginal).</li>
+                <li><strong>Bladder rupture</strong> — retrograde CT cystogram technique (via urinary catheter + 40 cm head of water, not rectal).</li>
+                <li><strong>CT colonography</strong> uses gaseous (negative) rectal distension, not positive rectal contrast.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert ve-alert ve-alert-warning mt-3">
+        <i class="fas fa-exclamation-triangle me-1"></i>
+        <strong>Contraindications:</strong> recent distal anastomosis (&lt; 7 days) unless specifically looking for leak; severe proctitis; suspected rectal perforation without surgical backup.
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 5 · LIVER DUAL BLOOD SUPPLY                              -->
+    <!-- ============================================================ -->
+    <div class="tab-pane fade" id="ve-tab5" role="tabpanel">
+      <div class="ve-section-intro">
+        <h6 class="ve-section-title"><i class="fas fa-heart me-1"></i>Liver dual blood supply &amp; lesion characterisation</h6>
+        <p class="ve-section-lead">Normal liver parenchyma is supplied <strong>80 % by the portal vein</strong> and only <strong>20 % by the hepatic artery</strong>. Virtually <strong>all liver tumours get 100 % of their supply from the hepatic artery</strong>. This physiological asymmetry is the basis for multiphasic liver imaging.</p>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-4">
+          <div class="ve-vessel-card ve-vessel-art">
+            <div class="ve-vessel-pct">20%</div>
+            <div class="ve-vessel-label">Hepatic artery</div>
+            <small class="text-muted">Normal parenchyma supply</small>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="ve-vessel-card ve-vessel-pv">
+            <div class="ve-vessel-pct">80%</div>
+            <div class="ve-vessel-label">Portal vein</div>
+            <small class="text-muted">Normal parenchyma supply</small>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="ve-vessel-card ve-vessel-tumour">
+            <div class="ve-vessel-pct">100%</div>
+            <div class="ve-vessel-label">Hepatic artery</div>
+            <small class="text-muted">All liver tumours</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm ve-table">
+          <thead>
+            <tr>
+              <th>Lesion</th>
+              <th>Arterial (35 s)</th>
+              <th>Portal venous (70 s)</th>
+              <th>Delayed / equilibrium (3–10 min)</th>
+              <th>Best phase for diagnosis</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="fw-semibold">HCC (classic)</td>
+              <td><span class="ve-chip ve-chip-hot">Hyperenhancing</span></td>
+              <td><span class="ve-chip ve-chip-cool">Washout</span></td>
+              <td><span class="ve-chip ve-chip-cool">Pseudocapsule enhancement</span></td>
+              <td>Arterial + PV (washout is diagnostic per LI-RADS)</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Hypervascular metastases (RCC, NET, thyroid, melanoma, choriocarcinoma)</td>
+              <td><span class="ve-chip ve-chip-hot">Hyperenhancing</span></td>
+              <td><span class="ve-chip ve-chip-cool">Iso/hypo</span></td>
+              <td><span class="ve-chip ve-chip-cool">Hypo</span></td>
+              <td>Arterial (lesions wash out quickly)</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Hypovascular metastases (colon, lung, breast, gastric)</td>
+              <td><span class="ve-chip ve-chip-cool">Hypo/iso</span></td>
+              <td><span class="ve-chip ve-chip-cool">Hypoenhancing</span></td>
+              <td><span class="ve-chip ve-chip-cool">Hypo</span></td>
+              <td>Portal venous (maximum contrast with enhanced parenchyma)</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Haemangioma</td>
+              <td><span class="ve-chip ve-chip-hot">Peripheral nodular</span></td>
+              <td><span class="ve-chip ve-chip-hot">Progressive centripetal fill</span></td>
+              <td><span class="ve-chip ve-chip-hot">Complete fill-in (iso to vessels)</span></td>
+              <td>Multiphasic — classic progressive fill is diagnostic</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Focal nodular hyperplasia (FNH)</td>
+              <td><span class="ve-chip ve-chip-hot">Homogeneous hyper (central scar spared)</span></td>
+              <td><span class="ve-chip ve-chip-neutral">Iso to liver</span></td>
+              <td><span class="ve-chip ve-chip-hot">Central scar enhances</span></td>
+              <td>Arterial + delayed (central scar enhancement)</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Hepatic adenoma</td>
+              <td><span class="ve-chip ve-chip-hot">Hyperenhancing (often heterogeneous)</span></td>
+              <td><span class="ve-chip ve-chip-neutral">Iso to liver</span></td>
+              <td><span class="ve-chip ve-chip-neutral">Iso / mildly hypo</span></td>
+              <td>Arterial; MRI with hepatobiliary contrast more specific</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Simple cyst</td>
+              <td><span class="ve-chip ve-chip-cool">No enhancement</span></td>
+              <td><span class="ve-chip ve-chip-cool">No enhancement</span></td>
+              <td><span class="ve-chip ve-chip-cool">No enhancement</span></td>
+              <td>Any phase — water density (&lt; 20 HU), no enhancement</td>
+            </tr>
+            <tr>
+              <td class="fw-semibold">Cholangiocarcinoma (mass-forming)</td>
+              <td><span class="ve-chip ve-chip-cool">Rim enhancement</span></td>
+              <td><span class="ve-chip ve-chip-cool">Gradual centripetal</span></td>
+              <td><span class="ve-chip ve-chip-hot">Progressive retention</span></td>
+              <td>Delayed (fibrous stroma holds contrast)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="alert ve-alert ve-alert-info mt-3">
+        <i class="fas fa-lightbulb me-1"></i>
+        <strong>Why arterial phase matters:</strong> at 35 s, normal parenchyma has received almost none of its supply (portal vein is just starting), so any hyperenhancing lesion stands out maximally. Miss the arterial window and a hypervascular lesion becomes invisible (iso-attenuating) on the portal venous phase.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCOPED STYLES — ve- prefix                                    -->
+<!-- ============================================================ -->
+<style>
+  .ve-root { font-size: 0.88rem; }
+  .ve-tabs { border-bottom: 2px solid var(--brand-neutral, #5E899E); margin-bottom: 0; flex-wrap: wrap; }
+  .ve-tabs .nav-link {
+    color: #5E899E;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+  .ve-tabs .nav-link:hover { background: #f0f7fa; }
+  .ve-tabs .nav-link.active {
+    color: #e96304;
+    border-bottom-color: #e96304;
+    background: transparent;
+  }
+  .ve-tab-label { font-weight: 500; }
+  @media (max-width: 575.98px) {
+    .ve-tab-label { display: none; }
+    .ve-tabs .nav-link { padding: 0.5rem 0.75rem; }
+  }
+  .ve-content {
+    padding: 1rem 0.25rem 0.25rem;
+  }
+  .ve-section-intro { margin-bottom: 0.75rem; }
+  .ve-section-title {
+    color: #e96304;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+  }
+  .ve-section-lead {
+    color: #555;
+    font-size: 0.83rem;
+    margin-bottom: 0.5rem;
+  }
+  .ve-table {
+    font-size: 0.8rem;
+    margin-bottom: 0;
+  }
+  .ve-table thead th {
+    background: #f0f7fa;
+    color: #2c3e50;
+    border-bottom: 2px solid #5E899E;
+    vertical-align: middle;
+    font-weight: 600;
+  }
+  .ve-table tbody td { vertical-align: top; }
+  .ve-alert {
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.4rem;
+    font-size: 0.8rem;
+    margin-bottom: 0;
+  }
+  .ve-alert-info {
+    background: #e8f4f8;
+    border: 1px solid #b8dce6;
+    color: #2c5866;
+  }
+  .ve-alert-teal {
+    background: #f0f7fa;
+    border: 1px solid #c5dde4;
+    color: #355866;
+  }
+  .ve-alert-warning {
+    background: #fff8e6;
+    border: 1px solid #ffe0a3;
+    color: #8a6414;
+  }
+
+  /* Timing calculator */
+  .ve-timing-calc {
+    background: #fafbfc;
+    border: 1px solid #e9ecef;
+    border-radius: 0.5rem;
+    padding: 0.9rem;
+  }
+  .ve-form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #355866;
+    margin-bottom: 0.2rem;
+  }
+  .ve-calc-output {
+    background: #fff;
+    border: 1px solid #dfe6ea;
+    border-left: 4px solid #e96304;
+    border-radius: 0.4rem;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.82rem;
+  }
+  .ve-calc-output .ve-calc-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.25rem 0;
+    border-bottom: 1px dashed #eee;
+  }
+  .ve-calc-output .ve-calc-row:last-child { border-bottom: none; }
+  .ve-calc-output .ve-calc-label { color: #555; }
+  .ve-calc-output .ve-calc-val {
+    font-weight: 600;
+    color: #e96304;
+  }
+
+  /* Vessel cards (liver supply) */
+  .ve-vessel-card {
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    text-align: center;
+    height: 100%;
+    border: 1px solid;
+  }
+  .ve-vessel-art {
+    background: #fff2e8;
+    border-color: #ffc9a3;
+  }
+  .ve-vessel-art .ve-vessel-pct { color: #e96304; }
+  .ve-vessel-pv {
+    background: #eaf3f7;
+    border-color: #b8dce6;
+  }
+  .ve-vessel-pv .ve-vessel-pct { color: #5E899E; }
+  .ve-vessel-tumour {
+    background: #ffe8e8;
+    border-color: #f5b8b8;
+  }
+  .ve-vessel-tumour .ve-vessel-pct { color: #c0392b; }
+  .ve-vessel-pct {
+    font-size: 1.85rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .ve-vessel-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 0.15rem;
+  }
+
+  /* Lesion enhancement chips */
+  .ve-chip {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 500;
+  }
+  .ve-chip-hot {
+    background: #fff2e8;
+    color: #c0510b;
+    border: 1px solid #ffc9a3;
+  }
+  .ve-chip-cool {
+    background: #eaf3f7;
+    color: #355866;
+    border: 1px solid #b8dce6;
+  }
+  .ve-chip-neutral {
+    background: #f5f5f5;
+    color: #555;
+    border: 1px solid #ddd;
+  }
+
+  /* Inner cards on tab 4 */
+  .ve-card {
+    border: 1px solid #e9ecef;
+    border-radius: 0.4rem;
+    height: 100%;
+    overflow: hidden;
+  }
+  .ve-card-header {
+    background: #f0f7fa;
+    padding: 0.45rem 0.75rem;
+    font-weight: 600;
+    color: #355866;
+    font-size: 0.82rem;
+    border-bottom: 1px solid #dfe6ea;
+  }
+  .ve-card-body {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+  }
+</style>
+
+<!-- ============================================================ -->
+<!-- SCOPED JS — CECT timing calculator                            -->
+<!-- ============================================================ -->
+<script>
+(function() {
+  var root = document.getElementById('vettingEssentialsCard');
+  if (!root) return;
+  // Avoid double-init if included in multiple offcanvas drawers on same page
+  if (root.dataset.veInit === '1') return;
+  root.dataset.veInit = '1';
+
+  var scannerEl = root.querySelector('#ve-scanner');
+  var weightEl  = root.querySelector('#ve-weight');
+  var rateEl    = root.querySelector('#ve-rate');
+  var phaseEl   = root.querySelector('#ve-phase');
+  var outEl     = root.querySelector('#ve-calc-output');
+  if (!scannerEl || !weightEl || !rateEl || !phaseEl || !outEl) return;
+
+  // Scanner scan-duration for whole liver (seconds)
+  var SCAN_DUR = { single: 20, '16': 8, '64': 4, '256': 2 };
+
+  // Recommended volume by weight (mL)
+  var VOLUMES = { small: 100, medium: 120, large: 150 };
+
+  // Phase centre times (seconds post-injection) for standard circulation
+  var PHASE_CENTRE = {
+    early_art: 20,
+    late_art: 35,
+    pv: 75,
+    neph: 100,
+    delay: 360
+  };
+  var PHASE_LABEL = {
+    early_art: 'Early arterial (CTA)',
+    late_art: 'Late arterial',
+    pv: 'Portal venous',
+    neph: 'Nephrogenic',
+    delay: 'Delayed'
+  };
+
+  function computeStartTime(phase, scanDur, rate) {
+    // Centre scan around the target phase time
+    var centre = PHASE_CENTRE[phase];
+    // Faster injection brings peak earlier (rule of thumb: −1 s per +1 mL/s above 3)
+    var rateShift = (parseFloat(rate) - 3) * -1;
+    var targetCentre = centre + rateShift;
+    // Start = centre minus half the scan duration
+    var start = Math.max(0, Math.round(targetCentre - scanDur / 2));
+    return start;
+  }
+
+  function render() {
+    var scanner = scannerEl.value;
+    var weight  = weightEl.value;
+    var rate    = rateEl.value;
+    var phase   = phaseEl.value;
+
+    var scanDur = SCAN_DUR[scanner] || 4;
+    var volume  = VOLUMES[weight] || 120;
+    var start   = computeStartTime(phase, scanDur, rate);
+    var centre  = PHASE_CENTRE[phase];
+    var totalCcs = volume;
+    var injectionTime = Math.round(totalCcs / parseFloat(rate));
+
+    var notes = '';
+    if (phase === 'late_art' && scanner === 'single') {
+      notes = 'Single-slice: start at 25 s so the 20 s acquisition centres on 35 s (finish ≈ 45 s).';
+    } else if (phase === 'late_art' && (scanner === '64' || scanner === '256')) {
+      notes = 'Fast scanner: start closer to the target centre — acquisition finishes in 2–4 s so the window is wide.';
+    } else if (phase === 'pv') {
+      notes = 'Portal venous phase timing is largely scanner-independent — the liver needs time to load from the portal vein.';
+    } else if (phase === 'early_art') {
+      notes = 'For CTA, use bolus tracking (ROI in aorta, trigger 100 HU + 6 s diagnostic delay) rather than a fixed delay.';
+    } else if (phase === 'delay') {
+      notes = 'Delayed phase is forgiving — 3–10 min range depending on indication (adrenal washout = 15 min).';
+    }
+
+    outEl.innerHTML =
+      '<div class="ve-calc-row"><span class="ve-calc-label">Phase</span><span class="ve-calc-val">' + PHASE_LABEL[phase] + ' (centre ' + centre + ' s)</span></div>' +
+      '<div class="ve-calc-row"><span class="ve-calc-label">Recommended volume</span><span class="ve-calc-val">' + volume + ' mL</span></div>' +
+      '<div class="ve-calc-row"><span class="ve-calc-label">Injection time at ' + rate + ' mL/s</span><span class="ve-calc-val">' + injectionTime + ' s</span></div>' +
+      '<div class="ve-calc-row"><span class="ve-calc-label">Liver scan duration</span><span class="ve-calc-val">~' + scanDur + ' s</span></div>' +
+      '<div class="ve-calc-row"><span class="ve-calc-label">Recommended scan start</span><span class="ve-calc-val">' + start + ' s p.i.</span></div>' +
+      (notes ? '<div class="mt-2 pt-2 small text-muted" style="border-top:1px dashed #eee;"><i class="fas fa-info-circle me-1"></i>' + notes + '</div>' : '');
+  }
+
+  [scannerEl, weightEl, rateEl, phaseEl].forEach(function(el) {
+    el.addEventListener('change', render);
+  });
+  render();
+})();
+</script>

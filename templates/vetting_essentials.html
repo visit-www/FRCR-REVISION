@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}Vetting Essentials — CT Contrast Phases, Timing, Oral/Rectal, Liver Supply | RadInsights{% endblock %}
+{% block meta_description %}Quick reference for CT contrast protocols: phases of enhancement, interactive CECT timing calculator, oral and rectal contrast selection, and liver dual blood supply with lesion characterisation tables. Designed for vetting and reporting.{% endblock %}
+
+{% block og_title %}Vetting Essentials — RadInsights{% endblock %}
+{% block og_description %}CT contrast phases, interactive timing calculator, oral/rectal contrast, and liver lesion characterisation — a quick reference for vetting.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(
+    'Vetting Essentials — CT Contrast Phases, Timing & Liver Supply',
+    'Quick reference for CT contrast phases, interactive CECT timing calculator, oral and rectal contrast selection, and liver dual blood supply with lesion characterisation tables.',
+    'https://www.radinsights.xyz/vetting-essentials'
+) }}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <i class="fas fa-graduation-cap" style="font-size: 2.5rem; color: #e96304;"></i>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Vetting Essentials</h1>
+        <p class="text-muted mb-0">CT contrast phases · Timing calculator · Oral/rectal contrast · Liver dual supply</p>
+        <a href="/vetting" class="btn btn-sm btn-outline-secondary mt-2">
+            <i class="fas fa-check-double me-1"></i>Vetting Tool
+        </a>
+        <a href="/contrast-reaction-card" class="btn btn-sm btn-outline-secondary mt-2">
+            <i class="fas fa-flask me-1"></i>Contrast Reaction Card
+        </a>
+    </div>
+
+    {% include 'partials/_vetting_essentials.html' %}
+</div>
+
+{% include 'partials/_public_cta.html' %}
+{% endblock %}
