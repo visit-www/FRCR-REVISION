@@ -896,6 +896,369 @@ with app.app_context():
             db.session.rollback()
             logger.warning('Imaging protocol source rebrand skipped: %s', _src_err)
 
+        # -- PR1: Add 7 missing imaging protocols (critical content gaps) --
+        # Idempotent: keyed on slug. Each protocol already embeds the
+        # RadInsights source sentinel so the rebrand block above skips them.
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                import json as _json
+                from models import ImagingProtocol as _IP
+
+                _PR1_SOURCE_FOOTER = (
+                    "<!-- src:radinsight-v1 -->"
+                    "<p class='text-muted small mt-2'><em>Source: "
+                    "<strong>RadInsights Protocols</strong> &mdash; enriched by publicly "
+                    "available guidelines and resources. Verify against local policy.</em></p>"
+                )
+
+                def _pr1_html(purpose, prep, contrast, phases, coverage, recon, notes, guidelines):
+                    rows = ''.join(
+                        f"<tr><td>{ph}</td><td>{cov}</td><td>{tm}</td><td>{rc}</td></tr>"
+                        for ph, cov, tm, rc in phases
+                    )
+                    return (
+                        "<div class='vetting-protocol-content'>"
+                        f"<p><strong>Purpose:</strong> {purpose}</p>"
+                        f"<p><strong>Patient preparation:</strong> {prep}</p>"
+                        f"<p><strong>Contrast:</strong> {contrast}</p>"
+                        "<h6 class='mt-3'>Acquisition phases</h6>"
+                        "<table class='table table-sm vetting-protocol-table'>"
+                        "<thead><tr><th>Phase</th><th>Coverage</th><th>Timing</th><th>Reconstructions</th></tr></thead>"
+                        f"<tbody>{rows}</tbody></table>"
+                        f"<p class='small text-muted mt-2'><strong>Coverage:</strong> {coverage}</p>"
+                        f"<p class='small text-muted'><strong>Reconstructions:</strong> {recon}</p>"
+                        f"<div class='alert alert-info mt-3 mb-2'><strong>Clinical notes:</strong> {notes}</div>"
+                        f"<p class='small mt-2'><strong>Guidelines:</strong> {guidelines}</p>"
+                        "</div>" + _PR1_SOURCE_FOOTER
+                    )
+
+                _PR1_PROTOCOLS = [
+                    # C2 — CT GI Bleed
+                    {
+                        'slug': 'ct-gi-bleed',
+                        'title': 'CT GI Bleed / GI Haemorrhage',
+                        'modality': 'CT',
+                        'body_section': 'Abdomen/Pelvis',
+                        'keywords': 'gi bleed, haematemesis, melena, active bleeding, angiography, abdomen',
+                        'shorthand_text': (
+                            'CT AP triphasic — non-con + arterial 35 s + PV 70 s. '
+                            'No oral contrast. 100–150 mL @ 5 mL/s.'
+                        ),
+                        'indications': [
+                            'Active GI bleeding',
+                            'Haematemesis',
+                            'Melena / PR bleeding',
+                            'Obscure GI bleeding',
+                            'Post-endoscopy bleeding',
+                        ],
+                        'validation': {
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Radiology Assistant', 'RCR iRefer'],
+                        },
+                        'html': _pr1_html(
+                            purpose='Localisation of active GI bleeding and identification of causative lesion (angiodysplasia, diverticular bleed, tumour, varices).',
+                            prep='None. No oral contrast — masks active luminal bleeding.',
+                            contrast='100–150 mL Iomeron-400 / Omnipaque-350 @ 5 mL/s via 18G IV. Saline chaser 40 mL.',
+                            phases=[
+                                ('Non-contrast', 'Diaphragm to symphysis', '-', 'Ax 3 mm'),
+                                ('Arterial', 'Diaphragm to symphysis', '35 s (or bolus-trigger aorta 150 HU)', 'Ax/Cor 3 mm'),
+                                ('Portal venous', 'Diaphragm to symphysis', '70 s', 'Ax/Cor 3 mm'),
+                            ],
+                            coverage='Diaphragm to symphysis pubis.',
+                            recon='3 mm axial + coronal MPR (bleeding localisation). Thin 1 mm reformats on arterial for angiographic review.',
+                            notes='Active extravasation = contrast pooling on arterial phase that INCREASES or CHANGES SHAPE on portal venous phase. Differentiate from high-density enteric contents on non-contrast.',
+                            guidelines='Radiology Assistant; RCR iRefer 8th Ed.',
+                        ),
+                        'special_notes': 'Triphasic protocol (non-contrast essential to exclude pre-existing hyperdense material). No oral contrast — masks bleeding. If CT positive, proceed to mesenteric angiography / embolisation.',
+                        'is_emergency': True,
+                    },
+                    # C3 — CT Brain Dementia
+                    {
+                        'slug': 'ct-brain-dementia',
+                        'title': 'CT Brain — Dementia Assessment',
+                        'modality': 'CT',
+                        'body_section': 'Brain',
+                        'keywords': 'dementia, cognitive decline, alzheimer, hippocampal atrophy, scheltens, mmse',
+                        'shorthand_text': (
+                            'Plain CT brain + coronal reformats through medial temporal '
+                            'lobes for hippocampal atrophy (Scheltens score).'
+                        ),
+                        'indications': [
+                            'Suspected dementia',
+                            'Cognitive decline',
+                            'MMSE / MoCA decline',
+                            'Alzheimer workup',
+                            'Rapidly progressive cognitive change',
+                        ],
+                        'validation': {
+                            'requires_egfr': False,
+                            'allergy_check_required': False,
+                            'pregnancy_check_required': False,
+                            'guideline_source': ['NICE NG97', 'Radiology Assistant'],
+                        },
+                        'html': _pr1_html(
+                            purpose='Exclusion of structural cause for cognitive decline (SOL, NPH, chronic SDH, vascular burden) and assessment of medial temporal lobe atrophy when MRI contraindicated or unavailable.',
+                            prep='None.',
+                            contrast='None.',
+                            phases=[
+                                ('Plain', 'Vertex to C1', '-', 'Ax 5 mm + Cor 3 mm MTL reformats'),
+                            ],
+                            coverage='Vertex to C1.',
+                            recon='Axial 5 mm standard brain; coronal 3 mm reformat perpendicular to the long axis of the hippocampus for Scheltens medial temporal lobe atrophy score (0–4 per side).',
+                            notes='Assess MTL atrophy (Scheltens 0–4), global atrophy, white-matter low density (Fazekas), and vascular burden. MRI is preferred first-line per NICE NG97 (dementia); CT is acceptable when MRI is contraindicated or unavailable.',
+                            guidelines='NICE NG97; Radiology Assistant.',
+                        ),
+                        'special_notes': 'Non-contrast. Include coronal hippocampal reformats (Scheltens score). MRI preferred if available per NICE NG97.',
+                        'is_emergency': False,
+                    },
+                    # C4 — CT Anastomosis Leak
+                    {
+                        'slug': 'ct-anastomosis-leak',
+                        'title': 'CT Anastomosis Leak / Post-Op Bowel',
+                        'modality': 'CT',
+                        'body_section': 'Abdomen/Pelvis',
+                        'keywords': 'anastomotic leak, post-operative, bowel surgery, collection, abscess, rectal contrast',
+                        'shorthand_text': (
+                            'Rectal water-soluble contrast 50 mL in 750 mL water + '
+                            'IV contrast. Non-con + PV 70 s.'
+                        ),
+                        'indications': [
+                            'Post-operative fever / sepsis',
+                            'Suspected anastomotic leak',
+                            'Bowel surgery complications',
+                            'Raised inflammatory markers post-op',
+                            'Unexplained ileus post-op',
+                        ],
+                        'validation': {
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Radiology Assistant', 'RCR iRefer'],
+                        },
+                        'html': _pr1_html(
+                            purpose='Detection of anastomotic leak, post-operative collection, or abscess following bowel / colorectal surgery.',
+                            prep='Rectal tube inserted just prior to scanning. Instill 50 mL water-soluble iodinated contrast diluted in 750 mL water per rectum (for lower anastomoses). For upper GI anastomoses, give oral water-soluble contrast 30 min prior.',
+                            contrast='100 mL IV @ 3 mL/s Omnipaque-350 given IMMEDIATELY after rectal contrast instillation (do not delay).',
+                            phases=[
+                                ('Non-contrast', 'Diaphragm to symphysis', '-', 'Ax 3 mm'),
+                                ('Portal venous', 'Diaphragm to symphysis', '70 s post IV', 'Ax/Cor 3 mm'),
+                            ],
+                            coverage='Diaphragm to symphysis pubis.',
+                            recon='Axial 3 mm + coronal 3 mm. Review with generous window for extraluminal gas and contrast tracking.',
+                            notes='Rectal contrast assesses luminal integrity of the anastomosis; IV contrast assesses for abscess/collection/wall enhancement. DO NOT delay IV contrast — inject during or immediately after rectal instillation so both contrast phases are captured in one PV acquisition.',
+                            guidelines='Radiology Assistant; RCR iRefer 8th Ed.',
+                        ),
+                        'special_notes': 'Combined rectal + IV protocol. Single PV acquisition after rectal instillation — do not delay.',
+                        'is_emergency': True,
+                    },
+                    # I4 — CT Liver 4-phase (HCC / Post-TACE)
+                    {
+                        'slug': 'ct-liver-4-phase-hcc',
+                        'title': 'CT Liver 4-Phase (HCC / Post-TACE)',
+                        'modality': 'CT',
+                        'body_section': 'Liver',
+                        'keywords': 'hcc, hepatocellular carcinoma, post tace, cirrhosis, li-rads, 4-phase, liver',
+                        'shorthand_text': (
+                            '4-phase liver — plain + arterial 35 s + portal venous 70 s '
+                            '+ equilibrium 180 s. Iomeron-400 @ 5 mL/s.'
+                        ),
+                        'indications': [
+                            'HCC surveillance / characterisation',
+                            'Cirrhosis with new liver lesion',
+                            'Post-TACE follow-up',
+                            'LI-RADS assessment',
+                            'Pre-transplant assessment',
+                        ],
+                        'validation': {
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Aberdeen Royal Infirmary', 'RCR iRefer', 'LI-RADS'],
+                        },
+                        'html': _pr1_html(
+                            purpose='Characterisation of liver lesions in cirrhotic liver, HCC surveillance, post-TACE evaluation, and LI-RADS reporting. Four phases allow assessment of arterial hyperenhancement and washout.',
+                            prep='18G cannula. Water oral contrast 500 mL over 30 min optional.',
+                            contrast='100–120 mL Iomeron-400 @ 5 mL/s (high-concentration iodine essential for optimal arterial enhancement per Aberdeen protocol). Saline chaser 40 mL.',
+                            phases=[
+                                ('Plain', 'Above diaphragm to iliac crest', '-', 'Ax 3 mm'),
+                                ('Late arterial', 'Liver only', '35 s (or bolus-trigger + 18 s)', 'Ax/Cor 3 mm'),
+                                ('Portal venous', 'Diaphragm to iliac crest', '70 s', 'Ax/Cor 3 mm'),
+                                ('Equilibrium / delayed', 'Liver only', '180 s', 'Ax 3 mm'),
+                            ],
+                            coverage='Plain and PV: diaphragm to iliac crest. Arterial and equilibrium: liver only (dose-sparing).',
+                            recon='3 mm axial + coronal; 1 mm arterial thin for LI-RADS.',
+                            notes='LI-RADS features: arterial hyperenhancement (APHE), washout in PV/equilibrium, capsule appearance. High-iodine contrast (Iomeron-400) is specified in Aberdeen SOP for optimal arterial characterisation — do not substitute without clinical discussion. For non-cirrhotic livers use standard triphasic (ID 26).',
+                            guidelines='Aberdeen Royal Infirmary; RCR iRefer; LI-RADS v2018.',
+                        ),
+                        'special_notes': 'Four-phase dedicated HCC protocol with Iomeron-400. Distinct from ID 26 (generic triphasic) — use this variant for cirrhotic livers and post-TACE.',
+                        'is_emergency': False,
+                    },
+                    # N2a — CT IAMs
+                    {
+                        'slug': 'ct-iams-adult',
+                        'title': 'CT Internal Auditory Meati (IAMs)',
+                        'modality': 'CT',
+                        'body_section': 'Head and Neck',
+                        'keywords': 'iam, internal auditory meatus, temporal bone, vestibular schwannoma, conductive hearing loss, swansea',
+                        'shorthand_text': (
+                            'Helical head pre-contrast + helical high-resolution IAMs. '
+                            '50 mL hand-inject contrast only if mass suspected.'
+                        ),
+                        'indications': [
+                            'Conductive hearing loss',
+                            'Suspected cholesteatoma',
+                            'Temporal bone trauma',
+                            'Pre-operative IAM assessment',
+                            'Vestibular schwannoma (if MRI contraindicated)',
+                        ],
+                        'validation': {
+                            'requires_egfr': False,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Swansea NHS'],
+                        },
+                        'html': _pr1_html(
+                            purpose='High-resolution CT of the temporal bones and internal auditory meati for bony detail (cholesteatoma, otosclerosis, trauma, canal dehiscence). MRI is first line for vestibular schwannoma.',
+                            prep='Remove earrings / metallic head-and-neck jewellery.',
+                            contrast='Usually none. If a contrast-enhancing mass is clinically suspected and MRI contraindicated: 50 mL hand-inject water-soluble iodinated contrast.',
+                            phases=[
+                                ('Helical head', 'Vertex to skull base', '-', 'Ax 1 mm'),
+                                ('High-resolution IAMs', 'Petrous temporal bone', '-', 'Ax 0.5 mm + Cor 0.5 mm bone'),
+                            ],
+                            coverage='Vertex to skull base for head; petrous bones only for high-res IAM acquisition.',
+                            recon='Axial 0.5 mm bone kernel + coronal 0.5 mm through IAMs. Include soft-tissue reconstructions for mastoid/middle ear contents.',
+                            notes='MRI is first line for vestibular schwannoma and SNHL. CT is the modality of choice for bony detail (cholesteatoma, otosclerosis, trauma, superior canal dehiscence).',
+                            guidelines='Swansea NHS.',
+                        ),
+                        'special_notes': 'Bony detail only. For SNHL / vestibular schwannoma use MRI IAM.',
+                        'is_emergency': False,
+                    },
+                    # N2b — CT Subclavian Angio
+                    {
+                        'slug': 'ct-subclavian-angio',
+                        'title': 'CT Subclavian Angiography',
+                        'modality': 'CT',
+                        'body_section': 'Cardiovascular',
+                        'keywords': 'subclavian, thoracic outlet, angiography, upper limb angio, vascular, swansea',
+                        'shorthand_text': (
+                            'CTA hyoid to below elbow affected side. Omnipaque-350 '
+                            '100 mL @ 4 mL/s. Cannula in CONTRALATERAL arm.'
+                        ),
+                        'indications': [
+                            'Thoracic outlet syndrome',
+                            'Subclavian artery stenosis / occlusion',
+                            'Upper limb ischaemia',
+                            'Pre-operative vascular mapping',
+                            'Subclavian steal syndrome',
+                        ],
+                        'validation': {
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Swansea NHS'],
+                        },
+                        'html': _pr1_html(
+                            purpose='CT angiographic assessment of the subclavian artery and upper limb vasculature for stenosis, occlusion, dissection, aneurysm, or thoracic outlet compression.',
+                            prep=(
+                                '18G cannula must be in the <strong>NON-affected</strong> (contralateral) '
+                                'arm to avoid streak artefact from concentrated contrast in the affected side. '
+                                'Arms positioned for symptom provocation if TOS suspected.'
+                            ),
+                            contrast='100 mL Omnipaque-350 @ 4 mL/s IV with 40 mL saline chaser. Bolus-trigger on ascending aorta (150 HU threshold).',
+                            phases=[
+                                ('Arterial', 'Hyoid to below elbow of affected side', 'Bolus-trigger + 8 s', 'Ax 1 mm + Cor/Sag MIP'),
+                            ],
+                            coverage='Hyoid to below the elbow of the affected side only (dose-sparing).',
+                            recon='Axial 1 mm + coronal and sagittal MIP. 3D VRT for clinical communication.',
+                            notes='Cannula MUST be in the non-affected arm. For thoracic outlet syndrome consider provocative manoeuvres (arm abduction) per vascular team request. Verify arterial-phase timing carefully — subclavian enhancement can be rapid.',
+                            guidelines='Swansea NHS.',
+                        ),
+                        'special_notes': 'Cannula in non-affected arm. Coverage asymmetric (affected side only).',
+                        'is_emergency': False,
+                    },
+                    # N2c — CT Renal Cyst Characterisation
+                    {
+                        'slug': 'ct-renal-cyst-characterisation',
+                        'title': 'CT Renal Cyst Characterisation',
+                        'modality': 'CT',
+                        'body_section': 'Abdomen',
+                        'keywords': 'renal cyst, bosniak, renal mass, enhancement, swansea',
+                        'shorthand_text': (
+                            'Pre-contrast through renal area + post-contrast portal '
+                            'venous abdomen/pelvis. Measure HU pre vs post.'
+                        ),
+                        'indications': [
+                            'Indeterminate renal lesion on US or prior CT',
+                            'Bosniak cyst characterisation',
+                            'Complex renal cyst follow-up',
+                            'Incidental renal lesion',
+                        ],
+                        'validation': {
+                            'requires_egfr': True,
+                            'egfr_threshold': 30,
+                            'pregnancy_check_required': True,
+                            'allergy_check_required': True,
+                            'guideline_source': ['Swansea NHS', 'Bosniak 2019'],
+                        },
+                        'html': _pr1_html(
+                            purpose='Bosniak classification of indeterminate renal lesions by measurement of pre- and post-contrast attenuation to confirm enhancement (> 20 HU increase = solid/enhancing).',
+                            prep='18G cannula. Fast for 4 h. Water oral contrast 500 mL optional.',
+                            contrast='100 mL Omnipaque-350 @ 3 mL/s IV with saline chaser.',
+                            phases=[
+                                ('Non-contrast', 'Renal area only (dome of diaphragm to iliac crest)', '-', 'Ax 3 mm'),
+                                ('Portal venous', 'Diaphragm to symphysis', '70 s', 'Ax/Cor 3 mm'),
+                            ],
+                            coverage='Non-contrast limited to renal area for dose-sparing. PV phase covers full abdomen/pelvis for staging if malignancy suspected.',
+                            recon='Axial 3 mm + coronal 3 mm. ROI measurements of any lesion on both phases using identical size/position.',
+                            notes=(
+                                'Bosniak 2019 enhancement threshold: &gt; 20 HU increase between pre- and post-contrast '
+                                '= definite enhancement (solid component). 10–20 HU change is equivocal — consider MRI. '
+                                'Nephrographic/delayed phase not routinely required for Bosniak classification.'
+                            ),
+                            guidelines='Swansea NHS; Bosniak classification update 2019.',
+                        ),
+                        'special_notes': 'Pre- and post-contrast HU measurement is the key output. Place ROIs identically on both phases.',
+                        'is_emergency': False,
+                    },
+                ]
+
+                _pr1_added = 0
+                for _spec in _PR1_PROTOCOLS:
+                    _existing = _IP.query.filter_by(slug=_spec['slug']).first()
+                    if _existing:
+                        continue
+                    _row = _IP(
+                        title=_spec['title'],
+                        slug=_spec['slug'],
+                        modality=_spec['modality'],
+                        body_section=_spec['body_section'],
+                        keywords=_spec['keywords'],
+                        shorthand_text=_spec['shorthand_text'],
+                        detailed_protocol_html=_spec['html'],
+                        special_notes=_spec['special_notes'],
+                        indication_json=_json.dumps(_spec['indications']),
+                        validation_json=_json.dumps(_spec['validation']),
+                        origin='admin',
+                        is_published=True,
+                        is_verified=True,
+                        is_emergency=_spec.get('is_emergency', False),
+                        is_paediatric=False,
+                    )
+                    db.session.add(_row)
+                    _pr1_added += 1
+                if _pr1_added:
+                    db.session.commit()
+                    logger.info('PR1: added %d new imaging protocols', _pr1_added)
+        except Exception as _pr1_err:
+            db.session.rollback()
+            logger.warning('PR1 imaging protocol seed skipped: %s', _pr1_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
