@@ -8001,6 +8001,7 @@ Allow: /radiology-protocols/view/
 Allow: /knowledge-hub
 Allow: /anatomy-snippets/
 Allow: /contrast-reaction-card
+Allow: /vetting-essentials
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
@@ -8066,6 +8067,7 @@ def sitemap_xml():
         (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
         (f'{BASE}/radiology-pearls', '0.7', 'weekly'),
         (f'{BASE}/contrast-reaction-card', '0.8', 'monthly'),
+        (f'{BASE}/vetting-essentials', '0.8', 'monthly'),
         (f'{BASE}/learn/sba', '0.6', 'weekly'),
         (f'{BASE}/learn/viva', '0.6', 'weekly'),
         (f'{BASE}/privacy-policy', '0.3', 'yearly'),

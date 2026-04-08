@@ -62,3 +62,9 @@ def case_preview(case_id):
 def contrast_reaction_card():
     """Public contrast reaction card — ACR-aligned quick reference."""
     return render_template('contrast_reaction_card.html')
+
+
+@public_bp.route('/vetting-essentials')
+def vetting_essentials():
+    """Public vetting essentials card — CT contrast phases, timing, oral/rectal, liver supply."""
+    return render_template('vetting_essentials.html')

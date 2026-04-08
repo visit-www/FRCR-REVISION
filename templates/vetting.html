@@ -38,6 +38,10 @@
                 data-bs-toggle="offcanvas" data-bs-target="#contrastCardDrawer">
             <i class="fas fa-flask me-1"></i>Contrast Card
         </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2"
+                data-bs-toggle="offcanvas" data-bs-target="#vettingEssentialsDrawer">
+            <i class="fas fa-graduation-cap me-1"></i>Vetting Essentials
+        </button>
     </div>
     {% endif %}
 
@@ -369,6 +373,20 @@
     </div>
     <div class="offcanvas-body">
         {% include 'partials/_contrast_reaction_card.html' %}
+    </div>
+</div>
+
+<!-- ==================== VETTING ESSENTIALS DRAWER ==================== -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="vettingEssentialsDrawer"
+     style="width: min(860px, 96vw);" aria-labelledby="vettingEssentialsDrawerLabel">
+    <div class="offcanvas-header" style="background: #5E899E; color: #fff;">
+        <h5 class="offcanvas-title" id="vettingEssentialsDrawerLabel">
+            <i class="fas fa-graduation-cap me-2"></i>Vetting Essentials &mdash; CT Contrast &amp; Phases
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        {% include 'partials/_vetting_essentials.html' %}
     </div>
 </div>
 
