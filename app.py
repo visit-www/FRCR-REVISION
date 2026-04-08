@@ -1588,6 +1588,67 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR2 I3 trauma template seed skipped: %s', _i3_err)
 
+        # -- PR4 / C1: scrub KOC positioning boilerplate + Aberdeen ARI references --
+        # Idempotent: sentinel <!-- scrub:koc-ari-v1 --> marks rows that were
+        # processed. Two targets:
+        #   1. KOC-style positioning phrase: "Use the image on the right as a guide."
+        #      — blanked out on all affected rows.
+        #   2. Any "Aberdeen ARI" / "Aberdeen Royal Infirmary" mentions — replaced
+        #      with a single space (user requested blank replacement).
+        # The sentinel is appended once so subsequent deploys skip the row.
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                from models import ImagingProtocol as _IPScrub
+                _SCRUB_SENTINEL = "<!-- scrub:koc-ari-v1 -->"
+                _KOC_PHRASE_RE = _re.compile(
+                    r"Use the image on the right as a guide\.?",
+                    _re.IGNORECASE,
+                )
+                # Match "Aberdeen ARI", "Aberdeen Royal Infirmary", and "ARI Aberdeen"
+                _ARI_RE = _re.compile(
+                    r"\b(Aberdeen\s+Royal\s+Infirmary|Aberdeen\s+ARI|ARI\s+Aberdeen|Aberdeen\s*\(ARI\))\b",
+                    _re.IGNORECASE,
+                )
+                # Text columns to scrub on ImagingProtocol
+                _SCRUB_COLS = (
+                    'title', 'shorthand_text', 'positioning',
+                    'detailed_protocol_html', 'special_notes',
+                    'keywords', 'indication_json',
+                )
+                _scrub_updated = 0
+                for _row in _IPScrub.query.all():
+                    _had_sentinel = False
+                    # Check existing HTML for the sentinel — if present, skip
+                    _existing_html = getattr(_row, 'detailed_protocol_html', '') or ''
+                    if _SCRUB_SENTINEL in _existing_html:
+                        continue
+                    _changed = False
+                    for _col in _SCRUB_COLS:
+                        if not hasattr(_row, _col):
+                            continue
+                        _val = getattr(_row, _col, None)
+                        if not _val or not isinstance(_val, str):
+                            continue
+                        _new = _KOC_PHRASE_RE.sub(' ', _val)
+                        _new = _ARI_RE.sub(' ', _new)
+                        # Collapse stray double spaces introduced by substitutions
+                        _new = _re.sub(r'[ \t]{2,}', ' ', _new)
+                        if _new != _val:
+                            setattr(_row, _col, _new)
+                            _changed = True
+                    if _changed:
+                        # Append sentinel once so we don't re-process
+                        _row.detailed_protocol_html = (
+                            (getattr(_row, 'detailed_protocol_html', '') or '') + _SCRUB_SENTINEL
+                        )
+                        _scrub_updated += 1
+                if _scrub_updated:
+                    db.session.commit()
+                    logger.info('PR4 C1: scrubbed KOC/Aberdeen ARI references on %d imaging protocols', _scrub_updated)
+        except Exception as _scrub_err:
+            db.session.rollback()
+            logger.warning('PR4 C1 scrub skipped: %s', _scrub_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',

@@ -36,7 +36,7 @@ def _check_vetting_rate_limit():
     return _check_ai_rate_limit('radiq')
 
 
-def _search_protocols(study_type, modality, user_id=None, body_section=None, is_paediatric=None):
+def _search_protocols(study_type, modality, user_id=None, body_section=None, is_paediatric=None, clinical_text=None):
     """Search ImagingProtocol by title/keywords/shorthand/indications/modality.
 
     Returns personal matches first, then admin published, scored by relevance.
@@ -48,23 +48,60 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     """
     results = []
 
-    # Normalise search terms
+    # Normalise search terms:
+    # 1. Replace underscores with spaces
+    # 2. Strip parenthesised segments (e.g. "(CT AP)") — they pollute full-phrase match
+    # 3. Drop non-alphanumerics for word extraction
     raw_query = study_type.replace('_', ' ').strip() if study_type else ''
-    words = [w for w in raw_query.split() if len(w) >= 2]
-    # Only do individual word matching when body_section constrains results or single-word query
-    use_word_matching = bool(body_section) or len(words) <= 1
+    cleaned_query = re_sub(r'\([^)]*\)', ' ', raw_query)
+    cleaned_query = re_sub(r'\s+', ' ', cleaned_query).strip()
+    # STOP words that don't help narrow results
+    _STOP = {'with', 'without', 'and', 'or', 'of', 'the', 'for', 'iv', 'oral', 'contrast'}
+    word_tokens = re_sub(r'[^a-zA-Z0-9 ]', ' ', cleaned_query).split()
+    words = [w for w in word_tokens if len(w) >= 3 and w.lower() not in _STOP]
+    # Always enable word matching now — it's the more reliable path for multi-term queries
+    use_word_matching = True
 
-    if not raw_query and not modality:
+    # Normalise modality — map common synonyms to the canonical short code
+    _MODALITY_MAP = {
+        'ct': 'CT', 'cect': 'CT', 'ncct': 'CT', 'computed tomography': 'CT',
+        'mri': 'MRI', 'mr': 'MRI', 'magnetic resonance imaging': 'MRI',
+        'us': 'US', 'ultrasound': 'US', 'uss': 'US',
+        'xr': 'XR', 'x-ray': 'XR', 'radiograph': 'XR', 'plain film': 'XR',
+        'fluoro': 'Fluoroscopy', 'fluoroscopy': 'Fluoroscopy',
+        'nm': 'NM', 'nuclear medicine': 'NM',
+        'pet': 'PET', 'pet-ct': 'PET', 'pet ct': 'PET',
+        'angio': 'Angiography', 'angiography': 'Angiography', 'ir': 'IR',
+    }
+    norm_modality = (modality or '').strip()
+    if norm_modality and norm_modality.lower() in _MODALITY_MAP:
+        norm_modality = _MODALITY_MAP[norm_modality.lower()]
+
+    # Extract clinical keywords (indication words) for additional boost matching
+    clinical_tokens = []
+    if clinical_text:
+        ct = re_sub(r'[^a-zA-Z0-9 ]', ' ', clinical_text).split()
+        # Keep clinically meaningful tokens (drop stopwords and short words)
+        for w in ct:
+            wl = w.lower()
+            if len(w) >= 4 and wl not in _STOP and wl not in ('with', 'without', 'pain', 'patient', 'male', 'female', 'year', 'years', 'old', 'low', 'high', 'grade'):
+                clinical_tokens.append(w)
+        # Dedupe preserving order
+        seen = set()
+        clinical_tokens = [t for t in clinical_tokens if not (t.lower() in seen or seen.add(t.lower()))]
+        clinical_tokens = clinical_tokens[:8]
+
+    if not raw_query and not norm_modality and not clinical_tokens:
         return results
 
     def _build_filter(query_obj, model_cls):
         """Apply ILIKE filters across all searchable text columns."""
-        if modality:
-            query_obj = query_obj.filter(model_cls.modality.ilike(modality))
+        if norm_modality:
+            query_obj = query_obj.filter(model_cls.modality.ilike(norm_modality))
 
-        if body_section:
-            query_obj = query_obj.filter(model_cls.body_section.ilike(f'%{body_section}%'))
-
+        # body_section is a SOFT filter — used as a boost via OR, not a hard
+        # restriction. Prevents exclusion when AI picks "Pelvis" but the
+        # protocol is tagged "Abdomen" (or "Abdomen/Pelvis") or vice versa.
         if is_paediatric is True:
             query_obj = query_obj.filter(model_cls.is_paediatric == True)
         elif is_paediatric is False:
@@ -72,20 +109,30 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
 
         text_filters = []
 
-        # Match the full query string as-is (catches "CTPA", "MRI Brain", etc.)
-        if raw_query:
-            text_filters.append(model_cls.title.ilike(f'%{raw_query}%'))
-            text_filters.append(model_cls.keywords.ilike(f'%{raw_query}%'))
-            text_filters.append(model_cls.shorthand_text.ilike(f'%{raw_query}%'))
-            text_filters.append(model_cls.indication_json.ilike(f'%{raw_query}%'))
+        # Match the cleaned query string as-is (catches "CTPA", "MRI Brain", etc.)
+        if cleaned_query:
+            text_filters.append(model_cls.title.ilike(f'%{cleaned_query}%'))
+            text_filters.append(model_cls.keywords.ilike(f'%{cleaned_query}%'))
+            text_filters.append(model_cls.shorthand_text.ilike(f'%{cleaned_query}%'))
+            text_filters.append(model_cls.indication_json.ilike(f'%{cleaned_query}%'))
 
-        # Individual word matching only when constrained by body_section or single word
+        # Individual word matching (always enabled)
         if use_word_matching:
-            for word in words[:5]:
+            for word in words[:6]:
                 text_filters.append(model_cls.title.ilike(f'%{word}%'))
                 text_filters.append(model_cls.keywords.ilike(f'%{word}%'))
                 text_filters.append(model_cls.shorthand_text.ilike(f'%{word}%'))
                 text_filters.append(model_cls.indication_json.ilike(f'%{word}%'))
+
+        # Clinical indication tokens (e.g. "appendicitis") — boost protocols
+        # whose keywords or indication_json mention the same condition.
+        for tok in clinical_tokens:
+            text_filters.append(model_cls.keywords.ilike(f'%{tok}%'))
+            text_filters.append(model_cls.indication_json.ilike(f'%{tok}%'))
+
+        # body_section as a soft-match term (will bump score in _score())
+        if body_section:
+            text_filters.append(model_cls.body_section.ilike(f'%{body_section}%'))
 
         if text_filters:
             query_obj = query_obj.filter(db.or_(*text_filters))
@@ -112,18 +159,35 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     def _score(p):
         s = 0
         title_lower = (p.title or '').lower()
-        query_lower = raw_query.lower()
+        keywords_lower = (p.keywords or '').lower()
+        body_lower = (p.body_section or '').lower()
+        query_lower = cleaned_query.lower()
         if query_lower and query_lower in title_lower:
             s += 10  # Full phrase title match
         for w in words:
-            if w.lower() in title_lower:
-                s += 2  # Per-word title match
+            wl = w.lower()
+            if wl in title_lower:
+                s += 3  # Per-word title match
+            elif wl in keywords_lower:
+                s += 2  # Per-word keyword match
+        # Body section boost (soft filter): matches title intent when AI body_section aligns
+        if body_section and body_section.lower() in body_lower:
+            s += 4
+        # Clinical token boost — protocol keywords/indications mention the condition
+        indication_lower = (p.indication_json or '').lower()
+        for tok in clinical_tokens:
+            tl = tok.lower()
+            if tl in keywords_lower or tl in indication_lower:
+                s += 5  # strong signal: protocol explicitly mentions the condition
         if p.is_emergency:
             s += 1
         return s
 
-    results.sort(key=lambda p: _score(p), reverse=True)
-    return results[:10]
+    # Drop zero-score results (filter matched something, but nothing overlapped with the query)
+    scored = [(p, _score(p)) for p in results]
+    scored = [(p, s) for p, s in scored if s > 0]
+    scored.sort(key=lambda item: item[1], reverse=True)
+    return [p for p, _s in scored[:10]]
 
 
 def _slugify(text):
@@ -256,9 +320,11 @@ def vetting_analyse():
         # Only restrict to paediatric when AI is confident; otherwise leave None
         # to return both (ensures backwards-compatible behaviour for adults).
         paed_flag = True if result.get('is_paediatric') is True else None
+        cleaned_clinical = result.get('cleaned_clinical_text', '') or ''
         matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
                                               body_section=body_section,
-                                              is_paediatric=paed_flag)
+                                              is_paediatric=paed_flag,
+                                              clinical_text=cleaned_clinical)
 
         # Search for matching clinical algorithms
         cleaned_text = result.get('cleaned_clinical_text', '')
