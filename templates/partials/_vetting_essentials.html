@@ -187,55 +187,171 @@
     <div class="tab-pane fade" id="ve-tab3" role="tabpanel">
       <div class="ve-section-intro">
         <h6 class="ve-section-title"><i class="fas fa-glass-whiskey me-1"></i>Oral contrast — types, indications &amp; caveats</h6>
-        <p class="ve-section-lead">Three broad classes based on attenuation. Choice depends on whether you need to mark the bowel lumen or preserve the ability to see bowel-wall enhancement.</p>
+        <p class="ve-section-lead">Choice depends on whether you need to mark the bowel lumen or preserve bowel-wall enhancement. Adult and paediatric dosing differ significantly.</p>
       </div>
 
-      <div class="table-responsive">
-        <table class="table table-sm ve-table">
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Examples</th>
-              <th>Attenuation</th>
-              <th>When to use</th>
-              <th>Caveats</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="fw-semibold">Positive</td>
-              <td>Dilute iodinated contrast (Gastrografin / Urografin), dilute barium sulphate</td>
-              <td>High (+100 to +400 HU)</td>
-              <td>Suspected bowel perforation, anastomotic leak, fistula tracking, differentiation of collapsed bowel from a mass</td>
-              <td>Partial bowel filling; obscures bowel-wall enhancement; higher radiation dose required to see through high HU; avoid before CT colonography</td>
-            </tr>
-            <tr>
-              <td class="fw-semibold">Neutral</td>
-              <td>Water, methylcellulose, polyethylene glycol (PEG), dilute (2 %) mannitol, Volumen® (low-density barium)</td>
-              <td>Low (~0 HU)</td>
-              <td>CT enterography / enteroclysis, mesenteric ischaemia, acute abdomen when bowel-wall enhancement needed</td>
-              <td>Needs cooperative patient (large volume, timed drinking); mannitol can cause diarrhoea and cramping</td>
-            </tr>
-            <tr>
-              <td class="fw-semibold">Negative</td>
-              <td>Air, CO₂ insufflation</td>
-              <td>Very low (−1000 HU)</td>
-              <td>CT colonography, virtual colonoscopy, rarely stomach distension</td>
-              <td>Requires rectal tube and insufflator; patient discomfort; not for perforation workup</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- Adult / Paediatric sub-tabs -->
+      <ul class="nav nav-pills ve-subtabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="ve-tab3a-btn" data-bs-toggle="pill" data-bs-target="#ve-tab3a" type="button" role="tab">
+            <i class="fas fa-user me-1"></i>Adult
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="ve-tab3p-btn" data-bs-toggle="pill" data-bs-target="#ve-tab3p" type="button" role="tab">
+            <i class="fas fa-child me-1"></i>Paediatric
+          </button>
+        </li>
+      </ul>
 
-      <div class="alert ve-alert ve-alert-warning mt-3">
-        <i class="fas fa-exclamation-triangle me-1"></i>
-        <strong>Acute abdomen / appendicitis:</strong> most modern protocols use <em>no oral contrast</em> or water only — delay from oral contrast (45–90 min) is unacceptable, and IV contrast + thin-section MDCT is diagnostic without it.
-      </div>
+      <div class="tab-content">
 
-      <div class="alert ve-alert ve-alert-info mt-2">
-        <i class="fas fa-lightbulb me-1"></i>
-        <strong>Water loading trick:</strong> 500–1000 mL water 30–60 min before scan distends the stomach and proximal small bowel, improving visualisation of the gastric and pancreatic regions without obscuring bowel-wall enhancement.
-      </div>
+        <!-- ═══════════ ADULT ORAL CONTRAST ═══════════ -->
+        <div class="tab-pane fade show active" id="ve-tab3a" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-sm ve-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Examples</th>
+                  <th>Attenuation</th>
+                  <th>When to use</th>
+                  <th>Caveats</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">Positive</td>
+                  <td>Dilute iodinated contrast (Gastrografin / Urografin), dilute barium sulphate</td>
+                  <td>High (+100 to +400 HU)</td>
+                  <td>Suspected bowel perforation, anastomotic leak, fistula tracking, differentiation of collapsed bowel from a mass</td>
+                  <td>Partial bowel filling; obscures bowel-wall enhancement; higher radiation dose required to see through high HU; avoid before CT colonography</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Neutral</td>
+                  <td>Water, methylcellulose, polyethylene glycol (PEG), dilute (2 %) mannitol, Volumen® (low-density barium)</td>
+                  <td>Low (~0 HU)</td>
+                  <td>CT enterography / enteroclysis, mesenteric ischaemia, acute abdomen when bowel-wall enhancement needed</td>
+                  <td>Needs cooperative patient (large volume, timed drinking); mannitol can cause diarrhoea and cramping</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Negative</td>
+                  <td>Air, CO₂ insufflation</td>
+                  <td>Very low (−1000 HU)</td>
+                  <td>CT colonography, virtual colonoscopy, rarely stomach distension</td>
+                  <td>Requires rectal tube and insufflator; patient discomfort; not for perforation workup</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert ve-alert ve-alert-warning mt-3">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            <strong>Acute abdomen / appendicitis:</strong> most modern protocols use <em>no oral contrast</em> or water only — delay from oral contrast (45–90 min) is unacceptable, and IV contrast + thin-section MDCT is diagnostic without it.
+          </div>
+
+          <div class="alert ve-alert ve-alert-info mt-2">
+            <i class="fas fa-lightbulb me-1"></i>
+            <strong>Water loading trick:</strong> 500–1000 mL water 30–60 min before scan distends the stomach and proximal small bowel, improving visualisation of the gastric and pancreatic regions without obscuring bowel-wall enhancement.
+          </div>
+        </div>
+
+        <!-- ═══════════ PAEDIATRIC ORAL CONTRAST ═══════════ -->
+        <div class="tab-pane fade" id="ve-tab3p" role="tabpanel">
+          <p class="ve-section-lead">Age/weight-banded dilute positive iodinated oral contrast (iopamidol 370 / Isovue 370). Volumes and dose counts increase with age.</p>
+
+          <div class="table-responsive">
+            <table class="table table-sm ve-table">
+              <thead>
+                <tr>
+                  <th>Age band</th>
+                  <th>Vehicle (clear liquid)</th>
+                  <th>Iopamidol 370 (Isovue)</th>
+                  <th>Doses</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">Newborn – 6 months</td>
+                  <td>58 mL</td>
+                  <td>2 mL</td>
+                  <td><span class="ve-chip ve-chip-neutral">1 dose</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">6 – 18 months</td>
+                  <td>145 mL</td>
+                  <td>5 mL</td>
+                  <td><span class="ve-chip ve-chip-neutral">1 dose</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">18 months – 2 years</td>
+                  <td>200 mL</td>
+                  <td>8 mL</td>
+                  <td><span class="ve-chip ve-chip-neutral">1 dose</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">2 – 6 years</td>
+                  <td>200 mL</td>
+                  <td>8 mL</td>
+                  <td><span class="ve-chip ve-chip-hot">2 doses</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">6 – 12 years</td>
+                  <td>300 mL</td>
+                  <td>12 mL</td>
+                  <td><span class="ve-chip ve-chip-hot">2 doses</span></td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">12 years and above</td>
+                  <td>480 mL</td>
+                  <td>20 mL</td>
+                  <td><span class="ve-chip ve-chip-hot">2 doses</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <div class="ve-card">
+                <div class="ve-card-header"><i class="fas fa-utensils me-1"></i>Preparation &amp; NPO</div>
+                <div class="ve-card-body">
+                  <ul class="mb-0 ps-3">
+                    <li><strong>Non-anaesthesia:</strong> NPO 4 hours before scan.</li>
+                    <li><strong>Paediatric sedation / anaesthesia:</strong> NPO 4 hours, check in to Imaging <strong>3 hours</strong> before CT for oral contrast administration, then RN work-up.</li>
+                    <li><strong>Prior barium study:</strong> <em>not</em> within <strong>72 hours</strong> of CT (residual barium causes artefact; may cancel the scan).</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="ve-card">
+                <div class="ve-card-header"><i class="fas fa-glass-whiskey me-1"></i>Mixing &amp; administration</div>
+                <div class="ve-card-body">
+                  <ul class="mb-0 ps-3">
+                    <li>Mix the iopamidol in a <strong>clear liquid</strong>: apple juice, water, 7-Up, or Breeza.</li>
+                    <li>Route: <strong>PO</strong>, or via <strong>NG / G / J tube</strong>.</li>
+                    <li><strong>Single dose:</strong> given over 30–60 min before scan.</li>
+                    <li><strong>Two doses:</strong> 1st dose <strong>60 min</strong> before scan, 2nd dose <strong>30 min</strong> before scan.</li>
+                    <li>Document actual volume administered on the MAR.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert ve-alert ve-alert-warning mt-3">
+            <i class="fas fa-exclamation-triangle me-1"></i>
+            <strong>Dilution matters:</strong> improper dilution produces contrast that is too dense, creating streak artefact on the CT. The scan may be <em>cancelled</em> if contrast is too dense, or if residual barium from a prior study is present.
+          </div>
+
+          <div class="alert ve-alert ve-alert-info mt-2">
+            <i class="fas fa-lightbulb me-1"></i>
+            <strong>More time if needed:</strong> the timings above are minima. Give longer if the child drinks slowly, is distressed, or if NG/G tube administration needs gradual delivery.
+          </div>
+        </div>
+
+      </div> <!-- /sub-tab content -->
     </div>
 
     <!-- ============================================================ -->
@@ -421,6 +537,27 @@
   @media (max-width: 575.98px) {
     .ve-tab-label { display: none; }
     .ve-tabs .nav-link { padding: 0.5rem 0.75rem; }
+  }
+  /* Sub-tabs (pills) used inside Oral Contrast for Adult / Paediatric */
+  .ve-subtabs {
+    gap: 0.35rem;
+  }
+  .ve-subtabs .nav-link {
+    color: #5E899E;
+    background: #f0f7fa;
+    border: 1px solid #d4e5ec;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 999px;
+  }
+  .ve-subtabs .nav-link:hover {
+    background: #e0eef4;
+  }
+  .ve-subtabs .nav-link.active {
+    background: #e96304;
+    border-color: #e96304;
+    color: #fff;
   }
   .ve-content {
     padding: 1rem 0.25rem 0.25rem;
