@@ -464,10 +464,94 @@
     <!-- TAB 6 · PAEDIATRIC CALCULATOR                                 -->
     <!-- ============================================================ -->
     <div class="tab-pane fade" id="crc-tab6" role="tabpanel">
-      <div class="crc-section-intro">
-        Enter the child's <strong>weight in kg</strong> for live, weight-based contrast-reaction
-        and premedication doses. All values are clamped to the per-drug maximum where applicable.
-        Always cross-check against your local paediatric protocol.
+      <div class="crc-section-intro d-flex align-items-start gap-2">
+        <div class="flex-grow-1">
+          Enter the child's <strong>weight in kg</strong> for live, weight-based contrast-reaction
+          and premedication doses. All values are clamped to the per-drug maximum where applicable.
+          Always cross-check against your local paediatric protocol.
+        </div>
+        <button type="button" class="btn btn-sm btn-link p-0 crc-info-btn" id="crc-paed-info-btn"
+                title="Dose rationales on which the calculator works"
+                onclick="document.getElementById('crc-paed-info-card').classList.toggle('d-none'); return false;">
+          <i class="fas fa-info-circle" style="font-size: 1.1rem; color: #5E899E;"></i>
+        </button>
+      </div>
+
+      <!-- Info card — dose rationales (collapsed by default) -->
+      <div id="crc-paed-info-card" class="d-none crc-info-card mb-3">
+        <div class="crc-info-card-header">
+          <i class="fas fa-info-circle me-1"></i>
+          <strong>Dose rationales on which the calculator works</strong>
+          <button type="button" class="btn btn-sm btn-link p-0 ms-auto text-muted"
+                  onclick="document.getElementById('crc-paed-info-card').classList.add('d-none'); return false;"
+                  aria-label="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="crc-info-card-body">
+          <p class="small text-muted mb-2">
+            The calculator applies these per-kg rules and clamps every output to the adult single-dose maximum.
+            Values are consistent with the ACR Manual on Contrast Media 2025 and standard paediatric anaphylaxis guidance.
+          </p>
+          <div class="table-responsive">
+            <table class="table table-sm mb-0 crc-info-table">
+              <thead>
+                <tr>
+                  <th>Drug / fluid</th>
+                  <th>Per-kg dose</th>
+                  <th>Maximum</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold">Epinephrine — IV</td>
+                  <td>0.01 mg/kg</td>
+                  <td>0.1 mg single dose</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Epinephrine — IM</td>
+                  <td>0.01 mg/kg</td>
+                  <td>0.3 mg single dose</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Diphenhydramine</td>
+                  <td>1 mg/kg</td>
+                  <td>50 mg</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Saline bolus (hypotension)</td>
+                  <td>10–20 mL/kg</td>
+                  <td>500–1000 mL</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Hydrocortisone (premed)</td>
+                  <td>2 mg/kg</td>
+                  <td>200 mg</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Prednisone (premed)</td>
+                  <td>0.5–0.7 mg/kg</td>
+                  <td>50 mg</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Atropine</td>
+                  <td>0.02 mg/kg</td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold">Auto-injector selector</td>
+                  <td colspan="2">
+                    &lt; 30 kg → <strong>EpiPen Jr 0.15 mg</strong><br>
+                    ≥ 30 kg → <strong>EpiPen 0.3 mg</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="small text-muted mb-0 mt-2">
+            <em>Notes:</em> epinephrine concentrations — IM uses 1:1,000, IV uses 1:10,000.
+            Weight &gt; 100 kg is treated as 100 kg for the per-kg step (then clamped to the single-dose max).
+            Saline bolus range represents the initial fluid-resuscitation band — escalate per clinical response.
+          </p>
+        </div>
       </div>
 
       <div class="crc-calc-input-row">
@@ -635,6 +719,47 @@
     margin-bottom: 1rem;
     font-size: 0.85rem;
     line-height: 1.5;
+}
+.crc-info-btn {
+    border: 0;
+    background: transparent;
+    line-height: 1;
+    cursor: pointer;
+}
+.crc-info-btn:hover i {
+    color: #e96304 !important;
+}
+.crc-info-card {
+    background: #fff8f0;
+    border: 1px solid #ffc9a3;
+    border-left: 4px solid #e96304;
+    border-radius: 0.4rem;
+    overflow: hidden;
+}
+.crc-info-card-header {
+    background: #fff;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid #ffc9a3;
+    color: #e96304;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.crc-info-card-body {
+    padding: 0.65rem 0.85rem;
+}
+.crc-info-table {
+    font-size: 0.78rem;
+}
+.crc-info-table thead th {
+    background: #fff2e8;
+    color: #c0510b;
+    border-bottom: 2px solid #ffc9a3;
+    font-weight: 600;
+}
+.crc-info-table tbody td {
+    vertical-align: top;
 }
 .crc-h6 {
     color: #5E899E;
