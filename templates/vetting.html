@@ -114,7 +114,7 @@
                         </div>
                     </div>
                     <small class="text-muted d-block">Cleaned Clinical Text</small>
-                    <div id="cleanedTextDisplay" class="border rounded p-2 bg-light small mb-2"></div>
+                    <div id="cleanedTextDisplay" class="border rounded p-2 bg-light small mb-2" style="white-space: pre-wrap; line-height: 1.5;"></div>
 
                     <!-- Guideline citation -->
                     <div id="guidelineCitationContainer" class="d-none mb-2">
@@ -614,7 +614,16 @@ function populateScene2() {
     // Display analysis results
     document.getElementById('studyNameDisplay').textContent = a.study_name_full || a.study_type;
     document.getElementById('modalityDisplay').textContent = a.modality;
-    document.getElementById('cleanedTextDisplay').textContent = a.cleaned_clinical_text;
+    // Render cleaned text — if AI returned a single blob, split on sentence boundaries
+    // for readability. Newlines already present are preserved by white-space: pre-wrap.
+    let cleanedText = a.cleaned_clinical_text || '';
+    if (cleanedText && !cleanedText.includes('\n')) {
+        cleanedText = cleanedText
+            .replace(/\s*;\s*/g, '\n')
+            .replace(/\.\s+(?=[A-Z?])/g, '.\n')
+            .trim();
+    }
+    document.getElementById('cleanedTextDisplay').textContent = cleanedText;
 
     // Guideline citation (optional)
     const citationContainer = document.getElementById('guidelineCitationContainer');

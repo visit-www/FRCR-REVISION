@@ -358,7 +358,10 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         "Return ONLY valid JSON with these fields:\n"
         "{\n"
         '  "cleaned_clinical_text": "cleaned version of the referral (fix formatting, '
-        'expand abbreviations, preserve clinical meaning and original text)",\n'
+        'expand abbreviations, preserve clinical meaning and original text). '
+        'Format as separate short lines — one clinical fact/finding per line, '
+        'separated by a single newline character \\n. Do NOT return one long paragraph. '
+        'Example: \\"58M, known COPD\\n3/7 pleuritic chest pain\\nSOB, HR 110, SpO2 92% RA\\nWells 4.5, D-dimer positive\\n?PE\\"",\n'
         '  "study_type": "short study identifier e.g. CTPA, CT ABDOMEN PELVIS (CT AP), CT CAP, MRI BRAIN",\n'
         '  "study_name_special": "special study name e.g. 4D CT for parathyroid adenoma, Camp Bastion protocol",\n'
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
