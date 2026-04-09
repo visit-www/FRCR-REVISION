@@ -8292,4 +8292,9 @@ if __name__ == '__main__':
         show_macos_gatekeeper_popup()
     port = find_free_port(5000, 20)
     logger.info(f"Starting server on http://127.0.0.1:{port}")
-    app.run(debug=True, host='127.0.0.1', port=port)
+    # Default to localhost only. Set DEV_BIND=lan to expose on the LAN
+    # for mobile testing on the same Wi-Fi (uses 0.0.0.0).
+    bind_host = '0.0.0.0' if os.getenv('DEV_BIND', '').lower() == 'lan' else '127.0.0.1'
+    if bind_host == '0.0.0.0':
+        logger.warning('DEV_BIND=lan — server is reachable on your LAN. Do NOT use on untrusted networks.')
+    app.run(debug=True, host=bind_host, port=port)

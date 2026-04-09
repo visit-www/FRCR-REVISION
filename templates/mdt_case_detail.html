@@ -253,6 +253,31 @@ document.addEventListener('DOMContentLoaded', function() {
     var caseId = {{ case.id }};
     MdtSuite.initCaseForm(caseId);
 
+    // ── PII Guard v2 — wire to all clinical textareas + the case_reference field ──
+    // Renders dotted underlines on detected PII, red shield in the page card header,
+    // and disables the auto-save flow until PII is resolved (Redact / Remove / Dismiss).
+    if (window.PIIGuard && window.PIIGuard.protect) {
+        window._piiCtrl = PIIGuard.protect({
+            textareas: [
+                '#mdtCaseRef',
+                'textarea[data-field="diagnosis"]',
+                'textarea[data-field="clinical_history"]',
+                'textarea[data-field="imaging_findings"]',
+                'textarea[data-field="histology_biopsy"]',
+                'textarea[data-field="lab_values"]',
+                'textarea[data-field="additional_notes"]',
+                '#mdtPreSummary',
+                'textarea[data-field="mdt_consensus"]',
+                'textarea[data-field="action_plan"]',
+            ],
+            bannerTarget: '#mdtCaseForm .mdt-section:first-child .card-header',
+            apiButtons: [],   // auto-save is debounced not button-driven; PII Guard
+                              // blocks the underlying PUT via the global middleware,
+                              // so the form indicator handles the failed save state
+            auditContext: 'mdt'
+        });
+    }
+
     // Link modal wiring
     var linkBtn = document.getElementById('mdtLinkBtn');
     var unlinkBtn = document.getElementById('mdtUnlinkBtn');
