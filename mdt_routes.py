@@ -111,7 +111,14 @@ def mdt_case_detail(meeting_id, case_id):
     case = _own_case_or_404(case_id)
     if case.meeting_id != meeting.id:
         abort(404)
-    return render_template('mdt_case_detail.html', meeting=meeting, case=case)
+    import os
+    return render_template(
+        'mdt_case_detail.html',
+        meeting=meeting,
+        case=case,
+        cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+        cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''),
+    )
 
 
 @mdt_bp.route('/mdt/cases/search')
@@ -135,7 +142,14 @@ def mdt_bulk_import(meeting_id):
 def mdt_case_view(case_id):
     """Direct case view (used from search)."""
     case = _own_case_or_404(case_id)
-    return render_template('mdt_case_detail.html', meeting=case.meeting, case=case)
+    import os
+    return render_template(
+        'mdt_case_detail.html',
+        meeting=case.meeting,
+        case=case,
+        cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+        cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -250,9 +264,10 @@ def api_create_case():
         return jsonify({'error': 'meeting_id required'}), 400
     meeting = _own_meeting_or_404(meeting_id)
 
-    diagnosis = (data.get('diagnosis') or '').strip()
-    if not diagnosis:
-        return jsonify({'error': 'Diagnosis required'}), 400
+    # Diagnosis is OPTIONAL. User may not know the final diagnosis at MDT
+    # time — the whole point of MDT is often to establish it. Empty string
+    # is allowed; the case list shows "— pending —" when empty.
+    diagnosis = (data.get('diagnosis') or '').strip() or '— pending —'
 
     case_ref = (data.get('case_reference') or '').strip() or None
     if case_ref and _looks_like_patient_id(case_ref):
@@ -364,11 +379,12 @@ def api_generate_summary(case_id):
         remaining = None
 
     try:
-        from ai_smart_reporter import generate_mdt_summary_for_case
-        # Same prompt + same model as Smart Reporter MDT card. The output
-        # is already in 4-section plain-text format, which renders cleanly
-        # in a textarea.
-        summary, model_used, tokens = generate_mdt_summary_for_case({
+        from ai_smart_reporter import generate_mdt_summary_for_case, mdt_summary_to_html
+        # Same prompt + same model as Smart Reporter MDT card. Model emits
+        # plain text; we convert to HTML via mdt_summary_to_html() so the
+        # stored field and the rendered view share one format. TinyMCE
+        # (Edit mode) then operates on the HTML directly.
+        plain_summary, model_used, tokens = generate_mdt_summary_for_case({
             'diagnosis': c.diagnosis,
             'clinical_history': c.clinical_history,
             'imaging_findings': c.imaging_findings,
@@ -376,16 +392,18 @@ def api_generate_summary(case_id):
             'lab_values': c.lab_values,
             'additional_notes': c.additional_notes,
         })
+        html_summary = mdt_summary_to_html(plain_summary)
     except Exception as e:
         logger.error("MDT summary generation failed for case %s: %s", case_id, e)
         return jsonify({'error': str(e)}), 500
 
-    # Persist
-    c.pre_mdt_summary = summary
+    # Persist HTML (source of truth after generation)
+    c.pre_mdt_summary = html_summary
     db.session.commit()
 
     return jsonify({
-        'summary': summary,
+        'summary': html_summary,
+        'summary_plain': plain_summary,
         'model_used': model_used,
         'tokens': tokens,
         'remaining_requests': remaining,

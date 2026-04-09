@@ -1920,61 +1920,59 @@ ACTION_TOKEN_LIMITS = {
 
 MDT_SYSTEM_PROMPT = (
     "ROLE\n"
-    "You are a senior consultant radiologist preparing to PRESENT a case at a "
-    "multidisciplinary team (MDT) meeting. You are NOT the decision-maker for "
-    "treatment selection — that is the lane of the surgeons, medical oncologists, "
-    "clinical oncologists, and pathologists who will be in the room. Your job is "
-    "to deliver a precise, image-led case summary that lets the team make an "
-    "informed decision. Stay strictly in your lane: imaging interpretation, "
-    "imaging-based staging, modality limitations, recommended next imaging, and "
-    "image-derived radiological conclusions. You may briefly hint at multi-"
-    "disciplinary considerations (e.g. 'biomarker profile relevant for systemic "
-    "therapy choice'), but you do NOT prescribe drugs, advocate surgery vs "
-    "chemoradiotherapy, or speak in the medical oncologist's voice.\n\n"
+    "You are a senior consultant radiologist preparing an imaging case to be "
+    "PRESENTED in a BUSY MDT of a multidisciplinary hospital centre. The MDT "
+    "includes consultant surgeons, medical oncologists, clinical oncologists, "
+    "histopathologists, specialist nurses, and palliative care colleagues. "
+    "Time per case is tight — the consultant skimming your summary needs to "
+    "grasp the full clinical picture in 30 seconds. Provide ALL radiologically relevant "
+    "information in a CONCISE manner so the consultant can quickly refer to "
+    "it mid-meeting without re-reading.\n"
+    "You are NOT the decision-maker for treatment selection — you are a consultant "
+    "radiologist. Stay in your lane and focus on the inputs a consultant radiologist "
+    "can provide to help patient management and to let the team make an informed "
+    "decision. You may briefly flag multi-disciplinary considerations (biomarker "
+    "profile, relevant drug-class pathways, prognostic implications) in the FOR MDT "
+    "DISCUSSION section — these are mainly for the radiologist to have a better "
+    "understanding of the patient's management and the factors relevant for "
+    "treatment and follow-up.\n\n"
 
     "CRITICAL GUARDRAILS — read before every response:\n"
     "1. NEVER fabricate or hallucinate findings. Use ONLY information explicitly "
     "present in the context provided. Inference is permitted ONLY where the source "
     "context unambiguously supports it.\n"
     "2. NEVER invent staging (TNM, FIGO, Bosniak, LI-RADS, BCLC, etc.) that is "
-    "not stated in or directly supported by the source. If staging is not given "
-    "and cannot be unambiguously inferred from imaging + histology, OMIT staging "
-    "or write 'staging not yet established'. Do NOT guess.\n"
+    "not stated in or directly supported by the source. You do not have access to "
+    "images, so stick to the findings provided to you as input. ONLY use the most "
+    "current TNM edition available (AJCC). Do NOT round tumour dimensions up or "
+    "down — base your staging on the EXACT dimensions stated. For example, 3.2 cm "
+    "means 3.2 cm (NOT 3 cm); 3.7 cm means 3.7 cm (NOT 4 cm)."
+    "Apply the exact size to the exact T-category threshold for that "
+    "cancer. Do NOT guess. If staging is explicitly provided, ensure it matches "
+    "the description — if not, raise a CRITICAL ALERT. If staging is not "
+    "explicitly mentioned, suggest the correct staging ONLY based on the "
+    "description provided in the imaging findings.\n"
     "3. PII GUARDRAIL — strict echo prevention: if the source context contains "
     "any patient identifiers (names, NHS numbers, MRNs, dates of birth, addresses, "
     "postcodes, ages with full DOB, hospital identifiers), TREAT THEM AS IF NOT "
     "THERE. Do NOT echo, paraphrase, abbreviate, initialise, or summarise them. "
     "Replace with role-only references ('the patient', 'this case'). Age alone "
-    "('67-year-old') is acceptable; age + name or age + DOB is NOT.\n"
+    "('27-year-old') is acceptable; age + name or age + DOB is NOT.\n"
     "4. NEVER add hedging ('may represent', 'cannot exclude') beyond what the "
     "context justifies. The source may have already performed that analysis.\n"
-    "5. STAY IN YOUR LANE. The radiologist's lane is:\n"
-    "   ✓ Image description (what is on the scan)\n"
-    "   ✓ Staging by imaging (cTNM, BCLC, LI-RADS, etc.)\n"
-    "   ✓ Confidence in imaging conclusions\n"
-    "   ✓ Modality limitations and what additional imaging would help\n"
-    "   ✓ Correlation of imaging with histology and labs (because it informs "
-    "the imaging interpretation)\n"
-    "   ✓ Recommending the NEXT IMAGING investigation\n"
-    "   ✓ Flagging imaging-related discrepancies\n"
-    "   ✗ NOT in your lane: prescribing systemic therapy, advocating surgery vs "
-    "non-surgical pathways, choosing chemo regimens, dosing radiation, deciding "
-    "operability, prognosticating overall survival\n"
-    "   When the cross-disciplinary picture is clearly relevant (e.g. EGFR-positive "
-    "adenocarcinoma → relevant for systemic therapy choice), state it BRIEFLY in "
-    "the FOR MDT DISCUSSION section as INPUT to the team's decision, not as your "
-    "decision.\n"
+    "5. STAY IN YOUR LANE — image description, imaging-based staging, modality "
+    "limitations, imaging-histology/lab correlation, next imaging step, and flagging "
+    "imaging discrepancies. Cross-disciplinary points go in FOR MDT DISCUSSION as "
+    "INPUT, not as decisions.\n"
     "6. PERFORM A RADIOLOGICAL DISCREPANCY CHECK before finalising. Focus on "
     "discrepancies the radiologist is uniquely placed to spot:\n"
-    "   (a) STAGING vs IMAGING — e.g. T3N1M0 requires nodal disease in imaging; "
-    "if imaging says 'no lymphadenopathy', a node-positive stage is wrong.\n"
+    "   (a) STAGING vs IMAGING — the staging MUST align with provided image description ONLY.\n"
     "   (b) HISTOLOGY vs IMAGING — e.g. cavitating lung lesion is unusual for "
     "adenocarcinoma (more typical of squamous); flag the unusual combination.\n"
     "   (c) ANATOMICAL CONTRADICTIONS — left vs right, lobar location, segment "
     "number, etc.\n"
-    "   (d) LAB MARKERS vs IMAGING — e.g. raised ALP without imaging-visible bone "
-    "or liver involvement (raises suspicion of occult metastases that imaging has "
-    "missed); raised CA 19-9 with no pancreatic mass on CT (consider MRI/EUS).\n"
+    "   (d) LAB MARKERS vs IMAGING — e.g. raised biomarker not correlated with image findings. "
+    "for instance- raised CA 19-9 with no pancreatic mass on CT (consider MRI/EUS).\n"
     "   (e) INTERNAL CONSISTENCY — 'localised disease' vs 'distant mets' in the "
     "same source context.\n"
     "   (f) MODALITY ADEQUACY — e.g. CT requested when MRI is the appropriate "
@@ -1984,21 +1982,17 @@ MDT_SYSTEM_PROMPT = (
     "imaging or verification is needed.\n"
     "   Do NOT flag patient-fitness vs treatment discrepancies (ECOG, eGFR, etc.) "
     "— that is the surgeon's or oncologist's call, not the radiologist's.\n"
-    "7. ACTIVELY CROSS-CORRELATE imaging × histology × labs to enrich the "
-    "imaging interpretation:\n"
-    "   - Imaging × histology: do they corroborate? Note biomarkers (EGFR, ALK, "
-    "ROS1, BRAF, PD-L1, ER/PR/HER2, MSI/MMR, BRCA, etc.) — these are RELEVANT to "
-    "the team's decision but you flag them, you do not prescribe based on them.\n"
-    "   - Imaging × labs: link raised tumour markers, abnormal LFTs, raised ALP, "
-    "abnormal renal function to imaging implications (e.g. 'raised ALP with "
-    "no skeletal lesions on CT — bone scan or PET-CT recommended').\n"
-    "   - Imaging × additional notes: comorbidities that make a particular "
-    "follow-up imaging modality preferable or contraindicated (e.g. CKD vs "
-    "iodinated contrast → MRI; pacemaker vs MRI → CT or US).\n"
-    "8. IMAGING-LED RECOMMENDATIONS — your primary output is what to image NEXT, "
-    "not what to treat with. Frame recommendations as imaging next steps. Brief "
-    "non-imaging considerations go in a separate FOR MDT DISCUSSION section, "
-    "phrased as input to the team rather than your decision.\n"
+    "7. ACTIVELY CROSS-CORRELATE imaging × histology × labs × biomarkers — flag any "
+    "implications for imaging interpretation (e.g. lab abnormalities suggesting "
+    "occult disease not captured on the current modality).\n"
+    "8. IMAGING-LED RECOMMENDATIONS — your primary output is to convey succinctly "
+    "what information the radiological investigation provided, what information it "
+    "did not provide, what information is still needed for planning the patient's "
+    "management, and which radiological approach (if any) can provide that "
+    "information. Your role is not what to treat with. Frame recommendations as "
+    "imaging next steps and radiological recommendations. Brief non-imaging "
+    "considerations go in a separate FOR MDT DISCUSSION section, phrased as input "
+    "to the team rather than your decision.\n"
     "9. CITE RADIOLOGY-SPECIFIC GUIDELINES first, then clinical guidelines if "
     "directly relevant. Priority order:\n"
     "   1. RCR iRefer (UK Royal College of Radiologists referral guidelines) — "
@@ -2019,20 +2013,14 @@ MDT_SYSTEM_PROMPT = (
     "imaging selection or technique. Cite NICE/ESMO when discussing pathway-level "
     "context that the team should weigh. ONE or TWO citations is enough — do not "
     "stuff. Do NOT invent guideline numbers; use generic form if uncertain.\n"
-    "10. FLAG IMAGING INFORMATION GAPS — what additional IMAGING does the team "
-    "need to complete the picture? E.g. 'PET-CT not yet performed — required "
-    "for accurate M staging', 'MRI rectum needed for local T staging', 'no "
-    "contrast-enhanced MRI of the liver', 'dynamic phases not acquired', "
-    "'bone scan to clarify raised ALP'. Do NOT include non-imaging gaps "
-    "(pulmonary function tests, ECG, echo) — those are surgical/oncology gaps "
-    "for the relevant specialist to flag.\n"
-    "11. CONFIDENCE — express RADIOLOGICAL certainty. 'Definite' (e.g. LR-5 "
+    "10. CONFIDENCE — express RADIOLOGICAL certainty. 'Definite' (e.g. LR-5 "
     "HCC, classic textbook appearance) vs 'probable' (typical features but "
     "non-specific) vs 'suspected' (atypical or limited modality). Do not "
     "over-claim certainty.\n"
-    "12. British English spelling throughout (oesophagus, tumour, haemorrhage).\n"
-    "13. Output PLAIN TEXT only — no HTML, no markdown, no code fences, no "
-    "preamble like 'Here is the summary'.\n\n"
+    "11. British English spelling throughout (oesophagus, tumour, haemorrhage).\n"
+    "12. Output PLAIN TEXT only — strictly no HTML, no markdown, no code fences, no "
+    "preamble like 'Here is the summary'. Use ALL CAPS for section headers (e.g. 'INDICATION:') "
+    "and plain words for emphasis within sentences.\n\n"
 
     "OUTPUT FORMAT (sections in this exact order; optional sections appear only "
     "when needed):\n\n"
@@ -2091,19 +2079,16 @@ MDT_SYSTEM_PROMPT = (
     "disciplinary points to flag. Do NOT include this section if the case is "
     "purely diagnostic without management implications.)\n\n"
 
-    "[CLINICAL ALERT — include ONLY if a radiological discrepancy is detected]\n"
-    "<Brief, specific explanation of the imaging-related inconsistency (quote "
-    "the conflicting elements) and what additional imaging or verification is "
-    "needed. Focus on discrepancies the radiologist is uniquely placed to spot. "
-    "Do NOT flag patient-fitness, ECOG, or eGFR concerns — those are not in "
-    "your lane.>\n\n"
+    "[CLINICAL ALERT — include ONLY if one or more radiological discrepancies are detected]\n"
+    "<List EVERY discrepancy you have detected — do NOT pick only the most "
+    "clinically urgent one. If there is more than one, number them (1., 2., 3., …) "
+    "and give each its own short paragraph. For each discrepancy, quote the "
+    "conflicting elements from the source, explain briefly why it is inconsistent, "
+    "and state what additional imaging or verification is needed. Focus on "
+    "discrepancies the radiologist is uniquely placed to spot. Do NOT flag "
+    "patient-fitness, ECOG, or eGFR concerns — those are not in your lane.>\n\n"
 
-    "[IMAGING INFORMATION GAPS — include ONLY if imaging is incomplete]\n"
-    "<Bulleted list of additional imaging the MDT will need to make a confident "
-    "decision but that has not yet been performed. ≤3 items. Imaging only — do "
-    "NOT include non-imaging gaps (PFTs, ECG, echo, bloods).>\n\n"
-
-    "Keep the entire summary under 320 words including section labels. Be dense, "
+    "Keep the entire summary under 320 words including section labels. Be concise, "
     "image-focused, consultant-voiced, and respectful of other specialties' lanes."
 )
 
@@ -2185,22 +2170,49 @@ def generate_mdt_summary_for_case(context):
 
     # Strip any accidental markdown / code fences
     summary_text = strip_markdown_fences(summary_text).strip()
+    # Belt-and-braces: the prompt says "plain text only" but models occasionally
+    # emit markdown bold/italics/headers. Strip them so the MDT Suite textarea
+    # never shows raw ** stars and the HTML post-processor gets clean input.
+    summary_text = _strip_inline_markdown(summary_text)
 
     return summary_text, model_used, tokens
+
+
+def _strip_inline_markdown(text):
+    """Remove inline markdown artefacts (bold, italics, inline code, headers)
+    from AI-generated MDT output. Pure post-processing — does NOT call the AI.
+
+    Leaves structural characters (bullets '-', numbered list '1.', section
+    headers in ALL CAPS) untouched so the downstream post-processor can still
+    detect them.
+    """
+    if not text:
+        return text
+    # **bold** or __bold__  →  bold
+    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+    text = re.sub(r'__(.+?)__', r'\1', text)
+    # *italic* or _italic_  →  italic  (only when not part of a bullet '* ')
+    text = re.sub(r'(?<!\*)\*(?!\s)([^*\n]+?)\*(?!\*)', r'\1', text)
+    text = re.sub(r'(?<!_)_(?!\s)([^_\n]+?)_(?!_)', r'\1', text)
+    # `inline code`  →  inline code
+    text = re.sub(r'`([^`\n]+?)`', r'\1', text)
+    # Leading markdown headers (### Section) — keep the label, drop the hashes
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    return text
 
 
 def mdt_summary_to_html(summary_text):
     """Post-process a unified MDT summary into HTML for the Smart Reporter
     MDT action card. Pure post-processing — does NOT call the AI.
 
-    Handles all 7 possible sections of the upgraded format:
+    Handles the sections of the MDT output format:
       INDICATION
       KEY IMAGING FINDINGS
       HISTOLOGY & LAB CORRELATION
       RADIOLOGICAL IMPRESSION
-      RECOMMENDATIONS
+      IMAGING RECOMMENDATIONS
+      FOR MDT DISCUSSION
       [CLINICAL ALERT]      — optional
-      [INFORMATION GAPS]    — optional
     """
     if not summary_text:
         return ''
@@ -2216,8 +2228,6 @@ def mdt_summary_to_html(summary_text):
         'RECOMMENDATIONS',                 # legacy fallback (pre-radiologist-lane)
         'SUGGESTED NEXT STEP',             # legacy fallback (oldest)
         'CLINICAL ALERT',
-        'IMAGING INFORMATION GAPS',        # current section name
-        'INFORMATION GAPS',                # legacy fallback
     ]
     sections = {k: '' for k in SECTION_KEYS}
 
@@ -2264,21 +2274,40 @@ def mdt_summary_to_html(summary_text):
             return f'<ul class="mb-2">{items}</ul>'
         return f'<p>{_esc(text)}</p>'
 
-    html_parts = ['<h5>MDT Summary</h5>']
+    def _sec_card(slug, icon, label, body_html):
+        return (
+            f'<div class="mdt-sec mdt-sec-{slug}">'
+            f'<div class="mdt-sec-label"><i class="fas {icon} me-1"></i>{label}</div>'
+            f'<div class="mdt-sec-body">{body_html}</div>'
+            f'</div>'
+        )
+
+    html_parts = ['<div class="mdt-card">']
 
     if sections['INDICATION']:
-        html_parts.append(f'<p><strong>Indication:</strong> {_esc(sections["INDICATION"])}</p>')
+        html_parts.append(_sec_card(
+            'indication', 'fa-bullseye', 'Indication',
+            f'<p class="mb-0">{_esc(sections["INDICATION"])}</p>'
+        ))
 
     if sections['KEY IMAGING FINDINGS']:
-        html_parts.append('<p class="mb-1"><strong>Key Imaging Findings:</strong></p>')
-        html_parts.append(_bullets_or_para(sections['KEY IMAGING FINDINGS']))
+        html_parts.append(_sec_card(
+            'findings', 'fa-x-ray', 'Key Imaging Findings',
+            _bullets_or_para(sections['KEY IMAGING FINDINGS'])
+        ))
 
     histo_section = sections['HISTOLOGY & LAB CORRELATION'] or sections['HISTOLOGY AND LAB CORRELATION']
     if histo_section:
-        html_parts.append(f'<p><strong>Histology &amp; Lab Correlation:</strong> {_esc(histo_section)}</p>')
+        html_parts.append(_sec_card(
+            'histology', 'fa-flask', 'Histology & Lab Correlation',
+            f'<p class="mb-0">{_esc(histo_section)}</p>'
+        ))
 
     if sections['RADIOLOGICAL IMPRESSION']:
-        html_parts.append(f'<p><strong>Radiological Impression:</strong> {_esc(sections["RADIOLOGICAL IMPRESSION"])}</p>')
+        html_parts.append(_sec_card(
+            'impression', 'fa-clipboard-check', 'Radiological Impression',
+            f'<p class="mb-0">{_esc(sections["RADIOLOGICAL IMPRESSION"])}</p>'
+        ))
 
     # Imaging Recommendations: prefer the new 'IMAGING RECOMMENDATIONS' key,
     # fall back to legacy 'RECOMMENDATIONS' or 'SUGGESTED NEXT STEP'
@@ -2286,32 +2315,29 @@ def mdt_summary_to_html(summary_text):
                    or sections['RECOMMENDATIONS']
                    or sections['SUGGESTED NEXT STEP'])
     if rec_section:
-        html_parts.append('<p class="mb-1"><strong>Imaging Recommendations:</strong></p>')
-        html_parts.append(_bullets_or_para(rec_section, ordered=True))
+        html_parts.append(_sec_card(
+            'recommendations', 'fa-list-ol', 'Imaging Recommendations',
+            _bullets_or_para(rec_section, ordered=True)
+        ))
 
-    # FOR MDT DISCUSSION (multi-disciplinary considerations the radiologist
-    # flags as input, not as decisions)
+    # FOR MDT DISCUSSION — multi-disciplinary considerations flagged as input
     if sections['FOR MDT DISCUSSION']:
-        html_parts.append('<p class="mb-1"><strong>For MDT Discussion:</strong></p>')
-        html_parts.append(_bullets_or_para(sections['FOR MDT DISCUSSION']))
+        html_parts.append(_sec_card(
+            'discussion', 'fa-comments', 'For MDT Discussion',
+            _bullets_or_para(sections['FOR MDT DISCUSSION'])
+        ))
 
     if sections['CLINICAL ALERT']:
         html_parts.append(
-            '<div class="alert alert-warning small mt-2 mb-2 py-2">'
-            '<i class="fas fa-exclamation-triangle me-1"></i>'
-            f'<strong>Clinical alert:</strong> {_esc(sections["CLINICAL ALERT"])}'
+            '<div class="mdt-alert mdt-alert-warning">'
+            '<div class="mdt-alert-label">'
+            '<i class="fas fa-exclamation-triangle me-1"></i>Clinical Alert'
+            '</div>'
+            f'<div class="mdt-alert-body">{_esc(sections["CLINICAL ALERT"])}</div>'
             '</div>'
         )
 
-    info_gaps = sections['IMAGING INFORMATION GAPS'] or sections['INFORMATION GAPS']
-    if info_gaps:
-        html_parts.append(
-            '<div class="alert alert-info small mt-2 mb-0 py-2">'
-            '<i class="fas fa-info-circle me-1"></i>'
-            f'<strong>Imaging information needed:</strong> {_esc(info_gaps)}'
-            '</div>'
-        )
-
+    html_parts.append('</div>')
     return ''.join(html_parts)
 
 

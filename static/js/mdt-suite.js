@@ -90,6 +90,131 @@
     MdtSuite.todayIso = todayIso;
     MdtSuite.showToast = showToast;
 
+    // ── MDT summary plain-text → HTML renderer ─────────────────────
+    // Mirrors ai_smart_reporter.mdt_summary_to_html() in Python.
+    // Used by the case detail page to show a formatted preview of the
+    // AI summary textarea, and to provide rich-text clipboard copy.
+    var MDT_SECTION_KEYS = [
+        'INDICATION',
+        'KEY IMAGING FINDINGS',
+        'HISTOLOGY & LAB CORRELATION',
+        'HISTOLOGY AND LAB CORRELATION',
+        'RADIOLOGICAL IMPRESSION',
+        'IMAGING RECOMMENDATIONS',
+        'FOR MDT DISCUSSION',
+        'RECOMMENDATIONS',          // legacy
+        'SUGGESTED NEXT STEP',      // legacy
+        'CLINICAL ALERT'
+    ];
+
+    function parseSections(text) {
+        var sections = {};
+        MDT_SECTION_KEYS.forEach(function(k) { sections[k] = ''; });
+        var current = null;
+        (text || '').split('\n').forEach(function(line) {
+            var stripped = line.trim();
+            if (!stripped) return;
+            var matched = false;
+            for (var i = 0; i < MDT_SECTION_KEYS.length; i++) {
+                var key = MDT_SECTION_KEYS[i];
+                if (stripped.toUpperCase().indexOf(key) === 0) {
+                    current = key;
+                    var rest = stripped.substring(key.length).replace(/^[:\s]+/, '');
+                    if (rest) sections[current] = rest;
+                    matched = true;
+                    break;
+                }
+            }
+            if (matched) return;
+            if (current !== null) {
+                sections[current] = sections[current] ? (sections[current] + '\n' + stripped) : stripped;
+            }
+        });
+        return sections;
+    }
+
+    function bulletsOrPara(text, ordered) {
+        var lines = (text || '').split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+        if (!lines.length) return '';
+        var isOrdered = ordered || lines.every(function(l) { return /^\d+[\.\)]\s/.test(l); });
+        if (isOrdered && lines.some(function(l) { return /^\d+[\.\)]\s/.test(l); })) {
+            return '<ol class="mdt-preview-ol">' + lines.map(function(l) {
+                return '<li>' + escapeHtml(l.replace(/^\d+[\.\)]\s*/, '')) + '</li>';
+            }).join('') + '</ol>';
+        }
+        if (lines.some(function(l) { return /^[-•]/.test(l); })) {
+            return '<ul class="mdt-preview-ul">' + lines.map(function(l) {
+                return '<li>' + escapeHtml(l.replace(/^[-•]\s*/, '')) + '</li>';
+            }).join('') + '</ul>';
+        }
+        return '<p>' + escapeHtml(text) + '</p>';
+    }
+
+    MdtSuite.summaryToHtml = function(plainText) {
+        if (!plainText || !plainText.trim()) {
+            return '<p class="text-muted fst-italic mb-0">No summary yet. Click <strong>Generate / Regenerate</strong> to produce one.</p>';
+        }
+        var s = parseSections(plainText);
+        var parts = [];
+
+        if (s['INDICATION']) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">Indication</span>' +
+                       '<p>' + escapeHtml(s['INDICATION']) + '</p></div>');
+        }
+        if (s['KEY IMAGING FINDINGS']) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">Key Imaging Findings</span>' +
+                       bulletsOrPara(s['KEY IMAGING FINDINGS']) + '</div>');
+        }
+        var histo = s['HISTOLOGY & LAB CORRELATION'] || s['HISTOLOGY AND LAB CORRELATION'];
+        if (histo) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">Histology &amp; Lab Correlation</span>' +
+                       '<p>' + escapeHtml(histo) + '</p></div>');
+        }
+        if (s['RADIOLOGICAL IMPRESSION']) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">Radiological Impression</span>' +
+                       '<p>' + escapeHtml(s['RADIOLOGICAL IMPRESSION']) + '</p></div>');
+        }
+        var recs = s['IMAGING RECOMMENDATIONS'] || s['RECOMMENDATIONS'] || s['SUGGESTED NEXT STEP'];
+        if (recs) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">Imaging Recommendations</span>' +
+                       bulletsOrPara(recs, true) + '</div>');
+        }
+        if (s['FOR MDT DISCUSSION']) {
+            parts.push('<div class="mdt-preview-sec"><span class="mdt-preview-label">For MDT Discussion</span>' +
+                       bulletsOrPara(s['FOR MDT DISCUSSION']) + '</div>');
+        }
+        if (s['CLINICAL ALERT']) {
+            parts.push('<div class="mdt-preview-alert mdt-preview-alert-warning">' +
+                       '<strong>⚠ Clinical Alert:</strong> ' + escapeHtml(s['CLINICAL ALERT']) + '</div>');
+        }
+        return parts.join('');
+    };
+
+    // Convert the rendered HTML to clean plain text (preserving bullets and
+    // section breaks) for clipboard plain-text fallback.
+    MdtSuite.previewToPlainText = function(previewEl) {
+        if (!previewEl) return '';
+        // Clone so we can mutate without affecting the live DOM
+        var clone = previewEl.cloneNode(true);
+        // Replace <li> with "- " bullets or "1. " numbered
+        clone.querySelectorAll('ul li').forEach(function(li) {
+            li.textContent = '- ' + li.textContent;
+        });
+        var olLists = clone.querySelectorAll('ol');
+        olLists.forEach(function(ol) {
+            var idx = 1;
+            ol.querySelectorAll('li').forEach(function(li) {
+                li.textContent = (idx++) + '. ' + li.textContent;
+            });
+        });
+        // Add blank lines between sections for readability
+        clone.querySelectorAll('.mdt-preview-sec').forEach(function(sec) {
+            sec.textContent = '\n' + sec.querySelector('.mdt-preview-label').textContent.toUpperCase() + ':\n' +
+                              (sec.querySelector('p, ul, ol') ? sec.querySelector('p, ul, ol').innerText : '');
+        });
+        return (clone.innerText || clone.textContent || '').trim();
+    };
+
     // ── Quick start (landing page) ────────────────────────────────
 
     MdtSuite.initQuickStart = function() {

@@ -1,8 +1,11 @@
 # MDT Suite — End-to-End Test Plan
 
+> **Progress marker**: Parts A1–B1 PASSED as of last session. Resume from **Part B2**.
+> Recent changes under test: HTML-first storage, TinyMCE edit mode, Cloudinary image upload, richer `.mdt-card` layout, exact-dimension TNM rule, Smart Reporter Save-to-MDT iframe overlay flow.
+
 **Goal**: test every feature of the MDT Suite with maximum coverage and minimum AI spend. Each step is interactive — run it, and if it fails **stop and tell me**; I'll fix before the next step.
 
-**Cost control**: full run uses **2 AI calls** (both for AI pre-MDT summary generation, both Sonnet — cheap). Everything else is UI / DB / clipboard work, zero API cost.
+**Cost control**: full run uses **~3 AI calls** (pre-MDT summary generation, Sonnet). Everything else is UI / DB / clipboard work, zero API cost.
 
 **Setup**:
 1. Branch `mdt-module` deployed (preview or merged to main)
@@ -120,25 +123,61 @@ This is by design. If you need stricter scanning, set `data-pii-guard-tier="HIGH
 
 ## PART B — AI summary generation (2 API calls — Sonnet) — 3 min
 
-### B1. Generate pre-MDT summary for Case 1
+### B1. Generate pre-MDT summary for Case 1 — PASSED
 On case 1 detail page:
 1. Confirm all 5 context fields are populated (history, imaging, histology, etc.)
-2. Click **Generate / Regenerate** button under "AI pre-MDT summary"
+2. Click **Generate / Regenerate** button in the AI summary card header
 3. Expected:
    - Spinner ~3-5 s
-   - Summary appears in the textarea
-   - 2-3 lines of plain text
-   - Mentions key elements (age, sex, stage if inferable, EGFR, proposed next step)
+   - **Rendered HTML cards** appear by default (not plain text): 6 coloured section cards with accent borders + icons
+   - Yellow **CLINICAL ALERT** band appears if a discrepancy is detected (test by using a report where findings contradict the conclusion)
+   - TNM T-category uses **exact dimensions** (e.g. 4.2 cm → T2b, not T2a — no rounding)
+   - Model uses AJCC / current TNM edition
    - Save indicator updates after the API call
-4. Click **Generate / Regenerate** again → new summary (slight variation OK)
 
-**Expected**: 1 Sonnet call per click, both cost ~$0.001.
+### B2. Edit mode (TinyMCE) — RESUME HERE
+1. Click the **Edit** button in the summary card header
+2. Expected:
+   - TinyMCE toolbar appears (undo/redo, bold/italic/underline, lists, table, link, image, removeformat, code)
+   - Generate and Copy buttons grey out while editing
+   - **Done** button (green) replaces the Edit button
+3. Make a small edit (bold a word, add a bullet)
+4. Click **Done**
+5. Expected:
+   - Editor closes, rendered view returns with your change applied
+   - Autosave fires within ~1s (check save indicator)
+6. Refresh the page → edit persists
 
-### B2. Edit the AI summary manually
-1. Click into the summary textarea
-2. Append: ` ECOG 1.`
-3. Wait → auto-saves
-4. Refresh → edit persisted
+### B2b. Table + link insertion
+1. Click **Edit**
+2. Toolbar → **Insert table** → insert a 2×3 table → fill with nodal stations
+3. Toolbar → **Insert link** → add a reference URL (e.g. NICE NG122)
+4. Click **Done**
+5. Expected:
+   - Rendered view shows a bordered Bootstrap-style table
+   - Link is clickable (opens in new tab)
+6. Refresh → both persist
+
+### B2c. Image upload via Cloudinary
+1. Click **Edit**
+2. Toolbar → **Insert image** → choose a small PNG/JPG from disk
+3. Expected:
+   - Upload progress indicator
+   - Image inserted; the `<img src>` is a `cloudinary.com/.../f_auto,q_auto,w_1200,c_limit/` URL (check via browser DevTools)
+4. Click **Done**
+5. Expected: image renders in preview, responsive on mobile viewport (resize window)
+6. Refresh → image URL persists, renders correctly
+
+### B2d. Copy button — plain text extraction
+1. Click **Copy**
+2. Paste into a plain text target (Notes / terminal)
+3. Expected:
+   - Section labels as UPPERCASE (e.g. `INDICATION:`)
+   - Numbered list items `1. … 2. … 3. …`
+   - Dashed bullets `- …`
+   - Blank lines between sections
+   - CLINICAL ALERT: heading + body (if present)
+   - No HTML tags visible
 
 ### B3. Negative test — sparse case
 Open case 3 (the one with just `Test` diagnosis, no context):
@@ -275,33 +314,79 @@ If PDF export gave you HTML:
 
 ---
 
-## PART G — Smart Reporter integration (1 API call — already counted in B) — 3 min
+## PART G — Smart Reporter → MDT Suite save flow — 5 min
 
-### G1. Generate an MDT card from a real report
+> **Architecture:** Smart Reporter no longer generates an MDT action card. The **Save to MDT** button opens the save modal directly; AI generation happens LATER inside the MDT Suite case (iframe overlay or full page).
+
+### G1. Finalised-report path
 1. Navigate to `/smart-reporter`
-2. Paste a short report draft, e.g.:
+2. Paste a short report draft:
    ```
-   CT chest abdomen pelvis. 67M known smoker. Findings: 4 cm spiculated RUL mass with mediastinal lymphadenopathy. No distant metastases. Liver, adrenals, bones clear.
-   Impression: probable lung cancer with mediastinal nodal disease.
+   CT chest abdomen pelvis. 67M ex-smoker. 4.2 cm spiculated RUL mass with mediastinal lymphadenopathy. No distant metastases. Liver, adrenals, bones clear.
+   Impression: probable lung cancer.
    ```
-3. Click **Review & Finalize** (1 Opus call — but that's a Smart Reporter test, not MDT)
-4. Click **MDT** action button (1 Sonnet call)
-5. MDT card appears stacked
-
-### G2. Save to MDT Suite
-1. On the MDT action card, click **Save to MDT Suite** button
-2. Modal opens
-3. Confirm pre-fills:
+3. Click **Finalize** / **Review & Finalize** → wait for PACS output to populate (1 Opus call)
+4. Click **Save to MDT** button (orange, in the Actions row)
+5. Expected:
+   - **No AI call fires** — modal opens directly
+   - **Green banner** at top of modal: "Using your finalised report as the source"
+6. Fill in:
    - Date = today
-   - Diagnosis = parsed from card content (or empty)
-   - History = clinical question (if any)
-   - Findings = current PACS output
-   - Summary = the AI MDT card text
-4. Type meeting name: "Tuesday Lung MDT" → autocomplete picks up the existing meeting from earlier tests
-5. Click **Save case**
-6. Expected: toast "Saved to MDT Suite. Open meeting →"
-7. Click "Open meeting" → navigates to the meeting browser
-8. Confirm the new case is in the table
+   - Meeting name = "Tuesday Lung MDT" (autocomplete should pick up the existing meeting from Part A)
+   - Pseudo case ref = `L-SR-001`
+   - Diagnosis = *(leave blank — optional)*
+   - Imaging findings textarea is **pre-filled** with the finalised report — editable
+   - Optionally paste histology/labs/notes
+7. Click **Save case**
+8. Expected:
+   - Toast: "Case saved. Click 'Generate MDT notes' in the overlay..."
+   - **Iframe overlay** appears on top of Smart Reporter (dark backdrop + white card, ~1200 × 90vh)
+   - Top bar shows: MDT Suite case detail · Open full screen · Close
+   - Iframe shows the MDT case detail page with embed chrome hidden (no breadcrumb, no back button, no navbar)
+   - Diagnosis shows as "— pending —" (since blank on save)
+
+### G2. Generate MDT notes inside the iframe overlay
+1. Inside the iframe, click **Generate / Regenerate** in the AI summary card header
+2. Expected:
+   - 1 Sonnet API call (~3-5 s)
+   - Rendered HTML cards appear
+   - Save indicator updates
+
+### G3. "Open full screen" navigation
+1. Click **Open full screen** in the iframe topbar
+2. Expected:
+   - New tab opens at `/mdt/meetings/<id>/case/<id>` (no `?embed=1`)
+   - Full MDT Suite chrome visible (breadcrumb, back button, navbar)
+   - Same case, same content
+
+### G4. Close iframe
+1. Return to the Smart Reporter tab
+2. Click **Close** in the iframe topbar
+3. Expected:
+   - Overlay disappears
+   - Smart Reporter state is preserved (report draft + finalised text still there)
+
+### G5. Draft-report path (warning)
+1. Start a fresh Smart Reporter session (New Report button)
+2. Type a draft but **do NOT finalise**
+3. Click **Save to MDT**
+4. Expected:
+   - `confirm()` dialog warns: "You are saving this case from your DRAFT report..." with option to proceed
+5. Click OK
+6. Expected:
+   - Modal opens with **yellow banner**: "Using your DRAFT report (not yet finalised)"
+   - Imaging findings textarea pre-filled with draft text
+7. Complete the save flow as in G1 → iframe overlay opens
+
+### G6. Empty-report guard
+1. New Report → empty draft + no finalised output
+2. Click **Save to MDT**
+3. Expected: toast warning "Your report is empty..." — no modal opens, no API call
+
+### G7. Mobile viewport
+1. Resize browser to phone width (<768px) or use DevTools device toolbar
+2. Repeat G1 → iframe overlay should become **fullscreen** (100vw / 100vh, no border radius)
+3. Modal should be scrollable
 
 ---
 
@@ -324,15 +409,15 @@ If you have a second user account:
 | Part | Calls | Cumulative |
 |---|---|---|
 | A | 0 | 0 |
-| B | 2 (both Sonnet) | 2 |
+| B | 2 Sonnet (B1 + B2 regenerate) | 2 |
 | C | 0 | 2 |
 | D | 0 | 2 |
 | E | 0 | 2 |
 | F | 0 | 2 |
-| G | 1 Sonnet (MDT card) + 1 Opus (Finalize, optional) | 3-4 |
-| H | 0 | 3-4 |
+| G | 1 Opus (Finalize G1) + 1 Sonnet (Generate inside iframe G2) | 4 |
+| H | 0 | 4 |
 
-**Total: 3-4 AI calls.** ~$0.005-$0.01 in real spend.
+**Total: ~4 AI calls.** ~$0.03 in real spend.
 
 ---
 
