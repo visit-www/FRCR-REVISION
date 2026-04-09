@@ -502,65 +502,238 @@ A confirmation page shows the diff before commit (uses `?dry_run=1` query param)
 
 ---
 
-## 8. Smart Reporter integration
+## 8. Smart Reporter integration (REVISED 2026-04-09)
 
-### 8.1 New "Save to MDT Suite" button on the MDT action card
+> **Architecture change**: The original plan envisioned Smart Reporter generating an MDT action card first, then a separate "Save to MDT Suite" button on that card. This has been **simplified** — Smart Reporter no longer generates an MDT card at all. The MDT button opens the save modal directly, and generation happens later inside the MDT Suite case (typically in an iframe overlay on top of Smart Reporter so the user doesn't lose their report context).
 
-Currently, when a user generates an MDT summary in Smart Reporter, the result lives in a `state.reportActionHistory[]` card. Add a new button next to the existing Copy/Remove buttons:
+### 8.1 Button: "Save to MDT"
+
+In `templates/smart_reporter.html` action toolbar:
 
 ```html
-<button class="btn btn-sm btn-brand-primary" onclick="saveMdtToSuite(<index>)">
-  <i class="fas fa-save me-1"></i>Save to MDT Suite
+<button class="btn btn-sm report-action-btn" data-action="mdt-save"
+        onclick="openSaveToMdtFlow()">
+  <i class="fas fa-users me-1"></i>Save to MDT
 </button>
 ```
 
-### 8.2 saveMdtToSuite() — frontend
+The button label and behaviour reflect the new "save first, generate later" intent.
 
-Opens a small modal pre-filled with:
-- **Date**: today (editable date picker)
-- **Meeting name**: autocomplete from user's previous meetings (last 30 days)
-- **MDT type**: dropdown (lung, breast, etc.)
-- **Diagnosis**: pre-filled from the AI MDT card if extractable, else blank
-- **Case reference**: blank, user types
+### 8.2 `openSaveToMdtFlow()` — source detection
 
-On save, the modal POSTs to `/api/mdt/cases` with:
-- All 5 pre-meeting context fields pre-filled from the Smart Reporter session (clinical_history, imaging_findings)
-- pre_mdt_summary = the AI-generated MDT card content
-- meeting_id resolved or created on the fly
-- source_smart_reporter_session_id = current session
+1. Prefer the **finalised** report (PACS output in `#editorOutput` inside a visible `#outputSection`) as the save source
+2. If no finalised text, fall back to **draft** (`#editorInput`) after a `confirm()` warning:
+   > "You are saving this case from your DRAFT report (not yet finalised). For best AI MDT notes, finalise the report first. Alternatively, continue with the draft and edit later in MDT Suite. Proceed?"
+3. If both are empty → toast warning, abort
 
-After save, a toast appears: "Saved to Lung MDT 2026-04-15 → [view in MDT Suite]" with a link.
+Opens the save modal via `openSaveToMdtModal({reportText, sourceLabel: 'finalised' | 'draft'})`.
 
-### 8.3 Backend reuse
+### 8.3 Save modal fields
 
-The Smart Reporter MDT generation prompt is already in `ai_smart_reporter.py`. The MDT Suite reuses it by calling the same function:
+**Required:**
+- Date (auto-filled with today)
+- MDT meeting name (autocomplete against user's existing meetings)
+- Pseudo case ref
+
+**Optional (all visible, not collapsed):**
+- MDT type dropdown
+- Diagnosis (pre-filled blank; backend substitutes `— pending —` sentinel if empty)
+- Clinical history (auto-filled from the Smart Reporter clinical question if present)
+- **Imaging findings** — auto-filled with the finalised or draft report text, fully editable
+- Histology / biopsy
+- Lab values
+- Additional notes
+
+A **source banner** at the top of the modal:
+- **Green** success alert if using the finalised report
+- **Yellow** warning alert if using the draft
+
+### 8.4 `submitSaveToMdt()` — no AI generation
+
+POST flow:
+1. `POST /api/mdt/meetings` — create-or-find meeting by name+date
+2. `POST /api/mdt/cases` — create the case with all the populated fields
+3. **Does NOT set `pre_mdt_summary`** — the case is created with an empty AI summary field
+4. **Does NOT call any AI endpoint** — generation is deferred to the MDT Suite
+
+### 8.5 Iframe overlay — `openMdtCaseIframeOverlay(meetingId, caseId)`
+
+After successful save, Smart Reporter stays put and an iframe overlay opens on top:
+
+```
+┌────────────────────────────────────────────────────┐
+│  [MDT Suite — case detail]  [Open full screen] [×] │
+├────────────────────────────────────────────────────┤
+│  (iframe loads /mdt/meetings/<mid>/case/<cid>?embed=1)│
+│                                                    │
+│  Full MDT Suite case page — TinyMCE summary,       │
+│  Generate button, autosave, all features           │
+│                                                    │
+└────────────────────────────────────────────────────┘
+```
+
+- **Full screen button** opens the non-embed URL in a new tab for users who want the normal MDT Suite chrome
+- **Close button** removes the overlay and restores Smart Reporter
+- Mobile: overlay becomes fullscreen (100vw × 100vh, no border radius)
+- CSS: `.mdt-iframe-overlay`, `.mdt-iframe-wrap`, `.mdt-iframe-topbar`, `.mdt-iframe-body` in `templates/smart_reporter.html`
+
+### 8.6 Embed mode in `mdt_case_detail.html`
+
+When loaded with `?embed=1`:
+- JS on DOMContentLoaded: `document.body.classList.add('mdt-embed')`
+- CSS hides: breadcrumb, back button, navbar, footer, sidebar, mobile nav bar
+- Container padding reduced for tighter fit
+- Elements that should be hidden in embed mode get `.mdt-nonembed` class
+
+### 8.7 Backend reuse — `api_create_case` (diagnosis optional)
 
 ```python
-# In mdt_routes.py
-from ai_smart_reporter import generate_mdt_summary
+@mdt_bp.route('/api/mdt/cases', methods=['POST'])
+@login_required
+def api_create_case():
+    data = request.get_json() or {}
+    meeting_id = data.get('meeting_id')
+    meeting = _own_meeting_or_404(meeting_id)
+
+    # Diagnosis is OPTIONAL — empty → sentinel
+    diagnosis = (data.get('diagnosis') or '').strip() or '— pending —'
+
+    case_ref = (data.get('case_reference') or '').strip() or None
+    if case_ref and _looks_like_patient_id(case_ref):
+        return jsonify({'error': 'Case reference looks like a patient ID...'}), 400
+
+    c = MdtCase(
+        user_id=current_user.id,
+        meeting_id=meeting.id,
+        case_reference=case_ref,
+        diagnosis=diagnosis,
+        clinical_history=data.get('clinical_history'),
+        imaging_findings=data.get('imaging_findings'),
+        histology_biopsy=data.get('histology_biopsy'),
+        lab_values=data.get('lab_values'),
+        additional_notes=data.get('additional_notes'),
+        # NOTE: pre_mdt_summary NOT set — generation happens in MDT Suite
+    )
+    db.session.add(c)
+    db.session.commit()
+    return jsonify({'case': c.to_dict()})
+```
+
+### 8.8 Backend — `api_generate_summary` stores HTML
+
+```python
+from ai_smart_reporter import generate_mdt_summary_for_case, mdt_summary_to_html
 
 @mdt_bp.route('/api/mdt/cases/<int:case_id>/generate-summary', methods=['POST'])
 @login_required
-def generate_mdt_summary_for_case(case_id):
-    case = MdtCase.query.filter_by(id=case_id, user_id=current_user.id).first_or_404()
-    # Build context from all 5 pre-meeting fields
-    context = {
-        'clinical_history': case.clinical_history,
-        'imaging_findings': case.imaging_findings,
-        'histology_biopsy': case.histology_biopsy,
-        'lab_values': case.lab_values,
-        'additional_notes': case.additional_notes,
-        'diagnosis': case.diagnosis,
-    }
-    summary = generate_mdt_summary(context)  # Uses Sonnet, same model as Smart Reporter MDT
-    case.pre_mdt_summary = summary
+def api_generate_summary(case_id):
+    c = _own_case_or_404(case_id)
+    plain_summary, model_used, tokens = generate_mdt_summary_for_case({
+        'diagnosis': c.diagnosis,
+        'clinical_history': c.clinical_history,
+        'imaging_findings': c.imaging_findings,
+        'histology_biopsy': c.histology_biopsy,
+        'lab_values': c.lab_values,
+        'additional_notes': c.additional_notes,
+    })
+    html_summary = mdt_summary_to_html(plain_summary)
+    c.pre_mdt_summary = html_summary   # HTML-first storage
     db.session.commit()
-    return jsonify({'success': True, 'summary': summary})
+    return jsonify({'summary': html_summary, 'summary_plain': plain_summary, ...})
 ```
 
-### 8.4 AI cost
+### 8.9 AI cost
 
-Zero new model calls per case beyond what the user explicitly triggers. The MDT generation is opt-in (button click), uses Sonnet (cheap), and produces ~200 tokens of output. Negligible cost increment.
+- Save button: **zero** API cost (no generation at save time)
+- Generate button in MDT Suite: **~$0.018/call** (Sonnet 4.5, ~2,650 system + 200 user input + ~600 output tokens)
+- User controls exactly when the AI fires — no wasted calls on thin summaries
+
+### 8.10 Legacy dead code
+
+- `ACTION_PROMPTS['mdt']` in `ai_smart_reporter.py` is kept as a sentinel (`'__ROUTED_VIA_UNIFIED_PIPELINE__'`) — required by the `if action not in ACTION_PROMPTS` validation check but never sent to the model. The `action='mdt'` branch in `generate_report_action()` still exists for backward compatibility but is no longer called from the UI.
+- `MdtSuite.summaryToHtml()` in `mdt-suite.js` is a JS port of the Python `mdt_summary_to_html()` — unused after the HTML-first refactor but preserved for legacy cases.
+
+---
+
+## 8a. AI summary — HTML-first with TinyMCE edit mode (ADDED 2026-04-09)
+
+Originally the AI summary was an always-editable plain-text textarea. After user feedback ("output is still not html - no cards, not different colors for different sections"), this was refactored to **HTML-first** with a TinyMCE edit mode.
+
+### 8a.1 Storage
+
+`MdtCase.pre_mdt_summary` now stores **HTML** (post-refactor). Old cases with plain text still render (as an unformatted blob) until the user clicks Generate to upgrade them in-place.
+
+### 8a.2 Renderer — `mdt_summary_to_html()` in `ai_smart_reporter.py`
+
+Emits a `.mdt-card` container with per-section accent cards:
+
+| Section | Icon | Accent |
+|---|---|---|
+| Indication | `fa-bullseye` | Teal `#5E899E` |
+| Key Imaging Findings | `fa-x-ray` | Purple `#6b46c1` |
+| Histology & Lab Correlation | `fa-flask` | Blue `#0d6efd` |
+| Radiological Impression | `fa-clipboard-check` | Brand orange `#e96304` |
+| Imaging Recommendations | `fa-list-ol` | Green `#198754` |
+| For MDT Discussion | `fa-comments` | Grey `#6c757d` |
+| CLINICAL ALERT (optional) | `fa-exclamation-triangle` | Amber band |
+
+Markup template:
+```html
+<div class="mdt-card">
+  <div class="mdt-sec mdt-sec-indication">
+    <div class="mdt-sec-label"><i class="fas fa-bullseye me-1"></i>Indication</div>
+    <div class="mdt-sec-body"><p>...</p></div>
+  </div>
+  ...
+</div>
+```
+
+### 8a.3 Template — `templates/mdt_case_detail.html`
+
+- Hidden `<textarea id="mdtPreSummary">` holds the canonical HTML string + autosave target
+- Visible `<div id="mdtSummaryPreview" class="mdt-preview">` renders the HTML by default
+- **Edit** button → hides preview, attaches TinyMCE to the textarea
+- **Done** button → `ed.save()` writes back to textarea, destroys editor, re-renders preview
+- Autosave listens to textarea `input` event; TinyMCE save triggers it via `dispatchEvent`
+
+### 8a.4 TinyMCE config (reused from existing app pattern)
+
+- Script: `static/tinymce.min.js` (already in app for other editors)
+- Plugins: `lists autoresize table link image code`
+- Toolbar: `undo redo | bold italic underline | bullist numlist | outdent indent | table link image | removeformat code`
+- Base URL: `https://cdn.jsdelivr.net/npm/tinymce@6`
+- No menubar, no branding, no statusbar (compact)
+
+### 8a.5 Cloudinary image upload (mobile-friendly)
+
+`images_upload_handler` uploads to Cloudinary folder `radinsights/mdt/` and injects a URL-level transformation before inserting into the editor:
+
+```
+/upload/f_auto,q_auto,w_1200,c_limit/
+```
+
+- `f_auto` → Cloudinary picks best format (WebP on modern browsers, JPEG fallback)
+- `q_auto` → automatic quality compression (typically 60-80% smaller)
+- `w_1200,c_limit` → max width 1200px, never upscales
+- DB stores only the URL string, not base64 → no row bloat
+
+Cloudinary env vars are passed from both `mdt_case_detail()` and `mdt_case_view()` routes via `cloudinary_cloud_name` and `cloudinary_upload_preset` template vars.
+
+### 8a.6 Copy button — DOM walker
+
+Previously used `innerText` which lost numbered-list numbering and section hierarchy. Replaced with `buildPlainTextFromPreview()` which walks `.mdt-sec` elements:
+
+- Section labels → UPPERCASE `INDICATION:` / `KEY IMAGING FINDINGS:` / etc.
+- `<ol>` → numbered `1. … 2. … 3. …`
+- `<ul>` → `- ` bullets
+- `<p>` → preserved as body text
+- CLINICAL ALERT → own heading + body
+- Blank line between sections
+- Fallback to `innerText` for freeform TinyMCE-edited content
+
+### 8a.7 PII Guard exclusion
+
+`#mdtPreSummary` is **excluded** from PII Guard scanning in this template because the content is HTML and the regex would misfire on tags. Upstream context fields (clinical_history, imaging_findings, histology_biopsy, lab_values, additional_notes) are still scanned, which acts as the effective gate — PII entered there will be caught before it reaches the AI summary.
 
 ---
 

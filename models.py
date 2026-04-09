@@ -3847,3 +3847,147 @@ class VettingAlgorithm(db.Model):
 
     def __repr__(self):
         return f'<VettingAlgorithm {self.algorithm_key}>'
+
+
+# ==================== MDT SUITE (Multi-Disciplinary Team Workflow) ====================
+# See docs/plans/MDT_SUITE_PLAN.md for full design rationale.
+
+class MdtMeeting(db.Model):
+    """A scheduled or recurring multi-disciplinary team meeting."""
+    __tablename__ = 'mdt_meeting'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'),
+                        nullable=False, index=True)
+
+    # Free-text meeting name (e.g. "Tuesday Lung MDT", "Hepatobiliary")
+    name = db.Column(db.String(150), nullable=False)
+    # Optional MDT type for filtering and per-type templates (v2)
+    mdt_type = db.Column(db.String(50), nullable=True, index=True)
+    # Date the meeting occurred or will occur
+    date = db.Column(db.Date, nullable=False, index=True)
+    is_recurring = db.Column(db.Boolean, default=False, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           onupdate=datetime.utcnow, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('mdt_meetings', lazy='dynamic'))
+    cases = db.relationship('MdtCase', backref='meeting',
+                            cascade='all, delete-orphan',
+                            lazy='dynamic',
+                            foreign_keys='MdtCase.meeting_id')
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'name', 'date',
+                            name='uq_mdt_meeting_user_name_date'),
+        db.Index('ix_mdt_meeting_user_date', 'user_id', 'date'),
+    )
+
+    def to_dict(self, include_case_count=False):
+        out = {
+            'id': self.id,
+            'name': self.name,
+            'mdt_type': self.mdt_type,
+            'date': self.date.isoformat() if self.date else None,
+            'is_recurring': self.is_recurring,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_case_count:
+            out['case_count'] = self.cases.count()
+            out['pending_count'] = self.cases.filter_by(status='pending').count()
+        return out
+
+    def __repr__(self):
+        return f'<MdtMeeting {self.id}: {self.name} ({self.date})>'
+
+
+class MdtCase(db.Model):
+    """An individual case within an MDT meeting.
+
+    NO patient identifiers are ever stored. The case_reference is an opaque
+    user-chosen label (e.g. 'L-2026-04-007'). PII Guard enforces this on
+    save (server-side regex + Mod-11 NHS checksum).
+    """
+    __tablename__ = 'mdt_case'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'),
+                        nullable=False, index=True)
+    meeting_id = db.Column(db.Integer, db.ForeignKey('mdt_meeting.id'),
+                           nullable=False, index=True)
+
+    # Identity (opaque)
+    case_reference = db.Column(db.String(50), nullable=True)
+    diagnosis = db.Column(db.String(300), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+        # pending | discussed | action_recorded | closed
+
+    # Pre-meeting context (5 textareas)
+    clinical_history = db.Column(db.Text, nullable=True)
+    imaging_findings = db.Column(db.Text, nullable=True)
+    histology_biopsy = db.Column(db.Text, nullable=True)
+    lab_values = db.Column(db.Text, nullable=True)
+    additional_notes = db.Column(db.Text, nullable=True)
+    pre_mdt_summary = db.Column(db.Text, nullable=True)
+        # AI-generated 2-3 line summary, editable
+
+    # Meeting outcome (filled live or after)
+    mdt_consensus = db.Column(db.Text, nullable=True)
+    action_plan = db.Column(db.Text, nullable=True)
+    follow_up_date = db.Column(db.Date, nullable=True)
+
+    # Linking — single previous case (v1)
+    linked_case_id = db.Column(db.Integer, db.ForeignKey('mdt_case.id'),
+                               nullable=True)
+
+    # Source attribution (admin metadata)
+    source_smart_reporter_session_id = db.Column(db.Integer, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow,
+                           onupdate=datetime.utcnow, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('mdt_cases', lazy='dynamic'))
+    linked_case = db.relationship('MdtCase', remote_side=[id], post_update=True)
+
+    __table_args__ = (
+        db.Index('ix_mdt_case_user_status', 'user_id', 'status'),
+        db.Index('ix_mdt_case_meeting_status', 'meeting_id', 'status'),
+    )
+
+    STATUSES = ('pending', 'discussed', 'action_recorded', 'closed')
+
+    def to_dict(self, include_meeting=False):
+        out = {
+            'id': self.id,
+            'meeting_id': self.meeting_id,
+            'case_reference': self.case_reference,
+            'diagnosis': self.diagnosis,
+            'status': self.status,
+            'clinical_history': self.clinical_history,
+            'imaging_findings': self.imaging_findings,
+            'histology_biopsy': self.histology_biopsy,
+            'lab_values': self.lab_values,
+            'additional_notes': self.additional_notes,
+            'pre_mdt_summary': self.pre_mdt_summary,
+            'mdt_consensus': self.mdt_consensus,
+            'action_plan': self.action_plan,
+            'follow_up_date': self.follow_up_date.isoformat() if self.follow_up_date else None,
+            'linked_case_id': self.linked_case_id,
+            'source_smart_reporter_session_id': self.source_smart_reporter_session_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+        if include_meeting and self.meeting:
+            out['meeting'] = {
+                'id': self.meeting.id,
+                'name': self.meeting.name,
+                'mdt_type': self.meeting.mdt_type,
+                'date': self.meeting.date.isoformat() if self.meeting.date else None,
+            }
+        return out
+
+    def __repr__(self):
+        return f'<MdtCase {self.id}: {self.diagnosis[:30]} ({self.status})>'

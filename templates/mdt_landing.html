@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}MDT Suite | RadInsights{% endblock %}
+{% block tool_active_mdt %}active{% endblock %}
+{% block mobile_active_mdt %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">MDT Suite</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">MDT Suite</li>
+        </ol>
+    </nav>
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <i class="fas fa-users" style="font-size: 2.5rem; color: #6b46c1;"></i>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">MDT Suite</h1>
+        <p class="text-muted mb-0">Multi-disciplinary team workflow — prep cases, capture meeting outcomes, search history</p>
+    </div>
+
+    <!-- Quick start -->
+    <div class="card card-brand mb-4">
+        <div class="card-brand-header">
+            <i class="fas fa-bolt me-2"></i>Quick start
+        </div>
+        <div class="card-brand-body">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Date</label>
+                    <input type="date" class="form-control form-control-sm" id="mdtQuickDate">
+                </div>
+                <div class="col-md-4 position-relative">
+                    <label class="form-label small fw-semibold mb-1">Meeting name</label>
+                    <input type="text" class="form-control form-control-sm" id="mdtQuickName"
+                           placeholder="e.g. Tuesday Lung MDT" autocomplete="off">
+                    <div id="mdtQuickNameDropdown" class="d-none position-absolute w-100 list-group shadow-sm"
+                         style="z-index: 1050; max-height: 240px; overflow-y: auto;"></div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">MDT type <span class="text-muted">(optional)</span></label>
+                    <select class="form-select form-select-sm" id="mdtQuickType">
+                        <option value="">—</option>
+                        <option value="lung">Lung</option>
+                        <option value="upper_gi">Upper GI</option>
+                        <option value="lower_gi">Lower GI / colorectal</option>
+                        <option value="hepatobiliary">Hepatobiliary</option>
+                        <option value="breast">Breast</option>
+                        <option value="urology">Urology</option>
+                        <option value="gynae_onc">Gynae-onc</option>
+                        <option value="head_neck">Head &amp; Neck</option>
+                        <option value="neuro_onc">Neuro-onc</option>
+                        <option value="sarcoma">Sarcoma</option>
+                        <option value="lymphoma">Lymphoma</option>
+                        <option value="paeds">Paediatric</option>
+                        <option value="vascular">Vascular</option>
+                        <option value="transplant">Transplant</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-brand-primary flex-grow-1" id="mdtQuickOpen">
+                        Open
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="mdtQuickNew" title="Create new">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted d-block mt-2">
+                Type a meeting name to autocomplete from your previous meetings, or click <strong>+</strong> to create a new one.
+            </small>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- Recent meetings -->
+        <div class="col-md-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-calendar-week me-1" style="color: #6b46c1;"></i>Recent &amp; upcoming meetings</h6>
+                </div>
+                <div class="card-body" id="mdtRecentMeetings">
+                    <p class="text-muted small mb-0">Loading…</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Diagnosis search -->
+        <div class="col-md-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white border-0">
+                    <h6 class="mb-0 fw-semibold"><i class="fas fa-search me-1" style="color: #6b46c1;"></i>Search by diagnosis</h6>
+                </div>
+                <div class="card-body">
+                    <input type="text" id="mdtSearchInput" class="form-control form-control-sm"
+                           placeholder="e.g. lung cancer, HCC, breast" autocomplete="off">
+                    <div id="mdtSearchResults"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy reminder -->
+    <div class="alert alert-info small mt-4 mb-0">
+        <i class="fas fa-shield-alt me-1"></i>
+        <strong>No patient identifiers.</strong> Use opaque local case references (e.g. <code>L-2026-04-007</code>).
+        Never enter NHS numbers, MRNs, names, or DOBs — PII Guard will block them.
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    MdtSuite.initQuickStart();
+    MdtSuite.loadRecentMeetings('#mdtRecentMeetings', 14);
+    MdtSuite.initSearchBox('#mdtSearchInput', '#mdtSearchResults');
+});
+</script>
+{% endblock %}

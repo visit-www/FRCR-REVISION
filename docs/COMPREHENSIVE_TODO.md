@@ -7,9 +7,9 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **68** / 106 |
-| WONTFIX | 2 / 106 |
-| TODO | **36** / 106 |
+| DONE | **68** / 107 |
+| WONTFIX | 2 / 107 |
+| TODO | **37** / 107 |
 | **Completion** | **64%** |
 
 ---
@@ -195,6 +195,7 @@
 | 65 | Application-level caching (Redis) | TODO | No Redis/Memcached. Repeated DB queries for same data. |
 | 66 | Async job queue for AI generation | TODO | Background tasks run synchronously in request handler. Consider Celery/RQ. |
 | 67 | Query optimization (N+1) | TODO | Multiple `Case.query.filter()` without `.options()` loading. Profile with SQLAlchemy analysis. |
+| 103 | Anthropic prompt caching for large system prompts | TODO | **Revisit post-launch (~500+ paying users).** Add `cache_control: {type: "ephemeral"}` to large stable system prompts (MDT_SYSTEM_PROMPT ~1100 tokens, Smart Reporter Opus prompts ~3000+ tokens) to get a ~25% input-cost reduction on warm calls within a 5-minute window. Trade-offs: 7% surcharge on the FIRST call in any window, cache invalidates on every prompt edit (so don't enable while prompts are still being iterated), cache TTL only 5 minutes. **Estimated saving:** ~$15/mo at 100 active users, ~$1,800/yr at 1,000 users, ~$18,000/yr at 10,000 users. **Highest-leverage targets:** Smart Reporter Opus finalize prompt (largest), MDT_SYSTEM_PROMPT, vetting analysis prompt. **Why park:** absolute spend at current scale is rounding-error, prompts still iterating, complexity in monitoring (4 token types in usage logs vs 2). **Code change:** ~1 line per prompt. **Implementation note:** test PR4 of `_call_claude` wrapper to thread cache_control through transparently. **See full pros/cons analysis in commit message of this entry.** |
 
 ### 4.5 Other
 
@@ -357,11 +358,33 @@ These items come from direct user testing on Apr 8. They are **the next priority
 - **#101** Identify all ImagingProtocol rows where `detailed_protocol_html` or `positioning` section contains the literal string **"Use the image on the right as a guide."** (KOC-style phrasing). Alternatively, directly list all protocols whose source / origin is KOC CT protocols docx. Query Neon and provide the list. These are to be REPLACED with Swansea / Radiology Assistant / UK NHS Trust equivalents in a follow-up migration block.
 - **#102** Search the ImagingProtocol DB for all occurrences of **"Aberdeen ARI"** (across title, detailed_protocol_html, special_notes, any text column) and replace with blank space (empty string). Idempotent migration block with sentinel marker.
 
+---
+
+## MDT SUITE — In-Progress (branch `mdt-module`, not merged)
+
+Testing paused at Part B1 of `docs/tests/mdt_test.md`. Resume from **Part B2**.
+
+| # | Item | Status | Details |
+|---|---|---|---|
+| 104 | MDT Suite — core build (schema, routes, UI, prompt, Smart Reporter save) | IN TEST | Branch `mdt-module`. Models + blueprint + full UI + unified prompt all shipped. Testing A1–B1 passed. See `docs/plans/MDT_SUITE_PLAN.md` + `docs/tests/mdt_test.md`. |
+| 105 | MDT Suite — HTML-first summary + TinyMCE edit mode | DONE | `pre_mdt_summary` stores HTML, rendered `.mdt-card` with 6 colour-accented section cards + CLINICAL ALERT band. TinyMCE plugins lists/autoresize/table/link/image/code. Cloudinary upload with `f_auto,q_auto,w_1200,c_limit/` transform for mobile. Copy button walks DOM for clean plain-text extraction. |
+| 106 | MDT Suite — prompt guardrails (exact dimensions, all discrepancies) | DONE | Guardrail #2 rewrote for exact-dimension TNM threshold rule (no rounding), CLINICAL ALERT now requires listing ALL detected discrepancies numbered. `IMAGING INFORMATION GAPS` section removed (redundant with RECOMMENDATIONS). `_strip_inline_markdown()` scrubber added. B1 test passed on 4.2 cm → T2b + discrepancy detection. |
+| 107 | MDT Suite — Smart Reporter Save-to-MDT flow refactor | DONE | MDT button in Smart Reporter renamed "Save to MDT", now opens save modal directly (no in-card generation). Diagnosis optional. On save, iframe overlay opens MDT case detail with `?embed=1` (hides nav/breadcrumb). "Open full screen" button navigates out. Source banner warns when using draft vs finalised report. Mobile: fullscreen overlay. |
+| 108 | MDT Suite — resume testing B2 → H | TODO | Parts still to run: B2 (TinyMCE edit mode), B2b-d (table/link, image upload, copy plain text), B3 (sparse case negative), C (search), D (export), E (bulk paste-back), F (linking), G (new Smart Reporter save flow + iframe overlay), H (cross-user isolation). |
+| 109 | MDT Suite — merge `mdt-module` to main | BLOCKED | Wait until B2–H all pass. Will include prompt update, HTML renderer, TinyMCE edit mode, Cloudinary image upload, Smart Reporter iframe save flow, `mdt_routes.py`, `models.py` MdtMeeting+MdtCase, migrations. |
+| 110 | MDT Suite — typo scrubber (deferred) | TODO | Model occasionally emits `�` unicode replacement char or merged tokens (e.g. `TAosimertinib`). Low frequency, clinically harmless. Add targeted post-process regex IF users complain. Do NOT bump temperature — trades determinism for marginal gain. |
+| 111 | MDT Suite — prompt caching for `MDT_SYSTEM_PROMPT` | DEFERRED | See #103. Revisit post-launch when prompt iteration settles and steady traffic exists. ~2,650-token system prompt is the biggest caching candidate in the MDT path. Expected ~40% call-cost reduction on warm calls. |
+
 ## QUICK REFERENCE — What To Work On Next
 
-### Remaining TODO Items (36 total, 106 overall)
+### Remaining TODO Items (40 total, 111 overall)
 
-**Next Sprint — Apr 8 user report (START HERE):**
+**Active dev track — MDT Suite (branch `mdt-module`, NOT merged):**
+- **#108** Resume testing Part B2 → H (see `docs/tests/mdt_test.md`)
+- **#109** Merge `mdt-module` to main once tests pass
+- **#110** Typo scrubber (deferred unless users complain)
+
+**Next Sprint — Apr 8 user report (AFTER MDT merge):**
 - **#94–96** Smart Reporter anatomy snippet search + session output persistence
 - **#97–99** Safari dictation fixes (double-insert, stop command, new line command)
 - **#100** Vetting appendicitis protocol match miss

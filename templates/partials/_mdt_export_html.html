@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{{ meeting.name }} — {{ meeting.date.strftime('%d %b %Y') }} — RadInsights MDT Suite</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #2c3e50;
+  background: #f8f9fa;
+  margin: 0;
+  padding: 1rem;
+}
+header {
+  max-width: 1100px;
+  margin: 0 auto 1rem;
+  background: #fff;
+  padding: 1rem 1.25rem;
+  border-radius: 6px;
+  border-left: 4px solid #6b46c1;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+header h1 { margin: 0 0 0.25rem; font-size: 1.4rem; color: #6b46c1; }
+header p { margin: 0; color: #666; font-size: 0.85rem; }
+.toolbar { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.toolbar button {
+  background: #6b46c1; color: #fff; border: 0; padding: 0.4rem 0.85rem;
+  border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500;
+}
+.toolbar button:hover { background: #5a3aa3; }
+.toolbar button.secondary { background: #6c757d; }
+.toolbar button.secondary:hover { background: #5a6168; }
+.privacy-banner {
+  background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px;
+  padding: 0.5rem 0.85rem; margin-top: 0.75rem; font-size: 0.78rem; color: #856404;
+}
+
+main { max-width: 1100px; margin: 0 auto; }
+
+.case {
+  background: #fff;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  page-break-inside: avoid;
+  overflow: hidden;
+}
+.case-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 0;
+}
+.case-data {
+  padding: 1rem 1.25rem;
+  border-right: 2px solid #e9ecef;
+}
+.case-input {
+  padding: 1rem 1.25rem;
+  background: #fafbfc;
+}
+.case-header {
+  background: #f0e8ff;
+  padding: 0.5rem 1.25rem;
+  border-bottom: 1px solid #d4c4f5;
+  font-weight: 600;
+}
+.case-ref { color: #6b46c1; font-family: monospace; font-size: 0.78rem; }
+.case-diagnosis { color: #2c3e50; font-size: 0.95rem; }
+.case-status-chip {
+  display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; margin-left: 0.5rem;
+}
+.status-pending { background: #fff3cd; color: #856404; }
+.status-discussed { background: #d1ecf1; color: #0c5460; }
+.status-action_recorded { background: #d4edda; color: #155724; }
+.status-closed { background: #e2e3e5; color: #383d41; }
+
+.case-section {
+  margin-bottom: 0.6rem;
+}
+.case-section:last-child { margin-bottom: 0; }
+.case-section h3 {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b46c1;
+  font-weight: 600;
+}
+.case-section p {
+  margin: 0;
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  color: #2c3e50;
+}
+.case-section.empty p { color: #aaa; font-style: italic; }
+
+.case-input h3 {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b46c1;
+  font-weight: 600;
+  margin: 0.5rem 0 0.25rem;
+}
+.case-input h3:first-child { margin-top: 0; }
+.case-input textarea {
+  width: 100%;
+  border: 1px solid #d4c4f5;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  background: #fff;
+  resize: vertical;
+}
+.case-input textarea:focus {
+  outline: 2px solid #6b46c1;
+  outline-offset: -2px;
+}
+.case-input .status-row {
+  margin-top: 0.5rem;
+}
+.case-input select {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d4c4f5;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.82rem;
+}
+
+footer {
+  max-width: 1100px;
+  margin: 1rem auto 0;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #888;
+  background: #fff;
+  border-radius: 6px;
+}
+
+@media print {
+  body { background: #fff; padding: 0; font-size: 11px; }
+  header, main, footer { max-width: 100%; }
+  .toolbar { display: none; }
+  .case { box-shadow: none; border: 1px solid #ccc; }
+  .case-input textarea { background: #fff; min-height: 80px; }
+  .case { page-break-inside: avoid; margin-bottom: 0.5rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>{{ meeting.name }}</h1>
+  <p>{{ meeting.date.strftime('%A %d %B %Y') }}{% if meeting.mdt_type %} · {{ meeting.mdt_type|replace('_',' ')|title }}{% endif %} · {{ cases|length }} case{{ 's' if cases|length != 1 else '' }}</p>
+  <p style="font-size: 0.7rem; color: #999; margin-top: 0.25rem;">RadInsights MDT Suite export · Generated {{ generated_at }}</p>
+  <div class="toolbar">
+    <button type="button" onclick="copyConsensusToClipboard()">📋 Copy all consensus to clipboard</button>
+    <button type="button" class="secondary" onclick="window.print()">🖨️ Print / save as PDF</button>
+  </div>
+  <div class="privacy-banner">
+    <strong>For personal reference only.</strong> Contains opaque case references — no patient identifiers.
+    Edits made in this file are LOCAL ONLY (saved to browser localStorage). To sync them back to RadInsights,
+    click "Copy all consensus" → paste into MDT Suite → Bulk Import.
+  </div>
+</header>
+
+<main>
+{% for case in cases %}
+  <article class="case" data-case-id="{{ case.id }}" data-case-ref="{{ case.case_reference or '' }}">
+    <div class="case-header">
+      {% if case.case_reference %}<span class="case-ref">{{ case.case_reference }}</span> · {% endif %}
+      <span class="case-diagnosis">{{ case.diagnosis }}</span>
+      <span class="case-status-chip status-{{ case.status }}">{{ case.status|replace('_',' ') }}</span>
+    </div>
+    <div class="case-grid">
+      <div class="case-data">
+        {% if case.clinical_history %}
+        <div class="case-section">
+          <h3>Clinical history</h3>
+          <p>{{ case.clinical_history }}</p>
+        </div>
+        {% endif %}
+        {% if case.imaging_findings %}
+        <div class="case-section">
+          <h3>Imaging findings</h3>
+          <p>{{ case.imaging_findings }}</p>
+        </div>
+        {% endif %}
+        {% if case.histology_biopsy %}
+        <div class="case-section">
+          <h3>Histology / biopsy</h3>
+          <p>{{ case.histology_biopsy }}</p>
+        </div>
+        {% endif %}
+        {% if case.lab_values %}
+        <div class="case-section">
+          <h3>Lab values</h3>
+          <p>{{ case.lab_values }}</p>
+        </div>
+        {% endif %}
+        {% if case.additional_notes %}
+        <div class="case-section">
+          <h3>Additional notes</h3>
+          <p>{{ case.additional_notes }}</p>
+        </div>
+        {% endif %}
+        {% if case.pre_mdt_summary %}
+        <div class="case-section">
+          <h3>AI pre-MDT summary</h3>
+          <p>{{ case.pre_mdt_summary }}</p>
+        </div>
+        {% endif %}
+      </div>
+      <div class="case-input">
+        <h3>MDT consensus</h3>
+        <textarea data-field="mdt_consensus" rows="6" placeholder="Type the consensus during the meeting…">{{ case.mdt_consensus or '' }}</textarea>
+        <h3>Action plan</h3>
+        <textarea data-field="action_plan" rows="4" placeholder="Action items + responsible person…">{{ case.action_plan or '' }}</textarea>
+        <div class="status-row">
+          <h3>Status</h3>
+          <select data-field="status">
+            <option value="pending" {% if case.status == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="discussed" {% if case.status == 'discussed' %}selected{% endif %}>Discussed</option>
+            <option value="action_recorded" {% if case.status == 'action_recorded' %}selected{% endif %}>Action recorded</option>
+            <option value="closed" {% if case.status == 'closed' %}selected{% endif %}>Closed</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </article>
+{% endfor %}
+</main>
+
+<footer>
+  <p><strong>RadInsights MDT Suite</strong> · This file is for personal pre-meeting reference and offline note-taking only.</p>
+  <p>To save your offline edits back to RadInsights, click "Copy all consensus" above, then paste into the MDT Suite Bulk Import page.</p>
+</footer>
+
+<script>
+(function() {
+  // ── Local persistence ──
+  var meetingId = '{{ meeting.id }}';
+  var STORAGE_KEY = 'radinsights_mdt_export_' + meetingId;
+
+  function saveLocal() {
+    var data = {};
+    document.querySelectorAll('.case').forEach(function(c) {
+      var caseId = c.dataset.caseId;
+      data[caseId] = {};
+      c.querySelectorAll('[data-field]').forEach(function(el) {
+        data[caseId][el.dataset.field] = el.value;
+      });
+    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function restoreLocal() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      document.querySelectorAll('.case').forEach(function(c) {
+        var caseId = c.dataset.caseId;
+        if (!data[caseId]) return;
+        c.querySelectorAll('[data-field]').forEach(function(el) {
+          if (data[caseId][el.dataset.field] != null) {
+            el.value = data[caseId][el.dataset.field];
+          }
+        });
+      });
+    } catch (e) {}
+  }
+
+  // Debounced save on every input/change
+  var saveTimer;
+  function debouncedSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveLocal, 500);
+  }
+
+  document.querySelectorAll('[data-field]').forEach(function(el) {
+    el.addEventListener('input', debouncedSave);
+    el.addEventListener('change', debouncedSave);
+  });
+
+  restoreLocal();
+
+  // ── Clipboard copy ──
+  window.copyConsensusToClipboard = function() {
+    var entries = [];
+    document.querySelectorAll('.case').forEach(function(c) {
+      var caseRef = c.dataset.caseRef || null;
+      var caseId = parseInt(c.dataset.caseId, 10);
+      var entry = { case_id: caseId, case_reference: caseRef };
+      c.querySelectorAll('[data-field]').forEach(function(el) {
+        entry[el.dataset.field] = el.value;
+      });
+      entries.push(entry);
+    });
+    var json = JSON.stringify({ meeting_id: parseInt(meetingId, 10), entries: entries }, null, 2);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(json).then(function() {
+        alert('Copied ' + entries.length + ' case(s). Paste into RadInsights MDT Suite → Bulk Import.');
+      }, function() {
+        promptCopy(json);
+      });
+    } else {
+      promptCopy(json);
+    }
+  };
+
+  function promptCopy(text) {
+    window.prompt('Copy this JSON, then paste into RadInsights MDT Suite → Bulk Import:', text);
+  }
+})();
+</script>
+
+</body>
+</html>

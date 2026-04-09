@@ -1698,6 +1698,35 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR4 C3 master protocol sync skipped: %s', _sync_err)
 
+        # -- PR4 / C4: create MDT Suite tables (mdt_meeting + mdt_case) --
+        # See docs/plans/MDT_SUITE_PLAN.md
+        # Idempotent — uses checkfirst=True so re-runs are no-ops.
+        try:
+            from models import MdtMeeting as _MM, MdtCase as _MC
+            if 'mdt_meeting' not in insp.get_table_names():
+                _MM.__table__.create(db.engine, checkfirst=True)
+                logger.info('PR4 C4: created mdt_meeting table')
+            if 'mdt_case' not in insp.get_table_names():
+                _MC.__table__.create(db.engine, checkfirst=True)
+                logger.info('PR4 C4: created mdt_case table')
+            # PostgreSQL pg_trgm index for fuzzy diagnosis search
+            if db.engine.dialect.name == 'postgresql':
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text(
+                            'CREATE EXTENSION IF NOT EXISTS pg_trgm'
+                        ))
+                        conn.execute(text(
+                            'CREATE INDEX IF NOT EXISTS ix_mdt_case_diagnosis_trgm '
+                            'ON mdt_case USING gin (diagnosis gin_trgm_ops)'
+                        ))
+                        conn.commit()
+                except Exception as _trgm_err:
+                    logger.warning('PR4 C4 pg_trgm index skipped: %s', _trgm_err)
+        except Exception as _mdt_err:
+            db.session.rollback()
+            logger.warning('PR4 C4 MDT table creation skipped: %s', _mdt_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
@@ -2023,6 +2052,9 @@ app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
 
 from vetting_routes import vetting_bp
 app.register_blueprint(vetting_bp)  # Vetting Tool - imaging request workflow
+
+from mdt_routes import mdt_bp
+app.register_blueprint(mdt_bp)  # MDT Suite - multi-disciplinary team workflow
 
 from stripe_routes import stripe_bp
 app.register_blueprint(stripe_bp)  # Stripe payment & subscription management
@@ -8260,4 +8292,9 @@ if __name__ == '__main__':
         show_macos_gatekeeper_popup()
     port = find_free_port(5000, 20)
     logger.info(f"Starting server on http://127.0.0.1:{port}")
-    app.run(debug=True, host='127.0.0.1', port=port)
+    # Default to localhost only. Set DEV_BIND=lan to expose on the LAN
+    # for mobile testing on the same Wi-Fi (uses 0.0.0.0).
+    bind_host = '0.0.0.0' if os.getenv('DEV_BIND', '').lower() == 'lan' else '127.0.0.1'
+    if bind_host == '0.0.0.0':
+        logger.warning('DEV_BIND=lan — server is reachable on your LAN. Do NOT use on untrusted networks.')
+    app.run(debug=True, host=bind_host, port=port)

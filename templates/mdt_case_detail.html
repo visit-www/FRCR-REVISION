@@ -1,0 +1,982 @@
+{% extends 'base.html' %}
+{% block title %}{{ case.diagnosis }} | MDT Suite | RadInsights{% endblock %}
+{% block tool_active_mdt %}active{% endblock %}
+{% block mobile_active_mdt %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item"><a href="/mdt" class="text-white text-decoration-none">MDT Suite</a></li>
+<li class="breadcrumb-item"><a href="/mdt/meetings/{{ meeting.id }}" class="text-white text-decoration-none">{{ meeting.name }}</a></li>
+<li class="breadcrumb-item active text-white-50">{{ case.case_reference or 'Case ' ~ case.id }}</li>
+{% endblock %}
+
+{% block content %}
+{# ── Embed mode: detect ?embed=1 and hide breadcrumb + back nav.
+     Added class also hooked to CSS in base.html via body data attr (set by JS). #}
+<div class="container py-4" id="mdtCaseContainer">
+
+    <nav aria-label="breadcrumb" class="mb-3 mdt-nonembed">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="/mdt" class="text-decoration-none">MDT Suite</a></li>
+            <li class="breadcrumb-item"><a href="/mdt/meetings/{{ meeting.id }}" class="text-decoration-none">{{ meeting.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ case.case_reference or 'Case ' ~ case.id }}</li>
+        </ol>
+    </nav>
+
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-file-medical me-2" style="color: #6b46c1;"></i>{{ case.diagnosis }}</h2>
+            <p class="text-muted mb-0">
+                {{ meeting.name }} · {{ meeting.date.strftime('%a %d %B %Y') }}
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <span id="mdtSaveStatus" class="small text-muted">All changes saved</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="mdtCollapseAllBtn"
+                    title="Collapse all fields (keeps Patient Identity and AI Summary visible)">
+                <i class="fas fa-compress-alt me-1"></i>Collapse all
+            </button>
+            <a href="/mdt/meetings/{{ meeting.id }}" class="btn btn-sm btn-outline-secondary mdt-nonembed">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+        </div>
+    </div>
+
+    <form id="mdtCaseForm" autocomplete="off">
+
+        <!-- ─── Section 1: Identity (NOT collapsible — always visible) ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-id-card me-1"></i>Case identity
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">
+                            Local case reference <span class="text-muted">(optional)</span>
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="password" class="form-control" id="mdtCaseRef"
+                                   data-mdt-autosave data-field="case_reference"
+                                   value="{{ case.case_reference or '' }}"
+                                   placeholder="L-2026-04-007">
+                            <button type="button" class="btn btn-outline-secondary" id="mdtCaseRefToggle"
+                                    title="Show/hide reference"><i class="fas fa-eye"></i></button>
+                        </div>
+                        <small class="text-muted">Never enter NHS number, MRN, or patient name.</small>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Diagnosis <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm"
+                               data-mdt-autosave data-field="diagnosis"
+                               value="{{ case.diagnosis }}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small d-block">Status</label>
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            {% for status, label in [('pending','Pending'),('discussed','Discussed'),('action_recorded','Action'),('closed','Closed')] %}
+                            <input type="radio" class="btn-check" name="mdtStatus" id="mdtStatus_{{status}}"
+                                   value="{{status}}" {% if case.status == status %}checked{% endif %}>
+                            <label class="btn btn-outline-secondary" for="mdtStatus_{{status}}">{{label}}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 2: Pre-meeting context ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-clipboard-list me-1"></i>Pre-meeting context
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 mdt-field" data-mdt-field="clinical_history">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Clinical history</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="clinical_history"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. 67 M, ex-smoker (40 pack-years), 6/52 wt loss, raised ALP, abnormal LFTs">{{ case.clinical_history or '' }}</textarea>
+                </div>
+                <div class="mb-3 mdt-field" data-mdt-field="imaging_findings">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Imaging findings</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="imaging_findings"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. CT CAP — 4 cm spiculated RUL mass, mediastinal nodes, no distant mets. Liver clear.">{{ case.imaging_findings or '' }}</textarea>
+                </div>
+                <div class="mb-3 mdt-field" data-mdt-field="histology_biopsy">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Histology / biopsy</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="histology_biopsy"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. CNB right upper lobe — adenocarcinoma, EGFR ex19del, PD-L1 30%, ALK negative">{{ case.histology_biopsy or '' }}</textarea>
+                </div>
+                <div class="mb-3 mdt-field" data-mdt-field="lab_values">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Lab values</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="lab_values"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. WCC 9.2 · Hb 124 · Plt 280 · eGFR 65 · AFP 12 · CA19-9 850 · bili 22 · ALP 380">{{ case.lab_values or '' }}</textarea>
+                </div>
+                <div class="mb-0 mdt-field" data-mdt-field="additional_notes">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Additional clinical notes</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="additional_notes"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. ECOG 1. PMH COPD GOLD 2, AF on apixaban. Prior R hemicolectomy 2019. Strong FHx breast Ca.">{{ case.additional_notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 3: AI pre-MDT summary (NOT collapsible by design) ─── -->
+        <!--
+            Source of truth is the HIDDEN textarea#mdtPreSummary (HTML string).
+            Default view: rendered HTML in #mdtSummaryPreview.
+            Edit mode:    TinyMCE attached to #mdtPreSummary, rendered div hidden.
+            Autosave:     fires on textarea 'input' event (TinyMCE writes on save).
+        -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section mdt-section-summary">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-magic me-1"></i>AI pre-MDT summary
+                </h6>
+                <div class="d-flex gap-2" id="mdtSummaryBtnBar">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="mdtCopySummaryBtn"
+                            title="Copy the summary as plain text">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="mdtEditSummaryBtn"
+                            title="Edit the rendered summary with a rich-text editor">
+                        <i class="fas fa-pen me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success d-none" id="mdtSaveSummaryBtn"
+                            title="Save your edits and return to the rendered view">
+                        <i class="fas fa-check me-1"></i>Done
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="mdtGenerateSummaryBtn">
+                        <i class="fas fa-magic me-1"></i>Generate / Regenerate
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Hidden textarea — canonical source of truth for HTML content + autosave target -->
+                <textarea class="form-control d-none" id="mdtPreSummary"
+                          data-mdt-autosave data-field="pre_mdt_summary"
+                          rows="10">{{ case.pre_mdt_summary or '' }}</textarea>
+
+                <!-- Default view: rendered HTML -->
+                <div id="mdtSummaryPreview" class="mdt-preview">
+                    {% if case.pre_mdt_summary %}{{ case.pre_mdt_summary | safe }}{% else %}<p class="text-muted fst-italic mb-0 small">Click <strong>Generate / Regenerate</strong> to produce a structured summary from the context above.</p>{% endif %}
+                </div>
+
+                <small class="text-muted d-block mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Generated using <strong>RadInsight Intelligence Standard</strong> — the same model used by the Smart Reporter MDT action.
+                    A clinical alert is added if a discrepancy (e.g. staging vs imaging findings) is detected in the source context.
+                </small>
+            </div>
+        </div>
+
+        <!-- ─── Section 4: Meeting outcome ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-comments me-1"></i>Meeting outcome
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 mdt-field" data-mdt-field="mdt_consensus">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">MDT consensus</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="4"
+                              data-mdt-autosave data-field="mdt_consensus"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. Stage IIIA NSCLC. Discuss with thoracic surgery for resection candidacy.">{{ case.mdt_consensus or '' }}</textarea>
+                </div>
+                <div class="mb-3 mdt-field" data-mdt-field="action_plan">
+                    <div class="d-flex justify-content-between align-items-center mdt-field-toggle" role="button">
+                        <label class="form-label fw-semibold small mb-0">Action plan</label>
+                        <i class="fas fa-chevron-down mdt-field-chevron text-muted small"></i>
+                    </div>
+                    <textarea class="form-control mdt-field-body mt-1" rows="3"
+                              data-mdt-autosave data-field="action_plan"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. Refer Mr X (lung onc) · PET-CT staging · re-discuss in 2 weeks">{{ case.action_plan or '' }}</textarea>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold small">Follow-up date</label>
+                    <input type="date" class="form-control form-control-sm" style="max-width: 200px;"
+                           data-mdt-autosave data-field="follow_up_date"
+                           value="{{ case.follow_up_date.isoformat() if case.follow_up_date else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 5: Linking ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section mdt-field" data-mdt-field="linked_case">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0 fw-semibold text-uppercase small mdt-field-toggle flex-grow-1" role="button"
+                    style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-link me-1"></i>Linked previous case
+                    <i class="fas fa-chevron-down mdt-field-chevron text-muted small ms-2"></i>
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="mdtLinkBtn">
+                    <i class="fas fa-link me-1"></i>{% if case.linked_case %}Change link{% else %}Link to a case{% endif %}
+                </button>
+            </div>
+            <div class="card-body mdt-field-body" id="mdtLinkedCaseDisplay">
+                {% if case.linked_case %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="mb-0">
+                        <a href="/mdt/cases/{{ case.linked_case.id }}" class="text-decoration-none">
+                            <strong>{{ case.linked_case.case_reference or 'Case ' ~ case.linked_case.id }}</strong>
+                        </a>:
+                        {{ case.linked_case.diagnosis }}
+                        <span class="text-muted small">({{ case.linked_case.created_at.strftime('%d %b %Y') if case.linked_case.created_at else '' }})</span>
+                    </p>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="mdtUnlinkBtn">
+                        <i class="fas fa-times me-1"></i>Unlink
+                    </button>
+                </div>
+                {% else %}
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Not linked to any previous case. Click "Link to a case" to search by diagnosis and link a follow-up.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+    </form>
+
+    <!-- Bulk import quick link -->
+    <div class="text-center mt-2">
+        <a href="/mdt/meetings/{{ meeting.id }}/bulk-import" class="text-muted small">
+            <i class="fas fa-file-import me-1"></i>Bulk import consensus from offline notes
+        </a>
+    </div>
+</div>
+
+<!-- Link case modal -->
+<div class="modal fade app-content-modal" id="mdtLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-link me-2" style="color: #6b46c1;"></i>Link to a previous case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Search by diagnosis. Click a result to link this case as a follow-up.</p>
+                <input type="text" class="form-control" id="mdtLinkSearchInput"
+                       placeholder="e.g. lung cancer, HCC, breast" autocomplete="off">
+                <div id="mdtLinkSearchResults" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.mdt-section .card-header {
+    border-bottom: 2px solid #f0f0f0;
+}
+/* Section-level collapse (whole card) */
+.mdt-section-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.mdt-section-toggle:hover {
+    background: #fafbfc;
+}
+.mdt-section-chevron {
+    transition: transform 0.2s ease;
+}
+.mdt-section.collapsed .mdt-section-chevron {
+    transform: rotate(-90deg);
+}
+.mdt-section.collapsed .mdt-section-body {
+    display: none;
+}
+.mdt-section-summary .card-header {
+    background: linear-gradient(135deg, #f8f4ff 0%, #fff 100%);
+}
+
+/* Field-level collapse (individual textarea within a section) */
+.mdt-field-toggle {
+    cursor: pointer;
+    user-select: none;
+    padding: 0.15rem 0;
+}
+.mdt-field-toggle:hover {
+    background: #fafbfc;
+}
+.mdt-field-chevron {
+    transition: transform 0.2s ease;
+}
+.mdt-field.collapsed .mdt-field-chevron {
+    transform: rotate(-90deg);
+}
+.mdt-field.collapsed .mdt-field-body {
+    display: none;
+}
+
+/* Autosize textareas — overflow hidden so the JS-set height is the visible height */
+#mdtCaseForm textarea {
+    overflow-y: hidden;
+    resize: vertical;
+    min-height: 4.5rem;
+    transition: height 0.05s ease;
+}
+#mdtCaseForm textarea#mdtPreSummary {
+    min-height: 12rem;
+}
+
+/* Rendered AI summary preview */
+.mdt-preview {
+    background: #fff;
+    border: 1px solid #e0d4f5;
+    border-radius: 0.4rem;
+    padding: 1rem 1.25rem;
+    min-height: 8rem;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #2c3e50;
+}
+
+/* ── New richer MDT card layout (Python-rendered, per-section accent) ── */
+.mdt-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+.mdt-sec {
+    border-left: 4px solid #ccc;
+    padding: 0.55rem 0.9rem 0.55rem 0.9rem;
+    background: #fafbfc;
+    border-radius: 0 0.4rem 0.4rem 0;
+}
+.mdt-sec-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #495057;
+    margin-bottom: 0.3rem;
+}
+.mdt-sec-body {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #2c3e50;
+}
+.mdt-sec-body p { margin: 0 0 0.3rem; }
+.mdt-sec-body p:last-child { margin-bottom: 0; }
+.mdt-sec-body ul, .mdt-sec-body ol {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+.mdt-sec-body li { margin-bottom: 0.25rem; }
+.mdt-sec-body li:last-child { margin-bottom: 0; }
+/* Per-section accent colours (brand palette) */
+.mdt-sec-indication     { border-left-color: #5E899E; background: #f0f6f9; }
+.mdt-sec-indication     .mdt-sec-label { color: #5E899E; }
+.mdt-sec-findings       { border-left-color: #6b46c1; background: #f8f4ff; }
+.mdt-sec-findings       .mdt-sec-label { color: #6b46c1; }
+.mdt-sec-histology      { border-left-color: #0d6efd; background: #eef5ff; }
+.mdt-sec-histology      .mdt-sec-label { color: #0d6efd; }
+.mdt-sec-impression     { border-left-color: #e96304; background: #fff4ec; }
+.mdt-sec-impression     .mdt-sec-label { color: #e96304; }
+.mdt-sec-recommendations { border-left-color: #198754; background: #eaf6ef; }
+.mdt-sec-recommendations .mdt-sec-label { color: #198754; }
+.mdt-sec-discussion     { border-left-color: #6c757d; background: #f5f5f5; }
+.mdt-sec-discussion     .mdt-sec-label { color: #6c757d; }
+
+/* CLINICAL ALERT block (sits below the cards) */
+.mdt-alert {
+    border-left: 4px solid #ffc107;
+    background: #fff8e6;
+    border-radius: 0 0.4rem 0.4rem 0;
+    padding: 0.6rem 0.9rem;
+    margin-top: 0.2rem;
+}
+.mdt-alert-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #a87c00;
+    margin-bottom: 0.3rem;
+}
+.mdt-alert-body {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #6b4e00;
+}
+
+/* Inline images and tables inserted via TinyMCE — preview rendering */
+.mdt-preview img,
+.mdt-sec-body img,
+.mdt-inline-img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5rem 0;
+    border-radius: 0.35rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.mdt-preview table,
+.mdt-sec-body table,
+.mdt-inline-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.88rem;
+}
+.mdt-preview table td, .mdt-preview table th,
+.mdt-sec-body table td, .mdt-sec-body table th,
+.mdt-inline-table td, .mdt-inline-table th {
+    border: 1px solid #dee2e6;
+    padding: 0.35rem 0.55rem;
+    vertical-align: top;
+}
+.mdt-preview table th,
+.mdt-inline-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+@media (max-width: 576px) {
+    .mdt-preview table,
+    .mdt-inline-table { font-size: 0.82rem; }
+    .mdt-preview img,
+    .mdt-inline-img { margin: 0.35rem 0; }
+}
+.mdt-preview-sec {
+    margin-bottom: 0.9rem;
+}
+.mdt-preview-sec:last-child {
+    margin-bottom: 0;
+}
+.mdt-preview-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b46c1;
+    margin-bottom: 0.2rem;
+}
+.mdt-preview p {
+    margin: 0 0 0.3rem;
+    color: #2c3e50;
+}
+.mdt-preview-ul,
+.mdt-preview-ol {
+    margin: 0.2rem 0 0.3rem 1.3rem;
+    padding: 0;
+}
+.mdt-preview-ul li,
+.mdt-preview-ol li {
+    margin-bottom: 0.25rem;
+}
+.mdt-preview-alert {
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.35rem;
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+}
+.mdt-preview-alert-warning {
+    background: #fff8e6;
+    border-left: 3px solid #ffc107;
+    color: #7a5a00;
+}
+.mdt-preview-alert-info {
+    background: #e8f4f8;
+    border-left: 3px solid #5E899E;
+    color: #2c5866;
+}
+
+/* ── Embed mode (when page is loaded inside the Smart Reporter iframe) ── */
+body.mdt-embed .mdt-nonembed,
+body.mdt-embed nav.navbar,
+body.mdt-embed .navbar,
+body.mdt-embed footer,
+body.mdt-embed .app-sidebar,
+body.mdt-embed .mobile-nav-bar,
+body.mdt-embed .sidebar-wrapper {
+    display: none !important;
+}
+body.mdt-embed #mdtCaseContainer {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    max-width: 100%;
+}
+body.mdt-embed {
+    background: #fff;
+}
+</style>
+
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
+<script>
+var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
+var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
+document.addEventListener('DOMContentLoaded', function() {
+    var caseId = {{ case.id }};
+    MdtSuite.initCaseForm(caseId);
+
+    // ── Embed mode: ?embed=1 strips chrome so the page fits cleanly inside
+    // the Smart Reporter iframe overlay. Adds body.mdt-embed class that
+    // hides breadcrumb / back button / navbar / sidebar / footer via CSS.
+    try {
+        var _params = new URLSearchParams(window.location.search);
+        if (_params.get('embed') === '1') {
+            document.body.classList.add('mdt-embed');
+        }
+    } catch (_e) { /* old browsers */ }
+
+    // ── Auto-resize textareas (grow with content, shrink when emptied) ──
+    // Preserves scroll position by measuring and restoring window.scrollY
+    // before and after any height change. Only fires on real content
+    // events (input/paste) — no polling — so the summary textarea no
+    // longer pulls the page back to itself while scrolling.
+    function autoSize(el) {
+        if (!el) return;
+        var savedScrollTop = window.scrollY || window.pageYOffset;
+        // Measure: briefly set height to a small value, read scrollHeight
+        el.style.height = 'auto';
+        var target = el.scrollHeight + 2;
+        el.style.height = target + 'px';
+        // Restore scroll position — critical to prevent the browser from
+        // scrolling the focused element into view after the layout shift
+        if ((window.scrollY || window.pageYOffset) !== savedScrollTop) {
+            window.scrollTo({ top: savedScrollTop, behavior: 'instant' });
+        }
+    }
+    var allTextareas = document.querySelectorAll('#mdtCaseForm textarea');
+    allTextareas.forEach(function(ta) {
+        autoSize(ta);
+        ta.addEventListener('input', function() { autoSize(ta); });
+        ta.addEventListener('paste', function() { setTimeout(function() { autoSize(ta); }, 10); });
+    });
+
+    // ── Field-level collapse (individual labelled fields) ──
+    // Collapses every data-mdt-field element EXCEPT:
+    //   - Patient Identity (not tagged with data-mdt-field)
+    //   - AI pre-MDT summary (not tagged with data-mdt-field)
+    var allFields = document.querySelectorAll('.mdt-field[data-mdt-field]');
+
+    function setFieldCollapsed(field, collapsed, skipStorage) {
+        var key = field.dataset.mdtField;
+        if (collapsed) {
+            field.classList.add('collapsed');
+        } else {
+            field.classList.remove('collapsed');
+            setTimeout(function() {
+                field.querySelectorAll('textarea').forEach(autoSize);
+            }, 50);
+        }
+        if (!skipStorage) {
+            try {
+                localStorage.setItem('mdt_case_' + caseId + '_field_' + key, collapsed ? '1' : '0');
+            } catch (e) {}
+        }
+    }
+
+    allFields.forEach(function(field) {
+        var key = field.dataset.mdtField;
+        var toggleEl = field.querySelector('.mdt-field-toggle');
+        if (!toggleEl) return;
+
+        // Restore state
+        try {
+            if (localStorage.getItem('mdt_case_' + caseId + '_field_' + key) === '1') {
+                field.classList.add('collapsed');
+            }
+        } catch (e) {}
+
+        toggleEl.addEventListener('click', function(e) {
+            // Don't toggle on clicks on inner buttons (e.g. Link to a case)
+            if (e.target.closest('button')) return;
+            setFieldCollapsed(field, !field.classList.contains('collapsed'));
+        });
+    });
+
+    // ── Global Collapse All / Expand All toggle ──
+    var collapseAllBtn = document.getElementById('mdtCollapseAllBtn');
+    if (collapseAllBtn) {
+        function updateCollapseAllButton() {
+            var anyExpanded = Array.from(allFields).some(function(f) {
+                return !f.classList.contains('collapsed');
+            });
+            if (anyExpanded) {
+                collapseAllBtn.innerHTML = '<i class="fas fa-compress-alt me-1"></i>Collapse all';
+                collapseAllBtn.dataset.state = 'expanded';
+            } else {
+                collapseAllBtn.innerHTML = '<i class="fas fa-expand-alt me-1"></i>Expand all';
+                collapseAllBtn.dataset.state = 'collapsed';
+            }
+        }
+        updateCollapseAllButton();
+
+        collapseAllBtn.addEventListener('click', function() {
+            var shouldCollapse = collapseAllBtn.dataset.state === 'expanded';
+            allFields.forEach(function(field) {
+                setFieldCollapsed(field, shouldCollapse);
+            });
+            updateCollapseAllButton();
+        });
+    }
+
+    // ── AI Summary — HTML-first with TinyMCE edit mode ──
+    // Architecture:
+    //   - #mdtPreSummary (hidden textarea) holds the canonical HTML string + autosave
+    //   - #mdtSummaryPreview renders that HTML (default view)
+    //   - Edit button → TinyMCE attaches to #mdtPreSummary, preview hidden
+    //   - Done button → TinyMCE saves back to textarea, fires 'input' (triggers autosave), TinyMCE destroyed, preview shown
+    var summaryEl = document.getElementById('mdtPreSummary');
+    var previewEl = document.getElementById('mdtSummaryPreview');
+    var editBtn = document.getElementById('mdtEditSummaryBtn');
+    var doneBtn = document.getElementById('mdtSaveSummaryBtn');
+    var copyBtn = document.getElementById('mdtCopySummaryBtn');
+    var genBtn = document.getElementById('mdtGenerateSummaryBtn');
+    var _editorActive = false;
+
+    function renderPreviewFromTextarea() {
+        if (!summaryEl || !previewEl) return;
+        var html = (summaryEl.value || '').trim();
+        if (!html) {
+            previewEl.innerHTML = '<p class="text-muted fst-italic mb-0 small">Click <strong>Generate / Regenerate</strong> to produce a structured summary from the context above.</p>';
+        } else {
+            previewEl.innerHTML = html;
+        }
+    }
+
+    function enterEditMode() {
+        if (_editorActive || !summaryEl) return;
+        // Reveal textarea before TinyMCE initialises on it
+        summaryEl.classList.remove('d-none');
+        if (previewEl) previewEl.classList.add('d-none');
+        editBtn.classList.add('d-none');
+        doneBtn.classList.remove('d-none');
+        genBtn.setAttribute('disabled', 'disabled');
+        copyBtn.setAttribute('disabled', 'disabled');
+
+        tinymce.init({
+            target: summaryEl,
+            height: 520,
+            min_height: 340,
+            menubar: false,
+            toolbar: 'undo redo | bold italic underline | bullist numlist | outdent indent | table link image | removeformat code',
+            plugins: 'lists autoresize table link image code',
+            base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+            relative_urls: false,
+            convert_urls: false,
+            remove_script_host: false,
+            branding: false,
+            promotion: false,
+            statusbar: false,
+            // Auto-insert responsive images (mobile-friendly by default)
+            image_dimensions: false,
+            image_class_list: [
+                { title: 'Responsive (full width)', value: 'img-fluid rounded mdt-inline-img' }
+            ],
+            // Tables: compact Bootstrap styling by default
+            table_default_attributes: { border: '1' },
+            table_default_styles: { 'width': '100%' },
+            table_class_list: [
+                { title: 'Small bordered', value: 'table table-sm table-bordered mdt-inline-table' }
+            ],
+            content_style: (
+                'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; font-size: 14px; line-height: 1.55; color: #2c3e50; }' +
+                'img { max-width: 100%; height: auto; border-radius: 0.35rem; }' +
+                'table { width: 100%; border-collapse: collapse; }' +
+                'table td, table th { padding: 0.35rem 0.5rem; border: 1px solid #dee2e6; }'
+            ),
+            // ── Cloudinary upload handler (mobile-optimised via f_auto,q_auto,w_1200) ──
+            images_upload_handler: function(blobInfo, progress) {
+                return new Promise(function(resolve, reject) {
+                    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+                        reject('Cloudinary not configured');
+                        return;
+                    }
+                    var formData = new FormData();
+                    formData.append('file', blobInfo.blob(), blobInfo.filename());
+                    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                    formData.append('folder', 'radinsights/mdt');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload');
+                    xhr.upload.onprogress = function(e) {
+                        if (e.lengthComputable) progress(Math.round(e.loaded / e.total * 100));
+                    };
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            var json = JSON.parse(xhr.responseText);
+                            if (json.secure_url) {
+                                // Inject Cloudinary transformation for mobile-friendly
+                                // delivery: auto format, auto quality, max width 1200px,
+                                // progressive JPEG. Small on mobile, sharp on desktop.
+                                var optimised = json.secure_url.replace(
+                                    '/upload/',
+                                    '/upload/f_auto,q_auto,w_1200,c_limit/'
+                                );
+                                resolve(optimised);
+                            } else {
+                                reject('Upload failed: no URL returned');
+                            }
+                        } else {
+                            reject('Upload failed: HTTP ' + xhr.status);
+                        }
+                    };
+                    xhr.onerror = function() { reject('Upload error'); };
+                    xhr.send(formData);
+                });
+            },
+            setup: function(editor) {
+                editor.on('init', function() {
+                    _editorActive = true;
+                });
+            }
+        });
+    }
+
+    function exitEditMode() {
+        if (!_editorActive) return;
+        var ed = tinymce.get(summaryEl.id);
+        if (ed) {
+            ed.save();              // writes HTML back into textarea.value
+            ed.remove();            // destroys the editor instance
+        }
+        // Manually fire input so MdtSuite.initCaseForm's debounced autosave picks it up
+        summaryEl.dispatchEvent(new Event('input', { bubbles: true }));
+        summaryEl.classList.add('d-none');
+        if (previewEl) previewEl.classList.remove('d-none');
+        renderPreviewFromTextarea();
+        editBtn.classList.remove('d-none');
+        doneBtn.classList.add('d-none');
+        genBtn.removeAttribute('disabled');
+        copyBtn.removeAttribute('disabled');
+        _editorActive = false;
+    }
+
+    if (editBtn) editBtn.addEventListener('click', enterEditMode);
+    if (doneBtn) doneBtn.addEventListener('click', exitEditMode);
+
+    // ── Copy: walk the DOM and build properly-formatted plain text ──
+    // innerText loses numbered-list numbering and collapses heading hierarchy,
+    // so we walk the rendered structure and rebuild it with:
+    //   HEADING:\n  body\n\n
+    //   1. item  /  - item  for ordered/unordered lists
+    function buildPlainTextFromPreview() {
+        if (!previewEl) return '';
+        var out = [];
+        // Main sections (.mdt-sec)
+        previewEl.querySelectorAll('.mdt-sec').forEach(function(sec) {
+            var label = sec.querySelector('.mdt-sec-label');
+            var body = sec.querySelector('.mdt-sec-body');
+            if (!label || !body) return;
+            out.push(label.innerText.trim().toUpperCase() + ':');
+            // Bulleted list
+            body.querySelectorAll(':scope > ul > li').forEach(function(li) {
+                out.push('- ' + li.innerText.trim());
+            });
+            // Numbered list
+            var olItems = body.querySelectorAll(':scope > ol > li');
+            if (olItems.length) {
+                var i = 1;
+                olItems.forEach(function(li) {
+                    out.push(i + '. ' + li.innerText.trim());
+                    i += 1;
+                });
+            }
+            // Paragraphs (skip if we already captured list items)
+            body.querySelectorAll(':scope > p').forEach(function(p) {
+                var t = p.innerText.trim();
+                if (t) out.push(t);
+            });
+            out.push('');  // blank line between sections
+        });
+        // Clinical alert
+        var alert = previewEl.querySelector('.mdt-alert');
+        if (alert) {
+            var alabel = alert.querySelector('.mdt-alert-label');
+            var abody = alert.querySelector('.mdt-alert-body');
+            if (alabel && abody) {
+                out.push(alabel.innerText.trim().toUpperCase() + ':');
+                out.push(abody.innerText.trim());
+                out.push('');
+            }
+        }
+        // Fallback: if nothing structural was found (e.g. TinyMCE-edited freeform
+        // content), use innerText as-is.
+        if (out.length === 0) {
+            return (previewEl.innerText || '').trim();
+        }
+        return out.join('\n').trim();
+    }
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', function() {
+            var plainText = buildPlainTextFromPreview();
+            if (!plainText || /^Click .*Generate/i.test(plainText)) {
+                MdtSuite.showToast('Nothing to copy — generate a summary first.', 'warning');
+                return;
+            }
+            var copyOk = function() {
+                var orig = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied';
+                copyBtn.classList.remove('btn-outline-secondary');
+                copyBtn.classList.add('btn-success');
+                setTimeout(function() {
+                    copyBtn.innerHTML = orig;
+                    copyBtn.classList.remove('btn-success');
+                    copyBtn.classList.add('btn-outline-secondary');
+                }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(plainText).then(copyOk, function(err) {
+                    MdtSuite.showToast('Copy failed: ' + (err && err.message || 'unknown error'), 'error');
+                });
+            } else {
+                var ta = document.createElement('textarea');
+                ta.value = plainText;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                copyOk();
+            }
+        });
+    }
+
+    // ── After Generate: backend returns HTML. initCaseForm sets textarea.value
+    // programmatically (no 'input' event), so we re-render the preview manually
+    // on a schedule that matches the fetch resolve time.
+    if (genBtn) {
+        genBtn.addEventListener('click', function() {
+            [1000, 3000, 6000].forEach(function(ms) {
+                setTimeout(renderPreviewFromTextarea, ms);
+            });
+        });
+    }
+
+    // ── PII Guard v2 — wire to all clinical textareas + the case_reference field ──
+    // Renders dotted underlines on detected PII, red shield in the page card header,
+    // and disables the auto-save flow until PII is resolved (Redact / Remove / Dismiss).
+    if (window.PIIGuard && window.PIIGuard.protect) {
+        window._piiCtrl = PIIGuard.protect({
+            textareas: [
+                '#mdtCaseRef',
+                'textarea[data-field="diagnosis"]',
+                'textarea[data-field="clinical_history"]',
+                'textarea[data-field="imaging_findings"]',
+                'textarea[data-field="histology_biopsy"]',
+                'textarea[data-field="lab_values"]',
+                'textarea[data-field="additional_notes"]',
+                // #mdtPreSummary excluded — stores HTML now; PII guard regex
+                // would misfire on tags. Upstream context fields are scanned
+                // before generation, which is the effective gate.
+                'textarea[data-field="mdt_consensus"]',
+                'textarea[data-field="action_plan"]',
+            ],
+            bannerTarget: '#mdtCaseForm .mdt-section:first-child .card-header',
+            apiButtons: [],   // auto-save is debounced not button-driven; PII Guard
+                              // blocks the underlying PUT via the global middleware,
+                              // so the form indicator handles the failed save state
+            auditContext: 'mdt'
+        });
+    }
+
+    // Link modal wiring
+    var linkBtn = document.getElementById('mdtLinkBtn');
+    var unlinkBtn = document.getElementById('mdtUnlinkBtn');
+    var modalEl = document.getElementById('mdtLinkModal');
+    var searchInput = document.getElementById('mdtLinkSearchInput');
+    var searchResults = document.getElementById('mdtLinkSearchResults');
+
+    if (linkBtn) {
+        linkBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            setTimeout(function() { searchInput.focus(); }, 250);
+        });
+    }
+
+    var linkSearchTimer = null;
+    searchInput && searchInput.addEventListener('input', function() {
+        clearTimeout(linkSearchTimer);
+        var q = searchInput.value.trim();
+        if (q.length < 2) { searchResults.innerHTML = ''; return; }
+        linkSearchTimer = setTimeout(function() {
+            MdtSuite.fetchJson('/api/mdt/cases/search?q=' + encodeURIComponent(q))
+                .then(function(d) {
+                    var results = (d.results || []).filter(function(r) { return r.id !== caseId; });
+                    if (!results.length) {
+                        searchResults.innerHTML = '<p class="text-muted small mb-0">No cases found.</p>';
+                        return;
+                    }
+                    searchResults.innerHTML = '<div class="list-group">' +
+                        results.map(function(r) {
+                            var ref = r.case_reference ? '<span class="text-muted small me-2">' + MdtSuite.escapeHtml(r.case_reference) + '</span>' : '';
+                            var meeting = r.meeting ? ' <span class="text-muted small">— ' + MdtSuite.escapeHtml(r.meeting.name) + ' · ' + r.meeting.date + '</span>' : '';
+                            return '<button type="button" class="list-group-item list-group-item-action" data-case-id="' + r.id + '">' +
+                                   ref + '<strong>' + MdtSuite.escapeHtml(r.diagnosis) + '</strong>' + meeting + '</button>';
+                        }).join('') + '</div>';
+                });
+        }, 250);
+    });
+
+    searchResults && searchResults.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-case-id]');
+        if (!btn) return;
+        var targetId = parseInt(btn.dataset.caseId, 10);
+        MdtSuite.fetchJson('/api/mdt/cases/' + caseId + '/link', {
+            method: 'POST',
+            body: { linked_case_id: targetId }
+        })
+        .then(function() {
+            MdtSuite.showToast('Linked.', 'success');
+            bootstrap.Modal.getInstance(modalEl).hide();
+            setTimeout(function() { window.location.reload(); }, 600);
+        })
+        .catch(function(err) {
+            MdtSuite.showToast('Link failed: ' + err.message, 'error');
+        });
+    });
+
+    if (unlinkBtn) {
+        unlinkBtn.addEventListener('click', function() {
+            if (!confirm('Unlink this case from its previous case?')) return;
+            MdtSuite.fetchJson('/api/mdt/cases/' + caseId + '/link', {
+                method: 'POST',
+                body: { linked_case_id: null }
+            })
+            .then(function() {
+                MdtSuite.showToast('Unlinked.', 'success');
+                setTimeout(function() { window.location.reload(); }, 400);
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

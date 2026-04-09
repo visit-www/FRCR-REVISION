@@ -493,8 +493,8 @@
                             </button>
                             <div class="collapse show flex-grow-1" id="toolbarActionsRow">
                                 <div class="d-flex flex-wrap gap-2">
-                                    <button class="btn btn-sm report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
-                                        <i class="fas fa-users me-1"></i>MDT
+                                    <button class="btn btn-sm report-action-btn" data-action="mdt-save" onclick="openSaveToMdtFlow()" style="border-color:#e96304;color:#e96304;" title="Save this case to MDT Suite — generate AI notes there">
+                                        <i class="fas fa-users me-1"></i>Save to MDT
                                     </button>
                                     <button class="btn btn-sm report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
                                         <i class="fas fa-graduation-cap me-1"></i>SBA
@@ -3751,9 +3751,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirm('Your report hasn\'t been AI-reviewed yet. Generate ' + meta.label + ' from the unreviewed draft?')) return;
         }
 
-        // For MDT & emails: replace previous output of the same type (with warning)
+        // For emails: replace previous output of the same type (with warning)
         // For SBA & viva: always stack new cards
-        var _replaceActions = ['mdt', 'email_colleague', 'email_patient'];
+        // NOTE: 'mdt' is no longer handled here — it routes through openSaveToMdtFlow().
+        var _replaceActions = ['email_colleague', 'email_patient'];
         if (_replaceActions.indexOf(action) !== -1) {
             var _existingIdx = -1;
             for (var _ri = 0; _ri < state.reportActionHistory.length; _ri++) {
@@ -3857,7 +3858,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 border: meta.border,
                 bg: meta.bg,
                 html: actionHtml,
-                editable: ['email_colleague', 'email_patient', 'mdt'].indexOf(action) !== -1,
+                editable: ['email_colleague', 'email_patient'].indexOf(action) !== -1,
                 timestamp: new Date(),
             });
 
@@ -4004,6 +4005,10 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '<div id="' + contentId + '" style="font-size: 0.85rem; line-height: 1.5;">' + item.html + '</div>';
             html += '<div class="d-flex flex-wrap gap-2 mt-2">';
             html += '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="copyReportAction(' + i + ')"><i class="fas fa-copy me-1"></i>Copy</button>';
+            // NOTE: MDT is no longer rendered as an action card — the Save to MDT
+            // flow opens the modal directly via openSaveToMdtFlow(). Any legacy
+            // 'mdt' cards still in session memory retain the Copy/Remove buttons
+            // for backward compatibility, but no new 'mdt' cards are created.
             html += '<button type="button" class="btn btn-sm btn-outline-secondary" onclick="removeReportAction(' + i + ')"><i class="fas fa-times me-1"></i>Remove</button>';
             html += '</div>';
             html += '</div>';
@@ -4111,6 +4116,316 @@ document.addEventListener('DOMContentLoaded', function() {
         var container = document.getElementById('reportActionResponse');
         container.innerHTML = '';
         container.classList.add('d-none');
+    };
+
+    // ── Save case to MDT Suite (new flow, no in-card AI generation) ───────
+    // Workflow:
+    //   1. User clicks "Save to MDT" in Smart Reporter
+    //   2. We determine whether to use the FINALISED report (preferred) or
+    //      the DRAFT report (with a warning)
+    //   3. Modal opens with imaging findings pre-filled, optional fields
+    //      collapsed, diagnosis optional
+    //   4. On save, the case is created in MDT Suite with NO AI generation
+    //   5. After save, an iframe overlay opens showing the new case detail
+    //      so the user can click "Generate MDT Notes" without leaving Smart Reporter
+    window.openSaveToMdtFlow = function() {
+        // 1. Determine best source of report text
+        var output = document.getElementById('editorOutput');
+        var outputSection = document.getElementById('outputSection');
+        var hasFinalised = output && outputSection
+                           && !outputSection.classList.contains('d-none')
+                           && output.value.trim().length > 0;
+        var draft = (document.getElementById('editorInput') || {}).value || '';
+        draft = draft.trim();
+
+        var reportText = '';
+        var sourceLabel = '';
+        if (hasFinalised) {
+            reportText = output.value.trim();
+            sourceLabel = 'finalised';
+        } else if (draft) {
+            // Warn user — draft is not the ideal MDT source
+            var proceed = confirm(
+                'You are saving this case from your DRAFT report (not yet finalised).\n\n' +
+                'For best AI MDT notes, it is recommended to finalise the report first ' +
+                '(click the Finalise button in the editor toolbar), then save to MDT.\n\n' +
+                'Alternatively, you can continue now with the draft and edit it later in MDT Suite.\n\n' +
+                'Proceed with the draft report?'
+            );
+            if (!proceed) return;
+            reportText = draft;
+            sourceLabel = 'draft';
+        } else {
+            showToast('Your report is empty. Add content before saving to MDT.', 'warning');
+            return;
+        }
+
+        openSaveToMdtModal({ reportText: reportText, sourceLabel: sourceLabel });
+    };
+
+    // ── Modal builder (now triggered by openSaveToMdtFlow, not by action cards) ──
+    window.openSaveToMdtModal = function(opts) {
+        opts = opts || {};
+        var reportText = opts.reportText || '';
+        var sourceLabel = opts.sourceLabel || 'draft';
+
+        var ctx = _getClinicalContext();
+
+        // Today's date YYYY-MM-DD
+        var today = new Date();
+        var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+
+        // Build modal (once per session; fields are reset on every open)
+        var modal = document.getElementById('saveMdtModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'saveMdtModal';
+            modal.className = 'modal fade app-content-modal';
+            modal.tabIndex = -1;
+            modal.innerHTML =
+                '<div class="modal-dialog modal-lg modal-dialog-scrollable">' +
+                '<div class="modal-content">' +
+                '<div class="modal-header">' +
+                '<h5 class="modal-title"><i class="fas fa-users me-2" style="color:#6b46c1;"></i>Save to MDT Suite</h5>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+                '</div>' +
+                '<form id="saveMdtForm">' +
+                '<div class="modal-body">' +
+                  '<div id="saveMdtSourceBanner" class="alert alert-info small py-2 mb-2"></div>' +
+                  '<div class="alert alert-warning small py-2 mb-2">' +
+                  '<i class="fas fa-shield-alt me-1"></i>' +
+                  '<strong>No patient identifiers.</strong> Use a local opaque case reference (e.g. <code>L-2026-04-007</code>). Never enter NHS numbers, MRNs, or names.' +
+                  '</div>' +
+                  // Required row: date, meeting name, case ref
+                  '<div class="row g-2">' +
+                    '<div class="col-md-3">' +
+                      '<label class="form-label fw-semibold small mb-1">Date <span class="text-danger">*</span></label>' +
+                      '<input type="date" class="form-control form-control-sm" id="saveMdtDate" required>' +
+                    '</div>' +
+                    '<div class="col-md-5 position-relative">' +
+                      '<label class="form-label fw-semibold small mb-1">MDT meeting name <span class="text-danger">*</span></label>' +
+                      '<input type="text" class="form-control form-control-sm" id="saveMdtMeetingName" placeholder="e.g. Tuesday Lung MDT" autocomplete="off" required>' +
+                      '<div id="saveMdtNameDropdown" class="d-none position-absolute w-100 list-group shadow-sm" style="z-index:1080;max-height:200px;overflow-y:auto;"></div>' +
+                    '</div>' +
+                    '<div class="col-md-4">' +
+                      '<label class="form-label fw-semibold small mb-1">Pseudo case ref <span class="text-danger">*</span></label>' +
+                      '<input type="text" class="form-control form-control-sm" id="saveMdtCaseRef" placeholder="L-2026-04-007" required>' +
+                    '</div>' +
+                  '</div>' +
+                  // Second required row: MDT type
+                  '<div class="row g-2 mt-1">' +
+                    '<div class="col-md-4">' +
+                      '<label class="form-label fw-semibold small mb-1">MDT type</label>' +
+                      '<select class="form-select form-select-sm" id="saveMdtType">' +
+                        '<option value="">—</option>' +
+                        '<option value="lung">Lung</option><option value="upper_gi">Upper GI</option>' +
+                        '<option value="lower_gi">Lower GI</option><option value="hepatobiliary">Hepatobiliary</option>' +
+                        '<option value="breast">Breast</option><option value="urology">Urology</option>' +
+                        '<option value="gynae_onc">Gynae-onc</option><option value="head_neck">Head &amp; Neck</option>' +
+                        '<option value="neuro_onc">Neuro-onc</option><option value="sarcoma">Sarcoma</option>' +
+                        '<option value="lymphoma">Lymphoma</option><option value="paeds">Paeds</option>' +
+                        '<option value="vascular">Vascular</option><option value="transplant">Transplant</option>' +
+                        '<option value="other">Other</option>' +
+                      '</select>' +
+                    '</div>' +
+                    '<div class="col-md-8">' +
+                      '<label class="form-label fw-semibold small mb-1">Diagnosis <span class="text-muted">(optional)</span></label>' +
+                      '<input type="text" class="form-control form-control-sm" id="saveMdtDiagnosis" placeholder="Leave blank if pending — the MDT will clarify">' +
+                    '</div>' +
+                  '</div>' +
+
+                  // Optional context fields (visible, not collapsed — user explicitly wants to review)
+                  '<hr class="my-3">' +
+                  '<p class="small text-muted mb-2"><i class="fas fa-info-circle me-1"></i>All fields below are <strong>optional</strong>. Imaging findings are pre-filled from your current report; everything else can be pasted now or added later in MDT Suite.</p>' +
+
+                  '<div class="mb-2">' +
+                    '<label class="form-label fw-semibold small mb-1">Clinical history</label>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtClinicalHistory" rows="2" placeholder="Age, PMH, presenting complaint, PS, medications"></textarea>' +
+                  '</div>' +
+                  '<div class="mb-2">' +
+                    '<label class="form-label fw-semibold small mb-1">Imaging findings <span class="text-muted">(auto-filled from report)</span></label>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtImagingFindings" rows="5"></textarea>' +
+                  '</div>' +
+                  '<div class="mb-2">' +
+                    '<label class="form-label fw-semibold small mb-1">Histology / biopsy</label>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtHistology" rows="2" placeholder="Tumour type, grade, biomarkers (EGFR/ALK/PD-L1/ER/PR/HER2, etc.)"></textarea>' +
+                  '</div>' +
+                  '<div class="mb-2">' +
+                    '<label class="form-label fw-semibold small mb-1">Lab values</label>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtLabs" rows="2" placeholder="CBC, LFTs, tumour markers, coagulation, eGFR"></textarea>' +
+                  '</div>' +
+                  '<div class="mb-1">' +
+                    '<label class="form-label fw-semibold small mb-1">Additional notes</label>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtNotes" rows="2" placeholder="ECOG, social context, imaging contraindications"></textarea>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="modal-footer">' +
+                  '<button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>' +
+                  '<button type="submit" class="btn btn-brand-primary"><i class="fas fa-save me-1"></i>Save case</button>' +
+                '</div>' +
+                '</form>' +
+                '</div></div>';
+            document.body.appendChild(modal);
+
+            // Wire submit handler once
+            document.getElementById('saveMdtForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                submitSaveToMdt();
+            });
+
+            // Wire autocomplete on meeting name once
+            var nameInput = document.getElementById('saveMdtMeetingName');
+            var dropdown = document.getElementById('saveMdtNameDropdown');
+            var nameTimer = null;
+            nameInput.addEventListener('input', function() {
+                clearTimeout(nameTimer);
+                var q = nameInput.value.trim();
+                if (q.length < 2) { dropdown.classList.add('d-none'); return; }
+                nameTimer = setTimeout(function() {
+                    fetch('/api/mdt/meetings?name=' + encodeURIComponent(q))
+                        .then(function(r) { return r.json(); })
+                        .then(function(d) {
+                            var matches = (d.meetings || []).slice(0, 6);
+                            if (!matches.length) { dropdown.classList.add('d-none'); return; }
+                            dropdown.innerHTML = matches.map(function(m) {
+                                return '<button type="button" class="list-group-item list-group-item-action small py-1" data-name="' + m.name.replace(/"/g, '&quot;') + '" data-type="' + (m.mdt_type || '') + '">' + m.name + ' <span class="text-muted">— ' + m.date + '</span></button>';
+                            }).join('');
+                            dropdown.classList.remove('d-none');
+                        });
+                }, 200);
+            });
+            dropdown.addEventListener('click', function(e) {
+                var btn = e.target.closest('[data-name]');
+                if (!btn) return;
+                nameInput.value = btn.dataset.name;
+                if (btn.dataset.type) document.getElementById('saveMdtType').value = btn.dataset.type;
+                dropdown.classList.add('d-none');
+            });
+            document.addEventListener('click', function(e) {
+                if (!nameInput.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.add('d-none');
+                }
+            });
+        }
+
+        // Pre-fill the form
+        document.getElementById('saveMdtDate').value = todayStr;
+        document.getElementById('saveMdtMeetingName').value = '';
+        document.getElementById('saveMdtType').value = '';
+        document.getElementById('saveMdtCaseRef').value = '';
+        document.getElementById('saveMdtDiagnosis').value = '';
+        document.getElementById('saveMdtClinicalHistory').value = ctx.clinicalQuestion || '';
+        document.getElementById('saveMdtImagingFindings').value = reportText;
+        document.getElementById('saveMdtHistology').value = '';
+        document.getElementById('saveMdtLabs').value = '';
+        document.getElementById('saveMdtNotes').value = '';
+
+        // Source banner — colour-coded
+        var banner = document.getElementById('saveMdtSourceBanner');
+        if (sourceLabel === 'finalised') {
+            banner.className = 'alert alert-success small py-2 mb-2';
+            banner.innerHTML = '<i class="fas fa-check-circle me-1"></i>Using your <strong>finalised report</strong> as the source. You can still edit the imaging findings below before saving.';
+        } else {
+            banner.className = 'alert alert-warning small py-2 mb-2';
+            banner.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Using your <strong>DRAFT report</strong> (not yet finalised). Consider finalising first for better AI MDT notes, or edit the imaging findings below as needed.';
+        }
+
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    };
+
+    function submitSaveToMdt() {
+        var modal = document.getElementById('saveMdtModal');
+        var date = document.getElementById('saveMdtDate').value;
+        var name = document.getElementById('saveMdtMeetingName').value.trim();
+        var mdtType = document.getElementById('saveMdtType').value;
+        var caseRef = document.getElementById('saveMdtCaseRef').value.trim();
+        var diagnosis = document.getElementById('saveMdtDiagnosis').value.trim();
+        var clinicalHistory = document.getElementById('saveMdtClinicalHistory').value.trim();
+        var imagingFindings = document.getElementById('saveMdtImagingFindings').value.trim();
+        var histology = document.getElementById('saveMdtHistology').value.trim();
+        var labs = document.getElementById('saveMdtLabs').value.trim();
+        var notes = document.getElementById('saveMdtNotes').value.trim();
+
+        // Required: date, meeting name, pseudo case ref (diagnosis now OPTIONAL)
+        if (!date || !name || !caseRef) {
+            showToast('Date, meeting name, and pseudo case ref are required.', 'warning');
+            return;
+        }
+
+        // Create-or-find meeting, then create case
+        fetch('/api/mdt/meetings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name, date: date, mdt_type: mdtType || null })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(meetingData) {
+            if (!meetingData.meeting) throw new Error(meetingData.error || 'Failed to create meeting');
+            var mid = meetingData.meeting.id;
+            return fetch('/api/mdt/cases', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    meeting_id: mid,
+                    case_reference: caseRef,
+                    diagnosis: diagnosis,        // may be empty; backend substitutes sentinel
+                    clinical_history: clinicalHistory || null,
+                    imaging_findings: imagingFindings || null,
+                    histology_biopsy: histology || null,
+                    lab_values: labs || null,
+                    additional_notes: notes || null,
+                    // NO pre_mdt_summary — generation happens later in MDT Suite
+                })
+            }).then(function(r) { return r.json().then(function(j) { return { resp: r, data: j, mid: mid }; }); });
+        })
+        .then(function(result) {
+            if (!result.resp.ok || !result.data.case) {
+                throw new Error(result.data.error || 'Failed to save case');
+            }
+            bootstrap.Modal.getInstance(modal).hide();
+            // Open the new case in an iframe overlay so the user doesn't
+            // lose their Smart Reporter context. User can click "Open full
+            // screen" inside the overlay to navigate to the real page.
+            openMdtCaseIframeOverlay(result.mid, result.data.case.id);
+        })
+        .catch(function(err) {
+            showToast('Could not save: ' + err.message, 'error');
+        });
+    }
+
+    // ── Iframe overlay: show a new MDT case inline without leaving Smart Reporter ──
+    window.openMdtCaseIframeOverlay = function(meetingId, caseId) {
+        var overlay = document.getElementById('mdtIframeOverlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'mdtIframeOverlay';
+            overlay.className = 'mdt-iframe-overlay d-none';
+            overlay.innerHTML =
+                '<div class="mdt-iframe-wrap">' +
+                  '<div class="mdt-iframe-topbar">' +
+                    '<span class="fw-semibold"><i class="fas fa-users me-1" style="color:#6b46c1;"></i>MDT Suite — case detail</span>' +
+                    '<div class="ms-auto d-flex gap-2">' +
+                      '<a href="#" class="btn btn-sm btn-outline-primary" id="mdtIframeFullscreen" target="_blank" rel="noopener">' +
+                        '<i class="fas fa-external-link-alt me-1"></i>Open full screen' +
+                      '</a>' +
+                      '<button type="button" class="btn btn-sm btn-outline-secondary" id="mdtIframeClose">' +
+                        '<i class="fas fa-times me-1"></i>Close' +
+                      '</button>' +
+                    '</div>' +
+                  '</div>' +
+                  '<iframe id="mdtIframeFrame" class="mdt-iframe-body" title="MDT case detail"></iframe>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            document.getElementById('mdtIframeClose').addEventListener('click', function() {
+                overlay.classList.add('d-none');
+                document.getElementById('mdtIframeFrame').src = 'about:blank';
+            });
+        }
+        var caseUrl = '/mdt/meetings/' + meetingId + '/case/' + caseId;
+        document.getElementById('mdtIframeFrame').src = caseUrl + '?embed=1';
+        document.getElementById('mdtIframeFullscreen').href = caseUrl;
+        overlay.classList.remove('d-none');
+        showToast('Case saved. Click "Generate MDT notes" in the overlay to produce the AI summary.', 'success', 5000);
     };
 
     // Helper: ensure the output box is visible and editable.
@@ -7431,6 +7746,47 @@ document.addEventListener('DOMContentLoaded', function() {
 .fill-in-chip {
     transition: all 0.15s ease;
 }
+
+/* ── MDT case iframe overlay (opens after Save to MDT) ──────────────── */
+.mdt-iframe-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    z-index: 1070;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.mdt-iframe-overlay.d-none { display: none !important; }
+.mdt-iframe-wrap {
+    background: #fff;
+    border-radius: 0.6rem;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    width: min(1200px, 100%);
+    height: min(90vh, 900px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.mdt-iframe-topbar {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 0.9rem;
+    background: linear-gradient(135deg, #f8f4ff 0%, #fff 100%);
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+}
+.mdt-iframe-body {
+    flex: 1;
+    width: 100%;
+    border: 0;
+    background: #fff;
+}
+@media (max-width: 768px) {
+    .mdt-iframe-overlay { padding: 0.25rem; }
+    .mdt-iframe-wrap { width: 100%; height: 100vh; border-radius: 0; }
+}
 </style>
 <script>
 function startCheckout(plan) {
@@ -7500,7 +7856,8 @@ if (window.registerVoiceCommands) {
         'proofread':    { fn: function() { if (typeof reviewReport === 'function') reviewReport(); }, label: 'Proofread' },
         'finalize':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'AI Review & Finalize' },
         'finalise':     { fn: function() { var b = document.getElementById('btnFinalizeToolbar'); if (b) b.click(); }, label: 'AI Review & Finalize' },
-        'mdt':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('mdt'); }, label: 'MDT' },
+        'mdt':          { fn: function() { if (typeof openSaveToMdtFlow === 'function') openSaveToMdtFlow(); }, label: 'Save to MDT' },
+        'save to mdt':  { fn: function() { if (typeof openSaveToMdtFlow === 'function') openSaveToMdtFlow(); }, label: 'Save to MDT' },
         'sba':          { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('sba'); }, label: 'SBA' },
         'viva':         { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('viva'); }, label: 'Viva' },
         'email dr':     { fn: function() { if (typeof submitReportAction === 'function') submitReportAction('email_colleague'); }, label: 'Email Dr' },
