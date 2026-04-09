@@ -393,28 +393,48 @@
         });
 
         // ── PII-resolved retry watchdog ─────────────────────────────────
-        // After the user clicks Redact/Remove/Dismiss in the PII Guard
-        // popover, the override flag flips to true on the next scan. We
-        // poll briefly and retry any failed saves so the user doesn't have
-        // to manually re-type to trigger auto-save again.
-        var _lastOverrideState = false;
-        setInterval(function() {
-            if (!window.PIIGuard || !window.PIIGuard.getOverride) return;
-            var override = window.PIIGuard.getOverride();
-            // Transition: blocked → unblocked
-            if (override && !_lastOverrideState && Object.keys(_pendingPiiBlocked).length) {
-                var pending = Object.assign({}, _pendingPiiBlocked);
-                Object.keys(pending).forEach(function(field) {
-                    // Re-read the textarea — user may have edited since the
-                    // failed save (e.g. via PII redact replacing the matched
-                    // text in-place)
+        // The three resolution actions behave differently w.r.t. auto-save:
+        //   Redact / Remove → modify textarea text → fires `input` → debounced
+        //                     auto-save fires → consumes override → success
+        //   Dismiss         → does NOT modify text, no input event → save
+        //                     never re-fires on its own
+        //
+        // Watchdog handles BOTH paths uniformly: poll _piiCtrl.hasPII() and
+        // when (a) no active PII remains AND (b) we have pending blocked
+        // saves, retry the failed PUTs sequentially. Each save re-arms the
+        // PIIGuard override flag immediately before its fetch — the
+        // interceptor consumes the flag on each call so we MUST re-set it
+        // per-save, not just once per batch.
+        function _retryPendingSaves() {
+            var fields = Object.keys(_pendingPiiBlocked);
+            if (!fields.length) return Promise.resolve();
+            // Sequential chain so each save re-arms the override individually
+            return fields.reduce(function(chain, field) {
+                return chain.then(function() {
                     var el = form.querySelector('[data-field="' + field + '"]');
-                    var current = el ? el.value : pending[field];
-                    attemptSave(field, current).catch(function() {});
+                    var current = el ? el.value : _pendingPiiBlocked[field];
+                    // Re-arm override RIGHT BEFORE this save — the fetch
+                    // interceptor consumes _overrideActive after adding the
+                    // header, so we have to re-arm per-save
+                    if (window.PIIGuard && window.PIIGuard.setOverride) {
+                        window.PIIGuard.setOverride(true);
+                    }
+                    return attemptSave(field, current).catch(function() {});
                 });
+            }, Promise.resolve());
+        }
+
+        var _hadPiiLastTick = false;
+        setInterval(function() {
+            if (!window._piiCtrl || typeof window._piiCtrl.hasPII !== 'function') return;
+            var hasPii = window._piiCtrl.hasPII();
+            // Edge: PII just cleared (transition true → false) and there are
+            // pending blocked saves
+            if (!hasPii && _hadPiiLastTick && Object.keys(_pendingPiiBlocked).length) {
+                _retryPendingSaves();
             }
-            _lastOverrideState = override;
-        }, 500);
+            _hadPiiLastTick = hasPii;
+        }, 400);
 
         // Generate AI summary button (Day 3)
         var genBtn = $('#mdtGenerateSummaryBtn');
