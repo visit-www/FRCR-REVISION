@@ -57,10 +57,21 @@
                     <option value="NM">NM</option>
                     <option value="Fluoro">Fluoro</option>
                 </select>
-                <select id="ageGroupFilter" class="form-select form-select-sm" style="min-width: 140px; width: auto;" onchange="renderTable()">
-                    <option value="all">Adult + Paediatric</option>
-                    <option value="adult">Adult only</option>
-                    <option value="paediatric">Paediatric only</option>
+                <select id="sourceFilter" class="form-select form-select-sm" style="min-width: 180px; width: auto;" onchange="renderTable()">
+                    <option value="">All Sources</option>
+                    <option value="swansea">Swansea Bay UHB</option>
+                    <option value="ari_oncology">ARI Oncology (Aberdeen)</option>
+                    <option value="radiology_assistant">Radiology Assistant</option>
+                    <option value="radinsights">RadInsights-authored</option>
+                    <option value="claude_opus">Claude Opus (AI)</option>
+                    <option value="koc">KOC Master</option>
+                    <option value="mrimaster">mrimaster.com</option>
+                    <option value="unknown">Unknown / Unsourced</option>
+                </select>
+                <select id="verifiedFilter" class="form-select form-select-sm" style="min-width: 160px; width: auto;" onchange="renderTable()">
+                    <option value="">All Statuses</option>
+                    <option value="verified">Verified</option>
+                    <option value="unverified">To be verified</option>
                 </select>
                 <input type="text" id="searchInput" class="form-control form-control-sm" style="width: 200px;"
                     placeholder="Search..." oninput="filterTable()">
@@ -76,7 +87,7 @@
                 <tr>
                     <th>Title</th>
                     <th>Modality</th>
-                    <th>Body Section</th>
+                    <th>Source</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                 </tr>
@@ -362,15 +373,29 @@ async function loadAdminProtocols() {
     } catch (err) { console.error(err); }
 }
 
+// Source → badge colour + short label
+const _SOURCE_META = {
+    swansea:             { label: 'Swansea',        bg: '#5E899E', fg: '#fff' },
+    ari_oncology:        { label: 'ARI Oncology',   bg: '#6b46c1', fg: '#fff' },
+    radiology_assistant: { label: 'RadAssistant',   bg: '#2e86ab', fg: '#fff' },
+    radinsights:         { label: 'RadInsights',    bg: '#e96304', fg: '#fff' },
+    claude_opus:         { label: 'Claude Opus',    bg: '#198754', fg: '#fff' },
+    koc:                 { label: 'KOC',            bg: '#6c757d', fg: '#fff' },
+    mrimaster:           { label: 'mrimaster',      bg: '#ffc107', fg: '#212529' },
+    unknown:             { label: 'Unknown',        bg: '#dee2e6', fg: '#495057' },
+};
+
 function renderTable() {
     const modality = document.getElementById('modalityFilter').value;
-    const ageGroup = document.getElementById('ageGroupFilter').value;
+    const source = document.getElementById('sourceFilter').value;
+    const verifiedState = document.getElementById('verifiedFilter').value;
     const search = (document.getElementById('searchInput').value || '').toLowerCase();
 
     const filtered = _adminProtocols.filter(p => {
         if (modality && p.modality !== modality) return false;
-        if (ageGroup === 'adult' && p.is_paediatric) return false;
-        if (ageGroup === 'paediatric' && !p.is_paediatric) return false;
+        if (source && (p._origin || 'unknown') !== source) return false;
+        if (verifiedState === 'verified' && !p.is_verified) return false;
+        if (verifiedState === 'unverified' && p.is_verified) return false;
         if (search && !p.title.toLowerCase().includes(search)
             && !(p.keywords || '').toLowerCase().includes(search)
             && !(p.shorthand_text || '').toLowerCase().includes(search)) return false;
@@ -385,25 +410,29 @@ function renderTable() {
         return;
     }
 
-    tbody.innerHTML = filtered.map(p => `
-        <tr${p.is_paediatric ? ' class="protocol-row-paed"' : ''}>
+    tbody.innerHTML = filtered.map(p => {
+        const src = _SOURCE_META[p._origin] || _SOURCE_META.unknown;
+        return `
+        <tr>
             <td>
                 <strong>${escapeHtml(p.title)}</strong>
                 ${p.is_emergency ? '<span class="badge bg-danger ms-1">Emergency</span>' : ''}
-                ${p.is_paediatric ? '<span class="badge ms-1" style="background:#a8d5ba;color:#0a3b1f;"><i class="fas fa-child me-1"></i>Paediatric</span>' : ''}
             </td>
             <td><span class="badge bg-secondary">${p.modality}</span></td>
-            <td>${escapeHtml(p.body_section || '—')}</td>
             <td>
-                ${p.is_published
-                    ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Published</span>'
-                    : '<span class="badge bg-warning text-dark">Draft</span>'}
+                <span class="badge" style="background:${src.bg};color:${src.fg};">${src.label}</span>
+            </td>
+            <td>
+                ${p.is_verified
+                    ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Verified</span>'
+                    : '<span class="badge bg-warning text-dark"><i class="fas fa-flask me-1"></i>To verify</span>'}
+                ${p.is_published ? '' : '<span class="badge bg-secondary ms-1">Unpublished</span>'}
             </td>
             <td class="text-end">
                 <button class="btn btn-sm btn-outline-secondary me-1" onclick="editProtocol(${p.id})" title="Edit">
                     <i class="fas fa-edit"></i>
                 </button>
-                ${!p.is_published ? `<button class="btn btn-sm btn-outline-success me-1" onclick="verifyProtocol(${p.id})" title="Verify & Publish">
+                ${!p.is_verified ? `<button class="btn btn-sm btn-outline-success me-1" onclick="verifyProtocol(${p.id})" title="Verify & Publish">
                     <i class="fas fa-check-circle"></i>
                 </button>` : ''}
                 <button class="btn btn-sm btn-outline-danger" onclick="deleteProtocol(${p.id})" title="Delete">
@@ -411,7 +440,8 @@ function renderTable() {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 function filterTable() { renderTable(); }

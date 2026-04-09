@@ -627,15 +627,57 @@ def copy_protocol_to_personal(protocol_id):
 
 # ==================== API: ADMIN PROTOCOL MANAGEMENT ====================
 
+_ORIGIN_MAP_CACHE = None
+
+def _build_origin_map():
+    """Slug → _origin lookup from master JSON files (admin-only metadata)."""
+    global _ORIGIN_MAP_CACHE
+    if _ORIGIN_MAP_CACHE is not None:
+        return _ORIGIN_MAP_CACHE
+    import os, json as _j
+    data_dir = os.path.join(os.path.dirname(__file__), 'static', 'data')
+    out = {}
+    try:
+        with open(os.path.join(data_dir, 'ct_protocols.json')) as f:
+            ct = _j.load(f)
+        for title, entry in ct.get('protocols', {}).items():
+            if isinstance(entry, dict):
+                out[_slugify(title)] = entry.get('_origin', 'unknown')
+    except Exception:
+        pass
+    try:
+        with open(os.path.join(data_dir, 'mri_protocols.json')) as f:
+            mri = _j.load(f)
+        for cat, entries in mri.items():
+            if cat == '_meta' or not isinstance(entries, dict):
+                continue
+            for title, entry in entries.items():
+                if isinstance(entry, dict):
+                    slug = _slugify(title)
+                    if slug in out:
+                        slug = 'mri-' + slug
+                    out[slug] = entry.get('_origin', 'unknown')
+    except Exception:
+        pass
+    _ORIGIN_MAP_CACHE = out
+    return out
+
+
 @vetting_bp.route('/api/vetting/admin/protocols', methods=['GET'])
 @login_required
 @require_admin
 def admin_list_protocols():
-    """List all admin protocols (published and unpublished)."""
+    """List all admin protocols with _origin metadata for filtering."""
     protocols = ImagingProtocol.query.filter_by(origin='admin').order_by(
         ImagingProtocol.modality, ImagingProtocol.title
     ).all()
-    return jsonify({'protocols': [p.to_dict() for p in protocols]})
+    origin_map = _build_origin_map()
+    out = []
+    for p in protocols:
+        d = p.to_dict()
+        d['_origin'] = origin_map.get(p.slug, 'unknown')
+        out.append(d)
+    return jsonify({'protocols': out})
 
 
 @vetting_bp.route('/api/vetting/admin/protocols', methods=['POST'])
