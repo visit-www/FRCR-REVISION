@@ -6,24 +6,215 @@
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item"><a href="/mdt" class="text-white text-decoration-none">MDT Suite</a></li>
 <li class="breadcrumb-item"><a href="/mdt/meetings/{{ meeting.id }}" class="text-white text-decoration-none">{{ meeting.name }}</a></li>
-<li class="breadcrumb-item active text-white-50">{{ case.case_reference or 'Case' }}</li>
+<li class="breadcrumb-item active text-white-50">{{ case.case_reference or 'Case ' ~ case.id }}</li>
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
+
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
             <li class="breadcrumb-item"><a href="/mdt" class="text-decoration-none">MDT Suite</a></li>
             <li class="breadcrumb-item"><a href="/mdt/meetings/{{ meeting.id }}" class="text-decoration-none">{{ meeting.name }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ case.case_reference or 'Case ' ~ case.id }}</li>
         </ol>
     </nav>
 
-    <h2 class="mb-3"><i class="fas fa-file-medical me-2" style="color: #6b46c1;"></i>{{ case.diagnosis }}</h2>
-
-    <div class="alert alert-info">
-        <i class="fas fa-tools me-1"></i>
-        <strong>Day 1 build:</strong> route working. The 5-section case form lands in Day 2.
+    <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-file-medical me-2" style="color: #6b46c1;"></i>{{ case.diagnosis }}</h2>
+            <p class="text-muted mb-0">
+                {{ meeting.name }} · {{ meeting.date.strftime('%a %d %B %Y') }}
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <span id="mdtSaveStatus" class="small text-muted">All changes saved</span>
+            <a href="/mdt/meetings/{{ meeting.id }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+        </div>
     </div>
+
+    <form id="mdtCaseForm" autocomplete="off">
+
+        <!-- ─── Section 1: Identity ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-id-card me-1"></i>Case identity
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold small">
+                            Local case reference <span class="text-muted">(optional)</span>
+                        </label>
+                        <div class="input-group input-group-sm">
+                            <input type="password" class="form-control" id="mdtCaseRef"
+                                   data-mdt-autosave data-field="case_reference"
+                                   value="{{ case.case_reference or '' }}"
+                                   placeholder="L-2026-04-007">
+                            <button type="button" class="btn btn-outline-secondary" id="mdtCaseRefToggle"
+                                    title="Show/hide reference"><i class="fas fa-eye"></i></button>
+                        </div>
+                        <small class="text-muted">Never enter NHS number, MRN, or patient name.</small>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold small">Diagnosis <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm"
+                               data-mdt-autosave data-field="diagnosis"
+                               value="{{ case.diagnosis }}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold small d-block">Status</label>
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            {% for status, label in [('pending','Pending'),('discussed','Discussed'),('action_recorded','Action'),('closed','Closed')] %}
+                            <input type="radio" class="btn-check" name="mdtStatus" id="mdtStatus_{{status}}"
+                                   value="{{status}}" {% if case.status == status %}checked{% endif %}>
+                            <label class="btn btn-outline-secondary" for="mdtStatus_{{status}}">{{label}}</label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 2: Pre-meeting context ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-clipboard-list me-1"></i>Pre-meeting context
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Clinical history</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="clinical_history"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. 67 M, ex-smoker (40 pack-years), 6/52 wt loss, raised ALP, abnormal LFTs">{{ case.clinical_history or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Imaging findings</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="imaging_findings"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. CT CAP — 4 cm spiculated RUL mass, mediastinal nodes, no distant mets. Liver clear.">{{ case.imaging_findings or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Histology / biopsy</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="histology_biopsy"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. CNB right upper lobe — adenocarcinoma, EGFR ex19del, PD-L1 30%, ALK negative">{{ case.histology_biopsy or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Lab values</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="lab_values"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. WCC 9.2 · Hb 124 · Plt 280 · eGFR 65 · AFP 12 · CA19-9 850 · bili 22 · ALP 380">{{ case.lab_values or '' }}</textarea>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold small">Additional clinical notes</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="additional_notes"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. ECOG 1. PMH COPD GOLD 2, AF on apixaban. Prior R hemicolectomy 2019. Strong FHx breast Ca.">{{ case.additional_notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 3: AI pre-MDT summary ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-magic me-1"></i>AI pre-MDT summary
+                </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="mdtGenerateSummaryBtn">
+                    <i class="fas fa-magic me-1"></i>Generate / Regenerate
+                </button>
+            </div>
+            <div class="card-body">
+                <textarea class="form-control" rows="5" id="mdtPreSummary"
+                          data-mdt-autosave data-field="pre_mdt_summary"
+                          data-pii-guard="true" data-pii-guard-tier="HIGH"
+                          placeholder="Click 'Generate' to create a 2–3 line summary from the context above. The AI summary is editable.">{{ case.pre_mdt_summary or '' }}</textarea>
+                <small class="text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    AI uses Sonnet (the same model as Smart Reporter MDT). Generation is not active until Day 3.
+                </small>
+            </div>
+        </div>
+
+        <!-- ─── Section 4: Meeting outcome ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-comments me-1"></i>Meeting outcome
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">MDT consensus</label>
+                    <textarea class="form-control" rows="4"
+                              data-mdt-autosave data-field="mdt_consensus"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. Stage IIIA NSCLC. Discuss with thoracic surgery for resection candidacy.">{{ case.mdt_consensus or '' }}</textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Action plan</label>
+                    <textarea class="form-control" rows="3"
+                              data-mdt-autosave data-field="action_plan"
+                              data-pii-guard="true" data-pii-guard-tier="HIGH"
+                              placeholder="e.g. Refer Mr X (lung onc) · PET-CT staging · re-discuss in 2 weeks">{{ case.action_plan or '' }}</textarea>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-semibold small">Follow-up date</label>
+                    <input type="date" class="form-control form-control-sm" style="max-width: 200px;"
+                           data-mdt-autosave data-field="follow_up_date"
+                           value="{{ case.follow_up_date.isoformat() if case.follow_up_date else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Section 5: Linking ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section">
+            <div class="card-header bg-white">
+                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+                    <i class="fas fa-link me-1"></i>Linked previous case
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if case.linked_case %}
+                <p class="mb-2">
+                    Linked to <a href="/mdt/cases/{{ case.linked_case.id }}">{{ case.linked_case.case_reference or 'Case ' ~ case.linked_case.id }}</a>:
+                    <strong>{{ case.linked_case.diagnosis }}</strong>
+                    <span class="text-muted small">({{ case.linked_case.created_at.strftime('%d %b %Y') if case.linked_case.created_at else '' }})</span>
+                </p>
+                {% endif %}
+                <p class="text-muted small mb-0">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Case linking modal lands in Day 5. Manually set <code>linked_case_id</code> via the API for now.
+                </p>
+            </div>
+        </div>
+
+    </form>
 </div>
+
+<style>
+.mdt-section .card-header {
+    border-bottom: 2px solid #f0f0f0;
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    MdtSuite.initCaseForm({{ case.id }});
+});
+</script>
 {% endblock %}
