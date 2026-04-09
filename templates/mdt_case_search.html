@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Search MDT cases | RadInsights{% endblock %}
+{% block tool_active_mdt %}active{% endblock %}
+{% block mobile_active_mdt %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item"><a href="/mdt" class="text-white text-decoration-none">MDT Suite</a></li>
+<li class="breadcrumb-item active text-white-50">Search</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2><i class="fas fa-search me-2" style="color: #6b46c1;"></i>Search MDT cases</h2>
+    <p class="text-muted">Day 3 build — pg_trgm fuzzy search across all your meetings.</p>
+    {% if query %}<p>Query: <code>{{ query }}</code></p>{% endif %}
+</div>
+{% endblock %}

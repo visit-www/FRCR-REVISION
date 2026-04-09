@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}MDT Suite | RadInsights{% endblock %}
+{% block tool_active_mdt %}active{% endblock %}
+{% block mobile_active_mdt %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">MDT Suite</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <i class="fas fa-users" style="font-size: 2.5rem; color: #6b46c1;"></i>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">MDT Suite</h1>
+        <p class="text-muted mb-0">Multi-disciplinary team workflow — prep, capture, search, link</p>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-tools me-1"></i>
+        <strong>Day 1 build:</strong> schema + scaffolding live. Page bodies populate during Days 2–5.
+        See <code>docs/plans/MDT_SUITE_PLAN.md</code> for the full plan.
+    </div>
+
+    <!-- Quick start placeholder -->
+    <div class="card card-brand mb-4">
+        <div class="card-brand-header">
+            <i class="fas fa-bolt me-2"></i>Quick start
+        </div>
+        <div class="card-brand-body">
+            <p class="text-muted small mb-2">Day 2 will wire this up to create / open meetings.</p>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Date</label>
+                    <input type="date" class="form-control form-control-sm" disabled>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold">Meeting name</label>
+                    <input type="text" class="form-control form-control-sm" placeholder="e.g. Tuesday Lung MDT" disabled>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-sm btn-brand-primary w-100" disabled>Open</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-semibold"><i class="fas fa-calendar-week me-1" style="color: #5E899E;"></i>This week</h6>
+                    <p class="text-muted small">Day 3 will populate this list.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-semibold"><i class="fas fa-search me-1" style="color: #5E899E;"></i>Search by diagnosis</h6>
+                    <input type="text" class="form-control form-control-sm" placeholder="e.g. lung cancer" disabled>
+                    <p class="text-muted small mt-2">Day 3 will wire fuzzy search via pg_trgm.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
