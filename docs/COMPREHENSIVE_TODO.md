@@ -7,9 +7,9 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **68** / 106 |
-| WONTFIX | 2 / 106 |
-| TODO | **36** / 106 |
+| DONE | **68** / 107 |
+| WONTFIX | 2 / 107 |
+| TODO | **37** / 107 |
 | **Completion** | **64%** |
 
 ---
@@ -195,6 +195,7 @@
 | 65 | Application-level caching (Redis) | TODO | No Redis/Memcached. Repeated DB queries for same data. |
 | 66 | Async job queue for AI generation | TODO | Background tasks run synchronously in request handler. Consider Celery/RQ. |
 | 67 | Query optimization (N+1) | TODO | Multiple `Case.query.filter()` without `.options()` loading. Profile with SQLAlchemy analysis. |
+| 103 | Anthropic prompt caching for large system prompts | TODO | **Revisit post-launch (~500+ paying users).** Add `cache_control: {type: "ephemeral"}` to large stable system prompts (MDT_SYSTEM_PROMPT ~1100 tokens, Smart Reporter Opus prompts ~3000+ tokens) to get a ~25% input-cost reduction on warm calls within a 5-minute window. Trade-offs: 7% surcharge on the FIRST call in any window, cache invalidates on every prompt edit (so don't enable while prompts are still being iterated), cache TTL only 5 minutes. **Estimated saving:** ~$15/mo at 100 active users, ~$1,800/yr at 1,000 users, ~$18,000/yr at 10,000 users. **Highest-leverage targets:** Smart Reporter Opus finalize prompt (largest), MDT_SYSTEM_PROMPT, vetting analysis prompt. **Why park:** absolute spend at current scale is rounding-error, prompts still iterating, complexity in monitoring (4 token types in usage logs vs 2). **Code change:** ~1 line per prompt. **Implementation note:** test PR4 of `_call_claude` wrapper to thread cache_control through transparently. **See full pros/cons analysis in commit message of this entry.** |
 
 ### 4.5 Other
 
