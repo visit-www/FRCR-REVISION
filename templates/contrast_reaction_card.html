@@ -1,25 +1,47 @@
 {% extends 'base.html' %}
 {% from 'partials/_schema_medical.html' import educational_content %}
 
-{% block title %}Contrast Reaction Card — Premedication, Anaphylaxis, Extravasation | RadInsights{% endblock %}
+{% block title %}Contrast Card — Premedication, Anaphylaxis, Extravasation | RadInsights{% endblock %}
 {% block meta_description %}Quick reference for iodinated and gadolinium contrast safety: premedication regimens, acute reaction management, extravasation, eGFR thresholds, metformin rules, pregnancy, breastfeeding, thyroid, and a paediatric weight-based dose calculator. ACR Manual on Contrast Media 2025.{% endblock %}
 
-{% block og_title %}Contrast Reaction Card — RadInsights{% endblock %}
+{% block og_title %}Contrast Card — RadInsights{% endblock %}
 {% block og_description %}ACR-aligned quick reference for iodinated and gadolinium contrast safety — premedication, acute reactions, extravasation, special populations, paediatric calculator.{% endblock %}
 
 {% block extra_schema %}
 {{ educational_content(
-    'Contrast Reaction Card',
+    'Contrast Card',
     'ACR-aligned quick reference for acute contrast reaction management, premedication regimens, extravasation, renal/metformin rules, special populations, and a paediatric weight-based dose calculator.',
     'https://www.radinsights.xyz/contrast-reaction-card'
 ) }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.radinsights.xyz/" },
+    { "@type": "ListItem", "position": 2, "name": "Quick Reference", "item": "https://www.radinsights.xyz/vetting-essentials" },
+    { "@type": "ListItem", "position": 3, "name": "Contrast Card", "item": "https://www.radinsights.xyz/contrast-reaction-card" }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Contrast Card</li>
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small mb-0">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="/vetting-essentials" class="text-decoration-none">Quick Reference</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Contrast Card</li>
+        </ol>
+    </nav>
     <div class="text-center mb-4">
         <i class="fas fa-flask" style="font-size: 2.5rem; color: #e96304;"></i>
-        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Contrast Reaction Card</h1>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Contrast Card</h1>
         <p class="text-muted mb-0">ACR-aligned quick reference · Adult + Paediatric</p>
     </div>
 

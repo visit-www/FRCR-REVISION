@@ -9,26 +9,60 @@
 
 {% block extra_schema %}
 {{ educational_content(
-    'Paediatric CT Protocols — Interactive Reference',
+    'Paediatric CT Protocols — Principles & Interactive Reference',
     'Searchable paediatric CT protocol library with age-banded parameters, algorithms, slice thicknesses and weight-based IV contrast dosing.',
     'https://www.radinsights.xyz/paediatric-ct-protocols'
 ) }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.radinsights.xyz/" },
+    { "@type": "ListItem", "position": 2, "name": "Protocol Library", "item": "https://www.radinsights.xyz/vetting/protocols" },
+    { "@type": "ListItem", "position": 3, "name": "Paediatric CT Protocols", "item": "https://www.radinsights.xyz/paediatric-ct-protocols" }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/vetting" class="text-white text-decoration-none">Vetting Tool</a>
+</li>
+<li class="breadcrumb-item">
+    <a href="/vetting/protocols" class="text-white text-decoration-none">Protocol Library</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Paediatric CT Protocols</li>
 {% endblock %}
 
 {% block content %}
 <div class="container py-4">
 
+    <!-- Desktop breadcrumb + back link -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small mb-2">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="/vetting" class="text-decoration-none">Vetting Tool</a></li>
+            <li class="breadcrumb-item"><a href="/vetting/protocols" class="text-decoration-none">Protocol Library</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Paediatric CT Protocols</li>
+        </ol>
+        <a href="/vetting/protocols" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Protocol Library
+        </a>
+    </nav>
+
     <!-- Header -->
     <div class="text-center mb-4">
         <i class="fas fa-child" style="font-size: 2.5rem; color: #e96304;"></i>
-        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Paediatric CT Protocols</h1>
-        <p class="text-muted mb-0">Interactive reference — age-banded parameters, slice thickness, algorithms &amp; weight-based contrast dosing</p>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Paediatric CT Protocols — Principles &amp; Interactive Reference</h1>
+        <p class="text-muted mb-0">Age-banded parameters · slice thickness · algorithms &amp; weight-based contrast dosing</p>
         <div class="mt-2 d-flex justify-content-center gap-2 flex-wrap">
             <a href="/vetting-essentials" class="btn btn-sm btn-outline-secondary">
                 <i class="fas fa-graduation-cap me-1"></i>Vetting Essentials
             </a>
             <a href="/contrast-reaction-card" class="btn btn-sm btn-outline-secondary">
-                <i class="fas fa-flask me-1"></i>Contrast Reaction Card
+                <i class="fas fa-flask me-1"></i>Contrast Card
             </a>
         </div>
     </div>
