@@ -2,7 +2,7 @@
   "_meta": {
     "purpose": "Combined MRI imaging protocol master file.",
     "last_updated": "2026-04-09",
-    "total_unique_protocols": 100,
+    "total_unique_protocols": 105,
     "global_technologist_notes": [
       "Empty Patient's Bladder preferably 15 minutes before exam.",
       "DWI: ISO, ADC & Multi-Directional images to be sent to PACS.",
@@ -12,7 +12,11 @@
       "Not to send localizer images to PACS.",
       "If Dynamic sequence will be performed, do not run AX 3D T1 sequence."
     ],
-    "source": "RadInsight Imaging Protocols — enriched by open source Protocol guides"
+    "source": "RadInsight Imaging Protocols — enriched by open source Protocol guides",
+    "_origin_key": {
+      "koc": "KOC (Kuwait Oil Company) hospital protocol documents",
+      "mrimaster": "Scraped from mrimaster.com (to_be_verified)"
+    }
   },
   "Neuroradiology": {
     "Routine Brain": {
@@ -30,7 +34,8 @@
         "T1"
       ],
       "notes": "MRV optional. Contrast optional.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Stroke (Full)": {
       "Axial": [
@@ -53,7 +58,8 @@
         "T1"
       ],
       "notes": "DWI: do thin cuts full Brain.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Stroke (Fast)": {
       "indication": "Only in very serious patient",
@@ -62,7 +68,8 @@
         "GRE",
         "DWI/ADC"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Haemorrhage": {
       "Axial": [
@@ -81,7 +88,8 @@
       "Sagittal": [
         "T1"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Tumour": {
       "base": "Routine Brain + Contrast",
@@ -108,7 +116,8 @@
         "MR spectroscopy (all cases, to be implemented)"
       ],
       "notes": "FLAIR + C is optional (discuss with radiologist).",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Metastases": {
       "base": "Routine Brain + Contrast",
@@ -126,7 +135,8 @@
         "MR perfusion",
         "MR spectroscopy"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Infection / Meningitis": {
       "base": "Routine Brain + Contrast",
@@ -140,7 +150,8 @@
       "Sagittal": [
         "MPR + C (Brain-Lab)"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Trauma": {
       "Axial": [
@@ -156,7 +167,8 @@
       "Sagittal": [
         "T1"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Seizure / Epilepsy": {
       "Axial": [
@@ -175,7 +187,8 @@
       "Sagittal": [
         "3D FLAIR"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain MS / Demyelinating / WMHI": {
       "Axial": [
@@ -200,7 +213,8 @@
           "PD axial if suspicious lesions"
         ]
       },
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain Cerebral Venous Thrombosis": {
       "base": "Routine Brain + Contrast",
@@ -215,7 +229,8 @@
         "MPR + C (Brain-Lab)"
       ],
       "notes": "PC MRV if non-contrast.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain AVM": {
       "Axial": [
@@ -234,7 +249,8 @@
       "Sagittal": [
         "T1"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brain CSF Flow / NPH / Chiari I": {
       "Axial": [
@@ -252,7 +268,8 @@
         "T1",
         "3D CISS"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Sella Pituitary (Micro Adenoma)": {
       "Axial": [
@@ -267,7 +284,8 @@
         "Sella: T1",
         "T1 + C (dynamic)"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Inner Ear / IAC": {
       "Axial": [
@@ -286,7 +304,8 @@
         "FSE-SSFP oblique sagittal (optional, discuss with radiologist)"
       ],
       "notes": "Cisterno-GRE (FE-SSFP) is routine; use Cisterno-FSE if denture present.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Skull Base": {
       "Axial": [
@@ -304,7 +323,8 @@
       "Sagittal": [
         "T1 + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Orbit": {
       "base": "Routine Brain +",
@@ -321,7 +341,8 @@
       "Sagittal": [
         "(R and L) T1 + C Sagittal oblique both sides"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Brachial Plexus": {
       "Axial": [
@@ -342,7 +363,8 @@
       ],
       "coverage": "C4 to shoulder joint level",
       "notes": "Contrast optional — coronal & axial (routine). To be discussed with radiologist.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Paediatric Brain": {
       "indication": "Benign and malignant tumours; Suspected physical abuse; Sturge-Weber syndrome; Acute and sever headache; Fever of unknown origin; White matter disorders; Vision and visual loss; Developmental delay; Encephalomyelitis; Neurofibromatosis",
@@ -373,7 +395,8 @@
       ],
       "coverage": "FOV. T1 TSE axial small fov 3mm. FOV",
       "contrast": "Contrast  injection risk and benefits must be explained to the before  the scan; Use T1 SE axial and coronal sequences after the administration of IV gadolinium DTPA injection (copy the planning outlined above). The manufacturer-recommended dose of gadolinium DTPA injection is 0.1 mmol/kg, i.e., 0.2",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Malignant Otitis Externa": {
       "indication": "Malignant otitis externa (MOE); Skull base osteomyelitis; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
@@ -405,7 +428,8 @@
       ],
       "coverage": "T2 stir axial 3mm SFOV. FOV. T1 tse axial 3mm SFOV",
       "contrast": "MRI plays a crucial role in diagnosing and staging MOE. On MRI, findings consistent with MOE include soft tissue inflammation and edema in the external ear canal, extending to the adjacent temporal bone and skull base. The involved structures may demonstrate enhancement following the administration ",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Trigeminal Nerves": {
       "indication": "Trigeminal neuralgia; Nerve  schwannoma; Hemifacial spasm; Tic douloreux; Trigeminal  nerve anatomy; Ophthalmic Nerve (V1):; The ophthalmic nerve is the smallest branch and provides sensory innervation to the upper part of the face, including the forehead, scalp, upper eyelid, and the front part of the scalp.; It also carries sensory information from the cornea, conjunctiva, and the nasal cavity.; Maxillary Nerve (V2):; The maxillary nerve supplies sensory innervation to the middle part of the face, including the lower eyelid, upper lip, cheek, and part of the nasal cavity.",
@@ -434,7 +458,31 @@
       ],
       "coverage": "T2 STIR coronal 3mm SFOV. FOV. T1 tse coronal 3mm small FOV",
       "contrast": "Contrast  injection risk and benefits must be explained to the patient before  the scan; After administering the IV gadolinium DTPA injection, please continue with the following sequences. The document below grants access to the manufacturer's recommended dosage of gadolinium DTPA injection.; Access",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
+    },
+    "Brain with Contrast": {
+      "indication": "Post-operative brain tumour, known metastases, infection, demyelinating disease, meningeal enhancement evaluation",
+      "Axial": [
+        "T1 pre-contrast",
+        "T2",
+        "FLAIR",
+        "DWI/ADC",
+        "T1 post-contrast"
+      ],
+      "Coronal": [
+        "T1 post-contrast"
+      ],
+      "Sagittal": [
+        "T1 post-contrast"
+      ],
+      "contrast": "Gadolinium IV",
+      "coverage": "Whole brain",
+      "notes": [
+        "Pre-contrast T1 is essential for comparison with post-contrast to confirm true enhancement"
+      ],
+      "status": "verified",
+      "_origin": "koc"
     }
   },
   "Spine": {
@@ -452,7 +500,8 @@
         "T2"
       ],
       "notes": "Do not send localizer images to PACS.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Cervical Spine Trauma": {
       "Sagittal": [
@@ -470,7 +519,8 @@
       "Coronal": [
         "PD for alar ligaments"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Cervical Spine Tumour / Infection": {
       "Sagittal": [
@@ -487,7 +537,8 @@
       "Coronal": [
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thoracic (Dorsal) Spine (Routine)": {
       "Axial": [
@@ -502,7 +553,8 @@
         "T2 (with FC)",
         "Vertebral count (stitching) STIR if marrow abnormality"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thoracic Spine Trauma": {
       "Sagittal": [
@@ -518,7 +570,8 @@
       "Coronal": [
         "Optional"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thoracic Spine Tumour / Infection": {
       "Sagittal": [
@@ -535,7 +588,8 @@
       "Coronal": [
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Lumbar Spine (Routine)": {
       "Axial": [
@@ -551,7 +605,8 @@
         "T2",
         "Vertebral count (stitching) STIR if marrow abnormality"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Lumbar Spine Trauma": {
       "Sagittal": [
@@ -567,7 +622,8 @@
       "Coronal": [
         "Optional"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Lumbar Spine Tumour / Infection": {
       "Sagittal": [
@@ -586,7 +642,8 @@
       "Coronal": [
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Spine Tumour / Infection (Generic)": {
       "Axial": [
@@ -607,7 +664,8 @@
         "In-phase/Out-phase",
         "DWI"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Spine Survey (Whole Spine)": {
       "Sagittal": [
@@ -623,7 +681,8 @@
       "Coronal": [
         "T1FS + C (optional)"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Lumbar Neurography": {
       "Sagittal": [
@@ -643,7 +702,54 @@
         "STIR",
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
+    },
+    "Spine with Contrast": {
+      "indication": "Spinal tumour, infection, post-operative assessment, leptomeningeal disease",
+      "Sagittal": [
+        "T1 pre-contrast",
+        "T2",
+        "STIR",
+        "T1 post-contrast FS"
+      ],
+      "Axial": [
+        "T1 post-contrast FS (at level of lesion)",
+        "T2"
+      ],
+      "Coronal": [
+        "T1 post-contrast FS (optional)"
+      ],
+      "contrast": "Gadolinium IV",
+      "coverage": "Targeted spine segment",
+      "notes": [
+        "Always include pre-contrast T1 for comparison",
+        "Fat-sat on post-contrast to distinguish enhancement from marrow fat"
+      ],
+      "status": "verified",
+      "_origin": "koc"
+    },
+    "Cord Compression (Emergency)": {
+      "indication": "Suspected metastatic cord compression, cauda equina syndrome, acute myelopathy",
+      "Sagittal": [
+        "T2 whole spine (rapid survey)",
+        "T1 whole spine",
+        "STIR whole spine",
+        "T1 post-contrast FS"
+      ],
+      "Axial": [
+        "T2 at levels of abnormality",
+        "T1 post-contrast FS at levels of abnormality"
+      ],
+      "contrast": "Gadolinium IV recommended",
+      "coverage": "Whole spine — cervical to sacrum",
+      "notes": [
+        "Urgent protocol — scan entire spine even if single level suspected (multifocal disease common)",
+        "Sagittal T2 first to rapidly identify compression level",
+        "NICE CG75: MRI within 24 hours of suspected MSCC"
+      ],
+      "status": "verified",
+      "_origin": "koc"
     }
   },
   "Head_and_Neck": {
@@ -663,7 +769,8 @@
         "T1 FS + C"
       ],
       "notes": "PASTA. Ensure simple PASTA not SI-STIR PASTA. FOV/coverage to be discussed with radiologist. Dynamic for later discussion.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Face & Sinuses": {
       "Axial": [
@@ -681,7 +788,8 @@
       "Sagittal": [
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Neck": {
       "Axial": [
@@ -699,7 +807,8 @@
       "Sagittal": [
         "T1FS + C"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MR Sialography": {
       "indication": "Identify Sialolithiasis (parotid or submandibular gland stones); Detect fistulae, strictures, diverticula, and cysts; Investigate radiation induced xerostomia; Ductal stenosis; Inflammatory conditions; Sjogren's syndrome; Tumor or neoplasm; Facial trauma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
@@ -741,7 +850,8 @@
         "Parotid Glands: The parotid glands are the largest salivary glands, situated below the external acoustic meatus, between the mandible and the sternocleidomastoid muscle. The parotid duct extends from the parotid glands and runs a short distance obliquely forward between the buccinator and the oral mucosa to open upon a small papilla opposite the crown of the second upper molar. This duct is approximately 5-6 cm long and about 1-2 mm thick.",
         "Submandibular glands: The submandibular glands are situated beneath the lower jaws, superior to the digastric muscles. The submandibular duct extends from the submandibular gland to the posterior edge of the mylohyoid muscle, curves around the muscle, then enters the sublingual space on the surface of the mylohyoid muscle, and opens into the floor of the mouth at the summit of the sublingual papilla, located at the side of the frenulum of the tongue. This duct is approximately 5cm long and about 1–3mm thick."
       ],
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   },
   "Abdomen": {
@@ -762,7 +872,8 @@
         "Post-contrast T1 3D FS"
       ],
       "notes": "T2 in TE values is very useful in lesion characterization in liver, especially to differentiate HCC. Hemangiomas, cysts and HCC all appear bright in TE 90; HCC becomes dark in TE 180, while cysts and haemangiomas remain bright.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Liver with MRCP (1.5T/3T)": {
       "Axial": [
@@ -781,7 +892,8 @@
         "Post-contrast T1 3D FS",
         "SSFP coronal T2"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Liver Primovist": {
       "Axial": [
@@ -800,7 +912,8 @@
         "Post-contrast T1 VIBE FS",
         "Hepatobiliary phase T1 VIBE 20 min"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRCP Alone (1.5T/3T)": {
       "Axial": [
@@ -813,7 +926,8 @@
         "FASE oblique coronal 40 mm slab"
       ],
       "notes": "Do coronal MRCP 3D with rotated reconstruction.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Abdomen and Pelvis (General Surveillance)": {
       "Axial": [
@@ -834,7 +948,8 @@
         "Post-contrast 3D delayed"
       ],
       "notes": "If only male pelvis asked — do only pelvic imaging with same sequence. If Sag required, scan both sides of pelvis.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Abdomen (Routine)": {
       "Axial": [
@@ -849,7 +964,8 @@
         "T2 TSE breath hold",
         "Post-contrast 3D delayed"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRI Pancreas": {
       "Axial": [
@@ -865,7 +981,8 @@
         "Thick slab HASTE"
       ],
       "notes": "Small FOV.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MR Enterography (FULL VERBATIM)": {
       "preparation": {
@@ -930,7 +1047,8 @@
           ]
         }
       },
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Retroperitoneal (Lymph Nodes)": {
       "coverage": "Dome of diaphragm to pubic symphysis",
@@ -947,7 +1065,8 @@
       "Sagittal": [
         "HASTE dome of diaphragm to pubic symphysis"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Secretin MRCP": {
       "indication": "Assessment of segmental stenosis of pancreatic duct  in chronic pancreatitis; Evaluation of leakage of pancreatic juice associated  with acute pancreatitis; Assessment of  decreased exocrine reserve in chronic  pancreatitis; Screening for patients at high risk for pancreatic  adenocarcinoma; Evaluation of pancreatic Carcinoma; Evaluation of papillary stenosis; Evaluation of acute pancreatitis; Evaluation of pancreas  divisum; Evaluation of santorinicele; Evaluation of choledochocele",
@@ -983,7 +1102,8 @@
       "notes": [
         "Note:Scans achieve better results when performed with a right-to-left phase direction and 70% oversampling. This choice is made to prevent artifacts caused by motion of the abdominal wall fat. However, in most scanners, implementing this option is not feasible due to the additional oversampling, which would extend the breath-hold time beyond what patients can manage. As a result, we conduct the scan with an anterior-posterior phase direction on our 1.5T scanner and right-to-left on our 3T scanner. If TSE images exhibit excessive artifacts, consider utilizing a HASTE sequence."
       ],
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRCP Uncooperative Patient": {
       "Axial": [
@@ -997,7 +1117,8 @@
         "T2 tse 3D(or SPACE 3D) coronal gated"
       ],
       "coverage": "FOV. FOV. FOV",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Anterior Abdominal Wall": {
       "indication": "Abdominal Wall MRI; Abdominal wall endometriosis; Abdominal wall muscle tear; Abdominal wall infections; Abdominal adhesions; Abdominal wall fistula; Abdominal wall masses; Abdominal wall hernias; Abdominal wall lipoma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
@@ -1024,7 +1145,8 @@
         "T1 VIBE DIXON SFOV 4mm sagittal breath hold"
       ],
       "coverage": "T2 TRUEFISP\\HASTE coronal 4mm large FOV. Plan the coronal slices on the axial image, positioning the block horizontally across the abdomen as shown below. Verify the positioning block in the other two planes. Ensure an appropriate angle is set in the sagittal plane, vertically across the abdomen. Th",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   },
   "Pelvis": {
@@ -1052,7 +1174,8 @@
         "Uterine": "Axial after 60 s; Sag dynamic"
       },
       "notes": "Do subtraction [(T1FS + C) – T1FS] if hyperintense lesion seen in T1FS.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Pelvis Female — Adnexal / Ovarian Mass": {
       "Axial": [
@@ -1076,7 +1199,8 @@
         "Delayed T1 VIBE FS"
       ],
       "notes": "Plan HR T2 Ax and Sag in plane of uterus. Do subtraction [(T1FS + C) – T1FS] if lesion hyperintense in T1FS.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Rectum (Ca Rectum Local Staging, 3T)": {
       "Axial": [
@@ -1096,7 +1220,8 @@
         "T2 TSE (no FS, small FOV, 3 mm HR) 18 × 24",
         "T1 3D FS post-contrast (after coronal post-contrast, not routine)"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Ano-Rectal Fistula / Perineal Fistula / Abscess / Pilonidal Sinus / Anal Cancer / Hidradenitis Suppurativa": {
       "Axial": [
@@ -1121,7 +1246,8 @@
         "T1 VIBE FS post-contrast"
       ],
       "notes": "Plan sagittal parallel to anal canal.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Placenta MRI": {
       "indication": "For the assessment of intrauterine fetal growth restriction; Diagnosis and management of placenta accreta; Diagnosis and management of placenta previa; Surgical management of abnormal placentation; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
@@ -1145,7 +1271,8 @@
         "T2 HASTE axial oblique 4mm  Respiratory gated"
       ],
       "coverage": "Begin by planning the sagittal slices on the coronal localizer and position the block parallel to the gravid uterus. Verify the positioning block in the other two planes to confirm proper alignment. It is essential to provide an appropriate angle in the axial plane, which should be perpendicular to ",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MR Proctogram": {
       "indication": "Descending perineum syndrome; Internal rectal intussusception; Difficulty in opening bowel; Obstructed defecation; Faecal incontinence; Pelvic floor dysfunction; Rectal prolapse; Sigmoidocele; Rectocele; Enterocele",
@@ -1166,7 +1293,34 @@
         "T2 tse coronal oblique 3mm SFOV pre proctogram"
       ],
       "coverage": "T2 tse sagittal 3mm SFOV pre proctogram. Plan the sagittal slices on the axial plane; angle the positioning block parallel to the interpubic fibrocartilage and the anal canal. Check the positioning block in the other two planes. An appropriate angle must be given in the coronal plane (parallel to th",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
+    },
+    "Endometriosis": {
+      "indication": "Suspected or known endometriosis, deep infiltrating endometriosis (DIE), pre-surgical mapping",
+      "Axial": [
+        "T2 TSE (3 mm HR, small FOV)",
+        "T1 (no FS) — for haemorrhagic content (bright on T1)",
+        "T1 FS — confirms blood products (signal drop = fat, signal persists = blood)",
+        "DWI (b 0, 800) with ADC"
+      ],
+      "Coronal": [
+        "T2 TSE (3 mm HR)",
+        "STIR (big FOV for ureters)"
+      ],
+      "Sagittal": [
+        "T2 TSE (3 mm HR) — for rectovaginal septum and uterosacral ligaments",
+        "T1 FS"
+      ],
+      "coverage": "Pelvis. Include kidneys on coronal STIR to assess for ureteric involvement.",
+      "contrast": "Optional — T1 FS post-contrast for active implants and adhesions",
+      "notes": [
+        "T1 without fat-sat is CRITICAL — endometriomas appear bright (blood products)",
+        "T1 with fat-sat distinguishes blood (stays bright) from fat (drops out)",
+        "Evaluate: ovaries (endometriomas), rectovaginal septum, uterosacral ligaments, bladder dome, bowel wall, ureters"
+      ],
+      "status": "verified",
+      "_origin": "koc"
     }
   },
   "Urogenital": {
@@ -1190,7 +1344,8 @@
         "T1 3D FS post-contrast"
       ],
       "notes": "If b 2000 not possible, use b 0, 400, 800, 1600. Small FOV true axial perpendicular to urethra.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Scrotum": {
       "positioning": "Penis taped to anterior pelvic wall. No pillow below thighs/legs.",
@@ -1214,7 +1369,8 @@
         "T1 3D FS post-contrast (not routine, d/w radiologist)"
       ],
       "notes": "Cover from kidney to scrotum in big FOV scans.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Adrenal / Renal": {
       "Axial": [
@@ -1238,7 +1394,8 @@
         "HASTE",
         "T1 3D FS post-contrast"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRI Urinary Bladder (1.5T/3T)": {
       "Axial": [
@@ -1260,7 +1417,8 @@
         "T2 (small FOV, 3 mm HR)",
         "Delayed T1 3D FS after 70 s"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRI Inguinal Region": {
       "Axial": [
@@ -1284,7 +1442,8 @@
         "T2 (no FS, small FOV, 3 mm HR)",
         "T1 VIBE FS"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRI Urography": {
       "Axial": [
@@ -1301,7 +1460,8 @@
         "T2 FASE thick slab (60 mm) — breath hold"
       ],
       "notes": "Kidney coverage. Based on area of infarct.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Female Urethra": {
       "indication": "Assessment of  pelvic floor dysfunction and pelvic organ prolapse; Diagnosis of gonococcal and nongonococcal urethritis; Evaluation of  malignant tumours of the female urethra; Diagnosis of  cysts or abscesses of skenes gland; Diagnosis of postirradiation injuries (e.g. urethritis); Evaluation of benign tumours of the urethra; Diagnosis of cysts of bartholins gland; Diagnosis of cysts of gartners duct; Diagnosis of cysts of bartholins gland; Assessment of collagen injections",
@@ -1329,7 +1489,8 @@
       ],
       "coverage": "T2 tse axial 5 mm big fov. Plan the large FOV axial slices on the coronal plane; angle the positioning block parallel to the line along the right and left hip joint. Verify the positioning block in the other two planes. Establish an appropriate angle horizontally across the pelvis in the sagittal pl",
       "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; Very rarely some urethra scans needed contrast enhanced imaging. In case of contrast enhanced imaging use T1 TSE fat saturated small FOV axial and coronal obliques after the administration of IV; injection(copy th",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Penis MRI": {
       "indication": "Metastatic tumours of the urethra or penis; Malignant tumours of the urethra or penis; Benign tumours of the urethra or penis; Tuberculosis of the urethra or penis; Blunt penile or urethral trauma; Penetrating penile injury; Condyloma acuminata; Postirradiation Injuries; Penile fracture; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
@@ -1356,7 +1517,8 @@
       ],
       "coverage": "T2 tse sagittal 3mm SFOV. Plan the sagittal slices on the axial plane. Angle the positioning block parallel to the interpubic fibrocartilage and the anal canal (i.e. parallel to the penile base). Check the positioning block in the other two planes. An appropriate angle must be given in the coronal p",
       "contrast": "Contrast  injection risk and benefits must be explained to the before  the scan; Penile scans rarely require contrast-enhanced imaging. If contrast-enhanced imaging is necessary, utilize T1 TSE Fat-saturated small FOV axial and coronal scans following the administration of IV gadolinium DTPA injecti",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRI KUB": {
       "indication": "Detection of suspected stones where CT is contraindicated (post radiotherapy , children ); For the evaluation of solid abdominal masses; For the evaluation of malignancy; For the evaluation of cyst; Local staging of cancer; Genitourinary tract TB; Haematuria; Trauma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
@@ -1381,7 +1543,8 @@
         "T2 HASTE fat sat coronal 3mm"
       ],
       "coverage": "Plan the axial slices on the coronal plane, angle the positioning block parallel to the right and left iliac crest. Check the positioning block in the other two planes. An appropriate angle must be given in the sagittal plane (horizontally across the abdomen). The slices must be sufficient to cover ",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   },
   "Musculoskeletal": {
@@ -1401,7 +1564,8 @@
         "STIR (left TMJ closed mouth)"
       ],
       "notes": "3 mm slice thickness, SFOV for TMJ.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Sternum": {
       "positioning": "Prone. Use saturation band in chest.",
@@ -1419,7 +1583,8 @@
         "T2WI"
       ],
       "slice": "3 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Clavicle": {
       "positioning": "Supine",
@@ -1435,7 +1600,8 @@
         "STIR"
       ],
       "slice": "3 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Scapula": {
       "Axial": [
@@ -1449,7 +1615,8 @@
       "Sagittal": [
         "T2"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Shoulder": {
       "Axial": [
@@ -1469,7 +1636,8 @@
         "T2"
       ],
       "notes": "PDFS for routine complaints. Add STIR if marrow looks abnormal.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Shoulder Arthrography (MR Arthrogram)": {
       "Axial": [
@@ -1483,7 +1651,8 @@
         "T1FS"
       ],
       "notes": "All images to be performed with small FOV.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Upper Arm (Humerus)": {
       "coil": "Body coil — from shoulder to elbow",
@@ -1498,7 +1667,8 @@
       "Sagittal": [
         "T2WI"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Elbow": {
       "Axial": [
@@ -1517,7 +1687,8 @@
         "T2WI"
       ],
       "notes": "INT FS means TE > 20 (unlike PD) and < 80 (unlike T2); optimum TE for INT FS is 30–50 ms. Choose GRE or cartilage sequence after discussing with radiologist.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Wrist": {
       "positioning": "Patient hand in Superman position. Acquire images perpendicular to carpal bones and wrist joint. Cover 3 slices above CMC joint and 3 slices proximal to radioulnar joint. Use saturation band before and after axial block to reduce UA/RA pulsations.",
@@ -1540,7 +1711,8 @@
         "STIR"
       ],
       "slice": "2–3 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thumb": {
       "Axial": [
@@ -1556,7 +1728,8 @@
         "STIR"
       ],
       "notes": "Small FOV. Wrist in centre of coil. Start with axial sequences.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Finger": {
       "Axial": [
@@ -1574,7 +1747,8 @@
         "PDFS"
       ],
       "notes": "Small FOV. Wrist in centre of coil. Start with axial sequences.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Hand": {
       "coverage": "Tip of finger to radioulnar joint",
@@ -1590,7 +1764,8 @@
       "Sagittal": [
         "STIR"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "SI Joints": {
       "Axial": [
@@ -1601,7 +1776,8 @@
         "STIR (coronal oblique, parallel to sacrum)"
       ],
       "notes": "T1FS pre- and post-contrast optional. SW = 3 mm.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Both Hips": {
       "positioning": "Supine with mild internal rotation. Start with axial from iliac crest to below lesser trochanter.",
@@ -1618,7 +1794,8 @@
         "Right T2 FS"
       ],
       "slice": "3–5 mm. TE for T2 FS = 80 ms.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Hip (Single)": {
       "positioning": "Supine with internal rotation at toes (15°). Start with coronal STIR large FOV (pelvis), followed by imaging in small FOV for symptomatic hip.",
@@ -1643,7 +1820,8 @@
         "T2WI"
       ],
       "slice": "3–4 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thigh": {
       "Axial": [
@@ -1658,7 +1836,8 @@
         "T2WI"
       ],
       "slice": "5–6 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Knee": {
       "under_40": {
@@ -1690,7 +1869,8 @@
         ]
       },
       "positioning": "While positioning, the non-scanned knee should be lifted higher than the scanned one to avoid cross-talk.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Leg": {
       "Axial": [
@@ -1705,7 +1885,8 @@
         "T2WI"
       ],
       "slice": "4–6 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Ankle": {
       "positioning": "Ankle locked at 90° extension.",
@@ -1721,7 +1902,8 @@
         "STIR"
       ],
       "slice": "2–3 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Foot": {
       "positioning": "Ankle joint flexed at 90°.",
@@ -1739,7 +1921,8 @@
         "STIR"
       ],
       "slice": "3 mm",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Soft Tissue / Bone Tumour": {
       "Axial": [
@@ -1761,7 +1944,8 @@
         "Post-contrast T1FS (60 s)"
       ],
       "notes": "FOV to be discussed. Include nearest joint. Soft tissue marker if needed.",
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MR Arthrogram Hip": {
       "indication": "For the evaluation of foreign bodies in the acetabular fossa; For the evaluation of cystic changes in the acetabulum; For the evaluation of  hip dysplasia in children; For the evaluation of osteochondromatosis; For the evaluation of  focal chondropathy; For the evaluation of  labrum lesions; For the evaluation of  labral tear; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed)",
@@ -1790,7 +1974,8 @@
       ],
       "coverage": "FOV. FOV. T1 vibe 3d DIXON coronal 0.9mm small FOV",
       "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; An arthrogram is a diagnostic procedure used to examine joint capsule conditions. During this interventional process, a radiologist injects contrast medium into the joint space to assess any abnormalities. For MRI",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Psoas": {
       "indication": "Tuberculosis of spine; Iliopsoas  tendon rupture; Iliopsoas  syndrome; Iliopsoas cyst; Psoas abscess; Psoas muscle Anatomy; Anatomy:; Iliacus: The iliacus muscle arises from the iliac fossa, which is part of the iliac bone of the pelvis. It also travels downward and laterally to join the psoas major at the same insertion point on the lesser trochanter of the femur.; Psoas muscle 3d image; psoas muscle mri image",
@@ -1811,7 +1996,8 @@
         "T1 tse axial 4 mm 300 fov"
       ],
       "coverage": "T2 stir coronal 4mm  large FOV. Plan the coronal slices on the sagittal plane; angle the positioning block parallel to the psoas. Check the positioning block in the other two planes. An appropriate angle must be given in the axial plane (across the right and left psoas). Slices must be sufficient to",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   },
   "Cardiovascular": {
@@ -1828,7 +2014,8 @@
         "Injection IV contrast with Care bolus.",
         "If venous contamination in feet — do knee and below angio with TWIST."
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MR Venography": {
       "coverage": "Cover from pelvis to mid-thigh",
@@ -1852,7 +2039,8 @@
       "Sagittal": [
         "FASE / HASTE"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "Thoracic Outlet Angiography": {
       "Axial": [
@@ -1866,7 +2054,8 @@
       "Sagittal": [
         "T2 FASE / HASTE — 5 mm"
       ],
-      "status": "verified"
+      "status": "verified",
+      "_origin": "koc"
     },
     "MRA Neck / Carotids": {
       "indication": "Cervicocranial arterial dissection; Arterio-venous malformation; Vertebrobasilar syndrome; Injury to the carotid artery; Aneurysm; Tumours; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples",
@@ -1884,7 +2073,8 @@
         "For the axial T1 fat saturation scans, set the phase direction from right to left with at least 100% oversampling. Keep the phase field of view (FOV) small enough to only cover the neck, as using a large phase FOV may lead to improper fat saturation."
       ],
       "coverage": "Plan the sagittal slices on the coronal localizer: angle the positioning block parallel to the cervical spine. Check the positioning block in the other two planes. An appropriate angle must be given in the axial plane (parallel to the midline of the brain). Slices must be sufficient to cover the nec",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRA Subclavians": {
       "indication": "Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
@@ -1903,7 +2093,8 @@
       ],
       "coverage": "Plan the coronal slices on the sagittal plane; angle the positioning block parallel to the carotid arteries and veins (alternatively, make it parallel to the cervical spine). Check the positioning block in the other two planes. Provide an appropriate angle in the axial plane (parallel to the right a",
       "contrast": "Contrast  injection risk and benefits must be explained to the patient before the scan; It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdomen. This technique is highly dependent upon the site of contrast injection, age of the patient, ",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRA Renal": {
       "indication": "Renal vascular malformation (i.e. arteriovenous  malformations and fistulae); For the evaluation of renal artery stenosis; Hypertensive chronic kidney disease; Atherosclerotic renal artery stenosis; Fibro muscular dysplasia; Renal artery aneurysm; Renal artery dissection; Renal donors; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
@@ -1923,7 +2114,8 @@
       ],
       "coverage": "FOV. Parallel imaging is a newly developed technique used to reduce scan time without affecting the scan resolution. Using parallel acquisition MRI techniques it is possible reconstruct full-FOV images from under sampled k-space data by using the uncorrelated information from RF array coil elements.",
       "contrast": "Contrast  injection risk and benefits must be explained to the patient before  the scan; T1 flash 3D coronal fat saturated .8mm -.9mm pre-contrast; This is one of the simplest methods. It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdo",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRA Upper Arm": {
       "indication": "Arteriovenous malformation; Brachial artery dissection; Brachial vein thrombosis; Brachial Artery stenosis; Atherosclerotic disease; Aneurysms; Vasculitis; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed)",
@@ -1946,7 +2138,8 @@
       ],
       "coverage": "FOV. Plan the coronal slices on the axial plane, and angle the positioning block parallel to the clavicle (i.e., parallel to the subclavian artery). Check the positioning block in the other two planes. An appropriate angle must be used in the sagittal plane (parallel to the humerus). Slices must be ",
       "contrast": "Contrast injection risk and benefit must be explained to the patient before the scan.; This method is considered one of the most straightforward approaches. It relies on estimating the time it takes for the contrast to travel from the injection site to the vascular structures of the abdomen. The eff",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRA Hand": {
       "indication": "Thrombotic and embolic disease; Arteriovenous malformation; Atherosclerotic disease; Artery dissections; Vein thrombosis; Artery stenosis; Aneurysms; Vasculitis; Vasospasm; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
@@ -1968,7 +2161,8 @@
       ],
       "coverage": "T1 vibe 3D fat sat axial 2mm small fov pre-contrast. FOV. FOV",
       "contrast": "Contrast injection risk and benefit must be explained to the patient before the scan.; This is one of the simplest techniques used in MRA. It involves estimating the time it takes for contrast to travel from the injection site to the vascular structure of the abdomen. The effectiveness of this techn",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "MRV Abdomen": {
       "indication": "Magnetic Resonance Angiography(MRA) of abdomen; Pre surgical planning for stent-grafts; Abdominal aortic aneurysm; For the evaluation vasculitis; Mesenteric Ischaemia; Post-surgical Follow-up; Renal artery stenosis; Aortic Dissection; Magnetic resonance venography (MRV) of abdomen; For the assessment of post radiotherapy changes",
@@ -1991,7 +2185,29 @@
       ],
       "coverage": "Plan the axial slices on the coronal plane. Angle the positioning block parallel to the line along the right and left iliac crests. Check the positioning block in the other two planes. Ensure an appropriate angle is used in the sagittal plane (perpendicular to the lumbar spine). The slices should su",
       "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; This is one of the simplest methods. It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdomen. This technique is highly dependent upon the site of cont",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
+    },
+    "MR Peripheral Angiography (Lower Limb)": {
+      "indication": "Peripheral arterial disease, claudication, critical limb ischaemia, pre-bypass planning, post-graft surveillance",
+      "Coronal": [
+        "3D contrast MRA — abdominal aorta station",
+        "3D contrast MRA — thigh station",
+        "3D contrast MRA — calf/foot station",
+        "Pre-contrast mask for subtraction"
+      ],
+      "Axial": [
+        "T1 VIBE pre-contrast (optional planning)"
+      ],
+      "contrast": "Gadolinium bolus-chase technique. Typically 15–20 mL at 1.5–2 mL/s.",
+      "coverage": "Infrarenal aorta to feet (3-station bolus chase)",
+      "notes": [
+        "Bolus-chase or multi-station stepping table technique",
+        "Timing bolus or care-bolus for first station",
+        "If venous contamination in calves — repeat calf station with TWIST or time-resolved MRA"
+      ],
+      "status": "verified",
+      "_origin": "koc"
     }
   },
   "Breast": {
@@ -2024,7 +2240,8 @@
       ],
       "coverage": "FOV. FOV. FOV",
       "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan.; A dynamic flash 3D fat saturation sequence comprises six flash 1mm 3D scans with a 10-second delay between the first and second scans. The first scan in the dynamic sequence serves as a pre-contrast scan, which i",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Breast Implant MRI": {
       "indication": "Identified mass with indeterminate characteristics by mammography or sonography in which patient wishes to avoid biopsy; Staging for chest wall invasion or lymphadenopathy after cancer diagnosis; Dense breasts with difficult to read mammogram based on visualisation; Breast implant integrity or breast implant rupture screening; Palpable mass with negative mammography/sonography; Axillary node metastases with an unknown primary; Unexplained swollen breast or breast implant; To check the response to neoadjuvant chemotherapy; To check the extent of infiltrating lobular carcinoma; To check the extent of infiltrating ductal carcinoma",
@@ -2054,7 +2271,8 @@
       ],
       "coverage": "FOV. FOV. FOV",
       "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan.; A dynamic flash 3D fat saturation sequence comprises six flash 1mm 3D scans with a 10-second delay between the first and second scans. The first scan in the dynamic sequence serves as a pre-contrast scan, which i",
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   },
   "Cardiac": {
@@ -2094,7 +2312,8 @@
         "Note:-Please ensure that you have entered the optimal TI value into the TI box on the parameter card. Additionally, remember to capture the cardiac cycle within the cardiac gating section.",
         "Note:-P"
       ],
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     },
     "Cardiac Stress Perfusion": {
       "indication": "For the assessment of blood flow after heart bypass surgery, angioplasty or artery stenting; For the detection of microvascular dysfunction in various congenital heart diseases; For the detection of ischemia before medical therapy or revascularization; For the diagnosis and assessment of coronary artery disease (CAD); To identify the location and damage caused by a heart attack; For the assessment of myocardial infarction complications; For the assessment of cardiac masses; Heart anatomy and physiology; The heart is a muscular pump that receives deoxygenated blood and propels oxygenated blood to various parts of the body. It is composed of four chambers: the right atrium, right ventricle, left atrium, and left ventricle.; Blood flow through the heart",
@@ -2129,7 +2348,8 @@
         "Note:-Please ensure that you have entered the optimal TI value into the TI box on the parameter card. Additionally, remember to capture the cardiac cycle within the cardiac gating section.",
         "Note:-P"
       ],
-      "status": "to_be_verified"
+      "status": "to_be_verified",
+      "_origin": "mrimaster"
     }
   }
 }

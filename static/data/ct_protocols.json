@@ -2,328 +2,396 @@
   "_meta": {
     "purpose": "Combined CT imaging protocol master file.",
     "last_updated": "2026-04-09",
-    "source": "RadInsight Imaging Protocols — enriched by open source Protocol guides"
+    "source": "RadInsight Imaging Protocols — enriched by open source Protocol guides",
+    "_origin_key": {
+      "swansea": "Swansea Bay UHB CT Protocols",
+      "ari_oncology": "Aberdeen Royal Infirmary Oncology CT Protocols (Feb 2022)",
+      "radiology_assistant": "Radiology Assistant (radiologyassistant.nl)",
+      "radinsights": "RadInsights-authored (guideline-sourced, written for the app)",
+      "claude_opus": "Claude Opus 4.6 — AI-generated from RCR/NICE/ACR/FRCR standard clinical knowledge (to_be_verified)"
+    }
   },
   "protocols": {
     "Brain": {
       "Prep": "None",
       "Contrast": "50ml hand inject if required",
       "Parameters": "C1 to vertex",
-      "Comments": "5mm Axial reformats"
+      "Comments": "5mm Axial reformats",
+      "_origin": "swansea"
     },
     "Sinuses": {
       "Prep": "None",
       "Contrast": "50ml hand inject if required",
       "Parameters": "Frontal to maxillary sinuses",
-      "Comments": "0.6 mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6 mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "Orbits": {
       "Prep": "None",
       "Contrast": "50ml hand inject if required",
       "Parameters": "To cover orbits",
-      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "Orbital cellulitis/Complications of mastoiditis": {
       "Prep": "None",
       "Contrast": "100ml contrast at 3ml/s",
       "Parameters": "50s delay",
-      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "Pituitary": {
       "Prep": "None",
       "Contrast": "50ml @3ml/s then 45ml@1ml/s",
       "Parameters": "60s delay",
-      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "IAMS": {
       "Prep": "None",
       "Contrast": "50ml hand inject if required",
       "Parameters": "Helical Head pre Helical IAMs post",
-      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "Petrous": {
       "Prep": "None",
       "Contrast": "None",
       "Parameters": "Helical",
-      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft"
+      "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
+      "_origin": "swansea"
     },
     "Neck Oncology": {
       "Prep": "None",
       "Contrast": "100ml @1ml/s",
       "Parameters": "100s delay Sup orbital margin to lung apices",
-      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration."
+      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration.",
+      "_origin": "swansea"
     },
     "Neck Thyroid Multi Nodular Goitre": {
       "Prep": "None",
       "Contrast": "None",
       "Parameters": "Hyoid to carina",
-      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration"
+      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration",
+      "_origin": "swansea"
     },
     "4D Neck": {
       "Prep": "None",
       "Contrast": "100ml",
       "Parameters": "Pre, 25s & 85s Skull base to T4",
-      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration"
+      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration",
+      "_origin": "swansea"
     },
     "Neck infection": {
       "Prep": "None",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "Skull base to T4. 50s delay",
-      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration"
+      "Comments": "3mm Axial, Sag and Cor reformats. Bone reformats. Arms by side. Quiet respiration",
+      "_origin": "swansea"
     },
     "Lung cancer": {
       "Prep": "None",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV 70s delay Chest/Liver",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "ari_oncology"
     },
     "HR Thorax": {
       "Prep": "None",
       "Contrast": "None",
       "Parameters": "Inspiration (Supine), If requested Inspiration (Prone) carina to lung bases",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Breast Cancer": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP 70s delay Including supraclavicular fossa",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Oesophagus & Gastric, Neuroendocrine": {
       "Prep": "1 litre water 0.5 hours before scan. 1 glass water immediately before the scan. NBM 6 hours prior.",
       "Contrast": "100ml @ 3ml/s. Buscopan. Water load.",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Pancreatic Cancer": {
       "Prep": "500ml water 1.5 hours before scan. 2 glasses water immediately before the scan.",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "Late arterial Chest/Liver. PV Abdo/Pelvis.",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Bowel & rectal Cancer": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Other Bowel Pathology": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV AP",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Renal Mass": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "TCC upper track Surveillance": {
       "Prep": "500ml water 1.5 hours before scan. 1 glass of water immediately before.",
       "Contrast": "100ml @ 3ml/s or 120ml @3ml/s",
       "Parameters": "Split bolus 20/80 or 20/100. 12min delay. Abdo/pelvis.",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Bladder Cancer": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Testicular Cancer": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Prostate cancer": {
       "Prep": "500ml water 1.5 hours",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "KUB Calculus": {
       "Prep": "1 litre water 1 hour before scan",
       "Contrast": "None",
       "Parameters": "Prone. Lowish dose + Dual energy if calculus seen.",
-      "Comments": "Full bladder"
+      "Comments": "Full bladder",
+      "_origin": "swansea"
     },
     "Adrenal Mass Characterisation": {
       "Prep": "None",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "Pre, 60s & 15min delay",
-      "Comments": "Just adrenal area"
+      "Comments": "Just adrenal area",
+      "_origin": "swansea"
     },
     "Liver Hepatocellular Carcinoma/Haemangioma": {
       "Prep": "",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "Arterial Liver Then PV AP",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Lymphoma": {
       "Prep": "500ml water 1.5 hours before scan",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "ari_oncology"
     },
     "Melanoma": {
       "Prep": "1st Visit: Omni 25ml in 500ml water 2 hours before scan. Omni 25ml in 500ml water 1 hour before scan. Water only for follow up.",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "ari_oncology"
     },
     "Gynae cancer": {
       "Prep": "Omni 25ml in 500ml water 2 hours before scan. Omni 25ml in 500ml water 1 hour before scan.",
       "Contrast": "100ml @ 3ml/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "swansea"
     },
     "Circle of Willis": {
       "Prep": "None",
       "Contrast": "Omni 350 50ml @ 4ml/s. 50ml saline chase.",
       "Parameters": "Whole head Arterial",
-      "Comments": "Multi planar reformats"
+      "Comments": "Multi planar reformats",
+      "_origin": "swansea"
     },
     "Cerebral Venogram": {
       "Prep": "None",
       "Contrast": "Omni 300 100ml @ 3ml/s",
       "Parameters": "Whole head 50s delay",
-      "Comments": "Multi planar reformats"
+      "Comments": "Multi planar reformats",
+      "_origin": "swansea"
     },
     "Carotids": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Arterial Aortic arch to skull base",
-      "Comments": "Multi planar reformats"
+      "Comments": "Multi planar reformats",
+      "_origin": "swansea"
     },
     "Thoracic Angio": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Apices to lung bases",
-      "Comments": "Lung Reformats"
+      "Comments": "Lung Reformats",
+      "_origin": "swansea"
     },
     "Abdominal/Mesenteric Angio": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Diaphragms to acetabular",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Renal angio": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Diaphragms to iliac crests",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Dissection": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Pre Thorax. Arterial CAP from C6 to symph.",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Peripheral Lower Limb angio": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Diaphragm to toes",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Pulmonary Angio": {
       "Prep": "None",
       "Contrast": "Omni 350 100ml @ 4ml/s",
       "Parameters": "Top of aortic arch to base of heart. Unless specified by radiologist.",
-      "Comments": ""
+      "Comments": "",
+      "_origin": "swansea"
     },
     "Brain tumours - primary": {
       "indication": "Primary brain tumour (suspected or known)",
-      "protocol": "Pre-contrast CT head, post-contrast if abnormal."
+      "protocol": "Pre-contrast CT head, post-contrast if abnormal.",
+      "_origin": "ari_oncology"
     },
     "Brain tumours - metastatic": {
       "indication": "Metastatic brain disease",
-      "protocol": "Post-contrast CT head if specifically requested."
+      "protocol": "Post-contrast CT head if specifically requested.",
+      "_origin": "ari_oncology"
     },
     "Post brain tumour resection": {
       "indication": "Post-operative brain tumour resection",
-      "protocol": "Initial CT as pre- and post-contrast CT head to differentiate post-op haemorrhage from residual tumour."
+      "protocol": "Initial CT as pre- and post-contrast CT head to differentiate post-op haemorrhage from residual tumour.",
+      "_origin": "ari_oncology"
     },
     "Head and neck (squamous cell carcinoma)": {
       "indication": "Head and neck SCC",
-      "protocol": "Dual-phase CT neck (arterial and venous) and chest."
+      "protocol": "Dual-phase CT neck (arterial and venous) and chest.",
+      "_origin": "ari_oncology"
     },
     "Mesothelioma or suspected pleural disease and follow up": {
       "indication": "Mesothelioma / pleural disease",
-      "protocol": "CT high chest and abdomen + IV."
+      "protocol": "CT high chest and abdomen + IV.",
+      "_origin": "ari_oncology"
     },
     "Oesophageal cancer": {
       "indication": "Oesophageal cancer",
-      "protocol": "CT chest and abdomen + IV + water."
+      "protocol": "CT chest and abdomen + IV + water.",
+      "_origin": "ari_oncology"
     },
     "Suspected primary hepatic lesion(s)": {
       "indication": "Suspected primary hepatic lesion",
-      "protocol": "i) Cirrhosis and suspected HCC or post-TACE: CT abdomen with Iomeron-400, 4-phase (pre, arterial 35s, venous 70s, equilibrium 180s). Include CT chest if requested or in primary liver malignancy. ii) Suspected benign lesion (haemangioma, adenoma, FNH) and HCC not suspected: MRI first line unless contraindicated/unavailable, in which case CT abdomen arterial + venous + equilibrium."
+      "protocol": "i) Cirrhosis and suspected HCC or post-TACE: CT abdomen with Iomeron-400, 4-phase (pre, arterial 35s, venous 70s, equilibrium 180s). Include CT chest if requested or in primary liver malignancy. ii) Suspected benign lesion (haemangioma, adenoma, FNH) and HCC not suspected: MRI first line unless contraindicated/unavailable, in which case CT abdomen arterial + venous + equilibrium.",
+      "_origin": "ari_oncology"
     },
     "Suspected hepatic metastases": {
       "indication": "Suspected hepatic metastases",
-      "protocol": "CT chest, abdomen and pelvis + IV. Consider arterial phase CT abdomen for hypervascular metastases (thyroid, RCC, neuroendocrine, melanoma, choriocarcinoma)."
+      "protocol": "CT chest, abdomen and pelvis + IV. Consider arterial phase CT abdomen for hypervascular metastases (thyroid, RCC, neuroendocrine, melanoma, choriocarcinoma).",
+      "_origin": "ari_oncology"
     },
     "Pancreatic cancer and cholangiocarcinoma": {
       "indication": "Pancreatic cancer / cholangiocarcinoma",
-      "protocol": "Ultrasound is primary for biliary obstruction. CT if pancreatic neoplasm suspected: CT chest, pre-contrast and arterial phase (40s) abdomen, venous phase abdomen and pelvis + water. Pre-contrast to look for stone disease."
+      "protocol": "Ultrasound is primary for biliary obstruction. CT if pancreatic neoplasm suspected: CT chest, pre-contrast and arterial phase (40s) abdomen, venous phase abdomen and pelvis + water. Pre-contrast to look for stone disease.",
+      "_origin": "ari_oncology"
     },
     "Colorectal cancer": {
       "indication": "Colorectal cancer",
-      "protocol": "CT chest, abdomen and pelvis + IV."
+      "protocol": "CT chest, abdomen and pelvis + IV.",
+      "_origin": "ari_oncology"
     },
     "Anal canal cancer": {
       "indication": "Anal canal cancer",
-      "protocol": "CT chest, abdomen, pelvis and groins + IV."
+      "protocol": "CT chest, abdomen, pelvis and groins + IV.",
+      "_origin": "ari_oncology"
     },
     "Renal indeterminate": {
       "indication": "Indeterminate renal lesion",
-      "protocol": "Triple-phase CT renal (pre, 30s and 100s)."
+      "protocol": "Triple-phase CT renal (pre, 30s and 100s).",
+      "_origin": "ari_oncology"
     },
     "Renal malignancy": {
       "indication": "Renal malignancy",
-      "protocol": "Triple-phase CT renal (pre, 30s and 100s) + CT chest. Add pelvis if local symptoms (e.g. bone pain)."
+      "protocol": "Triple-phase CT renal (pre, 30s and 100s) + CT chest. Add pelvis if local symptoms (e.g. bone pain).",
+      "_origin": "ari_oncology"
     },
     "Ureter/upper urothelial tumour": {
       "indication": "Ureter / upper urothelial tumour",
-      "protocol": "Haematuria with pain: CT KUB + CT urogram + water. Painless haematuria: CT urogram + water."
+      "protocol": "Haematuria with pain: CT KUB + CT urogram + water. Painless haematuria: CT urogram + water.",
+      "_origin": "ari_oncology"
     },
     "Bladder tumour – staging and follow up": {
       "indication": "Bladder tumour staging / follow-up",
-      "protocol": "CT urogram (split-dose IV contrast) + water. Add CT chest if requested."
+      "protocol": "CT urogram (split-dose IV contrast) + water. Add CT chest if requested.",
+      "_origin": "ari_oncology"
     },
     "Prostate (staging & follow up)": {
       "indication": "Prostate cancer staging / follow-up",
-      "protocol": "CT abdomen & pelvis + IV + water. Add CT chest if requested."
+      "protocol": "CT abdomen & pelvis + IV + water. Add CT chest if requested.",
+      "_origin": "ari_oncology"
     },
     "Testicular tumour for staging and follow up": {
       "indication": "Testicular tumour staging / follow-up",
-      "protocol": "CT chest, abdomen & pelvis + IV. Pelvis can be omitted on follow-up if inguinal orchidectomy."
+      "protocol": "CT chest, abdomen & pelvis + IV. Pelvis can be omitted on follow-up if inguinal orchidectomy.",
+      "_origin": "ari_oncology"
     },
     "Adrenal nodule assessment": {
       "indication": "Adrenal nodule characterisation",
-      "protocol": "Pre-contrast CT abdomen + review. If homogeneous and <10 HU: stop. If non-homogeneous or >10 HU: + IV and image at 1 min and 15 min."
+      "protocol": "Pre-contrast CT abdomen + review. If homogeneous and <10 HU: stop. If non-homogeneous or >10 HU: + IV and image at 1 min and 15 min.",
+      "_origin": "ari_oncology"
     },
     "Adrenocortical cancer": {
       "indication": "Adrenocortical carcinoma",
-      "protocol": "Pre-contrast CT abdomen + CT chest and abdomen (65s)."
+      "protocol": "Pre-contrast CT abdomen + CT chest and abdomen (65s).",
+      "_origin": "ari_oncology"
     },
     "Ovarian tumour – staging and follow up": {
       "indication": "Ovarian cancer staging / follow-up",
-      "protocol": "CT chest, abdomen & pelvis + IV."
+      "protocol": "CT chest, abdomen & pelvis + IV.",
+      "_origin": "ari_oncology"
     },
     "Cervical cancer": {
       "indication": "Cervical cancer (CT only if unable to have MRI)",
-      "protocol": "CT abdomen & pelvis + IV."
+      "protocol": "CT abdomen & pelvis + IV.",
+      "_origin": "ari_oncology"
     },
     "Endometrial cancer": {
       "indication": "Endometrial cancer (CT if grade 3)",
-      "protocol": "CT chest, abdomen & pelvis + IV."
+      "protocol": "CT chest, abdomen & pelvis + IV.",
+      "_origin": "ari_oncology"
     },
     "Vulval and vaginal cancer": {
       "indication": "Vulval / vaginal cancer (CT only if unable to have MRI)",
-      "protocol": "CT abdomen and pelvis + IV."
+      "protocol": "CT abdomen and pelvis + IV.",
+      "_origin": "ari_oncology"
     },
     "Liver - Lesion characterization": {
       "contrast": "150cc contrast 5cc/sec. 18 gauge i.v. catheter.",
@@ -341,7 +409,8 @@
           "delay": "10 min p.i."
         }
       ],
-      "notes": "If you also want to scan the whole abdomen, do it during the 1st or 2nd scan."
+      "notes": "If you also want to scan the whole abdomen, do it during the 1st or 2nd scan.",
+      "_origin": "radiology_assistant"
     },
     "Liver - Metastases": {
       "contrast": "150cc contrast 5cc/sec. 18 gauge i.v. catheter.",
@@ -351,7 +420,8 @@
           "delay": "70 sec p.i."
         }
       ],
-      "notes": "Use this protocol when you are sure that you are dealing with hypovascular metastases."
+      "notes": "Use this protocol when you are sure that you are dealing with hypovascular metastases.",
+      "_origin": "radiology_assistant"
     },
     "Pancreas - Carcinoma / Pancreatitis": {
       "contrast": "150cc contrast 5cc/sec. 18 gauge i.v. catheter.",
@@ -365,7 +435,8 @@
           "delay": "70 sec p.i."
         }
       ],
-      "optional": "Upper Abdomen w/o contrast to look for calcifications indicating chronic pancreatitis."
+      "optional": "Upper Abdomen w/o contrast to look for calcifications indicating chronic pancreatitis.",
+      "_origin": "radiology_assistant"
     },
     "Gastrointestinal bleeding": {
       "phases": [
@@ -381,7 +452,8 @@
           "phase": "Abdomen",
           "delay": "70 sec p.i."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Acute Aneurysm / Dissection": {
       "phases": [
@@ -393,7 +465,8 @@
           "phase": "Abdomen",
           "delay": "35 sec p.i."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Abdomen ileus": {
       "contrast": "Standard contrast 5cc/sec. 18 gauge i.v. catheter.",
@@ -405,7 +478,8 @@
         }
       ],
       "scan_range": "Scan from top diaphragm to just below the symphysis.",
-      "optional": "Optional: repeat scan at 70 sec p.i."
+      "optional": "Optional: repeat scan at 70 sec p.i.",
+      "_origin": "radiology_assistant"
     },
     "Adrenals - Lesion characterization": {
       "steps": [
@@ -421,7 +495,8 @@
           "step": "Upper Abdomen",
           "delay": "15 min p.i."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Abdomen Trauma - Blunt": {
       "contrast": "150cc contrast 5cc/sec. Green venflon.",
@@ -435,7 +510,8 @@
           "delay": "180 sec p.i."
         }
       ],
-      "notes": "Long delay to get some filling of urinary collecting system."
+      "notes": "Long delay to get some filling of urinary collecting system.",
+      "_origin": "radiology_assistant"
     },
     "Abdomen Trauma - Penetrating injury": {
       "notes": "Like Blunt Trauma, but if there is no reason for emergency surgery, continue with:",
@@ -444,7 +520,8 @@
           "step": "Abdomen after rectal contrast",
           "purpose": "to find possible bowel perforation."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Abdomen Trauma - Bladder rupture?": {
       "notes": "Like Blunt Trauma",
@@ -455,7 +532,8 @@
         {
           "step": "Stop contrast inflow when flow stops, or after 350 cc, or when patient no longer tolerates."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Abdomen Anastomosis leakage": {
       "prep": "Insert a cannula for 800 cc rectal contrast (50 cc in 750 cc water), but do not give the rectal contrast until everything is ready for scanning.",
@@ -469,7 +547,8 @@
           "delay": "35 sec p.i."
         }
       ],
-      "notes": "Right after delivery of rectal contrast, inject IV contrast. Tell patient to hold rectal contrast in (about 2 minutes). After the scan, enter the room quickly and let the rectal contrast out."
+      "notes": "Right after delivery of rectal contrast, inject IV contrast. Tell patient to hold rectal contrast in (about 2 minutes). After the scan, enter the room quickly and let the rectal contrast out.",
+      "_origin": "radiology_assistant"
     },
     "Kidney": {
       "indication": "Haematuria / possible urothelial cancer or RCC",
@@ -490,7 +569,8 @@
           "step": "Abdomen after 100 cc / 3 cc/sec",
           "delay": "90 sec"
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Pulmonary emboli": {
       "contrast": "Chest: 80–100 cc / 5 cc/sec. No delay.",
@@ -510,7 +590,8 @@
         {
           "step": "Explain to patient to breathe in normally, not forcefully (forceful breath draws non-contrast blood from IVC into pulmonary circulation)."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Lung carcinoma": {
       "contrast": "Standard contrast",
@@ -523,7 +604,8 @@
           "phase": "Upper Abdomen",
           "delay": "70 sec p.i."
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "Aorta Dissection": {
       "phases": [
@@ -536,97 +618,377 @@
           "contrast": "Standard contrast",
           "delay": "5 sec after trigger in aorta"
         }
-      ]
+      ],
+      "_origin": "radiology_assistant"
     },
     "CT GI Bleed / GI Haemorrhage": {
       "Prep": "None. No oral contrast — masks active luminal bleeding.",
       "Contrast": "100–150 mL IV @ 5 mL/s",
       "Parameters": "CT AP triphasic — non-contrast + arterial 35 s + PV 70 s",
-      "Comments": "Localisation of active GI bleeding (angiodysplasia, diverticular, tumour, varices)"
+      "Comments": "Localisation of active GI bleeding (angiodysplasia, diverticular, tumour, varices)",
+      "_origin": "radinsights"
     },
     "CT Brain — Dementia Assessment": {
       "Prep": "None",
       "Contrast": "None (plain CT)",
       "Parameters": "Plain CT brain + coronal reformats through medial temporal lobes",
-      "Comments": "Hippocampal atrophy (Scheltens score). Exclude structural cause (SOL, NPH, chronic SDH, vascular burden). MRI first line when available."
+      "Comments": "Hippocampal atrophy (Scheltens score). Exclude structural cause (SOL, NPH, chronic SDH, vascular burden). MRI first line when available.",
+      "_origin": "radinsights"
     },
     "CT Anastomosis Leak / Post-Op Bowel": {
       "Prep": "Rectal water-soluble contrast 50 mL in 750 mL water via rectal tube",
       "Contrast": "IV contrast. Non-contrast + PV 70 s",
       "Parameters": "Rectal contrast instilled immediately before scanning. CT AP.",
-      "Comments": "Detection of anastomotic leak, post-op collection, or abscess following bowel / colorectal surgery"
+      "Comments": "Detection of anastomotic leak, post-op collection, or abscess following bowel / colorectal surgery",
+      "_origin": "radinsights"
     },
     "CT Liver 4-Phase (HCC / Post-TACE)": {
       "Prep": "None",
       "Contrast": "Iomeron-400 @ 5 mL/s",
       "Parameters": "4-phase: plain + arterial 35 s + portal venous 70 s + equilibrium 180 s. Include CT chest if requested.",
-      "Comments": "HCC characterisation, post-TACE evaluation, LI-RADS reporting. Arterial hyperenhancement + washout."
+      "Comments": "HCC characterisation, post-TACE evaluation, LI-RADS reporting. Arterial hyperenhancement + washout.",
+      "_origin": "radinsights"
     },
     "CT Internal Auditory Meati (IAMs)": {
       "Prep": "None",
       "Contrast": "50 mL hand inject if mass suspected",
       "Parameters": "Helical head pre-contrast + helical high-resolution IAMs",
-      "Comments": "High-resolution CT temporal bones and IAMs for bony detail (cholesteatoma, otosclerosis, trauma, canal dehiscence). MRI first line for vestibular schwannoma."
+      "Comments": "High-resolution CT temporal bones and IAMs for bony detail (cholesteatoma, otosclerosis, trauma, canal dehiscence). MRI first line for vestibular schwannoma.",
+      "_origin": "radinsights"
     },
     "CT Subclavian Angiography": {
       "Prep": "18G cannula in CONTRALATERAL arm",
       "Contrast": "Omnipaque-350 100 mL @ 4 mL/s",
       "Parameters": "CTA hyoid to below elbow affected side",
-      "Comments": "Subclavian artery + upper limb vasculature — stenosis, occlusion, dissection, aneurysm, thoracic outlet compression"
+      "Comments": "Subclavian artery + upper limb vasculature — stenosis, occlusion, dissection, aneurysm, thoracic outlet compression",
+      "_origin": "radinsights"
     },
     "CT Renal Cyst Characterisation": {
       "Prep": "500 mL water 1.5 hours before scan",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "Pre-contrast through renal area + post-contrast portal venous AP. Measure HU pre vs post.",
-      "Comments": "Bosniak classification of indeterminate renal lesions. Enhancement > 20 HU increase = solid/enhancing."
+      "Comments": "Bosniak classification of indeterminate renal lesions. Enhancement > 20 HU increase = solid/enhancing.",
+      "_origin": "radinsights"
     },
     "CT Pulmonary Angiography — Pregnancy": {
       "Prep": "None",
       "Contrast": "60–80 mL @ 4 mL/s. kVp 100, IR on.",
       "Parameters": "CTPA lung coverage only. No bismuth shield.",
-      "Comments": "PE in pregnancy when V/Q unavailable or non-diagnostic. Per NICE NG158. Foetal dose < 0.1 mGy."
+      "Comments": "PE in pregnancy when V/Q unavailable or non-diagnostic. Per NICE NG158. Foetal dose < 0.1 mGy.",
+      "_origin": "radinsights"
     },
     "CT Gastric (Stomach) Cancer": {
       "Prep": "1 litre water 0.5 hours before scan. 1 glass water immediately before.",
       "Contrast": "100 mL @ 3 mL/s. Water load.",
       "Parameters": "PV CAP",
-      "Comments": "Staging and follow-up. Lung recons."
+      "Comments": "Staging and follow-up. Lung recons.",
+      "_origin": "ari_oncology"
     },
     "CT Pancreas Cancer Follow-up": {
       "Prep": "500 mL water 1.5 hours before scan",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "PV abdomen for chemo response. Arterial + PV if operable.",
-      "Comments": "Follow-up assessment. Arterial phase abdomen if surgical candidate."
+      "Comments": "Follow-up assessment. Arterial phase abdomen if surgical candidate.",
+      "_origin": "ari_oncology"
     },
     "CT Adrenal Washout (Nodule Characterisation)": {
       "Prep": "None",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "Pre-contrast adrenal area. If homogeneous and < 10 HU — stop. If non-homogeneous or > 10 HU — IV at 1 min and 15 min delay.",
-      "Comments": "Adrenal washout calculation. Absolute washout > 60% or relative > 40% = adenoma."
+      "Comments": "Adrenal washout calculation. Absolute washout > 60% or relative > 40% = adenoma.",
+      "_origin": "ari_oncology"
     },
     "CT Adrenocortical Carcinoma": {
       "Prep": "None",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "Pre-contrast CT abdomen + CT chest and abdomen at 65 s",
-      "Comments": "Staging of adrenocortical carcinoma"
+      "Comments": "Staging of adrenocortical carcinoma",
+      "_origin": "ari_oncology"
     },
     "CT Hepatic Metastases (Hypervascular)": {
       "Prep": "500 mL water 1.5 hours before scan",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "PV CAP. Consider arterial phase CT abdomen for hypervascular metastases (thyroid, RCC, neuroendocrine, melanoma, choriocarcinoma).",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "ari_oncology"
     },
     "CT Carcinoma of Unknown Primary (CUP)": {
       "Prep": "500 mL water 1.5 hours before scan",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "PV CAP",
-      "Comments": "Staging workup for CUP"
+      "Comments": "Staging workup for CUP",
+      "_origin": "ari_oncology"
     },
     "CT Bone & Soft Tissue Sarcoma Staging": {
       "Prep": "500 mL water 1.5 hours before scan",
       "Contrast": "100 mL @ 3 mL/s",
       "Parameters": "PV CAP",
-      "Comments": "Lung recons"
+      "Comments": "Lung recons",
+      "_origin": "ari_oncology"
+    },
+    "CT Chest Routine": {
+      "Prep": "None for routine. Remove chest metal artefacts. Arms above head.",
+      "Contrast": "70–100 mL @ 2.5–3 mL/s. Bolus tracking in descending aorta, trigger 100 HU + 8 s, or fixed delay 40 s.",
+      "Parameters": "Single phase portal venous CT chest (lung apices to adrenals). Inspiration breath-hold. Reconstruct lung, mediastinal, and bone windows.",
+      "Comments": "Standard enhanced chest for infection, malignancy workup, metastatic screening. Unenhanced chest (HRCT or low-dose) for ILD, follow-up nodules. RCR iRefer.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdomen Pelvis – Triphasic (Liver)": {
+      "Prep": "500 mL water 1 hour before scan.",
+      "Contrast": "120–150 mL iodinated contrast (350–370 mg I/mL) @ 5 mL/s via 18 G.",
+      "Parameters": "Triple phase CT AP: 1) Late arterial (35–40 s p.i. or +15 s after bolus trigger) — liver only. 2) Portal venous (70–75 s p.i.) — full AP coverage. 3) Delayed (180 s p.i.) — liver only if lesion needing washout assessment.",
+      "Comments": "HCC characterisation, hypervascular metastases (NET, RCC, thyroid, melanoma), liver lesion characterisation. LI-RADS diagnostic criteria: APHE + washout + capsule = LR-5.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT HRCT Chest": {
+      "Prep": "Explain breath-hold technique to patient. No contrast.",
+      "Contrast": "None.",
+      "Parameters": "Volumetric inspiratory CT chest 1–1.5 mm slices + sharp lung reconstruction. Expiratory sequence (supine) — targeted 10 mm gap slices for air-trapping. Optional prone inspiratory scans if dependent atelectasis obscures posterobasal segments.",
+      "Comments": "ILD workup (UIP/NSIP, HP, sarcoid), bronchiectasis, small airways disease. Fleischner Society CT standards. Dose-optimise with tube current modulation.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Carotid Angiography": {
+      "Prep": "18 G cannula (ideally right antecubital to reduce streak artefact from left brachiocephalic vein).",
+      "Contrast": "70–80 mL @ 5 mL/s + saline chase.",
+      "Parameters": "Arterial phase aortic arch to vertex. Bolus tracking in ascending aorta trigger 100 HU + 6 s diagnostic delay. Coverage includes circle of Willis.",
+      "Comments": "Carotid stenosis (NASCET method), dissection, pre-CEA/CAS planning, vertebrobasilar insufficiency. Often combined with NCCT brain in acute stroke pathway.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Stroke Protocol (NCCT + CTA ± CTP)": {
+      "Prep": "18 G cannula right antecubital. Do NOT delay for eGFR in acute stroke.",
+      "Contrast": "CTA: 50–80 mL @ 4–5 mL/s. CTP: 40 mL @ 5 mL/s.",
+      "Parameters": "1) NCCT brain (ASPECTS scoring, exclude haemorrhage). 2) CTA arch to vertex (single bolus tracked in ascending aorta). 3) CTP optional — cine mode through basal ganglia/whole brain for Tmax, CBF, CBV, MTT maps. Mismatch determines penumbra.",
+      "Comments": "NICE NG128. Target door-to-CT <20 min. LVO on CTA activates thrombectomy pathway (up to 24 h with perfusion mismatch per DAWN/DEFUSE-3). CTP for late window selection.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Temporal Bone": {
+      "Prep": "None.",
+      "Contrast": "None (rarely given — only if mass suspected and MRI unavailable).",
+      "Parameters": "Helical volumetric petrous temporal bones. 0.5–0.625 mm thin slices. Bone algorithm (sharp kernel). Reconstruct 0.6 mm axial + coronal + Pöschl (long axis SSC) + Stenvers (short axis SSC) views.",
+      "Comments": "Cholesteatoma, otosclerosis, superior semicircular canal dehiscence, trauma (ossicular disruption, petrous fracture classification). MRI preferred for vestibular schwannoma and inflammatory disease.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT CAP (Staging)": {
+      "Prep": "500–1000 mL water 1 hour before. Cannula 18 G.",
+      "Contrast": "100–120 mL @ 3 mL/s. Bolus tracking or fixed 70 s delay.",
+      "Parameters": "Single portal venous phase chest-abdomen-pelvis. Lung apices to pubic symphysis. Arms above head. Axial 1–3 mm + coronal/sagittal reformats + lung recon.",
+      "Comments": "Oncology staging workhorse (lung, breast, colorectal, melanoma, lymphoma, CUP). Single acquisition spanning all 3 body regions in PV phase. Add arterial phase only for HCC, NET, hypervascular mets.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdomen and Pelvis -Plain": {
+      "Prep": "No oral contrast. Consider positive oral contrast only if specifically requested (e.g. known perforation).",
+      "Contrast": "None.",
+      "Parameters": "Single non-contrast CT AP. Diaphragm to symphysis. Standard and soft tissue reconstructions.",
+      "Comments": "Renal / ureteric colic (stones), follow-up post-procedure, contrast-contraindicated cases. NICE NG118: low-dose CTKUB first line for suspected stones.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdomen and Pelvis - Portal Venous Phase": {
+      "Prep": "500–1000 mL water orally 60 min before (neutral gastric/proximal bowel distension). Water glass at table.",
+      "Contrast": "100 mL (body-weight adjusted: 75 kg → 100 mL, 75–90 kg → 120 mL, >90 kg → 150 mL) iopamidol-370 or iohexol-350 @ 3 mL/s. Bolus tracking in aorta trigger 150 HU + 60 s diagnostic delay, or fixed 70 s.",
+      "Parameters": "Single portal venous phase AP, diaphragm to pubic symphysis. Arms above head. Axial 1–3 mm, coronal + sagittal reformats.",
+      "Comments": "Workhorse CT AP protocol. Infection, inflammation, malignancy workup. Do not use oral iodinated contrast unless suspected perforation.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Liver Triphasic": {
+      "Prep": "500 mL water 1 h before.",
+      "Contrast": "120–150 mL iodinated contrast 350–400 mg I/mL @ 5 mL/s via 18 G.",
+      "Parameters": "Liver only, three phases: 1) late arterial 35–40 s p.i. 2) portal venous 70 s p.i. 3) delayed 180 s p.i. Coverage: dome of diaphragm to iliac crest.",
+      "Comments": "Liver lesion characterisation when 4-phase (plain + 3 post-contrast) not required. Core clinical scenarios: known/suspected HCC, haemangioma atypical, FNH.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Pancreas Protocol": {
+      "Prep": "NBM 4 h pre-scan. 500 mL water 1 h before + 2 glasses water at the table (gastric/duodenal distension).",
+      "Contrast": "120–150 mL iodinated contrast 370 mg I/mL @ 5 mL/s.",
+      "Parameters": "Multiphase: 1) Non-contrast (optional — for calcifications of chronic pancreatitis). 2) Late arterial / pancreatic parenchymal phase 40 s p.i. — pancreas only, thin slice 1 mm. 3) Portal venous 70 s p.i. — full AP. Reconstruct multiplanar and curved MPRs along pancreatic duct.",
+      "Comments": "Pancreatic adenocarcinoma staging (resectability), cystic pancreatic lesions, IPMN. Pancreatic phase optimal for lesion-parenchyma contrast. Assess arterial invasion (SMA, coeliac, hepatic) and venous involvement (PV, SMV).",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Urogram": {
+      "Prep": "500 mL water 1 h before. Void bladder 30 min before. Consider IV furosemide 10 mg if renal function permits to distend collecting system.",
+      "Contrast": "Split-bolus: 30 mL @ 2 mL/s (delayed excretory bolus) wait 8 min, then 70 mL @ 3 mL/s. OR single-bolus triphasic 100 mL.",
+      "Parameters": "Three phases: 1) Unenhanced KUB (stones). 2) Nephrographic phase 90 s (cortex/medulla equilibration — RCC detection). 3) Excretory/pyelographic phase 7–10 min (opacified collecting system and ureters).",
+      "Comments": "Haematuria workup — TCC, RCC, stones. NICE NG12. Split-bolus technique reduces dose by combining nephrographic + excretory into one acquisition.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Whole Body Trauma": {
+      "Prep": "None — follow ATLS primary survey. Remove radiopaque artefacts if safe. 18 G+ cannula.",
+      "Contrast": "100–150 mL @ 4–5 mL/s. Split-bolus or multi-phase depending on centre protocol.",
+      "Parameters": "1) Non-contrast CT head and cervical spine. 2) Arterial phase neck/chest (30 s) + portal venous abdomen/pelvis (70 s) — OR split-bolus single acquisition with arterial + PV mix. Arms below or sleeved.",
+      "Comments": "RCR Standards for Providing a 24-Hour CT Service 2024: WBCT if GCS <14, SBP <90, RR <10 or >29, SaO2 <93%, high-energy mechanism. Report top-to-toe systematically.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Aortic Angiography": {
+      "Prep": "Cannula 18 G antecubital (ideally right). ECG gating if thoracic aorta / aortic root / Type A dissection.",
+      "Contrast": "100 mL iodinated contrast 370 mg I/mL @ 4–5 mL/s + 30 mL saline chase.",
+      "Parameters": "Non-contrast thorax + arterial CTA C6 to femoral heads. Bolus tracking in descending aorta trigger 120 HU + 5 s.",
+      "Comments": "Acute aortic syndrome (dissection, IMH, PAU), ruptured AAA, pre/post TEVAR/EVAR. Non-contrast scan detects IMH. ECG gating for aortic root and Type A dissection.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Facial Bones (Volume)": {
+      "Prep": "None. Remove dentures and facial metal artefacts if safe.",
+      "Contrast": "None for trauma/structural.",
+      "Parameters": "Helical volumetric CT frontal sinus to mandible. 0.6–1 mm slices. Bone and soft tissue algorithms. Axial + coronal + sagittal + 3D surface rendering.",
+      "Comments": "Facial trauma (Le Fort classification, NOE complex, orbital floor, zygomaticomaxillary, mandibular fractures), pre-maxillofacial surgical planning, facial bone tumour.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Thoracic Spine": {
+      "Prep": "None. Arms above head.",
+      "Contrast": "None for routine. IV if tumour or infection.",
+      "Parameters": "Helical C7 to L1. 0.6–1 mm slices. Bone + soft tissue. Multiplanar reformats.",
+      "Comments": "Trauma, vertebral fracture, degenerative disease, metastatic workup. Often done as part of whole-body trauma CT.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Chest/Abdomen/Pelvis non-staging (-C/+C)": {
+      "Prep": "500 mL water 1 h before.",
+      "Contrast": "100 mL @ 3 mL/s. Optional non-contrast pass if baseline HU required.",
+      "Parameters": "Pre-contrast CAP (if indicated) + portal venous CAP (70 s). Lung apices to symphysis.",
+      "Comments": "General oncological or inflammatory workup where staging phase not required. Non-contrast pre-scan only if truly needed (dose penalty).",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdomen & Pelvis – -Non-Staging (2 Phase)": {
+      "Prep": "500 mL water 1 h before.",
+      "Contrast": "100 mL @ 3 mL/s.",
+      "Parameters": "Pre-contrast through liver + portal venous phase full AP. 70 s delay.",
+      "Comments": "When baseline HU measurement needed (e.g. adrenal washout baseline, characterising indeterminate focal liver lesion without full triphasic).",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdomen & Pelvis – Staging (3 Phase)": {
+      "Prep": "500 mL water 1 h before.",
+      "Contrast": "120 mL @ 4 mL/s.",
+      "Parameters": "Pre-contrast liver + late arterial (35 s) liver + portal venous (70 s) full AP. Arms above head.",
+      "Comments": "Hepatic/pancreatic malignancy staging where arterial phase needed for arterial enhancement pattern or vascular mapping. Add delayed 180 s phase if fibrotic lesion suspected (cholangiocarcinoma).",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Renal Injury + CT Cystogram": {
+      "Prep": "18 G cannula. Catheterise bladder for cystogram component (if not already in-situ).",
+      "Contrast": "IV: 100–120 mL @ 3–5 mL/s. Bladder: 250–350 mL dilute contrast (30 mL in 500 mL saline) instilled by gravity via catheter.",
+      "Parameters": "Renal: arterial 25 s + portal venous 70 s + excretory/delayed 5–10 min (for collecting system injury and urinoma). Cystogram: retrograde bladder distension with dilute contrast, then axial/coronal/sagittal acquisition.",
+      "Comments": "Blunt/penetrating renal trauma (AAST grading), suspected bladder rupture (intra- vs extraperitoneal). Delayed phase essential to detect urine leak. Cystogram differentiates bladder injury location.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdominal ileus/SBO": {
+      "Prep": "No oral contrast (preserves bowel-wall enhancement and fluid contrast).",
+      "Contrast": "100 mL @ 3 mL/s. Portal venous phase.",
+      "Parameters": "Single portal venous phase CT AP, diaphragm to symphysis. Reconstruct axial + coronal + sagittal. Thin slices 1 mm.",
+      "Comments": "Small bowel obstruction workup: identify transition point, closed-loop, strangulation (reduced/absent wall enhancement, congestion of mesentery, pneumatosis, portal venous gas). Differentiate mechanical SBO from ileus.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Mesenteric CTA": {
+      "Prep": "18 G cannula. Do NOT give oral contrast (obscures bowel wall enhancement).",
+      "Contrast": "100–120 mL @ 5 mL/s + saline chase.",
+      "Parameters": "Triphasic: 1) Non-contrast (optional, for hyperdense blood/intramural haemorrhage). 2) Arterial 25–30 s (bolus tracking at coeliac axis). 3) Portal venous 70 s. Diaphragm to symphysis.",
+      "Comments": "Acute mesenteric ischaemia (embolic, thrombotic, NOMI, venous), mesenteric arterial stenosis, pre-bypass planning. Assess coeliac, SMA, IMA origins. Look for bowel wall pneumatosis, portal venous gas, bowel wall enhancement changes.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Abdominal Aorta CTA": {
+      "Prep": "18 G cannula.",
+      "Contrast": "80–100 mL @ 4–5 mL/s + saline chase.",
+      "Parameters": "Arterial phase diaphragm to common femoral arteries. Bolus tracking in infrarenal aorta trigger 150 HU + 5 s. Optional delayed phase if endoleak suspected post-EVAR.",
+      "Comments": "AAA surveillance, pre/post EVAR planning, endoleak detection. Measure AP and transverse diameters perpendicular to aortic long axis.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Renal CTA (Volume)": {
+      "Prep": "18 G cannula.",
+      "Contrast": "100 mL @ 4–5 mL/s.",
+      "Parameters": "Arterial phase renal arteries (bolus tracking in aorta just above coeliac, trigger 150 HU + 5 s). Coverage diaphragm to iliac crests. Optional nephrographic phase for parenchyma and venous phase for renal vein.",
+      "Comments": "Renal artery stenosis (FMD, atheromatous), living donor assessment (anatomy of renal arteries/veins), RCC vascular mapping, post-transplant.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Lumbar Spine": {
+      "Prep": "None. Arms above head.",
+      "Contrast": "None for routine. IV if tumour, infection, or post-op.",
+      "Parameters": "Helical T12 to S1. 0.6–1 mm slices. Bone + soft tissue kernels. Sagittal and coronal reformats.",
+      "Comments": "Trauma, canal stenosis (when MRI contraindicated), spondylolysis, fracture. MRI preferred for disc/nerve root assessment.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Sacrum / Coccyx": {
+      "Prep": "None.",
+      "Contrast": "None for trauma. IV if tumour/infection.",
+      "Parameters": "Helical L5 to coccyx tip. 0.6 mm slices. Bone + soft tissue. Sagittal and coronal reformats. Include oblique reformats along sacral planes.",
+      "Comments": "Sacral insufficiency fracture, sacrococcygeal trauma, chordoma, sacroiliitis (limited — MRI preferred), pilonidal disease complications.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Bony Pelvis": {
+      "Prep": "None. Remove metal from pelvic region if safe.",
+      "Contrast": "None for routine skeletal. IV for tumour/infection.",
+      "Parameters": "Helical iliac crests to ischial tuberosities. 0.6–1 mm slices. Bone algorithm primary. Coronal, sagittal, and 3D reformats (Young–Burgess or Tile classification for fractures).",
+      "Comments": "Pelvic ring injury (trauma), acetabular fractures, sacral fractures, pre-op planning for arthroplasty.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Cervical Spine": {
+      "Prep": "None. Immobilise if trauma. Arms down.",
+      "Contrast": "None for routine trauma. IV contrast if neoplastic/infectious.",
+      "Parameters": "Helical volumetric skull base to T4. 0.6–1 mm thin slices. Bone + soft tissue algorithms. Sagittal and coronal reformats.",
+      "Comments": "Trauma (NEXUS/Canadian C-spine rules), fracture detection, pre-op planning, metastatic assessment. Follow NICE NG41 for trauma imaging criteria.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Neck/Chest/Abdomen/Pelvis Non-Staging (-C/+C)": {
+      "Prep": "500 mL water 1 h before.",
+      "Contrast": "100–120 mL @ 3 mL/s.",
+      "Parameters": "Single portal venous phase skull base/hyoid to symphysis. Arms above head. Neck included in single bolus acquisition.",
+      "Comments": "General infection/inflammation/lymphoma surveillance, unknown primary workup with neck cover. Non-staging = single phase.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Neck/Chest/Abdomen/Pelvis Staging (2 Phases)": {
+      "Prep": "500 mL water 1 h before. NBM 4 h for gastric/oesophageal cases.",
+      "Contrast": "100–120 mL @ 3 mL/s.",
+      "Parameters": "Two phases: 1) Neck/head arterial 40–50 s (SCC mucosal hyperaemia). 2) Portal venous CAP 70 s. Full coverage skull base to symphysis.",
+      "Comments": "Head and neck SCC staging, nasopharyngeal/oropharyngeal carcinoma, unknown primary with cervical lymphadenopathy. Arterial phase through neck essential.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Lower Extremities (Joints or Bone)": {
+      "Prep": "None. Position affected limb symmetrically.",
+      "Contrast": "None for routine. IV for tumour/infection.",
+      "Parameters": "Helical volumetric through joint or bone of interest. 0.6–1 mm slices. Bone + soft tissue reconstructions. Multiplanar and 3D reformats as needed.",
+      "Comments": "Complex intra-articular fracture (tibial plateau, pilon, calcaneus), pre-operative planning, bone tumour characterisation, stress fractures, infection assessment.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT Upper Extremities (Joints or Bone)": {
+      "Prep": "None. Ideally position arm above head (superman) to reduce streak artefact.",
+      "Contrast": "None for routine. IV for tumour/infection.",
+      "Parameters": "Helical volumetric through joint/bone. 0.6–1 mm slices. Bone + soft tissue kernels. Multiplanar and 3D reformats.",
+      "Comments": "Complex fractures (scaphoid, wrist, elbow, proximal humerus), bone tumour assessment, pre-operative planning.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
+    },
+    "CT 4D Parathyroid (Four-Phase)": {
+      "Prep": "None. 18 G cannula.",
+      "Contrast": "100 mL iodinated contrast 370 mg I/mL @ 3–4 mL/s.",
+      "Parameters": "Four phases through neck (skull base to aortic arch): 1) Non-contrast. 2) Arterial 25 s. 3) Early venous 80 s. 4) Delayed 180 s. Thin 1 mm slices + MPR.",
+      "Comments": "Primary hyperparathyroidism — localise adenoma when Tc-99m-sestamibi scintigraphy negative/equivocal. Adenoma classic pattern: low on NC, hyperenhancing on arterial, rapid washout on delayed. Include mediastinum for ectopic adenoma.",
+      "status": "to_be_verified",
+      "_origin": "claude_opus"
     }
   }
 }

@@ -897,10 +897,12 @@ with app.app_context():
             logger.warning('Imaging protocol source rebrand skipped: %s', _src_err)
 
         # -- PR1: Add 7 missing imaging protocols (critical content gaps) --
-        # Idempotent: keyed on slug. Each protocol already embeds the
-        # RadInsights source sentinel so the rebrand block above skips them.
+        # SUPERSEDED by PR4 C3 master sync — the 8 PR1 protocols are now in
+        # static/data/ct_protocols.json with _origin='radinsights'.
+        # Block disabled to avoid slug-collision churn with the master sync.
+        # Keeping the code in-place for historical reference / rollback.
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if False and 'imaging_protocol' in insp.get_table_names():
                 import json as _json
                 from models import ImagingProtocol as _IP
 
@@ -1260,8 +1262,9 @@ with app.app_context():
             logger.warning('PR1 imaging protocol seed skipped: %s', _pr1_err)
 
         # -- PR2 / N1: add CT Pulmonary Angiography — Pregnancy imaging protocol --
+        # SUPERSEDED by PR4 C3 master sync — now lives in ct_protocols.json.
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if False and 'imaging_protocol' in insp.get_table_names():
                 import json as _json2
                 from models import ImagingProtocol as _IP2
                 _preg_slug = 'ct-pulmonary-angiography-pregnancy'
@@ -1649,16 +1652,18 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR4 C1 scrub skipped: %s', _scrub_err)
 
-        # -- PR4 / C2: remove all paediatric CT protocols from ImagingProtocol --
-        # Idempotent: only deletes rows whose title contains 'Paediatric' or 'Pediatric'.
-        # If no such rows exist, the block is a no-op.
+        # -- PR4 / C2: remove old KOC paediatric CT protocols from ImagingProtocol --
+        # Restricted to CT modality AND title starting with 'CT Paediatric' so
+        # that legitimate MRI paediatric protocols (e.g. 'Paediatric Brain' in
+        # the master JSON) survive.
         try:
             if 'imaging_protocol' in insp.get_table_names():
                 from models import ImagingProtocol as _IPPaed
                 _paed_rows = _IPPaed.query.filter(
+                    _IPPaed.modality.ilike('CT'),
                     db.or_(
-                        _IPPaed.title.ilike('%Paediatric%'),
-                        _IPPaed.title.ilike('%Pediatric%'),
+                        _IPPaed.title.ilike('CT Paediatric%'),
+                        _IPPaed.title.ilike('CT Pediatric%'),
                     )
                 ).all()
                 if _paed_rows:
@@ -1670,6 +1675,28 @@ with app.app_context():
         except Exception as _paed_err:
             db.session.rollback()
             logger.warning('PR4 C2 paediatric removal skipped: %s', _paed_err)
+
+        # -- PR4 / C3: sync master CT + MRI protocol JSON to ImagingProtocol table --
+        # Idempotent per row via sentinel <!-- migrated:master-v1 -->.
+        # - Loads static/data/{ct,mri}_protocols.json
+        # - Upserts admin rows by slug (insert new, update existing without sentinel)
+        # - Deletes admin rows whose slug is NOT in master JSON (orphans)
+        # - Personal rows (origin='personal') are never touched
+        # - To force re-sync: bump _SYNC_VERSION in protocol_master_sync.py
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                from protocol_master_sync import sync_master_protocols_to_db
+                from models import ImagingProtocol as _IPSync
+                _sync_result = sync_master_protocols_to_db(db, _IPSync, logger)
+                logger.info(
+                    'PR4 C3: master protocol sync — inserted=%d updated=%d skipped=%d deleted=%d errors=%d',
+                    _sync_result['inserted'], _sync_result['updated'],
+                    _sync_result['skipped'], _sync_result['deleted'],
+                    _sync_result['errors'],
+                )
+        except Exception as _sync_err:
+            db.session.rollback()
+            logger.warning('PR4 C3 master protocol sync skipped: %s', _sync_err)
 
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
