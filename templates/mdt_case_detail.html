@@ -39,13 +39,14 @@
     <form id="mdtCaseForm" autocomplete="off">
 
         <!-- ─── Section 1: Identity ─── -->
-        <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white">
+        <div class="card border-0 shadow-sm mb-3 mdt-section" data-mdt-collapsible="case_identity">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center mdt-section-toggle" role="button">
                 <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-id-card me-1"></i>Case identity
                 </h6>
+                <i class="fas fa-chevron-down mdt-section-chevron text-muted small"></i>
             </div>
-            <div class="card-body">
+            <div class="card-body mdt-section-body">
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label fw-semibold small">
@@ -82,13 +83,14 @@
         </div>
 
         <!-- ─── Section 2: Pre-meeting context ─── -->
-        <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white">
+        <div class="card border-0 shadow-sm mb-3 mdt-section" data-mdt-collapsible="pre_meeting_context">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center mdt-section-toggle" role="button">
                 <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-clipboard-list me-1"></i>Pre-meeting context
                 </h6>
+                <i class="fas fa-chevron-down mdt-section-chevron text-muted small"></i>
             </div>
-            <div class="card-body">
+            <div class="card-body mdt-section-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">Clinical history</label>
                     <textarea class="form-control" rows="3"
@@ -127,18 +129,24 @@
             </div>
         </div>
 
-        <!-- ─── Section 3: AI pre-MDT summary ─── -->
-        <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <!-- ─── Section 3: AI pre-MDT summary (NOT collapsible by design) ─── -->
+        <div class="card border-0 shadow-sm mb-3 mdt-section mdt-section-summary">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-magic me-1"></i>AI pre-MDT summary
                 </h6>
-                <button type="button" class="btn btn-sm btn-outline-primary" id="mdtGenerateSummaryBtn">
-                    <i class="fas fa-magic me-1"></i>Generate / Regenerate
-                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="mdtCopySummaryBtn"
+                            title="Copy the summary to your clipboard">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="mdtGenerateSummaryBtn">
+                        <i class="fas fa-magic me-1"></i>Generate / Regenerate
+                    </button>
+                </div>
             </div>
             <div class="card-body">
-                <textarea class="form-control" rows="9" id="mdtPreSummary"
+                <textarea class="form-control" id="mdtPreSummary"
                           data-mdt-autosave data-field="pre_mdt_summary"
                           data-pii-guard="true" data-pii-guard-tier="HIGH"
                           placeholder="Click 'Generate / Regenerate' to produce a structured 4-section summary (Indication / Imaging Findings / Impression / Suggested Next Step) from the context above. The summary is fully editable.">{{ case.pre_mdt_summary or '' }}</textarea>
@@ -151,13 +159,14 @@
         </div>
 
         <!-- ─── Section 4: Meeting outcome ─── -->
-        <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white">
+        <div class="card border-0 shadow-sm mb-3 mdt-section" data-mdt-collapsible="meeting_outcome">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center mdt-section-toggle" role="button">
                 <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-comments me-1"></i>Meeting outcome
                 </h6>
+                <i class="fas fa-chevron-down mdt-section-chevron text-muted small"></i>
             </div>
-            <div class="card-body">
+            <div class="card-body mdt-section-body">
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">MDT consensus</label>
                     <textarea class="form-control" rows="4"
@@ -182,16 +191,18 @@
         </div>
 
         <!-- ─── Section 5: Linking ─── -->
-        <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
+        <div class="card border-0 shadow-sm mb-3 mdt-section" data-mdt-collapsible="linked_case">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h6 class="mb-0 fw-semibold text-uppercase small mdt-section-toggle flex-grow-1" role="button"
+                    style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-link me-1"></i>Linked previous case
+                    <i class="fas fa-chevron-down mdt-section-chevron text-muted small ms-2"></i>
                 </h6>
                 <button type="button" class="btn btn-sm btn-outline-primary" id="mdtLinkBtn">
                     <i class="fas fa-link me-1"></i>{% if case.linked_case %}Change link{% else %}Link to a case{% endif %}
                 </button>
             </div>
-            <div class="card-body" id="mdtLinkedCaseDisplay">
+            <div class="card-body mdt-section-body" id="mdtLinkedCaseDisplay">
                 {% if case.linked_case %}
                 <div class="d-flex justify-content-between align-items-center">
                     <p class="mb-0">
@@ -246,6 +257,35 @@
 .mdt-section .card-header {
     border-bottom: 2px solid #f0f0f0;
 }
+.mdt-section-toggle {
+    cursor: pointer;
+    user-select: none;
+}
+.mdt-section-toggle:hover {
+    background: #fafbfc;
+}
+.mdt-section-chevron {
+    transition: transform 0.2s ease;
+}
+.mdt-section.collapsed .mdt-section-chevron {
+    transform: rotate(-90deg);
+}
+.mdt-section.collapsed .mdt-section-body {
+    display: none;
+}
+.mdt-section-summary .card-header {
+    background: linear-gradient(135deg, #f8f4ff 0%, #fff 100%);
+}
+/* Autosize textareas — overflow hidden so the JS-set height is the visible height */
+#mdtCaseForm textarea {
+    overflow-y: hidden;
+    resize: vertical;
+    min-height: 4.5rem;
+    transition: height 0.05s ease;
+}
+#mdtCaseForm textarea#mdtPreSummary {
+    min-height: 12rem;
+}
 </style>
 
 <script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
@@ -253,6 +293,111 @@
 document.addEventListener('DOMContentLoaded', function() {
     var caseId = {{ case.id }};
     MdtSuite.initCaseForm(caseId);
+
+    // ── Auto-resize textareas (grow with content, shrink when emptied) ──
+    function autoSize(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = (el.scrollHeight + 2) + 'px';
+    }
+    var allTextareas = document.querySelectorAll('#mdtCaseForm textarea');
+    allTextareas.forEach(function(ta) {
+        autoSize(ta);
+        ta.addEventListener('input', function() { autoSize(ta); });
+    });
+
+    // After autosave finishes (PII redact may rewrite the textarea value),
+    // re-size — use a MutationObserver on the textarea value as well as a
+    // brief poll for safety
+    setInterval(function() {
+        allTextareas.forEach(autoSize);
+    }, 1500);
+
+    // ── Collapsible sections (everything except the AI summary card) ──
+    document.querySelectorAll('.mdt-section[data-mdt-collapsible]').forEach(function(card) {
+        var key = card.dataset.mdtCollapsible;
+        var storageKey = 'mdt_case_' + caseId + '_collapse_' + key;
+        var toggleEl = card.querySelector('.mdt-section-toggle');
+        if (!toggleEl) return;
+
+        // Restore prior state from localStorage
+        try {
+            if (localStorage.getItem(storageKey) === '1') {
+                card.classList.add('collapsed');
+            }
+        } catch (e) {}
+
+        toggleEl.addEventListener('click', function(e) {
+            // Don't toggle when clicking buttons inside the header (e.g. Link button)
+            if (e.target.closest('button')) return;
+            card.classList.toggle('collapsed');
+            try {
+                localStorage.setItem(storageKey, card.classList.contains('collapsed') ? '1' : '0');
+            } catch (e) {}
+            // Re-size textareas in case the section was hidden then re-shown
+            // (offsetHeight is 0 while hidden, so we need to recompute on expand)
+            if (!card.classList.contains('collapsed')) {
+                setTimeout(function() {
+                    card.querySelectorAll('textarea').forEach(autoSize);
+                }, 50);
+            }
+        });
+    });
+
+    // ── Copy AI summary button ──
+    var copyBtn = document.getElementById('mdtCopySummaryBtn');
+    var summaryEl = document.getElementById('mdtPreSummary');
+    if (copyBtn && summaryEl) {
+        copyBtn.addEventListener('click', function() {
+            var text = summaryEl.value || '';
+            if (!text.trim()) {
+                MdtSuite.showToast('Nothing to copy — generate a summary first.', 'warning');
+                return;
+            }
+            var copyOk = function() {
+                var orig = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<i class="fas fa-check me-1"></i>Copied';
+                copyBtn.classList.remove('btn-outline-secondary');
+                copyBtn.classList.add('btn-success');
+                setTimeout(function() {
+                    copyBtn.innerHTML = orig;
+                    copyBtn.classList.remove('btn-success');
+                    copyBtn.classList.add('btn-outline-secondary');
+                }, 1500);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(copyOk, function() {
+                    summaryEl.select();
+                    document.execCommand('copy');
+                    copyOk();
+                });
+            } else {
+                summaryEl.select();
+                document.execCommand('copy');
+                copyOk();
+            }
+        });
+    }
+
+    // After AI generation completes, the summary textarea is updated by
+    // initCaseForm() — re-trigger autosize on the next tick.
+    var origGenerate = document.getElementById('mdtGenerateSummaryBtn');
+    if (origGenerate) {
+        // Hook into the existing click — initCaseForm wired its own click
+        // handler which sets the value on success. We just need to autosize
+        // after the response. Use a MutationObserver on the textarea value
+        // for the most reliable signal.
+        new MutationObserver(function() { autoSize(summaryEl); })
+            .observe(summaryEl, { attributes: true, attributeFilter: ['value'] });
+        // Fallback: re-poll for 5 seconds after click
+        origGenerate.addEventListener('click', function() {
+            var ticks = 0;
+            var sizer = setInterval(function() {
+                autoSize(summaryEl);
+                if (++ticks > 50) clearInterval(sizer);
+            }, 100);
+        });
+    }
 
     // ── PII Guard v2 — wire to all clinical textareas + the case_reference field ──
     // Renders dotted underlines on detected PII, red shield in the page card header,
