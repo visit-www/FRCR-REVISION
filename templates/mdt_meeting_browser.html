@@ -33,12 +33,14 @@
             <button type="button" class="btn btn-sm btn-brand-primary" id="mdtAddCaseBtn">
                 <i class="fas fa-plus me-1"></i>Add case
             </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Day 4">
-                <i class="fas fa-file-pdf me-1"></i>PDF
-            </button>
-            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Day 4">
+            <a href="/api/mdt/meetings/{{ meeting.id }}/export?format=html" class="btn btn-sm btn-outline-secondary"
+               title="Download interactive HTML for offline note-taking">
                 <i class="fas fa-file-code me-1"></i>HTML
-            </button>
+            </a>
+            <a href="/api/mdt/meetings/{{ meeting.id }}/export?format=pdf" class="btn btn-sm btn-outline-secondary"
+               title="Download landscape PDF for paper handover">
+                <i class="fas fa-file-pdf me-1"></i>PDF
+            </a>
         </div>
     </div>
 

@@ -443,10 +443,61 @@ def api_search_cases():
 @mdt_bp.route('/api/mdt/meetings/<int:meeting_id>/export')
 @login_required
 def api_export_meeting(meeting_id):
-    """Export a meeting as PDF (landscape) or interactive HTML. Day 4."""
-    _own_meeting_or_404(meeting_id)
-    fmt = request.args.get('format', 'html')
-    return jsonify({'error': f'Export {fmt} not implemented yet (Day 4)'}), 501
+    """Export a meeting as interactive HTML or landscape PDF.
+
+    HTML: self-contained downloadable file with editable consensus
+    textareas, localStorage persistence, and clipboard JSON export
+    for paste-back via the bulk import endpoint.
+
+    PDF: same content, rendered landscape A4 via WeasyPrint. If
+    WeasyPrint is not installed, returns the HTML with print CSS so
+    the user can browser-print to PDF.
+    """
+    from flask import render_template, make_response
+    from datetime import datetime as _dt
+
+    meeting = _own_meeting_or_404(meeting_id)
+    fmt = (request.args.get('format') or 'html').lower()
+
+    cases = (meeting.cases
+             .order_by(MdtCase.created_at)
+             .all())
+
+    html_str = render_template(
+        'partials/_mdt_export_html.html',
+        meeting=meeting,
+        cases=cases,
+        generated_at=_dt.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+    )
+
+    safe_name = re.sub(r'[^\w\-]+', '_', meeting.name)[:60]
+    safe_date = meeting.date.isoformat() if meeting.date else 'undated'
+    base_filename = f'mdt_{safe_name}_{safe_date}'
+
+    if fmt == 'pdf':
+        try:
+            from weasyprint import HTML, CSS
+            pdf_bytes = HTML(string=html_str).write_pdf(stylesheets=[
+                CSS(string='@page { size: A4 landscape; margin: 1cm; } '
+                            '.toolbar { display: none !important; } '
+                            '.privacy-banner { background: #f5f5f5 !important; }')
+            ])
+            resp = make_response(pdf_bytes)
+            resp.headers['Content-Type'] = 'application/pdf'
+            resp.headers['Content-Disposition'] = f'attachment; filename="{base_filename}.pdf"'
+            return resp
+        except ImportError:
+            logger.warning('WeasyPrint not installed — falling back to HTML for PDF export')
+            # Fall through to HTML download
+        except Exception as e:
+            logger.error('WeasyPrint render failed: %s', e)
+            # Fall through to HTML
+
+    # HTML export (default + PDF fallback)
+    resp = make_response(html_str)
+    resp.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resp.headers['Content-Disposition'] = f'attachment; filename="{base_filename}.html"'
+    return resp
 
 
 # ═══════════════════════════════════════════════════════════════════════════
