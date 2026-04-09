@@ -1649,6 +1649,28 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR4 C1 scrub skipped: %s', _scrub_err)
 
+        # -- PR4 / C2: remove all paediatric CT protocols from ImagingProtocol --
+        # Idempotent: only deletes rows whose title contains 'Paediatric' or 'Pediatric'.
+        # If no such rows exist, the block is a no-op.
+        try:
+            if 'imaging_protocol' in insp.get_table_names():
+                from models import ImagingProtocol as _IPPaed
+                _paed_rows = _IPPaed.query.filter(
+                    db.or_(
+                        _IPPaed.title.ilike('%Paediatric%'),
+                        _IPPaed.title.ilike('%Pediatric%'),
+                    )
+                ).all()
+                if _paed_rows:
+                    _paed_count = len(_paed_rows)
+                    for _pr in _paed_rows:
+                        db.session.delete(_pr)
+                    db.session.commit()
+                    logger.info('PR4 C2: removed %d paediatric CT protocols', _paed_count)
+        except Exception as _paed_err:
+            db.session.rollback()
+            logger.warning('PR4 C2 paediatric removal skipped: %s', _paed_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',

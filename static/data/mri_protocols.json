@@ -1,0 +1,2135 @@
+{
+  "_meta": {
+    "purpose": "Combined MRI imaging protocol master file.",
+    "last_updated": "2026-04-09",
+    "total_unique_protocols": 100,
+    "global_technologist_notes": [
+      "Empty Patient's Bladder preferably 15 minutes before exam.",
+      "DWI: ISO, ADC & Multi-Directional images to be sent to PACS.",
+      "Dynamic: Late arterial phase must be done between 25s-35s.",
+      "Label Dynamic Sequence (15, 25, 70, 180).",
+      "Subtraction to be done and labelled.",
+      "Not to send localizer images to PACS.",
+      "If Dynamic sequence will be performed, do not run AX 3D T1 sequence."
+    ],
+    "source": "RadInsight Imaging Protocols — enriched by open source Protocol guides"
+  },
+  "Neuroradiology": {
+    "Routine Brain": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI/FSBB",
+        "DWI/ADC"
+      ],
+      "Coronal": [
+        "T2"
+      ],
+      "Sagittal": [
+        "T1"
+      ],
+      "notes": "MRV optional. Contrast optional.",
+      "status": "verified"
+    },
+    "Brain Stroke (Full)": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI/FSBB",
+        "DWI/ADC",
+        "3D TOF"
+      ],
+      "Additional": [
+        "MRA of intracranial arteries",
+        "MRV optional",
+        "Enhanced MRA of the neck arteries"
+      ],
+      "Coronal": [
+        "T2"
+      ],
+      "Sagittal": [
+        "T1"
+      ],
+      "notes": "DWI: do thin cuts full Brain.",
+      "status": "verified"
+    },
+    "Brain Stroke (Fast)": {
+      "indication": "Only in very serious patient",
+      "Axial": [
+        "FLAIR",
+        "GRE",
+        "DWI/ADC"
+      ],
+      "status": "verified"
+    },
+    "Brain Haemorrhage": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI",
+        "DWI/ADC",
+        "3D TOF",
+        "MRA",
+        "Post IV contrast"
+      ],
+      "Coronal": [
+        "T2 (as indicated)"
+      ],
+      "Sagittal": [
+        "T1"
+      ],
+      "status": "verified"
+    },
+    "Brain Tumour": {
+      "base": "Routine Brain + Contrast",
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "DWI",
+        "SWI (FSBB)",
+        "T1 + C (3D)"
+      ],
+      "Coronal": [
+        "T2",
+        "T1 + C",
+        "MPR (from 3D)"
+      ],
+      "Sagittal": [
+        "T1",
+        "T1 + C",
+        "MPR (from 3D)"
+      ],
+      "advanced": [
+        "MR perfusion",
+        "MR spectroscopy (all cases, to be implemented)"
+      ],
+      "notes": "FLAIR + C is optional (discuss with radiologist).",
+      "status": "verified"
+    },
+    "Brain Metastases": {
+      "base": "Routine Brain + Contrast",
+      "Axial": [
+        "T1 + C",
+        "FLAIR + C"
+      ],
+      "Coronal": [
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "MPR + C (Brain-Lab)"
+      ],
+      "advanced": [
+        "MR perfusion",
+        "MR spectroscopy"
+      ],
+      "status": "verified"
+    },
+    "Brain Infection / Meningitis": {
+      "base": "Routine Brain + Contrast",
+      "Axial": [
+        "T1 + C",
+        "FLAIR + C"
+      ],
+      "Coronal": [
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "MPR + C (Brain-Lab)"
+      ],
+      "status": "verified"
+    },
+    "Brain Trauma": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI",
+        "DWI/ADC"
+      ],
+      "Coronal": [
+        "T2"
+      ],
+      "Sagittal": [
+        "T1"
+      ],
+      "status": "verified"
+    },
+    "Brain Seizure / Epilepsy": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI",
+        "DWI/ADC",
+        "Post IV contrast as indicated"
+      ],
+      "Coronal": [
+        "Temporal lobe HR T2",
+        "FLAIR",
+        "IR"
+      ],
+      "Sagittal": [
+        "3D FLAIR"
+      ],
+      "status": "verified"
+    },
+    "Brain MS / Demyelinating / WMHI": {
+      "Axial": [
+        "T1/T2/FLAIR/DWI/SWI (FSBB)",
+        "T1 3D + C",
+        "T1 + C"
+      ],
+      "Coronal": [
+        "T2",
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "3D FLAIR",
+        "T1"
+      ],
+      "spine_add_on": {
+        "Sagittal": [
+          "PD",
+          "T1 + C (if indicated)"
+        ],
+        "Axial": [
+          "PD axial if suspicious lesions"
+        ]
+      },
+      "status": "verified"
+    },
+    "Brain Cerebral Venous Thrombosis": {
+      "base": "Routine Brain + Contrast",
+      "Axial": [
+        "T1 + C",
+        "Dynamic MRV post contrast (TWIST)"
+      ],
+      "Coronal": [
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "MPR + C (Brain-Lab)"
+      ],
+      "notes": "PC MRV if non-contrast.",
+      "status": "verified"
+    },
+    "Brain AVM": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "SWI",
+        "DWI/ADC",
+        "3D TOF",
+        "MRA",
+        "Post IV contrast (TWIST)"
+      ],
+      "Coronal": [
+        "T2 as indicated"
+      ],
+      "Sagittal": [
+        "T1"
+      ],
+      "status": "verified"
+    },
+    "Brain CSF Flow / NPH / Chiari I": {
+      "Axial": [
+        "T1",
+        "T2",
+        "FLAIR",
+        "3D CISS",
+        "CSF Flow images",
+        "DWI/ADC"
+      ],
+      "Coronal": [
+        "T2"
+      ],
+      "Sagittal": [
+        "T1",
+        "3D CISS"
+      ],
+      "status": "verified"
+    },
+    "Sella Pituitary (Micro Adenoma)": {
+      "Axial": [
+        "Whole brain: T2, FLAIR, DWI/ADC, T1 + C after dynamic"
+      ],
+      "Coronal": [
+        "Sella: T1",
+        "T2",
+        "T1 + C (dynamic)"
+      ],
+      "Sagittal": [
+        "Sella: T1",
+        "T1 + C (dynamic)"
+      ],
+      "status": "verified"
+    },
+    "Inner Ear / IAC": {
+      "Axial": [
+        "IAM Cisterno-GRE / Cisterno-FSE",
+        "T1FS (thin slice)",
+        "T1FS + C (thin slice)",
+        "T2 (thin slice)",
+        "FASE diffusion (through mastoids)",
+        "CISS"
+      ],
+      "Coronal": [
+        "T2 (from MPR or direct)",
+        "T1FS + C (IAM)"
+      ],
+      "Sagittal": [
+        "FSE-SSFP oblique sagittal (optional, discuss with radiologist)"
+      ],
+      "notes": "Cisterno-GRE (FE-SSFP) is routine; use Cisterno-FSE if denture present.",
+      "status": "verified"
+    },
+    "Skull Base": {
+      "Axial": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1 + C"
+      ],
+      "Coronal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "T1 + C"
+      ],
+      "status": "verified"
+    },
+    "Orbit": {
+      "base": "Routine Brain +",
+      "Axial": [
+        "T1",
+        "T2 FS",
+        "STIR",
+        "T1 + C"
+      ],
+      "Coronal": [
+        "T2",
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "(R and L) T1 + C Sagittal oblique both sides"
+      ],
+      "status": "verified"
+    },
+    "Brachial Plexus": {
+      "Axial": [
+        "T2 STIR",
+        "T1 (3 mm slices)",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T2 STIR",
+        "T1",
+        "3D SSFP",
+        "T1FS + C"
+      ],
+      "Sagittal": [
+        "T2",
+        "T2 STIR (oblique, perpendicular to brachial plexus)",
+        "T1FS + C"
+      ],
+      "coverage": "C4 to shoulder joint level",
+      "notes": "Contrast optional — coronal & axial (routine). To be discussed with radiologist.",
+      "status": "verified"
+    },
+    "Paediatric Brain": {
+      "indication": "Benign and malignant tumours; Suspected physical abuse; Sturge-Weber syndrome; Acute and sever headache; Fever of unknown origin; White matter disorders; Vision and visual loss; Developmental delay; Encephalomyelitis; Neurofibromatosis",
+      "prep": [
+        "A satisfactory written consent form must be taken from the  patient before entering  the scanner room (For paediatric  patients this must be done by the parents)",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Provide a chaperone for claustrophobic patients (e.g. parents or staff )",
+        "Contrast  injection risk and benefits must be explained to the before  the scan",
+        "Offer earplugs or headphones, possibly with music for extra comfort"
+      ],
+      "Axial": [
+        "T1 TSE axial small fov 3mm",
+        "Plan the sagittal 3D block on the axial plane and position the block parallel to the midline of the brain. Verify the planning block in the other two planes. Angle the positioning block appropriately in the coronal plane, ensuring it is parallel to the line along the midline of the brain and the 4th ventricle. Make sure that the number of slices is sufficient to cover the entire brain from one temporal lobe to the other. To prevent wrap-around artifacts, both phase oversampling and slice oversampling must be used.",
+        "RESOLVE DWI AXIAL 3mm",
+        "T1 SPACE 3D axial small fov 1 mm  isotropic",
+        "Plan the axial 3D block on the sagittal plane and position the block parallel to the genu and splenium of the corpus callosum. Verify the planning block in the other two planes and ensure that an appropriate angle is maintained in the coronal plane, making it perpendicular to the line of the midline of the brain and the 4th ventricle. Ensure that the number of slices is sufficient to cover the entire brain from the vertex to the line of the foramen magnum. To prevent wrap-around artifacts, both phase oversampling and slice oversampling must be used.",
+        "Plan the coronal 3D block on the sagittal plane and angle the positioning block perpendicular to the line along the genu and splenium of the corpus callosum. Verify the planning block in the other two planes. Ensure that an appropriate angle is maintained in the axial plane, perpendicular to the midline of the brain. The number of slices should be sufficient to cover the entire brain from the frontal sinus to the line of the occipital protuberance.",
+        "Use T1 SE axial and coronal sequences after the administration of IV gadolinium DTPA injection (copy the planning outlined above). The manufacturer-recommended dose of gadolinium DTPA injection is 0.1 mmol/kg, i.e., 0.2 mL/kg in adults, children, and infants.",
+        "PD+T2_AXIAL_3MM_SFOV"
+      ],
+      "Coronal": [
+        "T2 flair coronal 3mm small fov",
+        "T1 SPACE 3D coronal small fov 1 mm  isotropic"
+      ],
+      "Sagittal": [
+        "T1 SPACE 3D sagittal  3mm",
+        "T2 TSE sagittal  3mm SFOV"
+      ],
+      "coverage": "FOV. T1 TSE axial small fov 3mm. FOV",
+      "contrast": "Contrast  injection risk and benefits must be explained to the before  the scan; Use T1 SE axial and coronal sequences after the administration of IV gadolinium DTPA injection (copy the planning outlined above). The manufacturer-recommended dose of gadolinium DTPA injection is 0.1 mmol/kg, i.e., 0.2",
+      "status": "to_be_verified"
+    },
+    "Malignant Otitis Externa": {
+      "indication": "Malignant otitis externa (MOE); Skull base osteomyelitis; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
+      "positioning": "Head first supine. Position the head in the head coil and immobilise with cushions. Give cushions under the legs for extra comfort. Centre  the laser beam localiser over the nose tip",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible provide a chaperone for claustrophobic patients (e.g. relative or staff )",
+        "Offer earplugs or headphones, possibly with music for extra comfort",
+        "Explain the procedure to the patient"
+      ],
+      "Axial": [
+        "T2 stir axial 3mm SFOV",
+        "T1 tse axial 3mm SFOV",
+        "RESOLVE DWI axial 3mm",
+        "Plan the sagittal 3D block on the axial plane and position the block parallel to the midline of the brain. Verify the planning block in the coronal plane, ensuring it is parallel to the line along the midline and 3rd ventricle. Place the saturation band at the bottom of the block in the sagittal planes to avoid capturing arterial signals. Ensure that the number of slices is sufficient to cover the entire brain from one temporal lobe to the other.",
+        "For post-contrast Malignant Otitis Externa (MOE) imaging, please use T1 SE fat-saturated axial and coronal small FOV sequences after the administration of IV gadolinium DTPA injection (copy the planning outlined above). The document below provides access to the recommended dosage of gadolinium DTPA injection, as advised by the manufacturer.",
+        "T1 VIBE DIXON 3D axial .7 mm isotropic  SFOV post contrast",
+        "T2 space stir 3D axial 1mm isotropic  SFOV",
+        "DWI epi2scan trace axial"
+      ],
+      "Coronal": [
+        "T2 STIR coronal 3mm SFOV",
+        "T1 tse coronal 3mm small FOV"
+      ],
+      "Sagittal": [
+        "MRV skull base 3D phase-contrast (PC) sagittal",
+        "3D _PC_sagittal"
+      ],
+      "coverage": "T2 stir axial 3mm SFOV. FOV. T1 tse axial 3mm SFOV",
+      "contrast": "MRI plays a crucial role in diagnosing and staging MOE. On MRI, findings consistent with MOE include soft tissue inflammation and edema in the external ear canal, extending to the adjacent temporal bone and skull base. The involved structures may demonstrate enhancement following the administration ",
+      "status": "to_be_verified"
+    },
+    "Trigeminal Nerves": {
+      "indication": "Trigeminal neuralgia; Nerve  schwannoma; Hemifacial spasm; Tic douloreux; Trigeminal  nerve anatomy; Ophthalmic Nerve (V1):; The ophthalmic nerve is the smallest branch and provides sensory innervation to the upper part of the face, including the forehead, scalp, upper eyelid, and the front part of the scalp.; It also carries sensory information from the cornea, conjunctiva, and the nasal cavity.; Maxillary Nerve (V2):; The maxillary nerve supplies sensory innervation to the middle part of the face, including the lower eyelid, upper lip, cheek, and part of the nasal cavity.",
+      "positioning": "Head first supine. Position the head in the head coil and immobilise with cushions. Give cushions under the legs for extra comfort. Centre  the laser beam localizer over the glabella",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible provide a chaperone for   claustrophobic patients (e.g. relative or staff )",
+        "Contrast  injection risk and benefits must be explained to the patient before  the scan",
+        "Gadolinium should only be  given to the patient if GFR is > 30"
+      ],
+      "Coronal": [
+        "T2 STIR coronal 3mm SFOV",
+        "T1 tse coronal 3mm small FOV",
+        "T2 3D SPACE or CISS coronal .9mm",
+        "The post-contrast isotropic 3D scans can be reconstructed into coronal and sagittal planes, enabling the visualization of the anatomy in three dimensions."
+      ],
+      "Axial": [
+        "Plan the coronal 3D block on the sagittal plane; angle the positioning block perpendicular to the hard palate. Check the positioning block in the other two planes. An appropriate angle must be given in the axial plane (perpendicular to the nasal septum). Slices must be sufficient to cover the trigeminal main branches from the frontal slice to the level of the fourth ventricle.",
+        "T2 tse axial 3mm SFOV",
+        "T1 VIBE DIXON axial .8mm SFOV  ISO post contrast",
+        "Plan the axial 3D block on the sagittal plane and angle the positioning block parallel to the hard palate. Check the positioning block in the other two planes. An appropriate angle must be given in the coronal plane (perpendicular to the nasal septum). Slices should be sufficient to cover the face from the glabella down to the angle of the jaw."
+      ],
+      "Sagittal": [
+        "T2 tse sagittal 3mm SFOV"
+      ],
+      "coverage": "T2 STIR coronal 3mm SFOV. FOV. T1 tse coronal 3mm small FOV",
+      "contrast": "Contrast  injection risk and benefits must be explained to the patient before  the scan; After administering the IV gadolinium DTPA injection, please continue with the following sequences. The document below grants access to the manufacturer's recommended dosage of gadolinium DTPA injection.; Access",
+      "status": "to_be_verified"
+    }
+  },
+  "Spine": {
+    "Cervical Spine (Routine)": {
+      "Axial": [
+        "T1",
+        "T2",
+        "GRE-3D"
+      ],
+      "Coronal": [
+        "T2 (optional, if scoliosis)"
+      ],
+      "Sagittal": [
+        "T1",
+        "T2"
+      ],
+      "notes": "Do not send localizer images to PACS.",
+      "status": "verified"
+    },
+    "Cervical Spine Trauma": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "SPACE",
+        "STIR",
+        "GRE"
+      ],
+      "Axial": [
+        "T1",
+        "T2",
+        "GRE"
+      ],
+      "Coronal": [
+        "PD for alar ligaments"
+      ],
+      "status": "verified"
+    },
+    "Cervical Spine Tumour / Infection": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Axial": [
+        "T1",
+        "GRE",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T1FS + C"
+      ],
+      "status": "verified"
+    },
+    "Thoracic (Dorsal) Spine (Routine)": {
+      "Axial": [
+        "T1",
+        "T2"
+      ],
+      "Coronal": [
+        "T2 if scoliosis"
+      ],
+      "Sagittal": [
+        "T1",
+        "T2 (with FC)",
+        "Vertebral count (stitching) STIR if marrow abnormality"
+      ],
+      "status": "verified"
+    },
+    "Thoracic Spine Trauma": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "GRE optional (r/o haemorrhage)"
+      ],
+      "Axial": [
+        "T1",
+        "T2"
+      ],
+      "Coronal": [
+        "Optional"
+      ],
+      "status": "verified"
+    },
+    "Thoracic Spine Tumour / Infection": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Axial": [
+        "T1",
+        "GRE",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T1FS + C"
+      ],
+      "status": "verified"
+    },
+    "Lumbar Spine (Routine)": {
+      "Axial": [
+        "T1",
+        "T2",
+        "1 slice at conus level"
+      ],
+      "Coronal": [
+        "STIR (must include SI joints)"
+      ],
+      "Sagittal": [
+        "T1",
+        "T2",
+        "Vertebral count (stitching) STIR if marrow abnormality"
+      ],
+      "status": "verified"
+    },
+    "Lumbar Spine Trauma": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "GRE optional (r/o haemorrhage)"
+      ],
+      "Axial": [
+        "T1",
+        "T2"
+      ],
+      "Coronal": [
+        "Optional"
+      ],
+      "status": "verified"
+    },
+    "Lumbar Spine Tumour / Infection": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS",
+        "T1FS + C"
+      ],
+      "Axial": [
+        "T1",
+        "T2",
+        "T1FS",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T1FS + C"
+      ],
+      "status": "verified"
+    },
+    "Spine Tumour / Infection (Generic)": {
+      "Axial": [
+        "T1",
+        "T2",
+        "T1FS + C (area of lesion)"
+      ],
+      "Coronal": [
+        "T2",
+        "T1FS + C"
+      ],
+      "Sagittal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS",
+        "T1FS + C",
+        "In-phase/Out-phase",
+        "DWI"
+      ],
+      "status": "verified"
+    },
+    "Spine Survey (Whole Spine)": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "T1FS + C"
+      ],
+      "Axial": [
+        "T1",
+        "T2",
+        "T1FS + C (region of interest)"
+      ],
+      "Coronal": [
+        "T1FS + C (optional)"
+      ],
+      "status": "verified"
+    },
+    "Lumbar Neurography": {
+      "Sagittal": [
+        "T1",
+        "T2",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T1",
+        "T2 FS",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Axial": [
+        "T1",
+        "T2 FS",
+        "STIR",
+        "T1FS + C"
+      ],
+      "status": "verified"
+    }
+  },
+  "Head_and_Neck": {
+    "Face / Neck (bundled)": {
+      "Axial": [
+        "T1",
+        "T1 FS",
+        "T2",
+        "T2 FS",
+        "DWI (optional)",
+        "T1 FS + C"
+      ],
+      "Coronal": [
+        "T2",
+        "STIR",
+        "T1 FS",
+        "T1 FS + C"
+      ],
+      "notes": "PASTA. Ensure simple PASTA not SI-STIR PASTA. FOV/coverage to be discussed with radiologist. Dynamic for later discussion.",
+      "status": "verified"
+    },
+    "Face & Sinuses": {
+      "Axial": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C (optional if indicated)"
+      ],
+      "Coronal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Sagittal": [
+        "T1FS + C"
+      ],
+      "status": "verified"
+    },
+    "Neck": {
+      "Axial": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Coronal": [
+        "T1",
+        "T2",
+        "STIR",
+        "T1FS + C"
+      ],
+      "Sagittal": [
+        "T1FS + C"
+      ],
+      "status": "verified"
+    },
+    "MR Sialography": {
+      "indication": "Identify Sialolithiasis (parotid or submandibular gland stones); Detect fistulae, strictures, diverticula, and cysts; Investigate radiation induced xerostomia; Ductal stenosis; Inflammatory conditions; Sjogren's syndrome; Tumor or neoplasm; Facial trauma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
+      "positioning": "Head first supine. Position the head in the head coil and immobilise with cushions. Give cushions under the legs for extra comfort. Centre  the laser beam localiser over the nose tip",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Instruct the patient to breathe quietly  and refrain from coughing or vigorous swallowing during image acquisition",
+        "If possible provide a chaperone for   claustrophobic patients (e.g. relative or staff )",
+        "Offer earplugs or headphones, possibly with music for extra  comfort"
+      ],
+      "Axial": [
+        "T1 SPACE 3D axial 1MM",
+        "Plan the axial 3D block on the sagittal image; angle the positioning block parallel to the hard palate. Check the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (perpendicular to the cervical spine). The slices must be sufficient to cover the entire parotid gland from the glabella down to the angle of the jaw.",
+        "T2 STIR SPACE 3D axial 1mm",
+        "T2 HASTE axial",
+        "Plan the oblique sagittal thick slab localizer on the axial HASTE images. Position the planning block over the duct, parallel to the Zygomatic Arch. Check the positioning block in the other two planes. Position the planning block over the duct in a manner parallel to the Zygomatic Arch. Verify the positioning block in the other two planes for accuracy. In the coronal plane, an appropriate angle should be set, ensuring it remains parallel to both the Zygomatic Arch and the mental protuberance of the mandible. The slice thickness should be sufficient to encompass the entire duct, from the skin to the upper molar crowns. This localizer serves as a crucial reference for precise localization of the duct during subsequent slice planning.",
+        "T2 HASTE THICK SLAB  axial oblique 20mm",
+        "Plan the axial oblique thin slab (20mm) on the HASTE sagittal localizer. Position the planning block parallel to the duct. Check the positioning block in the axial planes and center it over the duct, ensuring it aligns with the right side duct for right parotid sialogram and the left side duct for left parotid sialogram. Adjust the slice thickness as necessary to cover the entire duct adequately. Maintain a small FOV (110mm) to achieve a high-resolution view of the duct. Additionally, ensure sufficient oversampling to prevent wrap-around artifacts from the opposite ducts.",
+        "Plan the sagittal oblique thin slab (25mm) slice on the high-resolution axial HASTE thick slab image. Position the planning block parallel to the duct, and check its positioning in the other two planes. Provide an appropriate angle in the coronal plane, ensuring it is parallel to the Zygomatic arch and mental protuberance of the mandible. The slice thickness must be sufficient to cover the entire duct; increase the slice thickness if necessary. Keep the FOV small enough (120mm) to obtain a high-resolution view of the duct. Ensure sufficient oversampling is applied to avoid wrap-around artifacts.",
+        "Plan the sagittal oblique 3D slab on the high-resolution axial HASTE slice; align the planning block parallel to the duct. Check the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (parallel to the line along the Zygomatic arch and mental protuberance of the mandible). Ensure that the slices are sufficient to cover the entire duct from the skin to the upper molar crowns. The Field of View (FOV) must be small enough (180mm) to obtain a high-resolution view of the duct. Sufficient oversampling must be applied to avoid wrap-around artifacts.",
+        "Plan the axial 3D block on the sagittal localizer; angle the positioning block parallel to the hard palate. Check the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (perpendicular to the cervical spine). Ensure that the slices are sufficient to cover the submandibular gland from the nose tip down to the vocal cord.",
+        "Plan the oblique sagittal thick slab localizer on the axial HASTE images; position the planning block over the duct, parallel to the body of the mandible. Check the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (parallel to the line along the Zygomatic arch and the mental protuberance of the mandible). The slice thickness must be sufficient to cover the entire duct. This localizer is used to precisely locate the duct for further slice planning.",
+        "T2 HASTE axial oblique 20mm",
+        "Plan the axial oblique thin slab (20mm) on the HASTE thick slab localizer. Position the planning block parallel to the duct. Check the positioning block in the axial planes and center it over the duct (right submandibular duct for right-side sialogram and left submandibular duct for left-side sialogram). Ensure that the slice thickness is sufficient to cover the entire duct (increase slice thickness if needed). The FOV must be small enough (110mm) to achieve a high-resolution view of the duct. Provide sufficient oversampling to avoid wrap-around artifacts from the opposite ducts.",
+        "Plan the sagittal oblique thin slab (20mm) slice on the high-resolution axial HASTE thick slab image, aligning the planning block parallel to the duct. Verify the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (parallel to the line along the Zygomatic arch and mental protuberance of the mandible). Ensure that the slice thickness is sufficient to cover the entire duct (increase slice thickness if needed). Set the FOV to a small enough value (120mm) to achieve a high-resolution view of the duct. Use sufficient oversampling to prevent wrap-around artifacts.",
+        "Plan the sagittal oblique 3D slab on the high-resolution axial HASTE thick slab image, angling the planning block parallel to the duct. Check the positioning block in the other two planes. Provide an appropriate angle in the coronal plane (parallel to the line along Zygomatic arch and mental protuberance of the mandible). The slices must sufficiently cover the entire duct from the skin to the upper molar crowns. The Field of View (FOV) must be small enough (200mm) to obtain a high-resolution view of the duct. Adequate oversampling must be applied to avoid wrap-around artifacts."
+      ],
+      "Sagittal": [
+        "T2 HASTE THICK SLAB sagittal oblique 25mm",
+        "T2 SPACE 3D  sagittal oblique .8mm",
+        "T2 HASTE sagittal oblique localizer 60mm",
+        "T2 HASTE sagittal oblique  20mm",
+        "T2 SPACE 3D sagittal oblique  0.8MM"
+      ],
+      "coverage": "FOV. FOV. FOV",
+      "contrast": "SPACE, an advanced variant of the 3D Turbo spin echo, employs non-selective, short refocusing pulse trains with RF pulses of varying flip angles, enabling exceptionally high turbo factors and sampling efficiency. Consequently, it achieves rapid acquisition of high-resolution isotropic images. In the",
+      "notes": [
+        "Parotid Glands: The parotid glands are the largest salivary glands, situated below the external acoustic meatus, between the mandible and the sternocleidomastoid muscle. The parotid duct extends from the parotid glands and runs a short distance obliquely forward between the buccinator and the oral mucosa to open upon a small papilla opposite the crown of the second upper molar. This duct is approximately 5-6 cm long and about 1-2 mm thick.",
+        "Submandibular glands: The submandibular glands are situated beneath the lower jaws, superior to the digastric muscles. The submandibular duct extends from the submandibular gland to the posterior edge of the mylohyoid muscle, curves around the muscle, then enters the sublingual space on the surface of the mylohyoid muscle, and opens into the floor of the mouth at the summit of the sublingual papilla, located at the side of the frenulum of the tongue. This duct is approximately 5cm long and about 1–3mm thick."
+      ],
+      "status": "to_be_verified"
+    }
+  },
+  "Abdomen": {
+    "Liver": {
+      "Axial": [
+        "T2 TSE FS (use BLADE/JET)",
+        "T2 TSE (use BLADE/JET)",
+        "T2 with TE 90",
+        "T2 with TE 180",
+        "T1 in-phase/out-phase",
+        "DWI axial with ADC",
+        "T1 3D FS axial pre-contrast (3 mm)",
+        "T1 3D FS axial dynamic (15, 25, 70, 180)",
+        "Delayed T1 3D FS axial 20 minutes (optional, only if focal lesion present)"
+      ],
+      "Coronal": [
+        "T1 3D (3 mm) coronal",
+        "Post-contrast T1 3D FS"
+      ],
+      "notes": "T2 in TE values is very useful in lesion characterization in liver, especially to differentiate HCC. Hemangiomas, cysts and HCC all appear bright in TE 90; HCC becomes dark in TE 180, while cysts and haemangiomas remain bright.",
+      "status": "verified"
+    },
+    "Liver with MRCP (1.5T/3T)": {
+      "Axial": [
+        "T2 TSE FS (BLADE/JET)",
+        "T1 in-phase/out-phase",
+        "T2 TSE axial FS MBH",
+        "DWI axial with ADC map",
+        "T1 3D FS axial pre-contrast",
+        "T1 3D FS axial dynamic (15, 25, 60, 180)",
+        "SSFP axial T2",
+        "MRCP 2D (FASE, FS) — different angles with breath hold"
+      ],
+      "Coronal": [
+        "MRCP 3D Space coronal with rotated reconstruction",
+        "FASE oblique coronal 40 mm slab (two thick slabs at different angles)",
+        "Post-contrast T1 3D FS",
+        "SSFP coronal T2"
+      ],
+      "status": "verified"
+    },
+    "Liver Primovist": {
+      "Axial": [
+        "T2 TSE FS (BLADE/JET)",
+        "T2 TSE (BLADE/JET)",
+        "T2 TE 90",
+        "T2 TE 180",
+        "T1 in-phase/out-phase",
+        "DWI with ADC",
+        "T1 VIBE FS axial pre-contrast (3 mm)",
+        "T1 VIBE FS axial dynamic (15, 25, 70)",
+        "Hepatobiliary phase T1 VIBE 20 min (flip angle 25°)"
+      ],
+      "Coronal": [
+        "T1 VIBE 3D (3 mm) coronal",
+        "Post-contrast T1 VIBE FS",
+        "Hepatobiliary phase T1 VIBE 20 min"
+      ],
+      "status": "verified"
+    },
+    "MRCP Alone (1.5T/3T)": {
+      "Axial": [
+        "T2 TSE FS",
+        "SSFP axial T2",
+        "T2 FASE"
+      ],
+      "Coronal": [
+        "MRCP 3D Space coronal with rotated reconstruction",
+        "FASE oblique coronal 40 mm slab"
+      ],
+      "notes": "Do coronal MRCP 3D with rotated reconstruction.",
+      "status": "verified"
+    },
+    "Abdomen and Pelvis (General Surveillance)": {
+      "Axial": [
+        "T2 TSE breath hold pelvis",
+        "T2 with FS pelvis",
+        "T1 in/out phase (pelvis)",
+        "T1 3D pre-contrast (pelvis)",
+        "T2 TSE breath hold (abdomen)",
+        "T2 with FS (abdomen)",
+        "T1 in/out phase (abdomen)",
+        "3D post-contrast dynamic (as in liver) for abdomen",
+        "3D post-contrast delayed for pelvis"
+      ],
+      "Coronal": [
+        "SSFP SP breath hold",
+        "STIR",
+        "T2 TSE breath hold",
+        "Post-contrast 3D delayed"
+      ],
+      "notes": "If only male pelvis asked — do only pelvic imaging with same sequence. If Sag required, scan both sides of pelvis.",
+      "status": "verified"
+    },
+    "Abdomen (Routine)": {
+      "Axial": [
+        "T2 TSE breath hold",
+        "T2 with FS",
+        "T1 in/out phase",
+        "T1 3D pre and post-contrast dynamic (as in liver)"
+      ],
+      "Coronal": [
+        "SSFP SP breath hold",
+        "STIR",
+        "T2 TSE breath hold",
+        "Post-contrast 3D delayed"
+      ],
+      "status": "verified"
+    },
+    "MRI Pancreas": {
+      "Axial": [
+        "T1 in/out phase (small FOV)",
+        "T2 TSE without FS (breath hold)",
+        "T2 TSE with FS (breath hold)",
+        "T1 VIBE FS 3D pre-contrast",
+        "T1 VIBE FS 3D dynamic post-contrast"
+      ],
+      "Coronal": [
+        "T2 True FISP (big FOV)",
+        "T2 TSE 3D FS",
+        "Thick slab HASTE"
+      ],
+      "notes": "Small FOV.",
+      "status": "verified"
+    },
+    "MR Enterography (FULL VERBATIM)": {
+      "preparation": {
+        "fasting": "Patient to be kept nil orally at least 4 hours prior to study.",
+        "oral_contrast": {
+          "type": "2% Mannitol",
+          "preparation": "Use 20% (W/V) IV Mannitol bottle (100/500 ml). Add 200 ml Mannitol in water to make total volume 2000 ml (therefore need 1800 ml water) — this produces 2% Mannitol solution.",
+          "administration": "Give 1200 ml to patient and ask them to drink all of it over the next 45 minutes (400 ml every 15 minutes). Give around 300 ml solution at table (total given 1500 ml)."
+        },
+        "position": "Patient scanned in prone position (preferred).",
+        "buscopan": {
+          "administration": "Buscopan to be given (double administration).",
+          "dose": "0.5–1 ml as per body weight — 0.01 ml/kg",
+          "contraindications": [
+            "Myasthenia Gravis",
+            "Megacolon",
+            "Narrow angle glaucoma",
+            "Tachycardia",
+            "Prostatic enlargement with urinary retention",
+            "GI obstruction",
+            "Paralytic ileus"
+          ]
+        },
+        "post_scan_complications": [
+          "Mannitol can cause diarrhoea and excess abdominal cramps and intestinal gases for the next 1–2 days.",
+          "Buscopan can cause blurred vision for about 30 minutes after the procedure — do not allow patient to leave hospital for 30 minutes."
+        ]
+      },
+      "technologist_notes": [
+        "Empty patient's bladder preferably 15 minutes before exam.",
+        "Label sequences with Buscopan injection.",
+        "Perform coronal sequences immediately after each Buscopan injection.",
+        "Dynamic: late arterial phase must be done between 25–35 s.",
+        "Label dynamic sequence (15, 25, 70, 180).",
+        "Subtraction to be done."
+      ],
+      "sequences": {
+        "pre_buscopan": {
+          "Axial": [
+            "T2 True FISP (4 mm)"
+          ],
+          "Coronal": [
+            "T2 True FISP (4 mm)"
+          ]
+        },
+        "after_first_buscopan": {
+          "timing": "Wait 1 minute before next scan.",
+          "Axial": [
+            "T2-SSFSE / FASE with fat sat (4 mm)"
+          ],
+          "Coronal": [
+            "T1 Flash fat sat 3D (0.9–1.0 mm) — first sequence to acquire after Buscopan injection",
+            "T2-SSFSE / FASE without fat sat (4 mm)"
+          ]
+        },
+        "after_second_buscopan_and_gadolinium": {
+          "Axial": [
+            "T1 Flash fat sat 3D (1–1.5 mm)"
+          ],
+          "Coronal": [
+            "T1 Flash fat sat 3D (0.9–1.0 mm) — first sequence to acquire after contrast injection"
+          ]
+        }
+      },
+      "status": "verified"
+    },
+    "Retroperitoneal (Lymph Nodes)": {
+      "coverage": "Dome of diaphragm to pubic symphysis",
+      "Axial": [
+        "HASTE dome of diaphragm to pubic symphysis",
+        "T2 FS (abdomen and pelvis)",
+        "DWI (b 0, 400, 800) with ADC",
+        "T1 breath hold"
+      ],
+      "Coronal": [
+        "HASTE dome of diaphragm to pubic symphysis",
+        "TruFISP breath hold"
+      ],
+      "Sagittal": [
+        "HASTE dome of diaphragm to pubic symphysis"
+      ],
+      "status": "verified"
+    },
+    "Secretin MRCP": {
+      "indication": "Assessment of segmental stenosis of pancreatic duct  in chronic pancreatitis; Evaluation of leakage of pancreatic juice associated  with acute pancreatitis; Assessment of  decreased exocrine reserve in chronic  pancreatitis; Screening for patients at high risk for pancreatic  adenocarcinoma; Evaluation of pancreatic Carcinoma; Evaluation of papillary stenosis; Evaluation of acute pancreatitis; Evaluation of pancreas  divisum; Evaluation of santorinicele; Evaluation of choledochocele",
+      "positioning": "Position the patient in supine position with head pointing  towards the magnet (head first supine). Position the patient over the spine coil and place the  body coil over the upper abdomen (nipple down to iliac crest). Securely tighten the body coil using straps to prevent  respiratory artefacts. Give a pillow under the head and cushions under the legs  for extra comfort",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask  the patient to undress and change into a hospital gown",
+        "Instruct  the patient to hold their breath for the breath hold scans and breathe gently  for the gated scans (its advisable to coach the patient two to three times before starting the scan)",
+        "Claustrophobic patients may be accompanied into the scanner room e.g.  by staff member or relative with proper safety screening"
+      ],
+      "Coronal": [
+        "T2 HASTE coronal 4mm sfov breath hold",
+        "Planning must be done in the breath hold HASTE coronal because the diaphragm will push down the upper abdominal organs during inhalation and change the position of pancreas from the initial localizer scans.",
+        "T2 SPACE coronal 3D fat sat  1mm gated",
+        "T2 HASTE thick 60mm breath hold coronal oblique(multi slab)",
+        "T2 HASTE 60mm breath hold coronal (multi slab)  30 seconds",
+        "T2 HASTE 60mm breath hold coronal (multi slab)  1 minute",
+        "T2 HASTE 60mm breath hold coronal (multi slab)  1.30 minutes",
+        "T2 HASTE 60mm breath hold coronal (multi slab)  2 minutes",
+        "T2 HASTE 60mm breath hold coronal (multi slab)  2.30 minutes",
+        "T2 HASTE 60mm breath hold coronal (multi slab) 3 minutes",
+        "T2 haste single slice dynamic  coronal 60 mm  18  measurements"
+      ],
+      "Axial": [
+        "Plan the axial slices on the coronal breath-hold images and position the block horizontally across the abdomen as shown. Verify the positioning in the other two planes. Establish an appropriate angle in the sagittal plane, aligning it horizontally across the abdomen. The slices must be sufficient to cover the entire pancreas, starting one inch above the pancreatic tail and extending down to the C loop of the duodenum. The phase direction should be from right to left to minimize ghosting artifacts from the anterior abdominal wall. Use phase oversampling to prevent wrap-around artifacts. Consider adding saturation bands at the top and bottom of the block to minimize artifacts caused by fat signal, arterial pulsation, and breathing. Instruct the patient to hold their breath during image acquisition.",
+        "T1 VIBE DIXON 3mm axial BH pre GD(In-opposed phase and water sat)",
+        "Plan the coronal oblique thick slabs on the axial T2 fat-saturated images; position the middle block horizontally across the pancreatic duct. Verify the position in the other two planes. Establish an appropriate angle in the sagittal plane, aligning it vertically across the abdomen. Ensure that the slice thickness adequately covers the entire pancreatic duct. Utilize phase oversampling to prevent wrap-around artifacts. Instruct the patient to hold their breath during image acquisition.",
+        "Plan the coronal oblique thick slab on the axial T2 HASTE images; position the block horizontally across the pancreatic duct. Verify the position in the other two planes. Establish an appropriate angle in the sagittal plane, aligning it vertically across the abdomen. Ensure that the slice thickness adequately covers the entire pancreatic duct. Utilize phase oversampling to prevent wrap-around artifacts. Instruct the patient to hold their breath during image acquisition."
+      ],
+      "coverage": "T2 HASTE coronal 4mm sfov breath hold. FOV. Small FOV T2 tse\\HASTE fat saturated  breath hold 4mm",
+      "contrast": "Move the table out and instruct the patient to keep still. Inform the patient about potential side effects of secretin and emphasize the importance of holding their breath during the procedure (most breath holds are less than 5 seconds). The most common side effects include nausea, abdominal pain, v",
+      "notes": [
+        "Note:Scans achieve better results when performed with a right-to-left phase direction and 70% oversampling. This choice is made to prevent artifacts caused by motion of the abdominal wall fat. However, in most scanners, implementing this option is not feasible due to the additional oversampling, which would extend the breath-hold time beyond what patients can manage. As a result, we conduct the scan with an anterior-posterior phase direction on our 1.5T scanner and right-to-left on our 3T scanner. If TSE images exhibit excessive artifacts, consider utilizing a HASTE sequence."
+      ],
+      "status": "to_be_verified"
+    },
+    "MRCP Uncooperative Patient": {
+      "Axial": [
+        "T2 tse BLADE(PROPELLER) or t2 TRUFI axial gated",
+        "Plan the axial slices on the coronal TRUFI image; position the block across the liver as shown. Check the position in the other two planes. Slices must cover the whole biliary system from the diaphragm down to the c loop of duodenum. Adding saturation bands on top and bottom of the axial block will help to reduce arterial pulsation and breathing artefacts. Use motion correction sequences like BLADE (PROPELLER) for further artefact reduction. For respiratory gated scans it is important to place the respiratory navigator box correctly ie. in the middle of the right dome of diaphragm with half the box over the right lobe of the liver (segment 8) and the other half over the lungs. Planning must be done in a non-breath hold localizer because the diaphragm will push down the liver during inhalation and that will lead to an improper planning of slices and respiratory navigator box. It is important to instruct patient to breathe gently throughout the sequence. The effectiveness of the navigator will be reduced with very shallow or erratic breathing.",
+        "T2 tse fat suppressed BLADE or T2 haste axial gated",
+        "Plan the axial slices on the coronal TRUFI  image; position the block across the liver as shown. Check the position in the  other two planes. Slices must cover the whole biliary system from the diaphragm  down to the c loop of duodenum. Adding saturation bands on top and bottom of the axial  block will help to reduce arterial pulsation and breathing artefacts. Use  motion correction sequences like BLADE (PROPELLER) for  further  artefact reduction. For respiratory gated scans it is important to place  the respiratory navigator box correctly ie.  in the middle of the right dome of diaphragm with half the box over the right lobe of the liver  (segment 8) and the other half over the lungs. Planning must be done in a  non-breath hold localizer because the diaphragm will push down the liver during  inhalation and that will lead to an improper planning of slices and respiratory  navigator box. It is important to instruct patient to breathe gently throughout  the sequence. The effectiveness of the navigator will be reduced with very  shallow or erratic breathing.",
+        "Plan the coronal 3D on the axial TRUFI (or HASTE); position the block across the common bile duct.Check in the other two planes. Slices must be sufficient to cover the whole common bile duct, pancreatic duct and gall bladder. Phase oversampling must be used to avoid wrap around artifacts. For respiratory gated scans it is important to place the respiratory navigator box correctly ie. In the middle of the right dome of diaphragm with half the box over the right lobe of the liver (segment 8) and the other half over the lungs. Planning must be done in a non-breath hold localizer because the diaphragm will push down the liver during inhalation and that will lead to an improper planning of slices and respiratory navigator box. It is important to instruct patient to breathe gently throughout the sequence. The effectiveness of the navigator will be reduced with very shallow or erratic breathing."
+      ],
+      "Coronal": [
+        "T2 tse 3D(or SPACE 3D) coronal gated"
+      ],
+      "coverage": "FOV. FOV. FOV",
+      "status": "to_be_verified"
+    },
+    "Anterior Abdominal Wall": {
+      "indication": "Abdominal Wall MRI; Abdominal wall endometriosis; Abdominal wall muscle tear; Abdominal wall infections; Abdominal adhesions; Abdominal wall fistula; Abdominal wall masses; Abdominal wall hernias; Abdominal wall lipoma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine).. Position the patient over the spine coil and place the body coils over abdomen and pelvis (nipple down to three inches below symphysis pubis).. Securely tighten the body coil using straps to prevent respiratory artefacts.. Give a pillow under the head and cushions under the legs for extra comfort.",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask  the patient to undress and change into a hospital gown",
+        "Instruct  the patient to hold their breath for the breath hold scans and breathe gently  for the gated scans (its advisable to coach the patient two to three times before starting the scan)",
+        "Buscopan injection risk and benefits must be explained to the patient before the scan"
+      ],
+      "Coronal": [
+        "T2 TRUEFISP\\HASTE coronal 4mm large FOV",
+        "T2 TSE\\HASTE coronal multiple breath holds 4mm SFOV"
+      ],
+      "Axial": [
+        "T2 TRUEFISP\\HASTE  axial 4MM Large FOV",
+        "T2 TSE \\HASTE axial multiple breath holds 4mm SFOV",
+        "T1 VIBE DIXON SFOV 4mm axial breath hold",
+        "T2 TSE SPAIR\\HASTE FS  axial multiple breath holds 4mm SFOV"
+      ],
+      "Sagittal": [
+        "T2 TSE sagittal multiple breath holds 4mm SFOV",
+        "T1 VIBE DIXON SFOV 4mm sagittal breath hold"
+      ],
+      "coverage": "T2 TRUEFISP\\HASTE coronal 4mm large FOV. Plan the coronal slices on the axial image, positioning the block horizontally across the abdomen as shown below. Verify the positioning block in the other two planes. Ensure an appropriate angle is set in the sagittal plane, vertically across the abdomen. Th",
+      "status": "to_be_verified"
+    }
+  },
+  "Pelvis": {
+    "Pelvis Female — Uterus and Cervix (Gynec)": {
+      "Axial": [
+        "T2 (3 mm HR, small FOV)",
+        "T1 TSE",
+        "DWI (b 0, 800) with ADC map (multi averages) — optional",
+        "T1 in/out phase (or DIXON on 3T)",
+        "Dynamic (see remarks)",
+        "T2 heme sequence (GRE)"
+      ],
+      "Coronal": [
+        "STIR (big FOV)",
+        "T2 HR plan in plane of cervix or uterus"
+      ],
+      "Sagittal": [
+        "T2 (3 mm HR)",
+        "T1 3D FS sagittal pre-contrast",
+        "Dynamic (see remarks)"
+      ],
+      "planning": "Plan HR T2 Ax in plane of cervix for cervical cancer, in plane of uterus for uterus and endometrium.",
+      "contrast_sequences": {
+        "Ovarian": "Axial Pre/15/25/60/180 (dynamic); Sag post-contrast after 60 s",
+        "Uterine": "Axial after 60 s; Sag dynamic"
+      },
+      "notes": "Do subtraction [(T1FS + C) – T1FS] if hyperintense lesion seen in T1FS.",
+      "status": "verified"
+    },
+    "Pelvis Female — Adnexal / Ovarian Mass": {
+      "Axial": [
+        "T2 (3 mm HR, small FOV)",
+        "DWI (b 0, 400, 800) with ADC map",
+        "T1 in/out phase (or DIXON on 3T)",
+        "T2 heme sequence (GRE)",
+        "T1 VIBE FS pre-contrast",
+        "T1 VIBE FS post-contrast dynamic (15, 25, 70 s)",
+        "Delayed T1 VIBE FS 180 s"
+      ],
+      "Coronal": [
+        "T2 HASTE",
+        "T2 (3 mm HR)",
+        "Delayed T1 VIBE FS"
+      ],
+      "Sagittal": [
+        "HASTE",
+        "T2 (3 mm HR)",
+        "T1 VIBE FS pre-contrast",
+        "Delayed T1 VIBE FS"
+      ],
+      "notes": "Plan HR T2 Ax and Sag in plane of uterus. Do subtraction [(T1FS + C) – T1FS] if lesion hyperintense in T1FS.",
+      "status": "verified"
+    },
+    "Rectum (Ca Rectum Local Staging, 3T)": {
+      "Axial": [
+        "T2 TSE 5 mm (big FOV)",
+        "T2 oblique TSE 3 mm (small FOV, exact perpendicular to lesion on sagittal plane)",
+        "DWI (b 0, 400, 800) with ADC map (multi averages)",
+        "T1 oblique 3D FS axial pre-contrast (small FOV)",
+        "T1 3D FS post-contrast (25 s, 60 s, 180 s axial) — not routinely required, discuss with radiologist",
+        "STIR"
+      ],
+      "Coronal": [
+        "T2 TSE coronal oblique (3 mm, small FOV)",
+        "STIR (big FOV)",
+        "T1 3D FS post-contrast after 60 s axial (not routine, d/w radiologist)"
+      ],
+      "Sagittal": [
+        "T2 TSE (no FS, small FOV, 3 mm HR) 18 × 24",
+        "T1 3D FS post-contrast (after coronal post-contrast, not routine)"
+      ],
+      "status": "verified"
+    },
+    "Ano-Rectal Fistula / Perineal Fistula / Abscess / Pilonidal Sinus / Anal Cancer / Hidradenitis Suppurativa": {
+      "Axial": [
+        "T2 TSE axial oblique 3 mm",
+        "T2 TSE FS axial oblique 3 mm",
+        "T2 Space FS",
+        "T1 SE",
+        "T1 3D FS pre-contrast",
+        "T1 3D FS post-contrast",
+        "T2 TSE tra (abdomen and pelvis, breath hold)",
+        "T2 TSE tra FS (abdomen and pelvis, breath hold)"
+      ],
+      "Coronal": [
+        "T2 STIR coronal oblique 3 mm",
+        "T2 HASTE oblique",
+        "T1 3D FS post-contrast"
+      ],
+      "Sagittal": [
+        "STIR 3 mm",
+        "T2 TSE 3 mm",
+        "HASTE",
+        "T1 VIBE FS post-contrast"
+      ],
+      "notes": "Plan sagittal parallel to anal canal.",
+      "status": "verified"
+    },
+    "Placenta MRI": {
+      "indication": "For the assessment of intrauterine fetal growth restriction; Diagnosis and management of placenta accreta; Diagnosis and management of placenta previa; Surgical management of abnormal placentation; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine). Position the patient over the spine coil and place the body coil over abdomen and pelvis (nipple down to elbow three inches below symphysis pubis). Securely tighten the body coil using straps to prevent respiratory artefacts. Give a pillow under the head and cushions under the legs for extra comfort",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal object including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "An intravenous line must be placed with extension tubing extending out of the magnetic bore",
+        "Claustrophobic patients may be accompanied into the scanner room e.g. by staff member or relative with proper safety screening"
+      ],
+      "Sagittal": [
+        "T2 HASTE sagittal 6 mm  Respiratory gated"
+      ],
+      "Coronal": [
+        "T2 HASTE coronal 6 mm  Respiratory gated"
+      ],
+      "Axial": [
+        "T2 HASTE axial 6 mm  Respiratory gated",
+        "T1 tse\\ vibe axial 6mm breath hold fetal brain",
+        "T2 HASTE axial oblique 4mm  Respiratory gated"
+      ],
+      "coverage": "Begin by planning the sagittal slices on the coronal localizer and position the block parallel to the gravid uterus. Verify the positioning block in the other two planes to confirm proper alignment. It is essential to provide an appropriate angle in the axial plane, which should be perpendicular to ",
+      "status": "to_be_verified"
+    },
+    "MR Proctogram": {
+      "indication": "Descending perineum syndrome; Internal rectal intussusception; Difficulty in opening bowel; Obstructed defecation; Faecal incontinence; Pelvic floor dysfunction; Rectal prolapse; Sigmoidocele; Rectocele; Enterocele",
+      "prep": [
+        "It is important that the bowel is clean and empty before the procedure. Patient should be supplied with a laxative suppository and instructions leaflet for how to insert the suppository.",
+        "The suppository should insert into the rectum on the morning of the test. Instruct the patient to retain the suppository for 15 minutes and then empty your bowel completely.",
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal object including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown"
+      ],
+      "Sagittal": [
+        "T2 tse sagittal 3mm SFOV pre proctogram"
+      ],
+      "Axial": [
+        "T2 tse axial oblique 3mm SFOV pre proctogram"
+      ],
+      "Coronal": [
+        "T2 tse coronal oblique 3mm SFOV pre proctogram"
+      ],
+      "coverage": "T2 tse sagittal 3mm SFOV pre proctogram. Plan the sagittal slices on the axial plane; angle the positioning block parallel to the interpubic fibrocartilage and the anal canal. Check the positioning block in the other two planes. An appropriate angle must be given in the coronal plane (parallel to th",
+      "status": "to_be_verified"
+    }
+  },
+  "Urogenital": {
+    "Prostate": {
+      "Axial": [
+        "T2 axial (big FOV, whole pelvis)",
+        "T2 oblique axial (small FOV, 3 mm HR, perpendicular to urethra)",
+        "DWI (b 0, 500, 1000, 2000) with ADC map",
+        "T2 FS 3 mm (small FOV, 3 mm HR)",
+        "T1 FS (small FOV) — only in post-prostatectomy patient",
+        "T1 3D dynamic pre and post-contrast"
+      ],
+      "Coronal": [
+        "STIR (big FOV)",
+        "T2 oblique prostate (small FOV, 3 mm HR, FOV 18 × 22)",
+        "T1 large FOV pelvis",
+        "T1 3D FS axial post-contrast"
+      ],
+      "Sagittal": [
+        "T2 prostate (small FOV, 3 mm HR, FOV 18 × 22, oblique sagittal)",
+        "T1 3D FS post-contrast"
+      ],
+      "notes": "If b 2000 not possible, use b 0, 400, 800, 1600. Small FOV true axial perpendicular to urethra.",
+      "status": "verified"
+    },
+    "Scrotum": {
+      "positioning": "Penis taped to anterior pelvic wall. No pillow below thighs/legs.",
+      "Axial": [
+        "STIR 3 mm (small FOV)",
+        "T1 TSE 3 mm small FOV",
+        "T2 TSE (no FS, small FOV, 3 mm HR)",
+        "DWI (b 0, 400, 800) with ADC map",
+        "T1 in/out phase",
+        "T2 HASTE",
+        "T2 FS (small FOV, 3 mm HR)"
+      ],
+      "Coronal": [
+        "STIR 5 mm (big FOV)",
+        "T2 TSE (no FS, small FOV, 3 mm HR)",
+        "T1 3D FS pre-contrast 3 mm",
+        "Post-contrast T1 3D FS dynamic (25, 70, 180 s) — not routine, d/w radiologist"
+      ],
+      "Sagittal": [
+        "T2 (no FS, small FOV, 3 mm HR)",
+        "T1 3D FS post-contrast (not routine, d/w radiologist)"
+      ],
+      "notes": "Cover from kidney to scrotum in big FOV scans.",
+      "status": "verified"
+    },
+    "Adrenal / Renal": {
+      "Axial": [
+        "HASTE",
+        "T1 in/out phase (± DIXON) — thin 3 mm sections for adrenal",
+        "DWI (b 0, 400, 800) with ADC map",
+        "T2 TSE with FS",
+        "T2 TSE",
+        "T1 3D FS pre-contrast",
+        "Post-contrast T1 3D FS dynamic (25 s, 60 s, 15 min)"
+      ],
+      "Coronal": [
+        "HASTE",
+        "SSFP breath hold",
+        "T1 in/out phase (± DIXON)",
+        "TRUFISP breath hold",
+        "T2 TSE",
+        "T1 3D FS post-contrast"
+      ],
+      "Sagittal": [
+        "HASTE",
+        "T1 3D FS post-contrast"
+      ],
+      "status": "verified"
+    },
+    "MRI Urinary Bladder (1.5T/3T)": {
+      "Axial": [
+        "HASTE",
+        "T2 (small FOV, 3 mm HR)",
+        "DWI (b 0, 400, 800) with ADC map",
+        "T1 3D FS pre-contrast",
+        "T1 3D FS post-contrast dynamic (15, 25, 70 s)"
+      ],
+      "Coronal": [
+        "HASTE",
+        "T2 (small FOV, 3 mm HR)",
+        "Delayed T1 3D FS after 70 s",
+        "Delayed T1 3D FS 180 s",
+        "Delayed T1 3D FS KUB 5–7 min",
+        "STIR (big FOV)"
+      ],
+      "Sagittal": [
+        "T2 (small FOV, 3 mm HR)",
+        "Delayed T1 3D FS after 70 s"
+      ],
+      "status": "verified"
+    },
+    "MRI Inguinal Region": {
+      "Axial": [
+        "T2 HASTE",
+        "DWI (b 0, 400, 800) with ADC map",
+        "T2 (no FS, small FOV, 3 mm HR)",
+        "T2 FS (small FOV, 3 mm HR)",
+        "T1 in/out phase",
+        "T1 TSE (no FS, small FOV, 3 mm HR)",
+        "T1 VIBE FS pre-contrast",
+        "Post-contrast T1 VIBE FS dynamic (25, 70, 180 s)"
+      ],
+      "Coronal": [
+        "T2 HASTE",
+        "T2 (no FS, small FOV, 3 mm HR)",
+        "T1 VIBE FS pre-contrast",
+        "T1 VIBE FS"
+      ],
+      "Sagittal": [
+        "T2 HASTE",
+        "T2 (no FS, small FOV, 3 mm HR)",
+        "T1 VIBE FS"
+      ],
+      "status": "verified"
+    },
+    "MRI Urography": {
+      "Axial": [
+        "T2 FASE (breath hold)",
+        "T2 True FISP FS (breath hold)"
+      ],
+      "Coronal": [
+        "T2 SSFP",
+        "T2 FASE thick slab (60 mm) — breath hold",
+        "T2 FASE (3 mm) — breath hold",
+        "Pre and post-contrast dynamic (25 s / 90 s / 5 min / 10 min) — 3D T1"
+      ],
+      "Sagittal": [
+        "T2 FASE thick slab (60 mm) — breath hold"
+      ],
+      "notes": "Kidney coverage. Based on area of infarct.",
+      "status": "verified"
+    },
+    "Female Urethra": {
+      "indication": "Assessment of  pelvic floor dysfunction and pelvic organ prolapse; Diagnosis of gonococcal and nongonococcal urethritis; Evaluation of  malignant tumours of the female urethra; Diagnosis of  cysts or abscesses of skenes gland; Diagnosis of postirradiation injuries (e.g. urethritis); Evaluation of benign tumours of the urethra; Diagnosis of cysts of bartholins gland; Diagnosis of cysts of gartners duct; Diagnosis of cysts of bartholins gland; Assessment of collagen injections",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine). Position the patient over the spine coil and place the body coil over the pelvis ( iliac crest down to mid thigh). Securely tighten the body coil using straps to prevent respiratory artefacts. Give a pillow under the head for extra comfort",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible provide a chaperone for claustrophobic patients (e.g. relative or staff )",
+        "Contrast injection risk and benefits must be explained to the patient before the scan",
+        "Gadolinium should only be given to the patient if GFR is > 30"
+      ],
+      "Axial": [
+        "T2 tse axial 5 mm big fov",
+        "T2 tse fat sat (or stir) axial OBLIQUE 3mm small fov",
+        "T2 tse axial oblique 3mm small fov",
+        "T1 tse fat sat axial oblique 3mm small fov",
+        "Very rarely some urethra scans needed contrast enhanced imaging. In case of contrast enhanced imaging use T1 TSE fat saturated small FOV axial and coronal obliques after the administration of IV"
+      ],
+      "Sagittal": [
+        "T2 tse fat sat (or stir) sagittal 3mm small fov",
+        "T2 tse sagittal 3mm small fov"
+      ],
+      "Coronal": [
+        "T2 tse fat sat (or stir)coronal oblique 3mm"
+      ],
+      "coverage": "T2 tse axial 5 mm big fov. Plan the large FOV axial slices on the coronal plane; angle the positioning block parallel to the line along the right and left hip joint. Verify the positioning block in the other two planes. Establish an appropriate angle horizontally across the pelvis in the sagittal pl",
+      "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; Very rarely some urethra scans needed contrast enhanced imaging. In case of contrast enhanced imaging use T1 TSE fat saturated small FOV axial and coronal obliques after the administration of IV; injection(copy th",
+      "status": "to_be_verified"
+    },
+    "Penis MRI": {
+      "indication": "Metastatic tumours of the urethra or penis; Malignant tumours of the urethra or penis; Benign tumours of the urethra or penis; Tuberculosis of the urethra or penis; Blunt penile or urethral trauma; Penetrating penile injury; Condyloma acuminata; Postirradiation Injuries; Penile fracture; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine).. Position the patient over the spine coil and place the body coil over the pelvis( iliac crest  down to three inches below testicle). Securely tighten the body coil using straps to prevent respiratory artefacts. Give a pillow under the head for extra comfort (",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "Contrast  injection risk and benefits must be explained to the before  the scan",
+        "Gadolinium should only be given to the patient if GFR is > 30"
+      ],
+      "Sagittal": [
+        "T2 tse sagittal 3mm SFOV"
+      ],
+      "Coronal": [
+        "T2 tse coronal 5mm big FOV(For cancer imaging)",
+        "T2 stir coronal 3mm SFOV",
+        "T1 tse coronal 3mm SFOV"
+      ],
+      "Axial": [
+        "T2 stir axial 3mm SFOV",
+        "T1 tse axial 3mm SFOV",
+        "Penile scans rarely require contrast-enhanced imaging. If contrast-enhanced imaging is necessary, utilize T1 TSE Fat-saturated small FOV axial and coronal scans following the administration of IV gadolinium DTPA injection (using the same planning as outlined above). The document below grants access to the manufacturer's recommended dosage of gadolinium DTPA injection."
+      ],
+      "coverage": "T2 tse sagittal 3mm SFOV. Plan the sagittal slices on the axial plane. Angle the positioning block parallel to the interpubic fibrocartilage and the anal canal (i.e. parallel to the penile base). Check the positioning block in the other two planes. An appropriate angle must be given in the coronal p",
+      "contrast": "Contrast  injection risk and benefits must be explained to the before  the scan; Penile scans rarely require contrast-enhanced imaging. If contrast-enhanced imaging is necessary, utilize T1 TSE Fat-saturated small FOV axial and coronal scans following the administration of IV gadolinium DTPA injecti",
+      "status": "to_be_verified"
+    },
+    "MRI KUB": {
+      "indication": "Detection of suspected stones where CT is contraindicated (post radiotherapy , children ); For the evaluation of solid abdominal masses; For the evaluation of malignancy; For the evaluation of cyst; Local staging of cancer; Genitourinary tract TB; Haematuria; Trauma; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine). Position the patient over the spine coil and place the body coils over abdomen and pelvis (nipple down to elbow three inches below symphysis pubis). Securely tighten the body coil using straps to prevent respiratory artefacts. Give a pillow under the head and cushions under the legs for extra comfort",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal object including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "Claustrophobic patients may be accompanied into the scanner room e.g. by staff member or relative with proper safety screening",
+        "Offer headphones for communicating with the patient and ear protection"
+      ],
+      "Axial": [
+        "T2 HASTE\\TRUFI axial 4 mm",
+        "T2 HASTE\\ TRUFI fat sat axial 4 mm",
+        "T1 vibe DIXON 3d axial 4 mm",
+        "Plan the coronal slices on the axial plane; angle the position block parallel to the mid line along the right and left kidneys. Check the positioning block in the other two planes. An appropriate angle must be given in the sagittal plane (parallel to L spine). Slices must be sufficient to cover the whole urinary system. Phase oversampling and, in the case of 3D blocks, slice oversample, must be used to avoid wrap around artefacts. FOV must be big enough to cover the kidneys and bladder. Instruct the patient to hold their breath during image acquisition. (In our department we instruct the patients to breath in and out twice before the “breath in and hold” instruction.).",
+        "T2 tse axial 3mm SFOV",
+        "T2 tse\\haste fat sat breath hold 4mm axial"
+      ],
+      "Coronal": [
+        "T1 vibe DIXON 3D  coronal 2mm",
+        "T2 HASTE fat sat coronal 3mm"
+      ],
+      "coverage": "Plan the axial slices on the coronal plane, angle the positioning block parallel to the right and left iliac crest. Check the positioning block in the other two planes. An appropriate angle must be given in the sagittal plane (horizontally across the abdomen). The slices must be sufficient to cover ",
+      "status": "to_be_verified"
+    }
+  },
+  "Musculoskeletal": {
+    "TMJ": {
+      "Axial": [
+        "T2WI (5 mm)"
+      ],
+      "Coronal": [
+        "PD (3 mm, SFOV for TMJ)"
+      ],
+      "Sagittal": [
+        "PD (right TMJ closed mouth)",
+        "PD (left TMJ closed mouth)",
+        "PD (right TMJ open mouth)",
+        "PD (left TMJ open mouth)",
+        "STIR (right TMJ closed mouth)",
+        "STIR (left TMJ closed mouth)"
+      ],
+      "notes": "3 mm slice thickness, SFOV for TMJ.",
+      "status": "verified"
+    },
+    "Sternum": {
+      "positioning": "Prone. Use saturation band in chest.",
+      "Axial": [
+        "T1WI",
+        "STIR",
+        "T1 + C"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR",
+        "T1 + C"
+      ],
+      "Sagittal": [
+        "T2WI"
+      ],
+      "slice": "3 mm",
+      "status": "verified"
+    },
+    "Clavicle": {
+      "positioning": "Supine",
+      "Axial": [
+        "T1WI",
+        "STIR"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR"
+      ],
+      "Sagittal": [
+        "STIR"
+      ],
+      "slice": "3 mm",
+      "status": "verified"
+    },
+    "Scapula": {
+      "Axial": [
+        "STIR",
+        "T1WI"
+      ],
+      "Coronal": [
+        "STIR",
+        "T1WI"
+      ],
+      "Sagittal": [
+        "T2"
+      ],
+      "status": "verified"
+    },
+    "Shoulder": {
+      "Axial": [
+        "GRE",
+        "PDFS",
+        "T2*-MEDIC"
+      ],
+      "Coronal": [
+        "T1",
+        "PD",
+        "PDFS",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T1",
+        "PDFS",
+        "T2"
+      ],
+      "notes": "PDFS for routine complaints. Add STIR if marrow looks abnormal.",
+      "status": "verified"
+    },
+    "Shoulder Arthrography (MR Arthrogram)": {
+      "Axial": [
+        "T1-VIBE3D-fatsat"
+      ],
+      "Coronal": [
+        "T1FS",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T1FS"
+      ],
+      "notes": "All images to be performed with small FOV.",
+      "status": "verified"
+    },
+    "Upper Arm (Humerus)": {
+      "coil": "Body coil — from shoulder to elbow",
+      "Axial": [
+        "STIR",
+        "T1WI"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T2WI"
+      ],
+      "status": "verified"
+    },
+    "Elbow": {
+      "Axial": [
+        "T1",
+        "INT FS",
+        "GRE/T2*-MEDIC"
+      ],
+      "Coronal": [
+        "T1",
+        "INT FS",
+        "T1/STIR",
+        "T2* Gradient 3D / cartilage 3D"
+      ],
+      "Sagittal": [
+        "T2*-MEDIC",
+        "T2WI"
+      ],
+      "notes": "INT FS means TE > 20 (unlike PD) and < 80 (unlike T2); optimum TE for INT FS is 30–50 ms. Choose GRE or cartilage sequence after discussing with radiologist.",
+      "status": "verified"
+    },
+    "Wrist": {
+      "positioning": "Patient hand in Superman position. Acquire images perpendicular to carpal bones and wrist joint. Cover 3 slices above CMC joint and 3 slices proximal to radioulnar joint. Use saturation band before and after axial block to reduce UA/RA pulsations.",
+      "Axial": [
+        "T1",
+        "PDFS",
+        "T2*-MEDIC",
+        "STIR"
+      ],
+      "Coronal": [
+        "T1",
+        "PDFS",
+        "STIR",
+        "SSFP 3D (1.5–2 mm)",
+        "T2*-MEDIC",
+        "T2WI"
+      ],
+      "Sagittal": [
+        "PDFS",
+        "STIR"
+      ],
+      "slice": "2–3 mm",
+      "status": "verified"
+    },
+    "Thumb": {
+      "Axial": [
+        "T1",
+        "T2FS"
+      ],
+      "Coronal": [
+        "T1",
+        "T2FS",
+        "T2* GRE 3D"
+      ],
+      "Sagittal": [
+        "STIR"
+      ],
+      "notes": "Small FOV. Wrist in centre of coil. Start with axial sequences.",
+      "status": "verified"
+    },
+    "Finger": {
+      "Axial": [
+        "T1",
+        "PDFS",
+        "T2* GRE 3D"
+      ],
+      "Coronal": [
+        "PDFS",
+        "T1",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T1",
+        "PDFS"
+      ],
+      "notes": "Small FOV. Wrist in centre of coil. Start with axial sequences.",
+      "status": "verified"
+    },
+    "Hand": {
+      "coverage": "Tip of finger to radioulnar joint",
+      "Axial": [
+        "T1WI",
+        "STIR"
+      ],
+      "Coronal": [
+        "STIR",
+        "T1",
+        "T2WI"
+      ],
+      "Sagittal": [
+        "STIR"
+      ],
+      "status": "verified"
+    },
+    "SI Joints": {
+      "Axial": [
+        "STIR (axial oblique, perpendicular to sacrum)"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR (coronal oblique, parallel to sacrum)"
+      ],
+      "notes": "T1FS pre- and post-contrast optional. SW = 3 mm.",
+      "status": "verified"
+    },
+    "Both Hips": {
+      "positioning": "Supine with mild internal rotation. Start with axial from iliac crest to below lesser trochanter.",
+      "Axial": [
+        "T1",
+        "T2 FS"
+      ],
+      "Coronal": [
+        "T2 FS",
+        "T1"
+      ],
+      "Sagittal": [
+        "Left T2 FS",
+        "Right T2 FS"
+      ],
+      "slice": "3–5 mm. TE for T2 FS = 80 ms.",
+      "status": "verified"
+    },
+    "Hip (Single)": {
+      "positioning": "Supine with internal rotation at toes (15°). Start with coronal STIR large FOV (pelvis), followed by imaging in small FOV for symptomatic hip.",
+      "Axial": [
+        "INT FS",
+        "T1WI",
+        "STIR",
+        "PDFS (axial oblique SFOV)"
+      ],
+      "Axial_Oblique": [
+        "T1",
+        "INT FS (parallel to femoral neck)"
+      ],
+      "Coronal": [
+        "STIR (large FOV, full pelvis)",
+        "T1",
+        "INT FS",
+        "3D GRE"
+      ],
+      "Sagittal": [
+        "INT FS",
+        "T2WI"
+      ],
+      "slice": "3–4 mm",
+      "status": "verified"
+    },
+    "Thigh": {
+      "Axial": [
+        "STIR",
+        "T1WI"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T2WI"
+      ],
+      "slice": "5–6 mm",
+      "status": "verified"
+    },
+    "Knee": {
+      "under_40": {
+        "Axial": [
+          "PDFS / Grd T2"
+        ],
+        "Coronal": [
+          "PDFS"
+        ],
+        "Sagittal": [
+          "T1",
+          "PDFS",
+          "PDFS oblique (for ACL)"
+        ],
+        "notes": "Add STIR if marrow abnormal or in trauma. Oblique axial only if axial not seen well on routine sagittal."
+      },
+      "over_40": {
+        "Axial": [
+          "Wet"
+        ],
+        "Coronal": [
+          "PDFS"
+        ],
+        "Sagittal": [
+          "T1",
+          "PDFS",
+          "PDFS oblique (for ACL)",
+          "Wet"
+        ]
+      },
+      "positioning": "While positioning, the non-scanned knee should be lifted higher than the scanned one to avoid cross-talk.",
+      "status": "verified"
+    },
+    "Leg": {
+      "Axial": [
+        "T1WI",
+        "STIR"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T2WI"
+      ],
+      "slice": "4–6 mm",
+      "status": "verified"
+    },
+    "Ankle": {
+      "positioning": "Ankle locked at 90° extension.",
+      "Axial": [
+        "PD",
+        "STIR"
+      ],
+      "Coronal": [
+        "PDFS"
+      ],
+      "Sagittal": [
+        "T1WI",
+        "STIR"
+      ],
+      "slice": "2–3 mm",
+      "status": "verified"
+    },
+    "Foot": {
+      "positioning": "Ankle joint flexed at 90°.",
+      "Axial": [
+        "T1WI",
+        "STIR",
+        "T2"
+      ],
+      "Coronal": [
+        "T1WI",
+        "STIR"
+      ],
+      "Sagittal": [
+        "T1WI",
+        "STIR"
+      ],
+      "slice": "3 mm",
+      "status": "verified"
+    },
+    "Soft Tissue / Bone Tumour": {
+      "Axial": [
+        "T1",
+        "T1 FS",
+        "T2",
+        "T2 FS axial",
+        "GRE",
+        "Dynamic post-contrast T1 FS"
+      ],
+      "Coronal": [
+        "T2",
+        "STIR",
+        "Post-contrast T1-FS (60 s)"
+      ],
+      "Sagittal": [
+        "T1",
+        "T2",
+        "Post-contrast T1FS (60 s)"
+      ],
+      "notes": "FOV to be discussed. Include nearest joint. Soft tissue marker if needed.",
+      "status": "verified"
+    },
+    "MR Arthrogram Hip": {
+      "indication": "For the evaluation of foreign bodies in the acetabular fossa; For the evaluation of cystic changes in the acetabulum; For the evaluation of  hip dysplasia in children; For the evaluation of osteochondromatosis; For the evaluation of  focal chondropathy; For the evaluation of  labrum lesions; For the evaluation of  labral tear; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal object including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible provide a chaperone for claustrophobic patients (e.g. relative or staff )",
+        "Contrast injection risk and benefits must be explained to the patient before the scan",
+        "Offer earplugs or headphones, possibly with music for extra comfort"
+      ],
+      "Coronal": [
+        "T2 stir coronal 3mm pre arthrogram",
+        "T1 vibe 3d DIXON coronal 0.9mm small FOV"
+      ],
+      "Axial": [
+        "T1 tse axial 3mm pre arthrogram",
+        "Plan the coronal 3D block on the axial plane. Angle the positioning block perpendicular to the acetabulum (i.e., parallel to the femoral head and neck). Check the positioning block in the other two planes. An appropriate angle must be given in the sagittal plane (perpendicular to the acetabulum). The slices should adequately encompass the hip joint, starting from the ischial tuberosities and extending up to the line of the pubic symphysis. To minimize ghosting artifacts resulting from peristalsis, vascular pulsation, and breathing, consider incorporating a saturation band at the top and bottom of the coronal block.",
+        "T1 vibe 3d DIXON AXIAL 0.9mm small FOV",
+        "Plan the axial 3D block on the coronal plane and angle the positioning block horizontally across the femoral heads. Check the positioning block in the other two planes to ensure an appropriate angle is maintained in the sagittal plane, which should be perpendicular to the femur. The slices must be sufficient to cover the hip joints from 1 inch above the anterior inferior iliac spine to 1 inch below the lesser trochanter. To minimize ghosting artifacts resulting from peristalsis, vascular pulsation, and breathing, consider incorporating a saturation band at the top and bottom of the axial block.",
+        "T1 tse fat sat axial 3mm SFOV",
+        "T1 axial oblique 3mm SFOV"
+      ],
+      "Sagittal": [
+        "T1 tse fat sat sagittal 3mm SFOV",
+        "T1 TSE FAT SAT sagittal oblique 3mm SFOV"
+      ],
+      "coverage": "FOV. FOV. T1 vibe 3d DIXON coronal 0.9mm small FOV",
+      "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; An arthrogram is a diagnostic procedure used to examine joint capsule conditions. During this interventional process, a radiologist injects contrast medium into the joint space to assess any abnormalities. For MRI",
+      "status": "to_be_verified"
+    },
+    "Psoas": {
+      "indication": "Tuberculosis of spine; Iliopsoas  tendon rupture; Iliopsoas  syndrome; Iliopsoas cyst; Psoas abscess; Psoas muscle Anatomy; Anatomy:; Iliacus: The iliacus muscle arises from the iliac fossa, which is part of the iliac bone of the pelvis. It also travels downward and laterally to join the psoas major at the same insertion point on the lesser trochanter of the femur.; Psoas muscle 3d image; psoas muscle mri image",
+      "positioning": "Position the patient in supine position with head pointing towards the magnet (head first supine). Position the patient over the spine coil and place the body coils over abdomen and pelvis (nipple down to elbow three inches below symphysis pubis). Securely tighten the body coil using straps to prevent respiratory artefacts. Give a pillow under the head and cushions under the legs for extra comfort",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal object including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "If possible provide a chaperone for claustrophobic patients (e.g. relative or staff )",
+        "Offer earplugs or headphones, possibly with music for extra comfort"
+      ],
+      "Coronal": [
+        "T2 stir coronal 4mm  large FOV",
+        "T1 tse coronal 4mm  large FOV"
+      ],
+      "Axial": [
+        "T2 tse (or stir) axial 4 mm 300 fov",
+        "T1 tse axial 4 mm 300 fov"
+      ],
+      "coverage": "T2 stir coronal 4mm  large FOV. Plan the coronal slices on the sagittal plane; angle the positioning block parallel to the psoas. Check the positioning block in the other two planes. An appropriate angle must be given in the axial plane (across the right and left psoas). Slices must be sufficient to",
+      "status": "to_be_verified"
+    }
+  },
+  "Cardiovascular": {
+    "MR Angiography (Aorta + Both Lower Limbs)": {
+      "Coronal": [
+        "Angiography 3D Feet Pre (1.2 mm)",
+        "Angiography 3D Legs Pre (1.4 mm)",
+        "Angiography 3D Abdomen Pre (1.4 mm)",
+        "3D Angio Abdomen",
+        "3D Angio Legs",
+        "3D Angio Feet"
+      ],
+      "notes": [
+        "Injection IV contrast with Care bolus.",
+        "If venous contamination in feet — do knee and below angio with TWIST."
+      ],
+      "status": "verified"
+    },
+    "MR Venography": {
+      "coverage": "Cover from pelvis to mid-thigh",
+      "Axial": [
+        "FASE / HASTE",
+        "SSFP / TruFISP",
+        "T2",
+        "T2 FS",
+        "DWI (b 0, 400, 800) with ADC map",
+        "Delayed post-contrast T1 3D 180 s",
+        "T1 in/out phase (or DIXON on 3T)"
+      ],
+      "Coronal": [
+        "FASE / HASTE",
+        "SSFP / TruFISP",
+        "T2",
+        "T1 VIBE FS pre-contrast",
+        "Post-contrast angiography — multiple dynamics arterial and venous phase T1 VIBE",
+        "Delayed post-contrast T1 3D 180 s"
+      ],
+      "Sagittal": [
+        "FASE / HASTE"
+      ],
+      "status": "verified"
+    },
+    "Thoracic Outlet Angiography": {
+      "Axial": [
+        "T2 FASE / HASTE — 5 mm",
+        "T1 turbo Flash Black Blood — 7 mm",
+        "MRA with TWIST (multiple dynamics) — 2 mm"
+      ],
+      "Coronal": [
+        "T2 FASE / HASTE — 5 mm"
+      ],
+      "Sagittal": [
+        "T2 FASE / HASTE — 5 mm"
+      ],
+      "status": "verified"
+    },
+    "MRA Neck / Carotids": {
+      "indication": "Cervicocranial arterial dissection; Arterio-venous malformation; Vertebrobasilar syndrome; Injury to the carotid artery; Aneurysm; Tumours; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples",
+      "positioning": "Head first supine. Position  the head in the head and neck coil and immobilise with cushions. Give cushions under the legs for extra comfort. Centre  the laser beam localiser over the mid neck (1 inch below the chin in chin down position)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient  to undress and change into a hospital gown",
+        "If possible provide a chaperone for   claustrophobic patients (e.g. relative or staff )",
+        "Offer earplugs or headphones, possibly with music for extra  comfort"
+      ],
+      "Axial": [
+        "3D tof multi slab axial 1.2mm",
+        "T1 tse DIXON AXIAL 250 FOV",
+        "For the axial T1 fat saturation scans, set the phase direction from right to left with at least 100% oversampling. Keep the phase field of view (FOV) small enough to only cover the neck, as using a large phase FOV may lead to improper fat saturation."
+      ],
+      "coverage": "Plan the sagittal slices on the coronal localizer: angle the positioning block parallel to the cervical spine. Check the positioning block in the other two planes. An appropriate angle must be given in the axial plane (parallel to the midline of the brain). Slices must be sufficient to cover the nec",
+      "status": "to_be_verified"
+    },
+    "MRA Subclavians": {
+      "indication": "Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed); Ferromagnetic surgical clips or staples; Metallic foreign body in the eye; Metal shrapnel or bullet",
+      "positioning": "Position the patient over the head and neck coil and place  the body coil over the neck and upper chest (nose tip down to nipple). Give cushions under the arms for extra comfort. Body coil must be placed over small cushions to prevent any obstruction  in the patient's airway. Centre the laser beam localiser over the sternoclavicular joint",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient  to undress and change into a hospital gown",
+        "Instruct the  patient to hold their breath for the breath hold scans (its better to coach the  patient two to three times before starting the scan)",
+        "An intravenous line must be placed with extension tubing  extending out of the magnetic bore"
+      ],
+      "Coronal": [
+        "T1 flash 3D coronal .9mm -1.1mm pre-contrast",
+        "- \"Care bolus\" is the most commonly used bolus detection technique. This technique uses a coronal fast gradient refocused sequence. Real-time images are obtained every second through the vascular structure of interest (normally placed over the heart). The operator can then observe the contrast bolus arriving in the heart and subsequently switch to the centric 3D sequence.",
+        "T1 flash dynamic 3D coronal .9mm - 1.1mm post-contrast 2  measurements"
+      ],
+      "coverage": "Plan the coronal slices on the sagittal plane; angle the positioning block parallel to the carotid arteries and veins (alternatively, make it parallel to the cervical spine). Check the positioning block in the other two planes. Provide an appropriate angle in the axial plane (parallel to the right a",
+      "contrast": "Contrast  injection risk and benefits must be explained to the patient before the scan; It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdomen. This technique is highly dependent upon the site of contrast injection, age of the patient, ",
+      "status": "to_be_verified"
+    },
+    "MRA Renal": {
+      "indication": "Renal vascular malformation (i.e. arteriovenous  malformations and fistulae); For the evaluation of renal artery stenosis; Hypertensive chronic kidney disease; Atherosclerotic renal artery stenosis; Fibro muscular dysplasia; Renal artery aneurysm; Renal artery dissection; Renal donors; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient  to undress and change into a hospital gown",
+        "Instruct the  patient to hold their breath for the breath hold scans (its better to coach the  patient two to three times before starting the scan)",
+        "An intravenous  line must be placed with extension tubing extending out of the magnetic bore"
+      ],
+      "Coronal": [
+        "T1 flash 3D coronal fat saturated .8mm -.9mm pre-contrast",
+        "Care bolus is the most commonly used bolus detection technique. This technique utilizes a coronal fast gradient refocused sequence to obtain real-time images of the vascular structure of interest, typically positioned over the heart, at a frequency of one image per second. The operator can observe the arrival of the contrast bolus in the heart and subsequently switch to the centric 3D sequence.",
+        "T1 flash 3D coronal fat saturated .8mm -.9mm post-contrast",
+        "T1_FLASH_3D FAT SAT CORONAL PRE",
+        "T1_FLASH_3D FAT SAT CORONAL POST"
+      ],
+      "coverage": "FOV. Parallel imaging is a newly developed technique used to reduce scan time without affecting the scan resolution. Using parallel acquisition MRI techniques it is possible reconstruct full-FOV images from under sampled k-space data by using the uncorrelated information from RF array coil elements.",
+      "contrast": "Contrast  injection risk and benefits must be explained to the patient before  the scan; T1 flash 3D coronal fat saturated .8mm -.9mm pre-contrast; This is one of the simplest methods. It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdo",
+      "status": "to_be_verified"
+    },
+    "MRA Upper Arm": {
+      "indication": "Arteriovenous malformation; Brachial artery dissection; Brachial vein thrombosis; Brachial Artery stenosis; Atherosclerotic disease; Aneurysms; Vasculitis; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids); Intracranial aneurysm clips (unless made of titanium); Pregnancy (risk vs benefit ratio to be assessed)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "Contrast injection risk and benefit must be explained to the patient before the scan.",
+        "Gadolinium should only be given to the patient if GFR is > 30"
+      ],
+      "Axial": [
+        "T1 vibe 3d DIXON axial pre contrast 2mm",
+        "Plan the coronal slices on the axial plane, and angle the positioning block parallel to the clavicle (i.e., parallel to the subclavian artery). Check the positioning block in the other two planes. An appropriate angle must be used in the sagittal plane (parallel to the humerus). Slices must be sufficient to cover the whole upper arm from anterior to posterior. Ensure that the slices adequately cover the entire upper arm from anterior to posterior. Use a sufficiently large field of view (FOV) to encompass the shoulder and elbow joints. To mitigate breathing and arterial pulsation artifacts, consider adding a saturation band over the chest.. Post contrast scans should be 2 measurements (one for arterial phase and the other for venous phase) with a scan time of less than 15 seconds each.",
+        "T1 vibe 3d DIXON axial post contrast 2mm"
+      ],
+      "Coronal": [
+        "T1 flash 3D coronal .9mm -1.1mm pre-contrast",
+        "Care bolus is the most commonly used bolus detection technique. This technique uses a coronal fast gradient refocused sequence. Real-time images are obtained every second through the vascular structure of interest (usually placed over the heart). The operator can then watch the contrast bolus arriving in the heart and then switch to the centric 3D sequence.",
+        "T1 flash dynamic 3D coronal 0.9mm - 1.1mm post-contrast 2 measurements"
+      ],
+      "coverage": "FOV. Plan the coronal slices on the axial plane, and angle the positioning block parallel to the clavicle (i.e., parallel to the subclavian artery). Check the positioning block in the other two planes. An appropriate angle must be used in the sagittal plane (parallel to the humerus). Slices must be ",
+      "contrast": "Contrast injection risk and benefit must be explained to the patient before the scan.; This method is considered one of the most straightforward approaches. It relies on estimating the time it takes for the contrast to travel from the injection site to the vascular structures of the abdomen. The eff",
+      "status": "to_be_verified"
+    },
+    "MRA Hand": {
+      "indication": "Thrombotic and embolic disease; Arteriovenous malformation; Atherosclerotic disease; Artery dissections; Vein thrombosis; Artery stenosis; Aneurysms; Vasculitis; Vasospasm; Any electrically, magnetically or mechanically activated implant (e.g. cardiac pacemaker, insulin pump biostimulator, neurostimulator, cochlear implant, and hearing aids)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Contrast injection risk and benefit must be explained to the patient before the scan.",
+        "Gadolinium should only be given to the patient if GFR is > 30",
+        "Intravenous line must be placed in the unaffected side e.g if the problem exists in RT arm the canula should be in LT side"
+      ],
+      "Axial": [
+        "A three-plane localizer must be taken at the beginning to localize and plan the sequences. Typically, these localizers take less than 25 seconds and can be achieved using T1 weighted low-resolution scans. It is advisable to obtain additional localizers until you have acquired accurate axial, coronal, and sagittal localizer images.",
+        "T1 vibe 3D fat sat axial 2mm small fov pre-contrast",
+        "T1 vibe 3D fat sat axial 2mm small fov post-contrast"
+      ],
+      "Coronal": [
+        "T1 flash 3D fat sat coronal .8mm -1 mm pre-contrast",
+        "T1 flash dynamic 3D fat sat coronal .8mm - 1mm post-contrast 15 measurement"
+      ],
+      "coverage": "T1 vibe 3D fat sat axial 2mm small fov pre-contrast. FOV. FOV",
+      "contrast": "Contrast injection risk and benefit must be explained to the patient before the scan.; This is one of the simplest techniques used in MRA. It involves estimating the time it takes for contrast to travel from the injection site to the vascular structure of the abdomen. The effectiveness of this techn",
+      "status": "to_be_verified"
+    },
+    "MRV Abdomen": {
+      "indication": "Magnetic Resonance Angiography(MRA) of abdomen; Pre surgical planning for stent-grafts; Abdominal aortic aneurysm; For the evaluation vasculitis; Mesenteric Ischaemia; Post-surgical Follow-up; Renal artery stenosis; Aortic Dissection; Magnetic resonance venography (MRV) of abdomen; For the assessment of post radiotherapy changes",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask  the patient to undress and change into a hospital gown",
+        "Instruct the patient to hold their breath for the breath hold scans (its better to coach the patient two to three times before starting the scan)",
+        "An intravenous line must be placed with extension tubing extending out of the magnetic bore"
+      ],
+      "Axial": [
+        "T1 vibe 3d DIXON axial pre contrast 4 mm",
+        "Plan the coronal slices on the axial plane, angling the positioning block parallel to the midline along the right and left kidneys. Verify the positioning block in the other two planes. An appropriate angle must be applied in the sagittal plane, parallel to the Inferior vena cava, ensuring slices cover the entire Inferior vena cava. Utilize phase oversampling and, for 3D blocks, slice oversample, to prevent wrap-around artifacts. The field of view (FOV) must adequately encompass the entire IVC. Instruct the patient to hold their breath during image acquisition (In our department, we instruct patients to breathe in and out twice before the \"breath in and hold\" instruction). Using the Parallel acquisition technique is highly recommended to reduce scan time (scan time should be under 15 seconds for optimal results).",
+        "T1 vibe 3d fat sat axial post contrast 4mm"
+      ],
+      "Coronal": [
+        "T1 flash 3D coronal .9mm -1.1mm pre-contrast",
+        "Care bolus is the most commonly used bolus detection technique. This technique utilizes a coronal fast gradient refocused sequence to obtain real-time images of the vascular structure of interest, typically positioned over the heart, at a frequency of one image per second. The operator can observe the arrival of the contrast bolus in the heart and subsequently switch to the centric 3D sequence.",
+        "T1 flash dynamic 3D coronal .9mm - 1.1mm post-contrast 3 measurements"
+      ],
+      "coverage": "Plan the axial slices on the coronal plane. Angle the positioning block parallel to the line along the right and left iliac crests. Check the positioning block in the other two planes. Ensure an appropriate angle is used in the sagittal plane (perpendicular to the lumbar spine). The slices should su",
+      "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan; This is one of the simplest methods. It works by estimating the time of contrast travel from the site of injection to the vascular structure of the abdomen. This technique is highly dependent upon the site of cont",
+      "status": "to_be_verified"
+    }
+  },
+  "Breast": {
+    "Breast MRI": {
+      "indication": "Identified mass with indeterminate characteristics following mammography or sonography where patient wishes to avoid biopsy; Staging for chest wall invasion or lymphadenopathy after cancer diagnosis; Dense breasts with difficult to read mammogram based on visualisation; Palpable mass with negative mammography/sonography; Axillary node metastases with unknown primary; Unexplained swollen breast or breast implant; To check the response to neoadjuvant chemotherapy; To check the extent of infiltrating lobular or ductal carcinoma; To check residual disease post-lumpectomy; Postoperative tissue reconstruction",
+      "positioning": "Head first prone. Position the patient with breasts inside the breast coil and both arms by the sides of the body (be careful not to dislodge the intravenous line while positioning the patient). Give cushions under the legs and under the forehead for extra comfort. Centre the laser beam localizer over the mid chest (T6-T7 level)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Please ask the patient to change into a hospital gown that opens at the front. It is important to ensure that the gown is worn correctly as the patient will be lying face down with the gown open in order to position the breast in the coil.",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible offer a chaperone to accompany claustrophobic patients into the scanner room (e.g. relative or staff )",
+        "An intravenous line must be placed with extension tubing extending out of the magnetic bore"
+      ],
+      "Axial": [
+        "T2 SPACE axial 3D 1.5mm",
+        "If 3D sequences are unavailable on your scanner, please utilize 2D T2 axial scans with a slice thickness of 2 to 3mm.",
+        "T1 flash 3D axial non fat sat 1mm",
+        "DWI zoomit \\ epi 3 scan trace axial",
+        "Plan the axial slices on the sagittal plane and align the position block parallel to the breast. Verify the positioning block in the other two planes. Ensure an appropriate angle is set in the coronal plane, parallel to the right and left nipples. The slices should be sufficient to cover the entire breast. For axial DWI zoomit scans, the phase direction should be from anterior to posterior. This helps avoid artifacts caused by the air-tissue interface by minimizing unwanted areas within the field of view (FOV). To mitigate wrap-around and motion artifacts originating from the chest and heart, it is recommended to apply two saturation bands over the chest region.",
+        "T1 flash axial 3D fat sat dynamic 1 pre and 5 post",
+        "T1_FLASH 3D_AXIAL_NON FAT SAT 1MM",
+        "T1_FLASH 3D_AXIAL_FAT SAT 1MM DYNAMIC 1 PRE 5 POST"
+      ],
+      "Coronal": [
+        "T1 flash coronal 3D fat sat post contrast .7mm"
+      ],
+      "Sagittal": [
+        "T2 tse sagittal RT",
+        "T2 tse sagittal LT"
+      ],
+      "coverage": "FOV. FOV. FOV",
+      "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan.; A dynamic flash 3D fat saturation sequence comprises six flash 1mm 3D scans with a 10-second delay between the first and second scans. The first scan in the dynamic sequence serves as a pre-contrast scan, which i",
+      "status": "to_be_verified"
+    },
+    "Breast Implant MRI": {
+      "indication": "Identified mass with indeterminate characteristics by mammography or sonography in which patient wishes to avoid biopsy; Staging for chest wall invasion or lymphadenopathy after cancer diagnosis; Dense breasts with difficult to read mammogram based on visualisation; Breast implant integrity or breast implant rupture screening; Palpable mass with negative mammography/sonography; Axillary node metastases with an unknown primary; Unexplained swollen breast or breast implant; To check the response to neoadjuvant chemotherapy; To check the extent of infiltrating lobular carcinoma; To check the extent of infiltrating ductal carcinoma",
+      "positioning": "Head first prone. Position the patient with breast inside the breast coil and both arms by side of the body (be careful about the intravenous line when you position the patient). Give cushions under the legs and under the forehead for extra comfort. Centre the laser beam localizer over the mid chest (T6-T7 level)",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to change to a hospital gown with the open side of the gown in the front (its important to wear the gown in proper way because the patient will be laying down on top of the coil with open gown so they can place the breast in the coil)",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, any cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "If possible offer some one in the scanner room for claustrophobic patient (e.g. relative or staff ).",
+        "An intravenous line must be placed with extension tubing extending out of the magnetic bore"
+      ],
+      "Axial": [
+        "T2 SPACE 3D axial 1MM",
+        "If 3D sequences are unavailable on your scanner, please utilize 2D T2 axial scans with a slice thickness of 2 to 3mm.",
+        "T1 flash 3D axial non fat sat 1mm",
+        "T2 STIR with water suppression axial",
+        "T2 stir TI 450 or STIR silicon sat  axial",
+        "T1 flash axial 3D fat sat dynamic 1 pre and 5 post",
+        "DWI zoomit \\ epi 3 scan trace axial",
+        "Plan the axial slices on the sagittal plane and align the position block parallel to the breast. Verify the positioning block in the other two planes. Ensure an appropriate angle is set in the coronal plane, parallel to the right and left nipples. The slices should be sufficient to cover the entire breast. For axial DWI zoomit scans, the phase direction should be from anterior to posterior. This helps avoid artifacts caused by the air-tissue interface by minimizing unwanted areas within the field of view (FOV). To mitigate wrap-around and motion artifacts originating from the chest and heart, it is recommended to apply two saturation bands over the chest region.",
+        "T2-SPACE 3D_AXIAL",
+        "T1_FLASH 3D_AXIAL_NON FAT SAT 1MM",
+        "T1_FLASH 3D_AXIAL_FAT SAT 1MM DYNAMIC 1 PRE 5 POST"
+      ],
+      "Coronal": [
+        "T2 stir TI 130 coronal"
+      ],
+      "coverage": "FOV. FOV. FOV",
+      "contrast": "Contrast injection risk and benefits must be explained to the patient before the scan.; A dynamic flash 3D fat saturation sequence comprises six flash 1mm 3D scans with a 10-second delay between the first and second scans. The first scan in the dynamic sequence serves as a pre-contrast scan, which i",
+      "status": "to_be_verified"
+    }
+  },
+  "Cardiac": {
+    "Cardiac MRI": {
+      "indication": "For the assessment of heart failure; Assessment of right and left ventricular function and size with precise quantification; Determination of etiology - ischemic vs. non-ischemic cardiomyopathy; Vasospasm; For the evaluation of ischaemic heart disease; Viability assessment prior to treatment (e.g. revascularisation); Assessment of location and extent of infarct; For the assessment of cardiac masses; For the characterisation, extent and invasion masses; For the assessment of pericardial disease",
+      "positioning": "The wireless VCG sensor has dual lead VCG monitoring capabilities based on. 4 electrodes:. Position the first electrode (green) approximately 1 cm left of the xiphoid.. Position the second (white) and third (red) electrode to form a triangle around the nipple..The distance between the electrodes should be approximately 15 cm",
+      "prep": [
+        "A satisfactory written consent form must be taken from the patient before entering the scanner room",
+        "Ask the patient to remove all metal objects including keys, coins, wallet, cards with magnetic strips, jewellery, hearing aid and hairpins",
+        "Ask the patient to undress and change into a hospital gown",
+        "Instruct the patient to hold their breath for the breath hold scans and breathe gently for the gated scans (its advisable to coach the patient two to three times before starting the scan)",
+        "Request the patient to use the rest room before procedure"
+      ],
+      "Axial": [
+        "Plan the axial T2 scans on the coronal localizer. Plan the planning block straight across the chest, as shown. Verify the positioning in the other two planes. An appropriate angle must be established in the sagittal plane (perpendicular to the thoracic spine). The number of slices should be sufficient to cover the heart from the aortic arch to the apex (usually 18-20 slices). These axial slices are acquired using a combination of ECG gating and breath-holds. Scans should be performed under expiratory breath-holds, with ECG triggers set for every second heartbeat. Axial bright blood scans involve a multiple breath-hold technique that acquires 8-10 slices with each breath hold. In our department, the cardiologist prefers conducting bright blood axials.",
+        "Plan the 2-chamber localizer on the axial plane and angle the planning block parallel to the interventricular septum. Move the position block to the center of the left ventricle, aligning it with the line along the center of the mitral valve and left ventricular apex. (Note: In most patients, these structures may not be visible in the same image; scroll through the axial images to identify both structures.) Verify the position in the other two planes. Provide an appropriate angle in the sagittal plane to maintain parallel alignment with the interventricular septum. This single-slice (non-cine) 2-chamber localizer is performed using a combination of ECG gating and breath-holding. Scans should be conducted during expiration breath-holds with an ECG trigger set for every heartbeat.",
+        "Plan the short-axis localizer using the 2-chamber view as a reference, and orient the planning block perpendicular to the line running along the center of the mitral valve and the left ventricular apex, essentially perpendicular to the long axis of the left ventricle. Confirm the positioning in the other two planes as well. Provide an appropriate angle for the axial plane, which is perpendicular to the interventricular septum. Acquire slices that adequately cover the heart from the middle of the left atrium to the left ventricular apex; typically, 8-10 slices are needed. This multi-slice, non-cine short-axis localizer is conducted using a combination of ECG gating and breath-holding. Perform scans during expiration with breath-holding, triggering the ECG with each heartbeat.",
+        "Plan the aortic valve axial cine using the 3-chamber cine images as a reference. Angle the planning block parallel to the aortic annulus. Verify the position in the left ventricular outflow tract (LVOT) coronal cine. Ensure an appropriate angle is applied in the LVOT coronal cine, parallel to the aortic annulus. Utilize three slices to ensure comprehensive coverage of the aortic valve throughout the various phases of the cardiac cycle. This retrospective 3-chamber cine scan is conducted with a combination of ECG gating and breath-holds. Perform scans during expiration breath-holds for optimal results.",
+        "Plan the Right Ventricular Outflow Tract cine on the axial bright blood images. Angle the planning block parallel to the line bisecting the pulmonary trunk, pulmonary valves, and right atrium. Check the position in the other two planes. An appropriate angle must be given in the 2-chamber localizer (parallel to the line bisecting the pulmonary outflow tract and pulmonary valves). This retrospective Right Ventricular Outflow Tract coronal cine scan is performed with a combination of ECG gating and breath-hold. Scans should be conducted under expiration breath-hold.",
+        "Three-point planning is a software option made available by certain manufacturers. Three-point planning employs three distinct points in curved anatomy to achieve more accurate planning. The planning block will automatically align parallel to the designated points. Plan the cine for the Right Ventricular Outflow Tract on the axial bright blood images. Utilize the 3-point planner to establish the first point in the right atrium, the second point in the mid pulmonary trunk, and the third point at the pulmonary artery bifurcation. The planning block will then automatically align parallel to the right ventricular outflow tract. This retrospective coronal cine scan of the Right Ventricular Outflow Tract is performed with a combination of ECG gating and breath-hold. Scans should be conducted while maintaining an expiration breath-hold.",
+        "Plan the Look-Locker axial sequence on the 4-chamber localizer. Angle the planning block perpendicular to the interventricular septum and move the position block to the middle of the ventricles. Check the position in the other two planes. An appropriate angle must be given in the 2-chamber localizer (perpendicular to the long axis of the left ventricle). This turbo field echo planar imaging (EPI) is performed with a combination of ECG gating and breath-holds. Scans should be conducted under expiration breath-holds with an ECG trigger on every second heartbeat (In our department, we instruct the patients to breathe in and out twice before the “breathe out and hold” instruction). This TI scout is acquired under a single breath-hold.",
+        "Trufi 2D_Retro_Axial_Cine",
+        "Trufi 2D_Pulmonary Valve Axial_Cine",
+        "Trufi 2D_Aortic Valve Axial_Cine"
+      ],
+      "Coronal": [
+        "Left Ventricular Outflow Tract coronal cine",
+        "Plan the Left Ventricular Outflow Tract coronal cine using the 3-chamber cine images. Angle the planning block parallel to the line along the center of the aortic valve and ascending aorta. The LVOT coronal scan is usually planned only in the 3-chamber view. If the manufacturer has a &#8216;perpendicular' function in the planning tab, please use it to achieve more accurate planning. This retrospective Left Ventricular Outflow Tract coronal cine scan is performed using a combination of ECG gating and breath-holds. Scans should be conducted under expiration breath-hold",
+        "Trufi 2D_Pulmonary Valve Coronal_Cine",
+        "Trufi 3d_Aortic Valve Coronal_Cine"
+      ],
+      "coverage": "Plan the aortic valve axial cine using the 3-chamber cine images as a reference. Angle the planning block parallel to the aortic annulus. Verify the position in the left ventricular outflow tract (LVOT) coronal cine. Ensure an appropriate angle is applied in the LVOT coronal cine, parallel to the ao",
+      "notes": [
+        "Plan the 2-chamber localizer on the axial plane and angle the planning block parallel to the interventricular septum. Move the position block to the center of the left ventricle, aligning it with the line along the center of the mitral valve and left ventricular apex. (Note: In most patients, these structures may not be visible in the same image; scroll through the axial images to identify both structures.) Verify the position in the other two planes. Provide an appropriate angle in the sagittal plane to maintain parallel alignment with the interventricular septum. This single-slice (non-cine) 2-chamber localizer is performed using a combination of ECG gating and breath-holding. Scans should be conducted during expiration breath-holds with an ECG trigger set for every heartbeat.",
+        "Note:-If your scanner has a perpendicular function available, simply perform the planning in a single plane (short axis) and utilize the perpendicular function to automatically generate the planning in the other planes.",
+        "Note:-If your scanner has the perpendicular function available, you can simply perform the planning in a single plane (short axis) and utilize the perpendicular function to automatically generate the planning in other planes. Alternatively, if the perpendicular function is not available, planning in a single plane should still suffice to obtain an appropriate view of the aortic outflow.",
+        "Note:-Please ensure that you have entered the optimal TI value into the TI box on the parameter card. Additionally, remember to capture the cardiac cycle within the cardiac gating section.",
+        "Note:-P"
+      ],
+      "status": "to_be_verified"
+    },
+    "Cardiac Stress Perfusion": {
+      "indication": "For the assessment of blood flow after heart bypass surgery, angioplasty or artery stenting; For the detection of microvascular dysfunction in various congenital heart diseases; For the detection of ischemia before medical therapy or revascularization; For the diagnosis and assessment of coronary artery disease (CAD); To identify the location and damage caused by a heart attack; For the assessment of myocardial infarction complications; For the assessment of cardiac masses; Heart anatomy and physiology; The heart is a muscular pump that receives deoxygenated blood and propels oxygenated blood to various parts of the body. It is composed of four chambers: the right atrium, right ventricle, left atrium, and left ventricle.; Blood flow through the heart",
+      "positioning": "The wireless VCG sensor has dual lead VCG monitoring capabilities based on. 4 electrodes:. Position the first electrode (green) approximately 1 cm left of the xiphoid.. Position the second (white) and third (red) electrode to form a triangle around the nipple..The distance between the electrodes should be approximately 15 cm",
+      "prep": [
+        "Instruct the patient to stop taking any products which contain caffeine",
+        "24 hours prior",
+        "Smokers must stop smoking or have nicotine",
+        "12 hours prior",
+        "to their appointment as nicotine can increase the heart rate and invalidate the results of the test."
+      ],
+      "Axial": [
+        "Plan the axial T2 scans on the coronal localizer. Plan the planning block straight across the chest, as shown. Verify the positioning in the other two planes. An appropriate angle must be established in the sagittal plane (perpendicular to the thoracic spine). The number of slices should be sufficient to cover the heart from the aortic arch to the apex (usually 18-20 slices). These axial slices are acquired using a combination of ECG gating and breath-holds. Scans should be performed under expiratory breath-holds, with ECG triggers set for every second heartbeat. Axial bright blood scans involve a multiple breath-hold technique that acquires 8-10 slices with each breath hold. In our department, the cardiologist prefers conducting bright blood axials.",
+        "Plan the 2-chamber localizer on the axial plane and angle the planning block parallel to the interventricular septum. Move the position block to the center of the left ventricle, aligning it with the line along the center of the mitral valve and left ventricular apex. (Note: In most patients, these structures may not be visible in the same image; scroll through the axial images to identify both structures.) Verify the position in the other two planes. Provide an appropriate angle in the sagittal plane to maintain parallel alignment with the interventricular septum. This single-slice (non-cine) 2-chamber localizer is performed using a combination of ECG gating and breath-holding. Scans should be conducted during expiration breath-holds with an ECG trigger set for every heartbeat.",
+        "Plan the short-axis localizer using the 2-chamber view as a reference, and orient the planning block perpendicular to the line running along the center of the mitral valve and the left ventricular apex, essentially perpendicular to the long axis of the left ventricle. Confirm the positioning in the other two planes as well. Provide an appropriate angle for the axial plane, which is perpendicular to the interventricular septum. Acquire slices that adequately cover the heart from the middle of the left atrium to the left ventricular apex; typically, 8-10 slices are needed. This multi-slice, non-cine short-axis localizer is conducted using a combination of ECG gating and breath-holding. Perform scans during expiration with breath-holding, triggering the ECG with each heartbeat.",
+        "Plan the aortic valve axial cine using the 3-chamber cine images as a reference. Angle the planning block parallel to the aortic annulus. Verify the position in the left ventricular outflow tract (LVOT) coronal cine. Ensure an appropriate angle is applied in the LVOT coronal cine, parallel to the aortic annulus. Utilize three slices to ensure comprehensive coverage of the aortic valve throughout the various phases of the cardiac cycle. This retrospective 3-chamber cine scan is conducted with a combination of ECG gating and breath-holds. Perform scans during expiration breath-holds for optimal results.",
+        "Three-point planning is a software option made available by certain manufacturers. Three-point planning employs three distinct points in curved anatomy to achieve more accurate planning. The planning block will automatically align parallel to the designated points. Plan the cine for the Right Ventricular Outflow Tract on the axial bright blood images. Utilize the 3-point planner to establish the first point in the right atrium, the second point in the mid pulmonary trunk, and the third point at the pulmonary artery bifurcation. The planning block will then automatically align parallel to the right ventricular outflow tract. This retrospective coronal cine scan of the Right Ventricular Outflow Tract is performed with a combination of ECG gating and breath-hold. Scans should be conducted while maintaining an expiration breath-hold.",
+        "Plan the Look-Locker axial sequence on the 4-chamber localizer. Angle the planning block perpendicular to the interventricular septum and move the position block to the middle of the ventricles. Check the position in the other two planes. An appropriate angle must be given in the 2-chamber localizer (perpendicular to the long axis of the left ventricle). This turbo field echo planar imaging (EPI) is performed with a combination of ECG gating and breath-holds. Scans should be conducted under expiration breath-holds with an ECG trigger on every second heartbeat (In our department, we instruct the patients to breathe in and out twice before the “breathe out and hold” instruction). This TI scout is acquired under a single breath-hold."
+      ],
+      "Coronal": [
+        "Left Ventricular Outflow Tract coronal cine",
+        "Plan the Left Ventricular Outflow Tract coronal cine using the 3-chamber cine images. Angle the planning block parallel to the line along the center of the aortic valve and ascending aorta. The LVOT coronal scan is usually planned only in the 3-chamber view. If the manufacturer has a &#8216;perpendicular' function in the planning tab, please use it to achieve more accurate planning. This retrospective Left Ventricular Outflow Tract coronal cine scan is performed using a combination of ECG gating and breath-holds. Scans should be conducted under expiration breath-hold"
+      ],
+      "coverage": "Plan the aortic valve axial cine using the 3-chamber cine images as a reference. Angle the planning block parallel to the aortic annulus. Verify the position in the left ventricular outflow tract (LVOT) coronal cine. Ensure an appropriate angle is applied in the LVOT coronal cine, parallel to the ao",
+      "contrast": "The patient must have cannulation in both arms: one cannula for the contrast injection must be a 16-gauge to accommodate a flow of 4-5 ml per second, and the other cannula for adenosine administration can be 18-20 gauge.; Stress perfusion MRI can help detect ischemic heart disease, which involves an",
+      "notes": [
+        "Plan the 2-chamber localizer on the axial plane and angle the planning block parallel to the interventricular septum. Move the position block to the center of the left ventricle, aligning it with the line along the center of the mitral valve and left ventricular apex. (Note: In most patients, these structures may not be visible in the same image; scroll through the axial images to identify both structures.) Verify the position in the other two planes. Provide an appropriate angle in the sagittal plane to maintain parallel alignment with the interventricular septum. This single-slice (non-cine) 2-chamber localizer is performed using a combination of ECG gating and breath-holding. Scans should be conducted during expiration breath-holds with an ECG trigger set for every heartbeat.",
+        "Note:-If your scanner has a perpendicular function available, simply perform the planning in a single plane (short axis) and utilize the perpendicular function to automatically generate the planning in the other planes.",
+        "Note:-If your scanner has the perpendicular function available, you can simply perform the planning in a single plane (short axis) and utilize the perpendicular function to automatically generate the planning in other planes. Alternatively, if the perpendicular function is not available, planning in a single plane should still suffice to obtain an appropriate view of the aortic outflow.",
+        "Note:-Adenosine administration should be exclusively carried out by qualified and licensed professionals such as cardiologists or radiologists specialized in cardiology. Radiographers should refrain from attempting to administer or determine the dosage.",
+        "Note: If the stress test is normal, the rest test need not be carried out.",
+        "Note:-Please ensure that you have entered the optimal TI value into the TI box on the parameter card. Additionally, remember to capture the cardiac cycle within the cardiac gating section.",
+        "Note:-P"
+      ],
+      "status": "to_be_verified"
+    }
+  }
+}

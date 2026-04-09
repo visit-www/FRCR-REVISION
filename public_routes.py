@@ -10,8 +10,24 @@ URL structure:
   /case-library/<int:id>    — public case preview page
 """
 
+import json
+import os
 from flask import Blueprint, render_template
+
 from models import db, Case, CaseImage, CaseStatus
+
+# ── Load protocol reference JSON at import time (static data, read once) ──
+_DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'data')
+
+def _load_json(filename):
+    path = os.path.join(_DATA_DIR, filename)
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            return json.load(f)
+    return {}
+
+CT_PROTOCOLS = _load_json('ct_protocols.json')
+MRI_PROTOCOLS = _load_json('mri_protocols.json')
 
 public_bp = Blueprint('public', __name__)
 
@@ -68,3 +84,22 @@ def contrast_reaction_card():
 def vetting_essentials():
     """Public vetting essentials card — CT contrast phases, timing, oral/rectal, liver supply."""
     return render_template('vetting_essentials.html')
+
+
+@public_bp.route('/imaging-protocols-reference')
+def imaging_protocols_reference():
+    """Public imaging protocols reference — CT + MRI master protocol library."""
+    # Build category → protocols map for CT (flat structure)
+    ct_protocols = CT_PROTOCOLS.get('protocols', {})
+    # Build category → protocols map for MRI (nested by category)
+    mri_categories = {}
+    for key, val in MRI_PROTOCOLS.items():
+        if key == '_meta' or not isinstance(val, dict):
+            continue
+        mri_categories[key] = val
+
+    return render_template('imaging_protocols_reference.html',
+                           ct_protocols=ct_protocols,
+                           mri_categories=mri_categories,
+                           ct_meta=CT_PROTOCOLS.get('_meta', {}),
+                           mri_meta=MRI_PROTOCOLS.get('_meta', {}))
