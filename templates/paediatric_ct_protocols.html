@@ -1,0 +1,575 @@
+{% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block title %}Paediatric CT Protocols — Interactive Reference | RadInsights{% endblock %}
+{% block meta_description %}Interactive paediatric CT protocol reference: head, spine, neck, chest, abdomen, temporal bone, sinuses, maxillofacial, appendicitis and CTA. Age-banded sequences, slice thickness, algorithms, and weight-based contrast dosing.{% endblock %}
+
+{% block og_title %}Paediatric CT Protocols — RadInsights{% endblock %}
+{% block og_description %}Searchable paediatric CT protocol library with age-banded parameters, algorithms, slice thicknesses and weight-based IV contrast dosing.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(
+    'Paediatric CT Protocols — Interactive Reference',
+    'Searchable paediatric CT protocol library with age-banded parameters, algorithms, slice thicknesses and weight-based IV contrast dosing.',
+    'https://www.radinsights.xyz/paediatric-ct-protocols'
+) }}
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <i class="fas fa-child" style="font-size: 2.5rem; color: #e96304;"></i>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Paediatric CT Protocols</h1>
+        <p class="text-muted mb-0">Interactive reference — age-banded parameters, slice thickness, algorithms &amp; weight-based contrast dosing</p>
+        <div class="mt-2 d-flex justify-content-center gap-2 flex-wrap">
+            <a href="/vetting-essentials" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-graduation-cap me-1"></i>Vetting Essentials
+            </a>
+            <a href="/contrast-reaction-card" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-flask me-1"></i>Contrast Reaction Card
+            </a>
+        </div>
+    </div>
+
+    <!-- ═══════════ GLOBAL DOSING CARD ═══════════ -->
+    <div class="card card-brand mb-4 pct-dosing-card">
+        <div class="card-brand-header">
+            <i class="fas fa-syringe me-2"></i>Global paediatric CT dosing rules
+        </div>
+        <div class="card-brand-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="pct-dose-tile">
+                        <div class="pct-dose-value">2 cc/kg</div>
+                        <div class="pct-dose-label">IV contrast dose</div>
+                        <small class="text-muted">Up to adult dose as maximum</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="pct-dose-tile">
+                        <div class="pct-dose-value">2 cc/s</div>
+                        <div class="pct-dose-label">Injection rate</div>
+                        <small class="text-muted">If using a 22 G IV or larger</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="pct-dose-tile">
+                        <div class="pct-dose-value">Hand inject</div>
+                        <div class="pct-dose-label">24 G cannula</div>
+                        <small class="text-muted">Power injection not safe at 24 G</small>
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-info small mt-3 mb-0 py-2">
+                <i class="fas fa-exclamation-triangle me-1"></i>
+                <strong>Trauma rule:</strong> ALL paediatric trauma CTs must have bone-algorithm axials sent to PACS.
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ FILTER BAR ═══════════ -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="small text-muted me-2"><i class="fas fa-filter me-1"></i>Filter:</span>
+                <select id="pctRegionFilter" class="form-select form-select-sm" style="min-width: 200px; width: auto;">
+                    <option value="">All regions</option>
+                    <option value="head">Head &amp; Neuro</option>
+                    <option value="head-neck">Head &amp; Neck / ENT</option>
+                    <option value="spine">Spine</option>
+                    <option value="chest">Chest / Thorax</option>
+                    <option value="abdomen">Abdomen / Pelvis</option>
+                    <option value="vascular">Vascular / CTA</option>
+                </select>
+                <select id="pctContrastFilter" class="form-select form-select-sm" style="min-width: 170px; width: auto;">
+                    <option value="">Contrast — all</option>
+                    <option value="without">Without contrast</option>
+                    <option value="with">With contrast</option>
+                    <option value="both">With &amp; without</option>
+                </select>
+                <input type="text" id="pctSearch" class="form-control form-control-sm"
+                       style="max-width: 260px;" placeholder="Search protocols…"
+                       autocomplete="off">
+                <span id="pctCount" class="small text-muted ms-auto"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════ PROTOCOL CARDS GRID ═══════════ -->
+    <div id="pctGrid" class="row g-3">
+        <!-- Populated by JS -->
+    </div>
+
+    <div id="pctEmpty" class="d-none text-center py-5 text-muted">
+        <i class="fas fa-search fa-2x mb-2 d-block"></i>
+        <p class="mb-0">No protocols match your filters.</p>
+    </div>
+
+    <!-- Source citation -->
+    <div class="text-center mt-5">
+        <p class="text-muted small mb-0">
+            <em>Source:</em> TRA Medical Imaging — Paediatric CT Protocols (July 2018).
+            <br>
+            Parameters and algorithms reproduced from the TRA Tacoma Radiology institutional protocol.
+            Verify against local policy.
+        </p>
+    </div>
+
+</div>
+
+{% include 'partials/_public_cta.html' %}
+
+<!-- ═══════════ SCOPED STYLES ═══════════ -->
+<style>
+.pct-dosing-card {
+    border-top: 3px solid #e96304;
+}
+.pct-dose-tile {
+    background: #fff8f0;
+    border: 1px solid #ffc9a3;
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    text-align: center;
+    height: 100%;
+}
+.pct-dose-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #e96304;
+    line-height: 1.1;
+}
+.pct-dose-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+}
+.pct-card {
+    border: 1px solid #e9ecef;
+    border-left: 3px solid #5E899E;
+    border-radius: 0.4rem;
+    height: 100%;
+    transition: box-shadow 0.15s ease, border-left-color 0.15s ease;
+}
+.pct-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-left-color: #e96304;
+}
+.pct-card-header {
+    background: #f0f7fa;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid #dfe6ea;
+    border-radius: 0.4rem 0.4rem 0 0;
+}
+.pct-card-title {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    margin: 0;
+}
+.pct-card-region {
+    font-size: 0.7rem;
+    color: #5E899E;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+}
+.pct-card-body {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.8rem;
+}
+.pct-age-band {
+    font-weight: 600;
+    color: #e96304;
+    font-size: 0.78rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+.pct-age-band:first-child {
+    margin-top: 0;
+}
+.pct-card ul {
+    margin: 0 0 0 0;
+    padding-left: 1.1rem;
+}
+.pct-card li {
+    margin-bottom: 0.15rem;
+    line-height: 1.4;
+}
+.pct-chip {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-right: 0.25rem;
+}
+.pct-chip-without {
+    background: #eaf3f7;
+    color: #355866;
+    border: 1px solid #b8dce6;
+}
+.pct-chip-with {
+    background: #fff2e8;
+    color: #c0510b;
+    border: 1px solid #ffc9a3;
+}
+.pct-chip-both {
+    background: #f5e6ff;
+    color: #5a2a8a;
+    border: 1px solid #d4b8f0;
+}
+.pct-note {
+    background: #fff8e6;
+    border-left: 3px solid #ffc107;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+</style>
+
+<!-- ═══════════ DATA + JS ═══════════ -->
+<script>
+(function() {
+    // All paediatric CT protocols — data only, separated from render logic
+    var PROTOCOLS = [
+        // ───── HEAD / NEURO ─────
+        {
+            id: 'head-without',
+            title: 'Head CT Without (Routine)',
+            region: 'head',
+            contrast: 'without',
+            bands: [
+                {
+                    label: '0–15 years',
+                    items: [
+                        '3 mm axials — brain algorithm',
+                        '1 mm axial — brain and bone algorithm',
+                        'Coronal and sagittal reformats in brain algorithm',
+                        '0–10 yo: add coronal and sagittal reformats in bone algorithm',
+                        'If 1st time < 2 yo or trauma: add 3D skull reconstructions'
+                    ]
+                },
+                {
+                    label: '> 15 years',
+                    items: [
+                        '5 mm axials — brain algorithm',
+                        '1 mm axial — brain and bone algorithm',
+                        'Coronal and sagittal reformats in brain algorithm'
+                    ]
+                }
+            ],
+            notes: ['Try to avoid orbits!']
+        },
+        {
+            id: 'head-with',
+            title: 'Head CT With Contrast (Routine)',
+            region: 'head',
+            contrast: 'with',
+            bands: [
+                {
+                    label: '0–15 years',
+                    items: [
+                        '3 mm axials — brain algorithm',
+                        '1 mm axial — brain and bone algorithm',
+                        'Coronal and sagittal reformats in brain algorithm'
+                    ]
+                },
+                {
+                    label: '> 15 years',
+                    items: [
+                        '5 mm axials — brain algorithm',
+                        '1 mm axial — brain and bone algorithm',
+                        'Coronal and sagittal reformats in brain algorithm'
+                    ]
+                }
+            ],
+            notes: ['Try to avoid orbits!']
+        },
+        {
+            id: 'head-cranio',
+            title: 'Head CT — Craniosynostosis',
+            region: 'head',
+            contrast: 'without',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        '3 mm axials — brain algorithm',
+                        '1 mm axial — brain and bone algorithm',
+                        'Coronal and sagittal reformats in brain and bone algorithm',
+                        '3D skull reconstructions (always)'
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'cta-head-neck',
+            title: 'CTA Head / Neck',
+            region: 'vascular',
+            contrast: 'with',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Same as adult CTA protocol',
+                        '0.6 mm axial sections from arch through vertex',
+                        'Coronal and sagittal reformations of neck arteries',
+                        'Separate coronal and sagittal reformations of intracranial arteries'
+                    ]
+                }
+            ],
+            notes: ['NOT a commonly ordered study in children — check with radiologist first.']
+        },
+        {
+            id: 'orbit',
+            title: 'Orbit CT — With and/or Without Contrast',
+            region: 'head-neck',
+            contrast: 'both',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Coverage: maxilla',
+                        '0.5 / 0.625 mm axial — bone algorithm',
+                        '2 mm axial — soft tissue algorithm',
+                        '2 mm coronal and sagittal reformations — soft tissue algorithm'
+                    ]
+                }
+            ],
+            notes: ['Head AND orbit CT in children almost NEVER needs to be "with and without". If such an order comes across, check with radiologist before proceeding.']
+        },
+        {
+            id: 'iac-temporal',
+            title: 'IAC / Temporal Bone',
+            region: 'head-neck',
+            contrast: 'without',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Axial 0.5 / 0.625 / 0.75 mm acquisition — bone algorithm',
+                        'Send EACH SIDE to PACS individually',
+                        '0.5 / 0.625 / 0.75 mm coronal reformations — bone algorithm',
+                        'Send EACH SIDE to PACS individually'
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'sinus',
+            title: 'Sinus CT',
+            region: 'head-neck',
+            contrast: 'without',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Axial 0.5 / 0.625 / 0.75 mm slices — bone algorithm',
+                        '1 mm coronal reformations — bone algorithm',
+                        '2 mm soft tissue axial reformations'
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'maxillofacial',
+            title: 'Maxillofacial CT',
+            region: 'head-neck',
+            contrast: 'without',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Coverage: entire orbits through mandible',
+                        '0.5 / 0.625 / 0.75 mm axial — bone algorithm',
+                        '2 mm axial — soft tissue',
+                        '1 mm coronal reformat — bone algorithm'
+                    ]
+                }
+            ]
+        },
+        {
+            id: 'neck-soft-tissue',
+            title: 'Neck CT (Soft Tissue)',
+            region: 'head-neck',
+            contrast: 'with',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Almost always with contrast',
+                        '2 mm slices',
+                        'Coverage: sella to arch'
+                    ]
+                }
+            ]
+        },
+        // ───── SPINE ─────
+        {
+            id: 'c-spine',
+            title: 'Cervical Spine CT',
+            region: 'spine',
+            contrast: 'without',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Coverage: skull base → T1–T2',
+                        '0.5 / 0.625 / 0.75 mm axial — bone algorithm (small FOV centred over spine)',
+                        '2 mm axial — soft tissue algorithm sent to PACS (small FOV centred over spine)',
+                        '2 mm sagittal and coronal bone algorithm reformats'
+                    ]
+                }
+            ]
+        },
+        // ───── CHEST ─────
+        {
+            id: 'chest',
+            title: 'Chest CT (With and Without)',
+            region: 'chest',
+            contrast: 'both',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        '2 mm axial — soft tissue and lung',
+                        'Lung MIPs on ALL chest CTs',
+                        '2 mm coronal and sagittal reformats — soft tissue'
+                    ]
+                }
+            ]
+        },
+        // ───── ABDOMEN / PELVIS ─────
+        {
+            id: 'abdo-pelvis',
+            title: 'Abdomen and Pelvis CT (With and Without)',
+            region: 'abdomen',
+            contrast: 'both',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        '2 mm axial — soft tissue',
+                        '2 mm coronal and sagittal reformations of abdomen and pelvis'
+                    ]
+                }
+            ],
+            notes: ['Almost NEVER need to do a with & without abdomen/pelvis in a child — check with radiologist before proceeding.']
+        },
+        {
+            id: 'appendicitis',
+            title: 'Appendicitis (Targeted A/P)',
+            region: 'abdomen',
+            contrast: 'with',
+            bands: [
+                {
+                    label: 'Protocol',
+                    items: [
+                        'Same parameters as routine abdomen/pelvis',
+                        'Scan range: hepatic flexure → pubic symphysis (targeted)'
+                    ]
+                }
+            ],
+            notes: ['Added June 18, 2014 to the institutional protocol.']
+        }
+    ];
+
+    var REGION_LABEL = {
+        'head': 'Head / Neuro',
+        'head-neck': 'Head & Neck',
+        'spine': 'Spine',
+        'chest': 'Chest',
+        'abdomen': 'Abdomen / Pelvis',
+        'vascular': 'Vascular'
+    };
+
+    var CONTRAST_META = {
+        'without': { label: 'No contrast', cls: 'pct-chip-without' },
+        'with':    { label: 'Contrast',    cls: 'pct-chip-with' },
+        'both':    { label: '± Contrast',  cls: 'pct-chip-both' }
+    };
+
+    var grid = document.getElementById('pctGrid');
+    var empty = document.getElementById('pctEmpty');
+    var countEl = document.getElementById('pctCount');
+    var regionEl = document.getElementById('pctRegionFilter');
+    var contrastEl = document.getElementById('pctContrastFilter');
+    var searchEl = document.getElementById('pctSearch');
+
+    function escapeHtml(s) {
+        return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderProtocol(p) {
+        var cm = CONTRAST_META[p.contrast] || CONTRAST_META.without;
+        var bandsHtml = '';
+        p.bands.forEach(function(b) {
+            var items = b.items.map(function(i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('');
+            bandsHtml += '<div class="pct-age-band">' + escapeHtml(b.label) + '</div>';
+            bandsHtml += '<ul>' + items + '</ul>';
+        });
+        var notesHtml = '';
+        if (p.notes && p.notes.length) {
+            p.notes.forEach(function(n) {
+                notesHtml += '<div class="pct-note"><i class="fas fa-exclamation-circle me-1"></i>' + escapeHtml(n) + '</div>';
+            });
+        }
+        return '<div class="col-md-6 col-xl-4 pct-item" data-region="' + p.region +
+               '" data-contrast="' + p.contrast +
+               '" data-search="' + escapeHtml((p.title + ' ' + p.region + ' ' + (p.notes || []).join(' ')).toLowerCase()) + '">' +
+               '<div class="pct-card">' +
+                   '<div class="pct-card-header d-flex justify-content-between align-items-center">' +
+                       '<div>' +
+                           '<h5 class="pct-card-title">' + escapeHtml(p.title) + '</h5>' +
+                           '<div class="pct-card-region">' + escapeHtml(REGION_LABEL[p.region] || p.region) + '</div>' +
+                       '</div>' +
+                       '<span class="pct-chip ' + cm.cls + '">' + cm.label + '</span>' +
+                   '</div>' +
+                   '<div class="pct-card-body">' +
+                       bandsHtml +
+                       notesHtml +
+                   '</div>' +
+               '</div>' +
+               '</div>';
+    }
+
+    function render() {
+        grid.innerHTML = PROTOCOLS.map(renderProtocol).join('');
+        filter();
+    }
+
+    function filter() {
+        var region = regionEl.value;
+        var contrast = contrastEl.value;
+        var q = (searchEl.value || '').trim().toLowerCase();
+        var shown = 0;
+        var items = grid.querySelectorAll('.pct-item');
+        items.forEach(function(el) {
+            var show = true;
+            if (region && el.dataset.region !== region) show = false;
+            if (contrast) {
+                // "with" matches "with" + "both"; "without" matches "without" + "both"
+                if (contrast === 'with' && !(el.dataset.contrast === 'with' || el.dataset.contrast === 'both')) show = false;
+                else if (contrast === 'without' && !(el.dataset.contrast === 'without' || el.dataset.contrast === 'both')) show = false;
+                else if (contrast === 'both' && el.dataset.contrast !== 'both') show = false;
+            }
+            if (q && el.dataset.search.indexOf(q) === -1) show = false;
+            el.style.display = show ? '' : 'none';
+            if (show) shown++;
+        });
+        countEl.textContent = shown + ' protocol' + (shown !== 1 ? 's' : '');
+        empty.classList.toggle('d-none', shown !== 0);
+    }
+
+    regionEl.addEventListener('change', filter);
+    contrastEl.addEventListener('change', filter);
+    searchEl.addEventListener('input', filter);
+
+    render();
+})();
+</script>
+{% endblock %}

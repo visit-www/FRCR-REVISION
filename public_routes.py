@@ -86,6 +86,12 @@ def vetting_essentials():
     return render_template('vetting_essentials.html')
 
 
+@public_bp.route('/paediatric-ct-protocols')
+def paediatric_ct_protocols():
+    """Public interactive paediatric CT protocol reference page."""
+    return render_template('paediatric_ct_protocols.html')
+
+
 @public_bp.route('/imaging-protocols-reference')
 def imaging_protocols_reference():
     """Public imaging protocols reference — CT + MRI master protocol library."""
