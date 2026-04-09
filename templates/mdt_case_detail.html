@@ -182,27 +182,63 @@
 
         <!-- ─── Section 5: Linking ─── -->
         <div class="card border-0 shadow-sm mb-3 mdt-section">
-            <div class="card-header bg-white">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0 fw-semibold text-uppercase small" style="letter-spacing: 0.05em; color: #6b46c1;">
                     <i class="fas fa-link me-1"></i>Linked previous case
                 </h6>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="mdtLinkBtn">
+                    <i class="fas fa-link me-1"></i>{% if case.linked_case %}Change link{% else %}Link to a case{% endif %}
+                </button>
             </div>
-            <div class="card-body">
+            <div class="card-body" id="mdtLinkedCaseDisplay">
                 {% if case.linked_case %}
-                <p class="mb-2">
-                    Linked to <a href="/mdt/cases/{{ case.linked_case.id }}">{{ case.linked_case.case_reference or 'Case ' ~ case.linked_case.id }}</a>:
-                    <strong>{{ case.linked_case.diagnosis }}</strong>
-                    <span class="text-muted small">({{ case.linked_case.created_at.strftime('%d %b %Y') if case.linked_case.created_at else '' }})</span>
-                </p>
-                {% endif %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="mb-0">
+                        <a href="/mdt/cases/{{ case.linked_case.id }}" class="text-decoration-none">
+                            <strong>{{ case.linked_case.case_reference or 'Case ' ~ case.linked_case.id }}</strong>
+                        </a>:
+                        {{ case.linked_case.diagnosis }}
+                        <span class="text-muted small">({{ case.linked_case.created_at.strftime('%d %b %Y') if case.linked_case.created_at else '' }})</span>
+                    </p>
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="mdtUnlinkBtn">
+                        <i class="fas fa-times me-1"></i>Unlink
+                    </button>
+                </div>
+                {% else %}
                 <p class="text-muted small mb-0">
                     <i class="fas fa-info-circle me-1"></i>
-                    Case linking modal lands in Day 5. Manually set <code>linked_case_id</code> via the API for now.
+                    Not linked to any previous case. Click "Link to a case" to search by diagnosis and link a follow-up.
                 </p>
+                {% endif %}
             </div>
         </div>
 
     </form>
+
+    <!-- Bulk import quick link -->
+    <div class="text-center mt-2">
+        <a href="/mdt/meetings/{{ meeting.id }}/bulk-import" class="text-muted small">
+            <i class="fas fa-file-import me-1"></i>Bulk import consensus from offline notes
+        </a>
+    </div>
+</div>
+
+<!-- Link case modal -->
+<div class="modal fade app-content-modal" id="mdtLinkModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-link me-2" style="color: #6b46c1;"></i>Link to a previous case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Search by diagnosis. Click a result to link this case as a follow-up.</p>
+                <input type="text" class="form-control" id="mdtLinkSearchInput"
+                       placeholder="e.g. lung cancer, HCC, breast" autocomplete="off">
+                <div id="mdtLinkSearchResults" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -214,7 +250,80 @@
 <script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    MdtSuite.initCaseForm({{ case.id }});
+    var caseId = {{ case.id }};
+    MdtSuite.initCaseForm(caseId);
+
+    // Link modal wiring
+    var linkBtn = document.getElementById('mdtLinkBtn');
+    var unlinkBtn = document.getElementById('mdtUnlinkBtn');
+    var modalEl = document.getElementById('mdtLinkModal');
+    var searchInput = document.getElementById('mdtLinkSearchInput');
+    var searchResults = document.getElementById('mdtLinkSearchResults');
+
+    if (linkBtn) {
+        linkBtn.addEventListener('click', function() {
+            searchInput.value = '';
+            searchResults.innerHTML = '';
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
+            setTimeout(function() { searchInput.focus(); }, 250);
+        });
+    }
+
+    var linkSearchTimer = null;
+    searchInput && searchInput.addEventListener('input', function() {
+        clearTimeout(linkSearchTimer);
+        var q = searchInput.value.trim();
+        if (q.length < 2) { searchResults.innerHTML = ''; return; }
+        linkSearchTimer = setTimeout(function() {
+            MdtSuite.fetchJson('/api/mdt/cases/search?q=' + encodeURIComponent(q))
+                .then(function(d) {
+                    var results = (d.results || []).filter(function(r) { return r.id !== caseId; });
+                    if (!results.length) {
+                        searchResults.innerHTML = '<p class="text-muted small mb-0">No cases found.</p>';
+                        return;
+                    }
+                    searchResults.innerHTML = '<div class="list-group">' +
+                        results.map(function(r) {
+                            var ref = r.case_reference ? '<span class="text-muted small me-2">' + MdtSuite.escapeHtml(r.case_reference) + '</span>' : '';
+                            var meeting = r.meeting ? ' <span class="text-muted small">— ' + MdtSuite.escapeHtml(r.meeting.name) + ' · ' + r.meeting.date + '</span>' : '';
+                            return '<button type="button" class="list-group-item list-group-item-action" data-case-id="' + r.id + '">' +
+                                   ref + '<strong>' + MdtSuite.escapeHtml(r.diagnosis) + '</strong>' + meeting + '</button>';
+                        }).join('') + '</div>';
+                });
+        }, 250);
+    });
+
+    searchResults && searchResults.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-case-id]');
+        if (!btn) return;
+        var targetId = parseInt(btn.dataset.caseId, 10);
+        MdtSuite.fetchJson('/api/mdt/cases/' + caseId + '/link', {
+            method: 'POST',
+            body: { linked_case_id: targetId }
+        })
+        .then(function() {
+            MdtSuite.showToast('Linked.', 'success');
+            bootstrap.Modal.getInstance(modalEl).hide();
+            setTimeout(function() { window.location.reload(); }, 600);
+        })
+        .catch(function(err) {
+            MdtSuite.showToast('Link failed: ' + err.message, 'error');
+        });
+    });
+
+    if (unlinkBtn) {
+        unlinkBtn.addEventListener('click', function() {
+            if (!confirm('Unlink this case from its previous case?')) return;
+            MdtSuite.fetchJson('/api/mdt/cases/' + caseId + '/link', {
+                method: 'POST',
+                body: { linked_case_id: null }
+            })
+            .then(function() {
+                MdtSuite.showToast('Unlinked.', 'success');
+                setTimeout(function() { window.location.reload(); }, 400);
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -122,6 +122,14 @@ def mdt_case_search():
     return render_template('mdt_case_search.html', query=q)
 
 
+@mdt_bp.route('/mdt/meetings/<int:meeting_id>/bulk-import')
+@login_required
+def mdt_bulk_import(meeting_id):
+    """Bulk-import consensus from offline HTML notes — paste + diff page."""
+    meeting = _own_meeting_or_404(meeting_id)
+    return render_template('mdt_bulk_import.html', meeting=meeting)
+
+
 @mdt_bp.route('/mdt/cases/<int:case_id>')
 @login_required
 def mdt_case_view(case_id):
@@ -507,6 +515,110 @@ def api_export_meeting(meeting_id):
 @mdt_bp.route('/api/mdt/meetings/<int:meeting_id>/bulk-consensus', methods=['POST'])
 @login_required
 def api_bulk_consensus(meeting_id):
-    """Parse a clipboard JSON block and update cases. Day 5."""
-    _own_meeting_or_404(meeting_id)
-    return jsonify({'error': 'Bulk import not implemented yet (Day 5)'}), 501
+    """Parse a clipboard JSON block from the HTML export and update cases.
+
+    Body shape (matches the JSON produced by _mdt_export_html.html):
+        {
+          "meeting_id": 1,
+          "entries": [
+            {
+              "case_id": 12,
+              "case_reference": "L-001",
+              "mdt_consensus": "...",
+              "action_plan": "...",
+              "status": "discussed"
+            },
+            ...
+          ]
+        }
+
+    Query params:
+        ?dry_run=1  → return diff without committing
+
+    Matches cases by case_id first (preferred — survives reference
+    changes), then by case_reference as a fallback.
+    """
+    meeting = _own_meeting_or_404(meeting_id)
+    payload = request.get_json() or {}
+    entries = payload.get('entries', [])
+    if not isinstance(entries, list):
+        return jsonify({'error': 'entries must be a list'}), 400
+
+    dry_run = request.args.get('dry_run', '').strip() in ('1', 'true', 'yes')
+
+    diff = []
+    skipped = []
+    matched_count = 0
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            skipped.append({'reason': 'not a dict', 'entry': entry})
+            continue
+
+        case = None
+        # Prefer case_id (stable across reference renames)
+        cid = entry.get('case_id')
+        if cid:
+            case = MdtCase.query.filter_by(id=cid, user_id=current_user.id).first()
+        # Fallback to case_reference within this meeting
+        if not case and entry.get('case_reference'):
+            case = MdtCase.query.filter_by(
+                meeting_id=meeting.id,
+                case_reference=entry['case_reference'],
+                user_id=current_user.id,
+            ).first()
+
+        if not case:
+            skipped.append({
+                'reason': 'no matching case',
+                'case_id': cid,
+                'case_reference': entry.get('case_reference'),
+            })
+            continue
+
+        # Build the diff
+        new_consensus = entry.get('mdt_consensus')
+        new_action = entry.get('action_plan')
+        new_status = entry.get('status')
+
+        # Validate status
+        if new_status and new_status not in MdtCase.STATUSES:
+            new_status = None
+
+        diff.append({
+            'case_id': case.id,
+            'case_reference': case.case_reference,
+            'diagnosis': case.diagnosis,
+            'old_consensus': case.mdt_consensus,
+            'new_consensus': new_consensus,
+            'old_action_plan': case.action_plan,
+            'new_action_plan': new_action,
+            'old_status': case.status,
+            'new_status': new_status,
+        })
+
+        if not dry_run:
+            if new_consensus is not None:
+                case.mdt_consensus = new_consensus
+            if new_action is not None:
+                case.action_plan = new_action
+            if new_status:
+                case.status = new_status
+            matched_count += 1
+
+    if not dry_run and matched_count:
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error('Bulk consensus commit failed: %s', e)
+            return jsonify({'error': 'Database commit failed'}), 500
+
+    return jsonify({
+        'dry_run': dry_run,
+        'matched': len(diff),
+        'updated': matched_count if not dry_run else 0,
+        'skipped': len(skipped),
+        'diff': diff,
+        'skipped_entries': skipped,
+    })
