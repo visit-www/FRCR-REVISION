@@ -337,10 +337,49 @@ def api_delete_case(case_id):
 @mdt_bp.route('/api/mdt/cases/<int:case_id>/generate-summary', methods=['POST'])
 @login_required
 def api_generate_summary(case_id):
-    """Generate AI pre_mdt_summary from the 5 context fields. Day 3 implementation."""
+    """Generate AI pre_mdt_summary from the 5 context fields.
+
+    Re-uses generate_mdt_summary_for_case from ai_smart_reporter — same
+    Sonnet model used by the Smart Reporter MDT action card.
+    """
     c = _own_case_or_404(case_id)
-    # TODO Day 3: call generate_mdt_summary from ai_smart_reporter
-    return jsonify({'error': 'Not implemented yet (Day 3)'}), 501
+
+    # Rate limit (shares Smart Reporter quota — MDT generation is a Smart
+    # Reporter cousin, not vetting)
+    try:
+        from reporting_routes import _check_ai_rate_limit
+        ok, remaining, err = _check_ai_rate_limit(usage_type='sr')
+        if not ok:
+            return err
+    except Exception:
+        # If the rate-limit helper is unavailable, fall through (dev only)
+        remaining = None
+
+    try:
+        from ai_smart_reporter import generate_mdt_summary_for_case
+        summary, model_used, tokens = generate_mdt_summary_for_case({
+            'diagnosis': c.diagnosis,
+            'clinical_history': c.clinical_history,
+            'imaging_findings': c.imaging_findings,
+            'histology_biopsy': c.histology_biopsy,
+            'lab_values': c.lab_values,
+            'additional_notes': c.additional_notes,
+        })
+    except Exception as e:
+        logger.error("MDT summary generation failed for case %s: %s", case_id, e)
+        return jsonify({'error': str(e)}), 500
+
+    # Persist
+    c.pre_mdt_summary = summary
+    db.session.commit()
+
+    return jsonify({
+        'summary': summary,
+        'model_used': model_used,
+        'tokens': tokens,
+        'remaining_requests': remaining,
+        'case': c.to_dict(),
+    })
 
 
 @mdt_bp.route('/api/mdt/cases/<int:case_id>/link', methods=['POST'])

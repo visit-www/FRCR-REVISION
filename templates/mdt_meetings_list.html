@@ -17,7 +17,96 @@
             <li class="breadcrumb-item active" aria-current="page">All meetings</li>
         </ol>
     </nav>
-    <h2 class="mb-3"><i class="fas fa-calendar-alt me-2" style="color: #6b46c1;"></i>All MDT Meetings</h2>
-    <p class="text-muted">Day 3 build — list view, filters, pagination.</p>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0"><i class="fas fa-calendar-alt me-2" style="color: #6b46c1;"></i>All MDT Meetings</h2>
+        <a href="/mdt" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i>Back to landing
+        </a>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <span class="small text-muted me-2"><i class="fas fa-filter me-1"></i>Filter:</span>
+                <input type="date" class="form-control form-control-sm" id="mdtFilterFrom" style="width: auto;">
+                <span class="text-muted small">to</span>
+                <input type="date" class="form-control form-control-sm" id="mdtFilterTo" style="width: auto;">
+                <select class="form-select form-select-sm" id="mdtFilterType" style="width: auto;">
+                    <option value="">All types</option>
+                    <option value="lung">Lung</option>
+                    <option value="upper_gi">Upper GI</option>
+                    <option value="lower_gi">Lower GI</option>
+                    <option value="hepatobiliary">Hepatobiliary</option>
+                    <option value="breast">Breast</option>
+                    <option value="urology">Urology</option>
+                    <option value="gynae_onc">Gynae-onc</option>
+                    <option value="head_neck">Head &amp; Neck</option>
+                    <option value="neuro_onc">Neuro-onc</option>
+                    <option value="sarcoma">Sarcoma</option>
+                    <option value="lymphoma">Lymphoma</option>
+                    <option value="paeds">Paediatric</option>
+                    <option value="vascular">Vascular</option>
+                    <option value="transplant">Transplant</option>
+                    <option value="other">Other</option>
+                </select>
+                <input type="text" class="form-control form-control-sm" id="mdtFilterName"
+                       placeholder="Name search…" style="max-width: 200px;">
+                <span id="mdtMeetingsCount" class="small text-muted ms-auto"></span>
+            </div>
+        </div>
+    </div>
+
+    <div id="mdtMeetingsList">
+        <p class="text-muted">Loading…</p>
+    </div>
 </div>
+
+<script src="{{ url_for('static', filename='js/mdt-suite.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var fromEl = document.getElementById('mdtFilterFrom');
+    var toEl = document.getElementById('mdtFilterTo');
+    var typeEl = document.getElementById('mdtFilterType');
+    var nameEl = document.getElementById('mdtFilterName');
+    var listEl = document.getElementById('mdtMeetingsList');
+    var countEl = document.getElementById('mdtMeetingsCount');
+
+    function load() {
+        var params = new URLSearchParams();
+        if (fromEl.value) params.set('from', fromEl.value);
+        if (toEl.value) params.set('to', toEl.value);
+        if (typeEl.value) params.set('mdt_type', typeEl.value);
+        if (nameEl.value.trim()) params.set('name', nameEl.value.trim());
+        MdtSuite.fetchJson('/api/mdt/meetings?' + params.toString())
+            .then(function(d) {
+                var meetings = d.meetings || [];
+                countEl.textContent = meetings.length + ' meeting' + (meetings.length !== 1 ? 's' : '');
+                if (!meetings.length) {
+                    listEl.innerHTML = '<p class="text-muted text-center py-4">No meetings match these filters.</p>';
+                    return;
+                }
+                listEl.innerHTML = '<div class="list-group shadow-sm">' +
+                    meetings.map(function(m) {
+                        var pendChip = m.pending_count > 0
+                            ? ' <span class="badge bg-warning text-dark ms-1">' + m.pending_count + ' pending</span>' : '';
+                        var typeChip = m.mdt_type
+                            ? ' <span class="badge bg-light text-dark border ms-1">' + MdtSuite.escapeHtml(m.mdt_type.replace(/_/g, ' ')) + '</span>' : '';
+                        return '<a href="/mdt/meetings/' + m.id + '" class="list-group-item list-group-item-action">' +
+                               '<div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+                               '<div><strong>' + MdtSuite.escapeHtml(m.name) + '</strong>' + typeChip + '</div>' +
+                               '<div class="text-muted small">' + m.date + ' · ' +
+                               m.case_count + ' case' + (m.case_count !== 1 ? 's' : '') + pendChip + '</div>' +
+                               '</div></a>';
+                    }).join('') + '</div>';
+            });
+    }
+
+    [fromEl, toEl, typeEl, nameEl].forEach(function(el) {
+        el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', MdtSuite.debounce(load, 300));
+    });
+    load();
+});
+</script>
 {% endblock %}

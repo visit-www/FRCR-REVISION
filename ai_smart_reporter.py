@@ -1901,6 +1901,90 @@ ACTION_TOKEN_LIMITS = {
 }
 
 
+def generate_mdt_summary_for_case(context):
+    """
+    Generate a 2–3 line plain-text MDT summary from a structured case context.
+
+    Used by the MDT Suite (mdt_routes.py). Distinct from generate_report_action
+    because:
+      - Input is a structured dict, not free-text report
+      - Output is plain text (not HTML), suitable for a textarea
+      - Output is short (≤120 words) — meant for a meeting prep card
+      - Re-uses Sonnet (cheap, fast) — same model as the Smart Reporter
+        MDT action
+
+    Args:
+        context: dict with keys:
+          - diagnosis (required)
+          - clinical_history
+          - imaging_findings
+          - histology_biopsy
+          - lab_values
+          - additional_notes
+
+    Returns:
+        (summary_text, model_used, token_count)
+    """
+    diagnosis = (context.get('diagnosis') or '').strip()
+    if not diagnosis:
+        raise SmartReporterError("Diagnosis required for MDT summary generation")
+
+    # Build the structured context block
+    parts = [f"DIAGNOSIS: {diagnosis}"]
+    for label, key in [
+        ('CLINICAL HISTORY', 'clinical_history'),
+        ('IMAGING FINDINGS', 'imaging_findings'),
+        ('HISTOLOGY / BIOPSY', 'histology_biopsy'),
+        ('LAB VALUES', 'lab_values'),
+        ('ADDITIONAL NOTES', 'additional_notes'),
+    ]:
+        val = (context.get(key) or '').strip()
+        if val:
+            parts.append(f"{label}: {val}")
+
+    if len(parts) == 1:
+        # Only diagnosis given — not enough context for a useful summary
+        raise SmartReporterError(
+            "At least one of clinical_history, imaging_findings, histology_biopsy, "
+            "lab_values, or additional_notes is required."
+        )
+
+    user_prompt = (
+        "You are summarising a case for an MDT (multidisciplinary team) meeting. "
+        "Produce a CONCISE 2–3 line plain-text summary suitable for the consultant "
+        "to read in 10 seconds before discussing the case.\n\n"
+        "Rules:\n"
+        "- Plain text only (no HTML, no markdown, no headers)\n"
+        "- ≤120 words total\n"
+        "- Combine the most clinically important elements: stage / size / spread / "
+        "key biomarker / performance status\n"
+        "- End with a single-line proposed next step (e.g. 'For surgical opinion', "
+        "'For oncology referral', 'For repeat imaging in 3 months')\n"
+        "- British English spelling\n"
+        "- Never invent findings — only use what's in the context provided\n"
+        "- Never include patient identifiers (names, NHS numbers, MRNs, dates of birth)\n\n"
+        "CASE CONTEXT:\n" + '\n'.join(parts)
+    )
+
+    summary_text, model_used, tokens = _call_claude(
+        system_prompt=(
+            "You are a senior radiologist preparing concise MDT case summaries "
+            "for a busy multidisciplinary meeting. Output plain text only — no "
+            "HTML, no markdown, no preamble."
+        ),
+        user_prompt=user_prompt,
+        model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
+        max_tokens=400,
+        temperature=0.3,
+        timeout=45,
+    )
+
+    # Strip any accidental markdown / code fences
+    summary_text = strip_markdown_fences(summary_text).strip()
+
+    return summary_text, model_used, tokens
+
+
 def generate_report_action(report_text, action, clinical_question='',
                            modality='', body_section='', insights=None):
     """
