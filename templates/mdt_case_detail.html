@@ -138,13 +138,14 @@
                 </button>
             </div>
             <div class="card-body">
-                <textarea class="form-control" rows="5" id="mdtPreSummary"
+                <textarea class="form-control" rows="9" id="mdtPreSummary"
                           data-mdt-autosave data-field="pre_mdt_summary"
                           data-pii-guard="true" data-pii-guard-tier="HIGH"
-                          placeholder="Click 'Generate' to create a 2–3 line summary from the context above. The AI summary is editable.">{{ case.pre_mdt_summary or '' }}</textarea>
+                          placeholder="Click 'Generate / Regenerate' to produce a structured 4-section summary (Indication / Imaging Findings / Impression / Suggested Next Step) from the context above. The summary is fully editable.">{{ case.pre_mdt_summary or '' }}</textarea>
                 <small class="text-muted">
                     <i class="fas fa-info-circle me-1"></i>
-                    AI uses Sonnet (the same model as Smart Reporter MDT). Generation is not active until Day 3.
+                    Generated using <strong>RadInsight Intelligence Standard</strong> — the same model used by the Smart Reporter MDT action.
+                    A clinical alert is added if a discrepancy (e.g. staging vs imaging findings) is detected in the source context.
                 </small>
             </div>
         </div>

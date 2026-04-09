@@ -365,6 +365,9 @@ def api_generate_summary(case_id):
 
     try:
         from ai_smart_reporter import generate_mdt_summary_for_case
+        # Same prompt + same model as Smart Reporter MDT card. The output
+        # is already in 4-section plain-text format, which renders cleanly
+        # in a textarea.
         summary, model_used, tokens = generate_mdt_summary_for_case({
             'diagnosis': c.diagnosis,
             'clinical_history': c.clinical_history,

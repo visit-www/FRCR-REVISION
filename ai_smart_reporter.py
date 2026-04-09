@@ -1901,36 +1901,96 @@ ACTION_TOKEN_LIMITS = {
 }
 
 
-def generate_mdt_summary_for_case(context):
+# ═══════════════════════════════════════════════════════════════════════════
+#  UNIFIED MDT PROMPT
+# ═══════════════════════════════════════════════════════════════════════════
+# Single source of truth used by BOTH:
+#   1. Smart Reporter MDT action card (HTML output, post-processed)
+#   2. MDT Suite Generate button   (plain text output, post-processed)
+#
+# The same prompt is sent to Claude regardless of entry point. The difference
+# between the two surfaces is HOW the response is rendered (HTML vs plain
+# text), NOT what the model produces. This guarantees identical content,
+# identical guardrails, identical staging/discrepancy checks.
+#
+# Output is structured as 4 plain-text sections separated by blank lines.
+# - Smart Reporter: post-processes into HTML for inline card display.
+# - MDT Suite: keeps as-is for textarea display.
+# ═══════════════════════════════════════════════════════════════════════════
+
+MDT_SYSTEM_PROMPT = (
+    "You are a senior consultant radiologist preparing concise case summaries "
+    "for a multidisciplinary team (MDT) meeting. Your output must be clinically "
+    "accurate, concise, and safe for direct use in a clinical meeting.\n\n"
+    "CRITICAL GUARDRAILS — read these before every response:\n"
+    "1. NEVER fabricate or hallucinate findings. Use ONLY information explicitly "
+    "present in the context provided.\n"
+    "2. NEVER invent staging (TNM, FIGO, Bosniak, etc.) that is not stated in or "
+    "directly supported by the context. If staging is not given and cannot be "
+    "unambiguously inferred from the imaging findings + histology, OMIT staging "
+    "entirely or write 'staging not provided'.\n"
+    "3. NEVER include patient identifiers (names, NHS numbers, MRNs, dates of "
+    "birth, addresses, postcodes). If any are present in the context, treat them "
+    "as if they were not there.\n"
+    "4. NEVER add hedging language ('may represent', 'cannot exclude', etc.) "
+    "beyond what is justified by the context. The context may have already "
+    "performed that analysis.\n"
+    "5. PERFORM A DISCREPANCY CHECK before finalising your output:\n"
+    "   - Does the staging match the imaging findings?\n"
+    "     (e.g. T3N1M0 requires nodal disease in the imaging findings; if the "
+    "imaging says 'no lymphadenopathy', you cannot output a node-positive stage)\n"
+    "   - Are there obvious anatomical contradictions?\n"
+    "     (e.g. 'left upper lobe' in findings vs 'right upper lobe' in summary)\n"
+    "   - Is the impression internally consistent with the findings?\n"
+    "     (e.g. you cannot say 'localised disease' if context mentions distant mets)\n"
+    "   If you find a discrepancy in the SOURCE CONTEXT (not in your own output), "
+    "add a 'CLINICAL ALERT' section as the FINAL section explaining the issue. "
+    "If the source has no discrepancies, omit the alert section entirely.\n"
+    "6. British English spelling throughout.\n"
+    "7. Output PLAIN TEXT only — no HTML, no markdown, no code fences, no preamble.\n\n"
+    "OUTPUT FORMAT (exactly these 4 sections, plus optional 5th alert):\n\n"
+    "INDICATION: <1–2 sentences from the clinical history and clinical question>\n\n"
+    "KEY IMAGING FINDINGS:\n"
+    "- <pertinent positive 1>\n"
+    "- <pertinent positive 2>\n"
+    "- <pertinent negative if relevant>\n"
+    "(2–5 bullets total. Include size, location, spread, and any biomarkers from histology.)\n\n"
+    "RADIOLOGICAL IMPRESSION: <1–2 sentence conclusion. If staging is established "
+    "in the context, state it here. Mention key biomarkers (EGFR, ER/PR/HER2, "
+    "PD-L1, etc.) when relevant.>\n\n"
+    "SUGGESTED NEXT STEP: <single recommended action — e.g. 'Refer for thoracic "
+    "surgical opinion', 'For oncology referral and systemic therapy planning', "
+    "'For PET-CT staging then re-discuss', 'For interval imaging in 3 months'>\n\n"
+    "[CLINICAL ALERT — only if a discrepancy is detected in the source]\n"
+    "<Brief explanation of what is inconsistent and what to verify before the meeting>\n\n"
+    "Keep the entire summary under 180 words including section labels."
+)
+
+
+def _build_mdt_user_prompt(context):
+    """Build the user-prompt body for the unified MDT generator.
+
+    Accepts either:
+      - A dict with structured fields (MDT Suite path), OR
+      - A dict with 'report_text' for the legacy Smart Reporter path
+        (the old generate_report_action signature)
     """
-    Generate a 2–3 line plain-text MDT summary from a structured case context.
+    if context.get('report_text'):
+        # Legacy Smart Reporter path — full report text
+        body = "RADIOLOGY REPORT:\n" + context['report_text']
+        if context.get('clinical_question'):
+            body += f"\n\nCLINICAL QUESTION: {context['clinical_question']}"
+        if context.get('modality'):
+            body += f"\nMODALITY: {context['modality']}"
+        if context.get('body_section'):
+            body += f"\nBODY SECTION: {context['body_section']}"
+        return body
 
-    Used by the MDT Suite (mdt_routes.py). Distinct from generate_report_action
-    because:
-      - Input is a structured dict, not free-text report
-      - Output is plain text (not HTML), suitable for a textarea
-      - Output is short (≤120 words) — meant for a meeting prep card
-      - Re-uses Sonnet (cheap, fast) — same model as the Smart Reporter
-        MDT action
-
-    Args:
-        context: dict with keys:
-          - diagnosis (required)
-          - clinical_history
-          - imaging_findings
-          - histology_biopsy
-          - lab_values
-          - additional_notes
-
-    Returns:
-        (summary_text, model_used, token_count)
-    """
+    # MDT Suite path — structured 5-field context
     diagnosis = (context.get('diagnosis') or '').strip()
-    if not diagnosis:
-        raise SmartReporterError("Diagnosis required for MDT summary generation")
-
-    # Build the structured context block
-    parts = [f"DIAGNOSIS: {diagnosis}"]
+    parts = []
+    if diagnosis:
+        parts.append(f"DIAGNOSIS: {diagnosis}")
     for label, key in [
         ('CLINICAL HISTORY', 'clinical_history'),
         ('IMAGING FINDINGS', 'imaging_findings'),
@@ -1942,41 +2002,44 @@ def generate_mdt_summary_for_case(context):
         if val:
             parts.append(f"{label}: {val}")
 
-    if len(parts) == 1:
-        # Only diagnosis given — not enough context for a useful summary
+    if len(parts) <= 1:
         raise SmartReporterError(
             "At least one of clinical_history, imaging_findings, histology_biopsy, "
             "lab_values, or additional_notes is required."
         )
+    return "CASE CONTEXT:\n" + '\n'.join(parts)
 
-    user_prompt = (
-        "You are summarising a case for an MDT (multidisciplinary team) meeting. "
-        "Produce a CONCISE 2–3 line plain-text summary suitable for the consultant "
-        "to read in 10 seconds before discussing the case.\n\n"
-        "Rules:\n"
-        "- Plain text only (no HTML, no markdown, no headers)\n"
-        "- ≤120 words total\n"
-        "- Combine the most clinically important elements: stage / size / spread / "
-        "key biomarker / performance status\n"
-        "- End with a single-line proposed next step (e.g. 'For surgical opinion', "
-        "'For oncology referral', 'For repeat imaging in 3 months')\n"
-        "- British English spelling\n"
-        "- Never invent findings — only use what's in the context provided\n"
-        "- Never include patient identifiers (names, NHS numbers, MRNs, dates of birth)\n\n"
-        "CASE CONTEXT:\n" + '\n'.join(parts)
-    )
+
+def generate_mdt_summary_for_case(context):
+    """
+    Generate a structured MDT summary from a case context.
+
+    Used by both:
+      - MDT Suite Generate button (mdt_routes.py)
+      - Smart Reporter MDT action card (via generate_report_action)
+
+    Returns plain text in 4 sections (INDICATION / KEY IMAGING FINDINGS /
+    RADIOLOGICAL IMPRESSION / SUGGESTED NEXT STEP) with an optional 5th
+    CLINICAL ALERT section if a discrepancy is detected.
+
+    Args:
+        context: dict with either structured MDT fields (diagnosis,
+                 clinical_history, imaging_findings, histology_biopsy,
+                 lab_values, additional_notes) OR a 'report_text' field
+                 for the legacy Smart Reporter pathway.
+
+    Returns:
+        (summary_text, model_used, token_count)
+    """
+    user_prompt = _build_mdt_user_prompt(context)
 
     summary_text, model_used, tokens = _call_claude(
-        system_prompt=(
-            "You are a senior radiologist preparing concise MDT case summaries "
-            "for a busy multidisciplinary meeting. Output plain text only — no "
-            "HTML, no markdown, no preamble."
-        ),
+        system_prompt=MDT_SYSTEM_PROMPT,
         user_prompt=user_prompt,
         model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
-        max_tokens=400,
-        temperature=0.3,
-        timeout=45,
+        max_tokens=600,
+        temperature=0.2,   # low temp for consistency + reduced hallucination
+        timeout=60,
     )
 
     # Strip any accidental markdown / code fences
@@ -1985,15 +2048,115 @@ def generate_mdt_summary_for_case(context):
     return summary_text, model_used, tokens
 
 
+def mdt_summary_to_html(summary_text):
+    """Post-process a unified MDT summary into HTML for the Smart Reporter
+    MDT action card. Pure post-processing — does NOT call the AI.
+
+    Converts the 4-section plain text format into a styled HTML block
+    matching the existing Smart Reporter card aesthetic. Detects and
+    highlights the optional CLINICAL ALERT section.
+    """
+    if not summary_text:
+        return ''
+
+    sections = {
+        'INDICATION': '',
+        'KEY IMAGING FINDINGS': '',
+        'RADIOLOGICAL IMPRESSION': '',
+        'SUGGESTED NEXT STEP': '',
+        'CLINICAL ALERT': '',
+    }
+
+    current = None
+    for line in summary_text.split('\n'):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Detect section headers (case-insensitive, allow trailing colon)
+        matched = False
+        for key in sections.keys():
+            if stripped.upper().startswith(key):
+                current = key
+                # Capture any inline content after the colon
+                rest = stripped[len(key):].lstrip(':').strip()
+                if rest:
+                    sections[current] = rest
+                matched = True
+                break
+        if matched:
+            continue
+        if current is not None:
+            if sections[current]:
+                sections[current] += '\n' + stripped
+            else:
+                sections[current] = stripped
+
+    def _esc(s):
+        return (s or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+    def _bullets_or_para(text):
+        """Convert dash-prefixed lines into a <ul>, otherwise a <p>."""
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        if any(l.startswith('-') or l.startswith('•') for l in lines):
+            items = ''.join(
+                f'<li>{_esc(l.lstrip("-•").strip())}</li>'
+                for l in lines if l.strip()
+            )
+            return f'<ul class="mb-2">{items}</ul>'
+        return f'<p>{_esc(text)}</p>'
+
+    html_parts = ['<h5>MDT Summary</h5>']
+
+    if sections['INDICATION']:
+        html_parts.append(f'<p><strong>Indication:</strong> {_esc(sections["INDICATION"])}</p>')
+
+    if sections['KEY IMAGING FINDINGS']:
+        html_parts.append('<p><strong>Key Imaging Findings:</strong></p>')
+        html_parts.append(_bullets_or_para(sections['KEY IMAGING FINDINGS']))
+
+    if sections['RADIOLOGICAL IMPRESSION']:
+        html_parts.append(f'<p><strong>Radiological Impression:</strong> {_esc(sections["RADIOLOGICAL IMPRESSION"])}</p>')
+
+    if sections['SUGGESTED NEXT STEP']:
+        html_parts.append(f'<p><strong>Suggested Next Step:</strong> {_esc(sections["SUGGESTED NEXT STEP"])}</p>')
+
+    if sections['CLINICAL ALERT']:
+        html_parts.append(
+            '<div class="alert alert-warning small mt-2 mb-0 py-2">'
+            '<i class="fas fa-exclamation-triangle me-1"></i>'
+            f'<strong>Clinical alert:</strong> {_esc(sections["CLINICAL ALERT"])}'
+            '</div>'
+        )
+
+    return ''.join(html_parts)
+
+
 def generate_report_action(report_text, action, clinical_question='',
                            modality='', body_section='', insights=None):
     """
     Generate a report-derived action (MDT summary, SBA, viva, email).
 
     Returns (html_text, model_used, token_count).
+
+    Note: action='mdt' is routed through the unified MDT pipeline
+    (generate_mdt_summary_for_case + mdt_summary_to_html) so the same
+    prompt and guardrails are used whether the user generates the
+    summary in Smart Reporter or in the MDT Suite. The HTML conversion
+    is pure post-processing — no extra AI calls.
     """
     if action not in ACTION_PROMPTS:
         raise SmartReporterError(f"Unknown report action: {action}")
+
+    # ── Route MDT through the unified pipeline ─────────────────────
+    if action == 'mdt':
+        plain_summary, model_used, tokens = generate_mdt_summary_for_case({
+            'report_text': report_text,
+            'clinical_question': clinical_question,
+            'modality': modality,
+            'body_section': body_section,
+        })
+        html_text = mdt_summary_to_html(plain_summary)
+        return html_text, model_used, tokens
 
     # Build insight context from existing AI insights (if available)
     insight_context = ''
