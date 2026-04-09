@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** April 1, 2026
+> **Last Updated:** April 9, 2026
 > **Status:** Active Development
-> **Total Plans:** 18 Feature Areas
+> **Total Plans:** 19 Feature Areas
 
 ---
 
@@ -32,6 +32,7 @@ This document serves as the master index for all planned features and enhancemen
 | 14 | SEO & Architecture | Medium-High | High | **Phase 1 Done** |
 | 17 | RadInsight Intelligence (User Prefs) | Medium | High | Planned |
 | 18 | Vetting Tool (Imaging Protocols) | High | Very High | Planned |
+| 19 | MDT Suite (Multi-Disciplinary Team Workflow) | Medium-High | Very High | **Planned — ready to build** |
 
 ---
 
@@ -714,6 +715,7 @@ Phase 4: AI Transformation (Week 10-20)
 | TNM Prompt Engineering | - | `docs/plans/TNM_PROMPT_ENGINEERING_PLAN.md` |
 | RadInsight Intelligence | - | `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md` |
 | Vetting Tool | - | `docs/plans/VETTING_TOOL_PLAN.md` |
+| MDT Suite | 19 | `docs/plans/MDT_SUITE_PLAN.md` |
 
 ---
 
@@ -742,4 +744,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-03-31 | SEO Plan 14 Phase 1 complete: public preview pages for all content types, Schema.org macros, dynamic sitemap expansion, content gating | AI Assistant |
 | 2026-04-01 | Added RadInsight Intelligence plan (Plan 17); user reporting preference learning for Smart Reporter | AI Assistant |
 | 2026-04-01 | Added Vetting Tool plan (Plan 18); structured imaging protocol vetting workflow with safety checklist and protocol library | AI Assistant |
+| 2026-04-09 | Added MDT Suite plan (Plan 19); workflow tool for capturing, prepping, exporting and reviewing MDT cases with no patient identifiers, opaque case references, landscape PDF + interactive HTML export, bulk consensus paste-back, Smart Reporter integration | AI Assistant |
 
