@@ -84,14 +84,35 @@ Refresh the page → all 3 cases persist in the table.
 7. Refresh → status remains Discussed
 
 ### A8. PII Guard on textareas
-1. In **Clinical history**, type: `John Smith DOB 15/03/1958 NHS 123 456 7890 lives at 42 Acacia Avenue`
-2. PII Guard should highlight: name, DOB, NHS number, address
-3. Red shield should appear in card header
-4. The auto-save indicator should NOT show "Saved" — text is blocked at the API layer
-5. Click bulk Redact → all PII replaced
-6. Now save proceeds
+PII Guard relies on **labelled** patterns — a bare "John Smith" or "42 Acacia" is too false-positive-prone in clinical text and is intentionally not flagged. Use the labelled forms to test:
 
-**Expected**: PII Guard blocks the POST, no patient identifier ever reaches the DB.
+1. In **Clinical history**, type:
+   `Name: John Smith, DOB: 15/03/1958, NHS 123 456 7890, address: 42 Acacia Avenue, postcode SW1A 1AA`
+2. Within ~250 ms, PII Guard should highlight:
+   - **Name: John Smith** (labelled name)
+   - **DOB 15/03/1958** (date pattern)
+   - **NHS 123 456 7890** (NHS number with Mod-11 checksum)
+   - **address: 42 Acacia Avenue** (labelled address)
+   - **SW1A 1AA** (UK postcode)
+3. Red shield badge should appear in the **Case identity** card header
+4. The auto-save indicator should show: *"Save blocked — resolve flagged PII above (Redact / Remove / Dismiss)"*
+5. Click the red shield → bulk dropdown → **Redact All** → all PII replaced with `[REDACTED]`
+6. Within ~1 second the auto-save indicator should change to "Saved Xs ago" automatically (no need to type anything else — the watchdog re-fires the save)
+
+**Alternative test for Dismiss flow**:
+1. Type: `Name: Jane Doe`
+2. Wait for shield + highlight
+3. Click the highlight → popover → tick the confirmation checkbox → **Dismiss** button
+4. Auto-save indicator should change from "Save blocked" to "Saved Xs ago" within 1 second
+
+**Expected**: PII Guard catches all 5 patterns, blocks the PUT until resolved, and auto-retries the save once the user resolves the matches.
+
+### A8b. Bare names / addresses are intentionally NOT flagged
+1. In **Clinical history**, type: `Patient is John Smith from 42 Acacia Avenue`
+2. PII Guard does **not** highlight (no labelled prefix) — this is the expected behaviour to avoid breaking real clinical text like "John Cunningham mass" or "Acacia thorn injury"
+3. The text saves normally
+
+This is by design. If you need stricter scanning, set `data-pii-guard-tier="HIGH"` (already done on the MDT form) — but the regex is the same; the tier only affects how the matches are presented.
 
 **→ STOP if anything in Part A failed.**
 

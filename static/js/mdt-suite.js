@@ -346,15 +346,37 @@
             statusEl.textContent = msg || 'Save failed';
             statusEl.className = 'small text-danger';
         }
+        function showPiiBlocked() {
+            if (!statusEl) return;
+            statusEl.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Save blocked — resolve flagged PII above (Redact / Remove / Dismiss)';
+            statusEl.className = 'small text-warning';
+        }
 
-        var save = debounce(function(field, value) {
+        // Track failed saves per field so we can retry after PII is resolved.
+        var _pendingPiiBlocked = {};   // field -> last value attempted
+
+        function attemptSave(field, value) {
             showSaving();
             var payload = {};
             payload[field] = value;
-            fetchJson('/api/mdt/cases/' + caseId, { method: 'PUT', body: payload })
-                .then(showSaved)
-                .catch(function(err) { showError(err.message); });
-        }, 1000);
+            return fetchJson('/api/mdt/cases/' + caseId, { method: 'PUT', body: payload })
+                .then(function(r) {
+                    delete _pendingPiiBlocked[field];
+                    showSaved();
+                    return r;
+                })
+                .catch(function(err) {
+                    if (err.payload && err.payload.pii_blocked) {
+                        _pendingPiiBlocked[field] = value;
+                        showPiiBlocked();
+                    } else {
+                        showError(err.message);
+                    }
+                    throw err;
+                });
+        }
+
+        var save = debounce(attemptSave, 1000);
 
         // Wire all auto-save inputs
         $$('[data-mdt-autosave]', form).forEach(function(el) {
@@ -366,13 +388,33 @@
         // Status radios save immediately on change (no debounce)
         $$('input[name="mdtStatus"]', form).forEach(function(radio) {
             radio.addEventListener('change', function() {
-                showSaving();
-                fetchJson('/api/mdt/cases/' + caseId, {
-                    method: 'PUT',
-                    body: { status: radio.value }
-                }).then(showSaved).catch(function(err) { showError(err.message); });
+                attemptSave('status', radio.value).catch(function() {});
             });
         });
+
+        // ── PII-resolved retry watchdog ─────────────────────────────────
+        // After the user clicks Redact/Remove/Dismiss in the PII Guard
+        // popover, the override flag flips to true on the next scan. We
+        // poll briefly and retry any failed saves so the user doesn't have
+        // to manually re-type to trigger auto-save again.
+        var _lastOverrideState = false;
+        setInterval(function() {
+            if (!window.PIIGuard || !window.PIIGuard.getOverride) return;
+            var override = window.PIIGuard.getOverride();
+            // Transition: blocked → unblocked
+            if (override && !_lastOverrideState && Object.keys(_pendingPiiBlocked).length) {
+                var pending = Object.assign({}, _pendingPiiBlocked);
+                Object.keys(pending).forEach(function(field) {
+                    // Re-read the textarea — user may have edited since the
+                    // failed save (e.g. via PII redact replacing the matched
+                    // text in-place)
+                    var el = form.querySelector('[data-field="' + field + '"]');
+                    var current = el ? el.value : pending[field];
+                    attemptSave(field, current).catch(function() {});
+                });
+            }
+            _lastOverrideState = override;
+        }, 500);
 
         // Generate AI summary button (Day 3)
         var genBtn = $('#mdtGenerateSummaryBtn');
