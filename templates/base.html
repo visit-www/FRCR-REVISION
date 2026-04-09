@@ -190,11 +190,22 @@
                             <a href="/vetting" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_vetting %}{% endblock %}">
                                 <i class="fas fa-check-double me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Vetting Tool
                             </a>
+                        </div>
+
+                        <!-- Quick Reference (collapsible) -->
+                        <a href="#mobileQuickRefCollapse" class="list-group-item list-group-item-action border-0 px-0 py-2 mt-2" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                            <i class="fas fa-bolt me-2" style="color: #e96304; width: 20px; text-align: center;"></i>Quick Reference
+                            <i class="fas fa-chevron-down float-end mt-1" style="font-size: 0.7rem; opacity: 0.6;"></i>
+                        </a>
+                        <div class="collapse" id="mobileQuickRefCollapse">
                             <a href="/vetting-essentials" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item">
                                 <i class="fas fa-graduation-cap me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Vetting Essentials
                             </a>
                             <a href="/contrast-reaction-card" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item">
                                 <i class="fas fa-flask me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Contrast Reaction Card
+                            </a>
+                            <a href="/paediatric-ct-protocols" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item">
+                                <i class="fas fa-child me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Paediatric CT Protocols
                             </a>
                         </div>
                     </div>
@@ -368,8 +379,19 @@
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_protocols() }}" href="/radiology-protocols"><i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Clinical Guidelines & Safety</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm() }}" href="/tnm-calculator"><i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_vetting() }}" href="/vetting"><i class="fas fa-check-double me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Vetting Tool</a></li>
+                    </ul>
+                </div>
+
+                <!-- Quick Reference (dropdown) -->
+                <div class="tool-nav-dropdown">
+                    <a href="#" class="tool-nav-link" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-bolt me-1" style="color: #e96304;"></i><span class="d-none d-sm-inline">Quick Ref</span><span class="d-sm-none">Quick</span>
+                        <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
+                    </a>
+                    <ul class="dropdown-menu tool-nav-dropdown-menu">
                         <li><a class="dropdown-item" href="/vetting-essentials"><i class="fas fa-graduation-cap me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Vetting Essentials</a></li>
                         <li><a class="dropdown-item" href="/contrast-reaction-card"><i class="fas fa-flask me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Contrast Reaction Card</a></li>
+                        <li><a class="dropdown-item" href="/paediatric-ct-protocols"><i class="fas fa-child me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Paediatric CT Protocols</a></li>
                     </ul>
                 </div>
 
