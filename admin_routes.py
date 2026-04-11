@@ -2752,6 +2752,20 @@ def ai_documentation():
     return render_template('admin_ai_documentation.html', model_costs=MODEL_COSTS)
 
 
+@admin_bp.route('/marketing')
+@require_admin
+def admin_marketing():
+    """Admin page: marketing launch kit and business model."""
+    return render_template('admin_marketing.html')
+
+
+@admin_bp.route('/docs')
+@require_admin
+def admin_docs_hub():
+    """Admin page: documentation hub — links to all admin docs."""
+    return render_template('admin_docs_hub.html')
+
+
 @admin_bp.route('/reset-ai-costs', methods=['POST'])
 @require_admin
 def reset_ai_costs():

@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+{% block title %}Marketing & Business — Admin Docs{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1200px;">
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0"><i class="fas fa-bullhorn me-2" style="color: var(--brand-primary);"></i>Marketing & Business Intelligence</h4>
+        <small class="text-muted">Launch kit, business model, SEO audit, feature inventory</small>
+    </div>
+    <div>
+        <a href="/api/admin/docs" class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-book-open me-1"></i>Docs Hub</a>
+        <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+    </div>
+</div>
+
+<!-- Quick Nav -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-body py-2">
+        <strong class="me-2"><i class="fas fa-compass me-1"></i>Jump to:</strong>
+        <a href="#undersold" class="badge bg-danger me-1">Undersold Features</a>
+        <a href="#audiences" class="badge bg-info me-1">Target Audiences</a>
+        <a href="#features" class="badge" style="background: var(--brand-neutral); color: #fff;">Feature Inventory</a>
+        <a href="#pricing-analysis" class="badge bg-success me-1">Pricing & Unit Economics</a>
+        <a href="#business" class="badge bg-success me-1">Business Model</a>
+        <a href="#seo" class="badge bg-warning text-dark me-1">SEO Audit</a>
+        <a href="#actions" class="badge" style="background: var(--brand-primary); color: #fff;">Action Items</a>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- UNDERSOLD FEATURES — Most Important Section -->
+<!-- ================================================================ -->
+<div id="undersold" class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Features We Are Underselling</h5>
+        <small class="text-muted">These exist in the app but are NOT prominently marketed</small>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0">
+                <thead class="table-danger">
+                    <tr><th>Feature</th><th>Current Visibility</th><th>Impact</th><th>Fix</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="table-warning">
+                        <td><strong>72 TNM Calculators</strong></td>
+                        <td><span class="badge bg-danger">Landing says "39"</span></td>
+                        <td>HIGH — massively undersold</td>
+                        <td>Update landing page number immediately</td>
+                    </tr>
+                    <tr class="table-warning">
+                        <td><strong>RadInsight Peer Review</strong></td>
+                        <td><span class="badge bg-danger">Not mentioned anywhere</span></td>
+                        <td>HIGH — unique differentiator</td>
+                        <td>Add "AI claims verified against PubMed" to landing</td>
+                    </tr>
+                    <tr class="table-warning">
+                        <td><strong>5 RadIQ Agents</strong></td>
+                        <td><span class="badge bg-warning text-dark">Landing shows 3</span></td>
+                        <td>MEDIUM — undersells capability</td>
+                        <td>Update to show all 5 categories</td>
+                    </tr>
+                    <tr>
+                        <td><strong>PII Guard</strong></td>
+                        <td><span class="badge bg-secondary">Privacy policy only</span></td>
+                        <td>HIGH — trust differentiator</td>
+                        <td>Add to security section: "Built-in patient data protection"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>130+ Imaging Protocols</strong></td>
+                        <td><span class="badge bg-secondary">Not on landing</span></td>
+                        <td>MEDIUM</td>
+                        <td>Add to clinical tools section</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MDT Suite</strong></td>
+                        <td><span class="badge bg-secondary">Nav dropdown only</span></td>
+                        <td>MEDIUM</td>
+                        <td>"Prepare for MDT in minutes" on landing</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vetting Tool</strong></td>
+                        <td><span class="badge bg-secondary">Nav dropdown only</span></td>
+                        <td>MEDIUM</td>
+                        <td>"AI-powered imaging request vetting" on landing</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Voice Dictation</strong></td>
+                        <td><span class="badge bg-secondary">Hidden in Smart Reporter</span></td>
+                        <td>LOW-MEDIUM</td>
+                        <td>Add to feature list: "Dictate reports hands-free"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Contrast Reaction Card (6 tabs)</strong></td>
+                        <td><span class="badge bg-secondary">Quick ref dropdown</span></td>
+                        <td>LOW-MEDIUM</td>
+                        <td>Feature as standalone clinical tool</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Admin Cost Tracking</strong></td>
+                        <td><span class="badge bg-secondary">Admin only</span></td>
+                        <td>LOW — institutional buyers</td>
+                        <td>Mention for department/institutional buyers</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- TARGET AUDIENCES -->
+<!-- ================================================================ -->
+<div id="audiences" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-info"><i class="fas fa-users me-2"></i>Target Audiences</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card border-info h-100">
+                    <div class="card-header bg-info text-white py-2"><strong>PRIMARY: Registrars</strong></div>
+                    <div class="card-body small">
+                        <p><strong>Pain:</strong> Exam prep scattered, no structured reporting practice</p>
+                        <p><strong>Message:</strong> "Practice reporting from day one — AI mentorship at the workstation"</p>
+                        <p class="mb-0"><strong>Tier:</strong> Standard (£9/mo)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-primary h-100">
+                    <div class="card-header bg-primary text-white py-2"><strong>PRIMARY: Consultants</strong></div>
+                    <div class="card-body small">
+                        <p><strong>Pain:</strong> Report dictation tedious, MDT prep time-consuming</p>
+                        <p><strong>Message:</strong> "From shorthand to consultant-grade report in seconds"</p>
+                        <p class="mb-0"><strong>Tier:</strong> Elite (£29/mo)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-success h-100">
+                    <div class="card-header bg-success text-white py-2"><strong>SECONDARY: Radiographers</strong></div>
+                    <div class="card-body small">
+                        <p><strong>Pain:</strong> Protocol queries, no quick reference tool</p>
+                        <p><strong>Message:</strong> "RadIQ answers your protocol questions like a senior colleague"</p>
+                        <p class="mb-0"><strong>Tier:</strong> Standard (£9/mo)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- FEATURE INVENTORY — By Numbers -->
+<!-- ================================================================ -->
+<div id="features" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0" style="color: var(--brand-neutral);"><i class="fas fa-cubes me-2"></i>Feature Inventory — By The Numbers</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 text-center mb-3">
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #e8f5e9;"><h3 class="mb-0 text-success">72</h3><small class="text-muted">TNM Calculators</small></div></div>
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #e3f2fd;"><h3 class="mb-0 text-primary">130+</h3><small class="text-muted">Imaging Protocols</small></div></div>
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #fff3e0;"><h3 class="mb-0" style="color: var(--brand-primary);">24</h3><small class="text-muted">AI Endpoints</small></div></div>
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #f3e5f5;"><h3 class="mb-0" style="color: #6b46c1;">6</h3><small class="text-muted">IF Calculators</small></div></div>
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #e0f2f1;"><h3 class="mb-0" style="color: var(--brand-neutral);">5</h3><small class="text-muted">RadIQ Agents</small></div></div>
+            <div class="col-4 col-md-2"><div class="p-2 rounded" style="background: #fce4ec;"><h3 class="mb-0 text-danger">17</h3><small class="text-muted">App Modules</small></div></div>
+        </div>
+        <details>
+            <summary class="fw-semibold mb-2">Full Feature List (click to expand)</summary>
+            <div class="row g-2 small">
+                <div class="col-md-6">
+                    <h6 class="text-primary">Smart Reporter</h6>
+                    <ul class="mb-2">
+                        <li>Shorthand to consultant-grade report (Opus AI)</li>
+                        <li>Follow-up Q&A with teaching points (Sonnet)</li>
+                        <li>Quick spell/grammar check (Haiku)</li>
+                        <li>Algorithm tree walkthrough</li>
+                        <li>SBA/Viva generation from reports</li>
+                        <li>MDT summary, GP/patient email generation</li>
+                        <li>Voice dictation (Groq Whisper)</li>
+                        <li>RadInsight Peer Review (PubMed verification)</li>
+                        <li>PII Guard (patient data detection)</li>
+                        <li>Cognitive trap detection</li>
+                    </ul>
+                    <h6 class="text-success">Clinical Tools</h6>
+                    <ul class="mb-2">
+                        <li>6 Incidental finding calculators (Fleischner, Bosniak, TI-RADS, PI-RADS, LI-RADS, Adrenal)</li>
+                        <li>Contrast Reaction Card (6-tab ACR reference)</li>
+                        <li>130+ imaging protocols (CT + MRI)</li>
+                        <li>Paediatric CT dose calculators</li>
+                        <li>Vetting tool (AI analysis + protocol gen)</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6 style="color: var(--brand-primary);">RadIQ (5 Agents)</h6>
+                    <ul class="mb-2">
+                        <li>General clinical queries</li>
+                        <li>GP reply generator</li>
+                        <li>Complaint response (NHS duty of candour)</li>
+                        <li>Incident report (Datix-style)</li>
+                        <li>Radiographer support</li>
+                    </ul>
+                    <h6 style="color: #6b46c1;">Learning & Reference</h6>
+                    <ul class="mb-2">
+                        <li>Case library with DICOM viewer</li>
+                        <li>72 TNM staging calculators</li>
+                        <li>Anatomy snippet reference cards</li>
+                        <li>Radiology pearls</li>
+                        <li>Reporting algorithms & templates</li>
+                        <li>Knowledge Hub (unified search)</li>
+                        <li>SBA + Viva practice banks</li>
+                        <li>MDT Suite (meeting prep)</li>
+                    </ul>
+                </div>
+            </div>
+        </details>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- PRICING & UNIT ECONOMICS -->
+<!-- ================================================================ -->
+<div id="pricing-analysis" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-success"><i class="fas fa-pound-sign me-2"></i>Pricing & Unit Economics</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3">
+                <div class="card text-center border-secondary h-100">
+                    <div class="card-header bg-light py-1"><strong>Free</strong></div>
+                    <div class="card-body py-2">
+                        <h4>£0</h4>
+                        <small class="text-muted">7-day trial</small><br>
+                        <span class="badge bg-secondary">10 AI actions</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-primary h-100">
+                    <div class="card-header bg-primary text-white py-1"><strong>Standard</strong></div>
+                    <div class="card-body py-2">
+                        <h4>£9<small>/mo</small></h4>
+                        <small class="text-muted">Post-launch: £15</small><br>
+                        <span class="badge bg-primary">75 AI actions</span>
+                        <div class="mt-1"><small class="text-success fw-bold">Margin: 43%</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100" style="border-color: var(--brand-primary);">
+                    <div class="card-header text-white py-1" style="background: var(--brand-primary);"><strong>Elite</strong> <span class="badge bg-warning text-dark">Popular</span></div>
+                    <div class="card-body py-2">
+                        <h4>£29<small>/mo</small></h4>
+                        <small class="text-muted">Post-launch: £45</small><br>
+                        <span class="badge" style="background: var(--brand-primary); color: #fff;">300 AI actions</span>
+                        <div class="mt-1"><small class="text-success fw-bold">Margin: 46%</small></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-dark h-100">
+                    <div class="card-header bg-dark text-white py-1"><strong>Elite Pro</strong></div>
+                    <div class="card-body py-2">
+                        <h4>£99<small>/mo</small></h4>
+                        <small class="text-muted">Post-launch: £120</small><br>
+                        <span class="badge bg-dark">1,500 AI actions</span>
+                        <div class="mt-1"><small class="text-warning fw-bold">Margin: 23%</small></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6>Cost Per AI Call</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-3">
+                <thead class="table-light"><tr><th>Call Type</th><th>Model</th><th>~Cost</th><th>Notes</th></tr></thead>
+                <tbody>
+                    <tr><td>Report finalization</td><td><span class="badge bg-success">Opus</span></td><td><strong>~$0.20</strong></td><td>Most expensive — Opus routing is critical</td></tr>
+                    <tr><td>Follow-up Q&A</td><td><span class="badge bg-secondary">Sonnet</span></td><td>~$0.03</td><td>5x cheaper than Opus</td></tr>
+                    <tr><td>SBA generation</td><td><span class="badge bg-secondary">Sonnet</span></td><td>~$0.05</td><td>3 questions per call</td></tr>
+                    <tr><td>RadIQ query</td><td><span class="badge bg-secondary">Sonnet</span></td><td>~$0.03</td><td>Per query</td></tr>
+                    <tr><td>Vetting analysis</td><td><span class="badge bg-secondary">Sonnet</span></td><td>~$0.02</td><td>Per referral</td></tr>
+                    <tr><td>Quick review</td><td><span class="badge bg-light text-dark border">Haiku</span></td><td>~$0.01</td><td>Cheapest — grammar only</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-info py-2 small">
+            <strong>Key insight:</strong> Opus calls cost 5x more than Sonnet. The Smart Reporter routing (only finalize/redo/rewrite use Opus) is the #1 cost control mechanism. Monitor the Opus:Sonnet ratio in the <a href="/api/admin/dashboard#ai-costs">Cost Dashboard</a>.
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- BUSINESS MODEL -->
+<!-- ================================================================ -->
+<div id="business" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0 text-success"><i class="fas fa-chart-pie me-2"></i>Business Model</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="card border-0 text-center" style="background: #e8f5e9;">
+                    <div class="card-body py-3">
+                        <h6 class="text-success">Fixed Costs</h6>
+                        <h3 class="text-success mb-0">~$40/mo</h3>
+                        <small class="text-muted">Vercel + Neon + Domain</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 text-center" style="background: #fff3e0;">
+                    <div class="card-body py-3">
+                        <h6 style="color: var(--brand-primary);">Breakeven</h6>
+                        <h3 style="color: var(--brand-primary);" class="mb-0">4 subscribers</h3>
+                        <small class="text-muted">At weighted avg margin</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 text-center" style="background: #e3f2fd;">
+                    <div class="card-body py-3">
+                        <h6 class="text-primary">Content Investment</h6>
+                        <h3 class="text-primary mb-0">~$29 total</h3>
+                        <small class="text-muted">One-time (TNM, protocols, etc.)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6>Cost Categories</h6>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card border-success h-100">
+                    <div class="card-header bg-success text-white py-2"><i class="fas fa-lock me-1"></i> Admin Generation (Fixed Overhead)</div>
+                    <div class="card-body small">
+                        <p>One-time cost to create content. Does NOT grow with users.</p>
+                        <ul class="mb-0">
+                            <li>72 TNM calculators: ~$11</li>
+                            <li>130+ imaging protocols: ~$7</li>
+                            <li>Algorithms, snippets, pearls: ~$10</li>
+                            <li>IF calculators: ~$1</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100" style="border-color: var(--brand-primary);">
+                    <div class="card-header text-white py-2" style="background: var(--brand-primary);"><i class="fas fa-users me-1"></i> User Interaction (Variable)</div>
+                    <div class="card-body small">
+                        <p>Scales linearly with subscribers. This is your marginal cost.</p>
+                        <ul class="mb-0">
+                            <li>Report gen (Opus): ~$0.20/call</li>
+                            <li>Q&A, RadIQ, Vetting (Sonnet): ~$0.03/call</li>
+                            <li>Quick review (Haiku): ~$0.01/call</li>
+                            <li><strong>Key metric:</strong> user interaction cost per active user per month</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h6>Scaling Projections</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light"><tr><th>Paid Users</th><th>Monthly Revenue</th><th>AI Cost</th><th>Fixed Cost</th><th>Profit</th></tr></thead>
+                <tbody>
+                    <tr><td>10</td><td>£190</td><td>~£95</td><td>~£32</td><td class="text-success"><strong>£63</strong></td></tr>
+                    <tr><td>50</td><td>£950</td><td>~£475</td><td>~£32</td><td class="text-success"><strong>£443</strong></td></tr>
+                    <tr><td>100</td><td>£1,900</td><td>~£950</td><td>~£32</td><td class="text-success"><strong>£918</strong></td></tr>
+                    <tr><td>500</td><td>£9,500</td><td>~£4,750</td><td>~£32</td><td class="text-success"><strong>£4,718</strong></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- SEO AUDIT -->
+<!-- ================================================================ -->
+<div id="seo" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0" style="color: #cc9a00;"><i class="fas fa-search me-2"></i>SEO Audit Summary</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-2 mb-3">
+            <div class="col-md-3"><div class="p-2 rounded text-center" style="background: #e8f5e9;"><strong class="text-success">DONE</strong><br><small>Meta tags, OG tags, sitemap, robots.txt, noindex on auth pages, schema.org Organization</small></div></div>
+            <div class="col-md-3"><div class="p-2 rounded text-center" style="background: #fff3e0;"><strong style="color: var(--brand-primary);">PARTIAL</strong><br><small>Canonical URLs (~6 pages), FAQ schema (pricing only), medical schema macros</small></div></div>
+            <div class="col-md-3"><div class="p-2 rounded text-center" style="background: #fce4ec;"><strong class="text-danger">TODO</strong><br><small>SoftwareApplication schema, breadcrumb JSON-LD, hreflang, blog/content SEO</small></div></div>
+            <div class="col-md-3"><div class="p-2 rounded text-center" style="background: #e3f2fd;"><strong class="text-primary">OPPORTUNITY</strong><br><small>Email capture, testimonials, comparison page, annual pricing</small></div></div>
+        </div>
+
+        <h6>Missing Trust Signals</h6>
+        <ul class="small">
+            <li class="text-danger"><i class="fas fa-times me-1"></i>No customer testimonials or case studies</li>
+            <li class="text-danger"><i class="fas fa-times me-1"></i>No "Trusted by X radiologists" social proof</li>
+            <li class="text-danger"><i class="fas fa-times me-1"></i>No clinical advisory board listed</li>
+            <li class="text-warning"><i class="fas fa-exclamation me-1"></i>No email capture / newsletter signup</li>
+            <li class="text-warning"><i class="fas fa-exclamation me-1"></i>No product demo video</li>
+            <li class="text-warning"><i class="fas fa-exclamation me-1"></i>No blog / content marketing</li>
+        </ul>
+    </div>
+</div>
+
+<!-- ================================================================ -->
+<!-- ACTION ITEMS -->
+<!-- ================================================================ -->
+<div id="actions" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0" style="color: var(--brand-primary);"><i class="fas fa-tasks me-2"></i>Priority Action Items</h5>
+    </div>
+    <div class="card-body">
+        <h6 class="text-danger">This Week (High Impact, Low Effort)</h6>
+        <ol class="small">
+            <li><strong>Update landing page:</strong> "39 TNM calculators" &rarr; "72 TNM calculators"</li>
+            <li><strong>Update landing page:</strong> Add RadInsight Peer Review as trust feature</li>
+            <li><strong>Update landing page:</strong> Add PII Guard as security feature</li>
+            <li><strong>Update landing page:</strong> Show all 5 RadIQ categories</li>
+            <li><strong>Update meta descriptions:</strong> Include "72 TNM calculators" and "PubMed-verified"</li>
+        </ol>
+
+        <h6 class="text-warning">This Month</h6>
+        <ol class="small" start="6">
+            <li>Add testimonials section to landing page</li>
+            <li>Create product demo video (Smart Reporter workflow)</li>
+            <li>Add email signup form to landing page</li>
+            <li>Submit updated sitemap to Google Search Console</li>
+            <li>Add SoftwareApplication schema to landing page</li>
+        </ol>
+
+        <h6 class="text-primary">Next Quarter</h6>
+        <ol class="small" start="11">
+            <li>Launch blog with 5 SEO articles (TNM guide, FRCR revision, Fleischner, Bosniak, AI in radiology)</li>
+            <li>Create FRCR study guide PDF lead magnet</li>
+            <li>Partner with 2-3 radiology training programs</li>
+            <li>Add annual pricing option (20% discount)</li>
+            <li>Create "Why RadInsights?" comparison page</li>
+        </ol>
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="text-center py-3">
+    <small class="text-muted">Marketing & Business Intelligence &mdash; Generated 11 April 2026</small>
+</div>
+
+</div>
+{% endblock %}
