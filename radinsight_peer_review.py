@@ -172,17 +172,18 @@ def _extract_llm_claims(data: dict) -> list[dict]:
 def _extract_claims_from_anatomy(data: dict) -> list[dict]:
     """Extract verifiable numerical claims from anatomy snippet JSON.
 
-    Prefers LLM self-extracted claims (verifiable_claims field) when available.
-    Falls back to regex-based extraction on structured fields if the model
-    did not provide verifiable_claims.
-    """
-    # Prefer LLM self-extracted claims
-    llm_claims = _extract_llm_claims(data)
-    if llm_claims:
-        return llm_claims
+    Uses BOTH methods and merges results:
+    1. LLM self-extracted claims (verifiable_claims field) — best search terms
+    2. Regex extraction from structured fields — catches what the LLM missed
 
-    # Fallback: regex extraction from structured fields
-    claims = []
+    Deduplicates by checking if a regex-found claim's text is already
+    covered by an LLM claim (substring match).
+    """
+    # Method 1: LLM self-extracted claims
+    llm_claims = _extract_llm_claims(data)
+
+    # Method 2: Regex extraction from structured fields (always runs)
+    regex_claims = []
 
     for section_key, field_key in _ANATOMY_CLAIM_FIELDS:
         items = data.get(section_key, [])
@@ -193,9 +194,8 @@ def _extract_claims_from_anatomy(data: dict) -> list[dict]:
                 continue
             value = item.get(field_key, '')
             if value and _has_numerical_claim(str(value)):
-                # Build context from the item for better PubMed search
                 name = item.get('name') or item.get('variant') or item.get('what') or item.get('finding') or item.get('pathology') or ''
-                claims.append({
+                regex_claims.append({
                     'text': str(value),
                     'field': f"{section_key}[{i}].{field_key}",
                     'context_name': str(name),
@@ -206,10 +206,10 @@ def _extract_claims_from_anatomy(data: dict) -> list[dict]:
                     'pubmed_match': None,
                 })
 
-    # Also check overview and pearls for numerical claims
+    # Also check overview for numerical claims
     overview = data.get('overview', '')
     if overview and _has_numerical_claim(overview):
-        claims.append({
+        regex_claims.append({
             'text': overview,
             'field': 'overview',
             'context_name': data.get('title', ''),
@@ -220,7 +220,24 @@ def _extract_claims_from_anatomy(data: dict) -> list[dict]:
             'pubmed_match': None,
         })
 
-    return claims
+    # Merge: start with LLM claims, add regex claims not already covered
+    if not llm_claims:
+        return regex_claims
+    if not regex_claims:
+        return llm_claims
+
+    # Deduplicate: check if each regex claim's key numbers are already
+    # mentioned in an LLM claim (prevents double-flagging same measurement)
+    llm_texts_lower = ' '.join(c['text'].lower() for c in llm_claims)
+    merged = list(llm_claims)
+    for rc in regex_claims:
+        # Extract numbers from the regex claim
+        nums = re.findall(r'\d+(?:\.\d+)?', rc['text'])
+        # If at least one number is NOT in any LLM claim, this is a new claim
+        if nums and not any(n in llm_texts_lower for n in nums):
+            merged.append(rc)
+
+    return merged
 
 
 def _extract_claims_from_text(text: str, field_name: str = 'text') -> list[dict]:
@@ -610,37 +627,48 @@ def peer_review(
         if context == 'anatomy':
             claims = _extract_claims_from_anatomy(ai_output)
         else:
-            # Prefer LLM self-extracted claims (available if model output
-            # includes verifiable_claims field)
+            # LLM self-extracted claims + regex fallback (merged, not either-or)
             llm_claims = _extract_llm_claims(ai_output)
-            if llm_claims:
+
+            # Regex extraction from common text fields (always runs)
+            regex_claims = []
+            for field in _GENERAL_CLAIM_FIELDS:
+                value = ai_output.get(field, '')
+                if isinstance(value, str):
+                    regex_claims.extend(_extract_claims_from_text(value, field))
+                elif isinstance(value, list):
+                    for j, item in enumerate(value):
+                        if isinstance(item, str) and _has_numerical_claim(item):
+                            regex_claims.append({
+                                'text': item,
+                                'field': f"{field}[{j}]",
+                                'context_name': '',
+                                'section': field,
+                                'index': j,
+                                'field_key': field,
+                                'status': 'pending',
+                                'pubmed_match': None,
+                            })
+
+            # Also check nested insights dict
+            insights = ai_output.get('insights', {})
+            if isinstance(insights, dict):
+                for k, v in insights.items():
+                    if isinstance(v, str) and k != 'verifiable_claims':
+                        regex_claims.extend(_extract_claims_from_text(v, f"insights.{k}"))
+
+            # Merge LLM + regex claims (deduplicate by number overlap)
+            if llm_claims and regex_claims:
+                llm_texts_lower = ' '.join(c['text'].lower() for c in llm_claims)
+                claims = list(llm_claims)
+                for rc in regex_claims:
+                    nums = re.findall(r'\d+(?:\.\d+)?', rc['text'])
+                    if nums and not any(n in llm_texts_lower for n in nums):
+                        claims.append(rc)
+            elif llm_claims:
                 claims = llm_claims
             else:
-                # Fallback: regex extraction from common text fields
-                for field in _GENERAL_CLAIM_FIELDS:
-                    value = ai_output.get(field, '')
-                    if isinstance(value, str):
-                        claims.extend(_extract_claims_from_text(value, field))
-                    elif isinstance(value, list):
-                        for j, item in enumerate(value):
-                            if isinstance(item, str) and _has_numerical_claim(item):
-                                claims.append({
-                                    'text': item,
-                                    'field': f"{field}[{j}]",
-                                    'context_name': '',
-                                    'section': field,
-                                    'index': j,
-                                    'field_key': field,
-                                    'status': 'pending',
-                                    'pubmed_match': None,
-                                })
-
-                # Also check nested insights dict
-                insights = ai_output.get('insights', {})
-                if isinstance(insights, dict):
-                    for k, v in insights.items():
-                        if isinstance(v, str):
-                            claims.extend(_extract_claims_from_text(v, f"insights.{k}"))
+                claims = regex_claims
 
     elif isinstance(ai_output, str):
         # Raw HTML or text
