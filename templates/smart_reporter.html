@@ -4008,6 +4008,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 _raModelBadge.classList.remove('d-none');
             }
 
+            // Admin-only: show API cost badge for report actions
+            if (data.api_cost_usd !== undefined && data.api_cost_usd !== null) {
+                var costBadge = document.getElementById('adminCostBadge');
+                if (!costBadge && _raModelBadge) {
+                    costBadge = document.createElement('span');
+                    costBadge.id = 'adminCostBadge';
+                    costBadge.className = 'badge bg-light text-muted border ms-1 peer-review-cost-badge';
+                    _raModelBadge.parentNode.insertBefore(costBadge, _raModelBadge.nextSibling);
+                }
+                if (costBadge) {
+                    costBadge.textContent = '$' + data.api_cost_usd.toFixed(4);
+                    costBadge.title = 'Estimated API cost for this call';
+                    costBadge.classList.remove('d-none');
+                }
+            }
+
             // Destroy TinyMCE on previous latest card before adding new one
             destroyReportActionEditor();
 
