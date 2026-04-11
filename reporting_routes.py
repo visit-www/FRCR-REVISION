@@ -2871,13 +2871,21 @@ def smart_reporter_quick_review():
     except Exception:
         pass
 
-    return jsonify({
+    _qr_resp = {
         'success': True,
         'improved_report': result.get('improved_report', ''),
         'suggestions': result.get('suggestions', []),
         'remaining_requests': remaining,
         'model_used': result.get('model', ''),
-    })
+    }
+    try:
+        from ai_cost_tracker import admin_cost_response
+        _c = admin_cost_response(current_user, result.get('model', ''), result)
+        if _c is not None:
+            _qr_resp['api_cost_usd'] = _c
+    except Exception:
+        pass
+    return jsonify(_qr_resp)
 
 
 def _capture_ugi_silently(insights, modality, body_section, clinical_question, exam_type, user_id):
@@ -4359,7 +4367,7 @@ def smart_reporter_anatomy():
             db.session.rollback()
             logger.warning(f"Failed to cache anatomy reference: {cache_exc}")
 
-    return jsonify({
+    resp = {
         'success': True,
         'title': result.get('title', topic.title()),
         'content_html': content_html,
@@ -4367,7 +4375,18 @@ def smart_reporter_anatomy():
         'token_count': result.get('token_count', 0),
         'algorithm_id': algorithm_id,
         'remaining_requests': remaining,
-    })
+    }
+
+    # Admin-only: cost badge
+    try:
+        from ai_cost_tracker import admin_cost_response
+        cost = admin_cost_response(current_user, result.get('model', ''), result)
+        if cost is not None:
+            resp['api_cost_usd'] = cost
+    except Exception:
+        pass
+
+    return jsonify(resp)
 
 
 # ==================== SNIPPET BODY SECTION UPDATE ====================

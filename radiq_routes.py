@@ -490,14 +490,22 @@ def radiq_query():
     except Exception as exc:
         logger.debug("Peer review on RadIQ query failed: %s", exc)
 
-    return jsonify({
+    _riq_resp = {
         'success': True,
         'response_html': response_html,
         'query_id': query_record.id,
         'remaining_requests': remaining,
         'db_links': db_links,
         'peer_review': peer_review_data,
-    })
+    }
+    try:
+        from ai_cost_tracker import admin_cost_response
+        _c = admin_cost_response(current_user, result.get('model', ''), result)
+        if _c is not None:
+            _riq_resp['api_cost_usd'] = _c
+    except Exception:
+        pass
+    return jsonify(_riq_resp)
 
 
 # ==================== HISTORY ====================

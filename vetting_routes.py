@@ -358,14 +358,22 @@ def vetting_analyse():
     except Exception as exc:
         logger.debug("Peer review on vetting analysis failed: %s", exc)
 
-    return jsonify({
+    _va_resp = {
         'success': True,
         'analysis': result,
         'matched_protocols': [p.to_dict() for p in matched_protocols],
         'matched_algorithms': [a.to_dict() for a in matched_algorithms],
         'remaining_requests': remaining,
         'peer_review': peer_review_data,
-    })
+    }
+    try:
+        from ai_cost_tracker import admin_cost_response
+        _c = admin_cost_response(current_user, result.get('model', ''), result)
+        if _c is not None:
+            _va_resp['api_cost_usd'] = _c
+    except Exception:
+        pass
+    return jsonify(_va_resp)
 
 
 @vetting_bp.route('/api/vetting/generate-protocol', methods=['POST'])
@@ -405,11 +413,19 @@ def vetting_generate_protocol():
                  input_tokens=_usage2.get('input_tokens'),
                  output_tokens=result.get('output_tokens'))
 
-    return jsonify({
+    _vp_resp = {
         'success': True,
         'protocol': result,
         'remaining_requests': remaining,
-    })
+    }
+    try:
+        from ai_cost_tracker import admin_cost_response
+        _c = admin_cost_response(current_user, result.get('model', ''), result)
+        if _c is not None:
+            _vp_resp['api_cost_usd'] = _c
+    except Exception:
+        pass
+    return jsonify(_vp_resp)
 
 
 @vetting_bp.route('/api/vetting/save-session', methods=['POST'])

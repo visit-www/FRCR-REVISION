@@ -411,14 +411,22 @@ def api_generate_summary(case_id):
     c.pre_mdt_summary = html_summary
     db.session.commit()
 
-    return jsonify({
+    _mdt_resp = {
         'summary': html_summary,
         'summary_plain': plain_summary,
         'model_used': model_used,
         'tokens': tokens,
         'remaining_requests': remaining,
         'case': c.to_dict(),
-    })
+    }
+    try:
+        from ai_cost_tracker import admin_cost_response
+        _c = admin_cost_response(current_user, model_used, {'token_count': tokens})
+        if _c is not None:
+            _mdt_resp['api_cost_usd'] = _c
+    except Exception:
+        pass
+    return jsonify(_mdt_resp)
 
 
 @mdt_bp.route('/api/mdt/cases/<int:case_id>/link', methods=['POST'])

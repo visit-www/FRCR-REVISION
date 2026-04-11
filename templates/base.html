@@ -762,5 +762,23 @@
         gtag('config', 'G-ZSSC3PLZFN');
     });
     </script>
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <script>
+    // Global admin cost badge helper — call after any AI response
+    // Usage: showAdminCostBadge(data.api_cost_usd, containerElement)
+    window.showAdminCostBadge = function(costUsd, container) {
+        if (costUsd === undefined || costUsd === null || !container) return;
+        var badge = container.querySelector('.admin-cost-badge-global');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'admin-cost-badge-global badge bg-light text-muted border ms-1 peer-review-cost-badge';
+            badge.style.cssText = 'font-size:0.62rem;padding:1px 5px;font-family:monospace;';
+            container.appendChild(badge);
+        }
+        badge.textContent = '$' + costUsd.toFixed(4);
+        badge.title = 'Estimated API cost for this call';
+    };
+    </script>
+    {% endif %}
 </body>
 </html>
