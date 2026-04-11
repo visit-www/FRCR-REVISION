@@ -33,6 +33,7 @@ This document serves as the master index for all planned features and enhancemen
 | 17 | RadInsight Intelligence (User Prefs) | Medium | High | Planned |
 | 18 | Vetting Tool (Imaging Protocols) | High | Very High | Planned |
 | 19 | MDT Suite (Multi-Disciplinary Team Workflow) | Medium-High | Very High | **Planned — ready to build** |
+| 20 | RadInsight Peer Review (AI Output Verification) | Medium | Critical | **Implemented** |
 
 ---
 

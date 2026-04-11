@@ -2535,7 +2535,10 @@ def regenerate_backup_codes():
 # Anthropic pricing per million tokens (as of 2026)
 MODEL_COSTS = {
     'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
+    'claude-sonnet-4-6':          {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
+    'claude-opus-4-6':            {'input': 15.00, 'output': 75.00},
+    'claude-opus-4-5-20251101':   {'input': 15.00, 'output': 75.00},
     'claude-haiku-4-5-20251001':  {'input': 0.80, 'output': 4.00},
 }
 # Fallback for unknown models

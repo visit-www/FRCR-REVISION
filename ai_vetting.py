@@ -293,6 +293,9 @@ ANALYSIS_SYSTEM_PROMPT = (
     "- Flag 0-4 items of study-specific information that should be confirmed before proceeding.\n"
     "- UK NHS context. British English.\n"
     "- Be precise and concise.\n"
+    "- FACTUAL ACCURACY: Do NOT fabricate dose thresholds, guideline criteria, "
+    "or eGFR thresholds. If uncertain about a specific value, state the uncertainty. "
+    "Only use values established in indexed medical literature or official guidelines.\n"
     + _EVIDENCE_BLOCK
     + _REFERENCE_LAYER_BLOCK
     + _ACR_CONTRAST_BLOCK
@@ -380,7 +383,12 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         '  "guideline_citation": "specific UK guideline layer and document anchoring '
         'this recommendation, e.g. NICE NG143 — non-contrast CT KUB first-line, or '
         'RCR iRefer 8th Ed — CTPA if Wells >4 + positive D-dimer. Use null only if '
-        'no named guideline applies."\n'
+        'no named guideline applies.",\n'
+        '  "verifiable_claims": [\n'
+        '    {"claim": "The specific factual assertion (e.g. eGFR threshold, dose limit, guideline criterion)", '
+        '"type": "threshold|guideline|dose|measurement", '
+        '"search_terms": "PubMed search terms to verify this claim"}\n'
+        "  ]\n"
         "}\n\n"
         "GUIDELINES FOR ai_flags (0-4 items only):\n"
         "- Flag genuinely important missing clinical information for the specific study.\n"

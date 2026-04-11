@@ -2105,6 +2105,24 @@ def generate_reporting_template():
             user_id=current_user.id,
             resources=resources,
         )
+        # --- RadInsight Peer Review for admin content ---
+        try:
+            from radinsight_peer_review import peer_review
+            html_content = result.get('template_html') or result.get('html', '')
+            if html_content:
+                pr_result = peer_review(
+                    html_content,
+                    topic=title,
+                    context='admin',
+                    content_type='reporting_algorithm',
+                )
+                result['peer_review'] = {
+                    'verification_summary': pr_result.get('verification_summary'),
+                    'references_html': pr_result.get('references_html', ''),
+                    'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                }
+        except Exception as pr_exc:
+            logger.debug("Peer review on admin algorithm generation failed: %s", pr_exc)
         return jsonify(result)
 
     except Exception as exc:
@@ -2932,6 +2950,32 @@ def smart_reporter_ai_assist():
             user_id=current_user.id,
         )
 
+    # --- RadInsight Peer Review on teaching point and answer ---
+    peer_review_data = None
+    try:
+        from radinsight_peer_review import peer_review
+        # Build a combined dict of verifiable fields
+        pr_input = {}
+        if insights.get('teaching_point'):
+            pr_input['teaching_point'] = insights['teaching_point']
+        answer_text = result.get('answer', '')
+        if answer_text:
+            pr_input['answer'] = answer_text
+        if pr_input:
+            pr_result = peer_review(
+                pr_input,
+                topic=body_section or modality or '',
+                context='teaching',
+                content_type='smart_reporter_assist',
+            )
+            peer_review_data = {
+                'verification_summary': pr_result.get('verification_summary'),
+                'references_html': pr_result.get('references_html', ''),
+                'disclaimer_html': pr_result.get('disclaimer_html', ''),
+            }
+    except Exception as exc:
+        logger.debug("Peer review on ai-assist failed: %s", exc)
+
     resp = {
         'success': True,
         'response_type': result.get('response_type', 'advisory'),
@@ -2944,7 +2988,22 @@ def smart_reporter_ai_assist():
         'hard_blockers': result.get('hard_blockers', []),
         'soft_warnings': result.get('soft_warnings', []),
         'model_used': result.get('model', ''),
+        'peer_review': peer_review_data,
     }
+
+    # Admin-only: include estimated API cost
+    if getattr(current_user, 'is_admin', False):
+        try:
+            from admin_routes import _calc_cost
+            cost = _calc_cost(
+                result.get('model', ''),
+                result.get('input_tokens'),
+                result.get('output_tokens'),
+            )
+            resp['api_cost_usd'] = cost
+        except Exception:
+            pass
+
     return jsonify(resp)
 
 
@@ -3010,12 +3069,39 @@ def smart_reporter_report_action():
         except Exception as cap_exc:
             logger.warning(f"Learning capture ({action}) failed (non-fatal): {cap_exc}")
 
+    # --- RadInsight Peer Review on SBA/Viva HTML ---
+    peer_review_data = None
+    if action in ('sba', 'viva') and html_text:
+        try:
+            from radinsight_peer_review import peer_review
+            pr_result = peer_review(
+                html_text,
+                topic=body_section or modality or '',
+                context=action,
+                content_type=f'report_action_{action}',
+            )
+            peer_review_data = {
+                'verification_summary': pr_result.get('verification_summary'),
+                'references_html': pr_result.get('references_html', ''),
+                'disclaimer_html': pr_result.get('disclaimer_html', ''),
+            }
+            # Append disclaimer and references to HTML if claims found
+            if pr_result.get('verification_summary', {}).get('total', 0) > 0:
+                html_text = (
+                    html_text
+                    + pr_result.get('disclaimer_html', '')
+                    + pr_result.get('references_html', '')
+                )
+        except Exception as exc:
+            logger.debug("Peer review on report action '%s' failed: %s", action, exc)
+
     return jsonify({
         'success': True,
         'action': action,
         'html': html_text,
         'model_used': model_used,
         'remaining_requests': remaining,
+        'peer_review': peer_review_data,
     })
 
 
@@ -4076,18 +4162,24 @@ def smart_reporter_anatomy():
             logger.error(f"Failed to save manual anatomy snippet: {exc}")
             return jsonify({'error': f'Failed to save: {exc}'}), 500
 
-    # Check force_regenerate flag
+    # Check flags
     force_regenerate = data.get('force_regenerate', False)
     if isinstance(force_regenerate, str):
         force_regenerate = force_regenerate.lower() not in ('false', '0', '')
 
-    # DB-first: check for cached anatomy content
+    # check_only mode: return DB match or 'no_match' without triggering AI
+    check_only = data.get('check_only', False)
+    if isinstance(check_only, str):
+        check_only = check_only.lower() not in ('false', '0', '')
+
+    # DB-first: check for cached anatomy content (also search slug for broader matching)
     cached = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.category == 'anatomy',
         ReportingAlgorithm.is_available == True,
         db.or_(
             ReportingAlgorithm.title.ilike(f'%{topic}%'),
             ReportingAlgorithm.keywords.ilike(f'%{topic}%'),
+            ReportingAlgorithm.slug.ilike(f'%{topic}%'),
         ),
     ).first()
 
@@ -4100,6 +4192,14 @@ def smart_reporter_anatomy():
             'algorithm_id': cached.id,
             'is_ai_generated': cached.is_ai_generated,
             'source': 'database',
+        })
+
+    # No DB match: if check_only, tell frontend so it can prompt the user
+    if check_only:
+        return jsonify({
+            'success': True,
+            'no_match': True,
+            'topic': topic,
         })
 
     # Rate limit before AI generation (cache miss = will call Claude)
@@ -5043,6 +5143,26 @@ def admin_generate_pearl():
     except Exception:
         pass  # Audit logging never breaks main flow
 
+    # --- RadInsight Peer Review for admin pearl ---
+    peer_review_data = None
+    try:
+        from radinsight_peer_review import peer_review
+        pearl_html = result.get('pearl_html', '')
+        if pearl_html:
+            pr_result = peer_review(
+                pearl_html,
+                topic=topic,
+                context='admin',
+                content_type='radiology_pearl',
+            )
+            peer_review_data = {
+                'verification_summary': pr_result.get('verification_summary'),
+                'references_html': pr_result.get('references_html', ''),
+                'disclaimer_html': pr_result.get('disclaimer_html', ''),
+            }
+    except Exception as pr_exc:
+        logger.debug("Peer review on pearl generation failed: %s", pr_exc)
+
     return jsonify({
         'success': True,
         'pearl_html': result['pearl_html'],
@@ -5051,7 +5171,45 @@ def admin_generate_pearl():
         'tags': result['tags'],
         'model': result.get('model'),
         'token_count': result.get('token_count'),
+        'peer_review': peer_review_data,
     })
+
+
+# ==================== RADINSIGHT PEER REVIEW — FLAG INACCURACY ====================
+
+@reporting_bp.route('/api/peer-review/flag', methods=['POST'])
+@login_required
+def peer_review_flag():
+    """Submit a flag for an inaccuracy in AI-generated content."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    details = (data.get('details') or '').strip()
+    if not details:
+        return jsonify({'error': 'Please describe the inaccuracy.'}), 400
+    if len(details) > 2000:
+        return jsonify({'error': 'Details too long (max 2000 characters).'}), 400
+
+    from models import PeerReviewFlag
+    flag = PeerReviewFlag(
+        user_id=current_user.id,
+        content_type=(data.get('content_type') or 'unknown')[:50],
+        content_id=(data.get('content_id') or '')[:100],
+        section=(data.get('section') or '')[:100],
+        details=details,
+        claim_text=(data.get('claim_text') or '')[:500],
+    )
+    db.session.add(flag)
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error("Failed to save peer review flag: %s", exc)
+        return jsonify({'error': 'Failed to save flag.'}), 500
+
+    logger.info("Peer review flag submitted: type=%s user=%d", flag.content_type, current_user.id)
+    return jsonify({'success': True, 'flag_id': flag.id})
 
 
 # ==================== VOICE DICTATION (Groq Whisper) ====================

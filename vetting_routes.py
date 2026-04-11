@@ -330,12 +330,38 @@ def vetting_analyse():
         cleaned_text = result.get('cleaned_clinical_text', '')
         matched_algorithms = _search_algorithms(cleaned_text, body_section=body_section)
 
+    # --- RadInsight Peer Review on vetting analysis ---
+    peer_review_data = None
+    try:
+        from radinsight_peer_review import peer_review
+        pr_input = {}
+        if result.get('guideline_citation'):
+            pr_input['guideline_citation'] = result['guideline_citation']
+        ai_flags = result.get('ai_flags', [])
+        if ai_flags:
+            pr_input['key_points'] = [f.get('flag', '') + ' ' + f.get('reason', '') for f in ai_flags if isinstance(f, dict)]
+        if pr_input:
+            pr_result = peer_review(
+                pr_input,
+                topic=result.get('study_type', ''),
+                context='vetting',
+                content_type='vetting_analysis',
+            )
+            peer_review_data = {
+                'verification_summary': pr_result.get('verification_summary'),
+                'references_html': pr_result.get('references_html', ''),
+                'disclaimer_html': pr_result.get('disclaimer_html', ''),
+            }
+    except Exception as exc:
+        logger.debug("Peer review on vetting analysis failed: %s", exc)
+
     return jsonify({
         'success': True,
         'analysis': result,
         'matched_protocols': [p.to_dict() for p in matched_protocols],
         'matched_algorithms': [a.to_dict() for a in matched_algorithms],
         'remaining_requests': remaining,
+        'peer_review': peer_review_data,
     })
 
 

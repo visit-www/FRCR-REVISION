@@ -2105,8 +2105,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.hideReferencePanel = function() { /* no-op, panel removed */ };
 
+    // Step 1: Check DB for cached snippet (no AI generation)
+    function _checkAnatomyDB(topic) {
+        hideAllAdaptivePanels();
+        var loading = document.getElementById('anatomyPanelLoading');
+        loading.classList.remove('d-none');
+
+        fetch('/api/smart-reporter/anatomy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: topic, check_only: true }),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            loading.classList.add('d-none');
+
+            if (data.error) {
+                showToast('Could not search anatomy: ' + data.error, 'warning');
+                return;
+            }
+
+            if (data.no_match) {
+                // No DB match — show prompt to generate
+                _showAnatomyGeneratePrompt(topic);
+                return;
+            }
+
+            // DB match found — display it directly
+            _displayAnatomyResult(data, topic);
+        })
+        .catch(function() {
+            loading.classList.add('d-none');
+            showToast('Error searching anatomy snippets.', 'error');
+        });
+    }
+
+    // Show "Generate with AI?" prompt when no DB match
+    function _showAnatomyGeneratePrompt(topic) {
+        var container = document.getElementById('anatomyHistory');
+        if (!container) return;
+        container.classList.remove('d-none');
+
+        var safeTopic = escapeHtml(topic);
+        container.innerHTML =
+            '<div class="card border-0 shadow-sm mb-2" style="border-left: 3px solid var(--brand-neutral, #5E899E) !important;">' +
+            '<div class="card-body p-3 text-center">' +
+            '<i class="fas fa-search me-1 text-muted"></i>' +
+            '<span class="text-muted" style="font-size: 0.85rem;">No cached anatomy snippet found for <strong>"' + safeTopic + '"</strong></span>' +
+            '<div class="mt-2">' +
+            '<button type="button" class="btn btn-sm btn-brand-primary" onclick="showAnatomyPanel(\'' + safeTopic.replace(/'/g, "\\'") + '\')">' +
+            '<i class="fas fa-magic me-1"></i>Generate with RadInsight Intelligence' +
+            '</button>' +
+            ' <button type="button" class="btn btn-sm btn-outline-secondary ms-1" onclick="document.getElementById(\'anatomyHistory\').classList.add(\'d-none\')">' +
+            'Cancel</button>' +
+            '</div>' +
+            '</div></div>';
+    }
+
+    // Step 2: Generate via AI (called when user confirms, or from pickAnatomySuggestion for cached items)
     window.showAnatomyPanel = function(topic) {
-        // Load anatomy snippet from DB or AI; push to session history (stacked)
         hideAllAdaptivePanels();
 
         var loading = document.getElementById('anatomyPanelLoading');
@@ -2143,29 +2200,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAskClaudeCounter();
             }
 
-            var contentHtml = data.content_html || '<p class="text-muted">No anatomy content available.</p>';
-            var sourceText = data.source === 'database' ? 'From verified database' : 'RadInsight Intelligence reference';
-
-            // Dedupe: if an entry with the same topic+source already exists, remove it before unshifting
-            var existingIdx = -1;
-            for (var i = 0; i < state.anatomySnippetHistory.length; i++) {
-                if (state.anatomySnippetHistory[i].topic.toLowerCase() === topic.toLowerCase()) {
-                    existingIdx = i; break;
-                }
-            }
-            if (existingIdx !== -1) state.anatomySnippetHistory.splice(existingIdx, 1);
-
-            state.anatomySnippetHistory.unshift({
-                topic: topic,
-                title: data.title || topic,
-                html: contentHtml,
-                sourceText: sourceText,
-                timestamp: new Date(),
-            });
-            renderAnatomyHistory();
-
-            var container = document.getElementById('anatomyHistory');
-            if (container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            _displayAnatomyResult(data, topic);
         })
         .catch(function(err) {
             activeAIController = null;
@@ -2177,6 +2212,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     };
+
+    // Shared: push anatomy result to history and render
+    function _displayAnatomyResult(data, topic) {
+        var contentHtml = data.content_html || '<p class="text-muted">No anatomy content available.</p>';
+        var sourceText = data.source === 'database' ? 'From verified database' : 'RadInsight Intelligence reference';
+
+        // Dedupe: if an entry with the same topic already exists, remove it before unshifting
+        var existingIdx = -1;
+        for (var i = 0; i < state.anatomySnippetHistory.length; i++) {
+            if (state.anatomySnippetHistory[i].topic.toLowerCase() === topic.toLowerCase()) {
+                existingIdx = i; break;
+            }
+        }
+        if (existingIdx !== -1) state.anatomySnippetHistory.splice(existingIdx, 1);
+
+        state.anatomySnippetHistory.unshift({
+            topic: topic,
+            title: data.title || topic,
+            html: contentHtml,
+            sourceText: sourceText,
+            timestamp: new Date(),
+        });
+        renderAnatomyHistory();
+
+        var container = document.getElementById('anatomyHistory');
+        if (container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
 
     function renderAnatomyHistory() {
         var container = document.getElementById('anatomyHistory');
@@ -2218,7 +2280,92 @@ document.addEventListener('DOMContentLoaded', function() {
             html += '</div>';
         });
         container.innerHTML = html;
+        // Initialize Bootstrap tooltips for peer review badges
+        _initPeerReviewTooltips(container);
     }
+
+    // --- RadInsight Peer Review: tooltip init + flag modal ---
+    function _initPeerReviewTooltips(container) {
+        if (!container) return;
+        var tooltipEls = container.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipEls.forEach(function(el) {
+            new bootstrap.Tooltip(el);
+        });
+    }
+
+    window.openPeerReviewFlagModal = function(btn) {
+        var contentType = btn.getAttribute('data-content-type') || '';
+        var contentId = btn.getAttribute('data-content-id') || '';
+
+        // Create modal dynamically if not present
+        var modal = document.getElementById('peerReviewFlagModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'peerReviewFlagModal';
+            modal.className = 'modal fade';
+            modal.tabIndex = -1;
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header py-2" style="background: #f8d7da; border-bottom: 1px solid #f5c6cb;">
+                            <h6 class="modal-title"><i class="fas fa-flag me-1 text-danger"></i>Flag Inaccuracy</h6>
+                            <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="small text-muted mb-2">Help us improve accuracy. Describe what you believe is incorrect.</p>
+                            <textarea id="prFlagDetails" class="form-control form-control-sm" rows="3"
+                                placeholder="e.g. The prevalence of fetal PCoA is stated as 20-32% but it should be 15-25% per [source]"></textarea>
+                            <input type="hidden" id="prFlagContentType">
+                            <input type="hidden" id="prFlagContentId">
+                        </div>
+                        <div class="modal-footer py-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="submitPeerReviewFlag()">
+                                <i class="fas fa-flag me-1"></i>Submit Flag
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        document.getElementById('prFlagContentType').value = contentType;
+        document.getElementById('prFlagContentId').value = contentId;
+        document.getElementById('prFlagDetails').value = '';
+        var bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+    };
+
+    window.submitPeerReviewFlag = function() {
+        var details = (document.getElementById('prFlagDetails').value || '').trim();
+        if (!details) {
+            showToast('Please describe the inaccuracy.', 'warning');
+            return;
+        }
+        var payload = {
+            content_type: document.getElementById('prFlagContentType').value,
+            content_id: document.getElementById('prFlagContentId').value,
+            details: details,
+        };
+        fetch('/api/peer-review/flag', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload),
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                showToast('Thank you — flag submitted for review.', 'info');
+                var modal = bootstrap.Modal.getInstance(document.getElementById('peerReviewFlagModal'));
+                if (modal) modal.hide();
+            } else {
+                showToast(data.error || 'Failed to submit flag.', 'error');
+            }
+        })
+        .catch(function() {
+            showToast('Failed to submit flag.', 'error');
+        });
+    };
 
     window.toggleAnatomySnippet = function(index) {
         var body = document.getElementById('anatomySnippetBody_' + index);
@@ -2253,7 +2400,8 @@ document.addEventListener('DOMContentLoaded', function() {
         var query = input.value.trim();
         if (!query) { showToast('Enter an anatomy topic first.', 'warning'); return; }
         document.getElementById('anatomySuggestDropdown').classList.add('d-none');
-        showAnatomyPanel(query);
+        // Step 1: check DB first (check_only mode — no AI generation)
+        _checkAnatomyDB(query);
     };
 
     (function initAnatomyTypeahead() {
@@ -2598,6 +2746,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var parent = el.parentElement;
         var parentHeight = parent.style.minHeight;
         parent.style.minHeight = parent.offsetHeight + 'px';
+        // Temporarily clear CSS min-height so scrollHeight reflects true content
+        var savedMinH = el.style.minHeight;
+        el.style.minHeight = '0';
         el.style.height = '0';
         var newH = Math.max(el.scrollHeight, 60);
         // Account for border when box-sizing: border-box (scrollHeight excludes border)
@@ -2606,6 +2757,7 @@ document.addEventListener('DOMContentLoaded', function() {
             newH += (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
         }
         el.style.height = newH + 'px';
+        el.style.minHeight = savedMinH || '';
         parent.style.minHeight = parentHeight || '';
         // Reset internal scroll — height matches content so no scroll needed.
         // Prevents top lines being cut off after height='0' causes browser to scroll to cursor.
@@ -3686,6 +3838,9 @@ document.addEventListener('DOMContentLoaded', function() {
             state.hardBlockers = data.hard_blockers || [];
             state.softWarnings = data.soft_warnings || [];
 
+            // RadInsight Peer Review data (if present)
+            state.latestPeerReview = data.peer_review || null;
+
             // Show model indicator (helps verify Opus vs Sonnet routing)
             var _modelUsed = data.model_used || '';
             var _modelBadge = document.getElementById('modelUsedBadge');
@@ -3694,6 +3849,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 _modelBadge.textContent = isOpus ? 'Pro' : 'Standard';
                 _modelBadge.className = 'badge ms-2 ' + (isOpus ? 'bg-success' : 'bg-secondary');
                 _modelBadge.classList.remove('d-none');
+            }
+
+            // Admin-only: show API cost badge
+            if (data.api_cost_usd !== undefined && data.api_cost_usd !== null) {
+                var costBadge = document.getElementById('adminCostBadge');
+                if (!costBadge && _modelBadge) {
+                    costBadge = document.createElement('span');
+                    costBadge.id = 'adminCostBadge';
+                    costBadge.className = 'badge bg-light text-muted border ms-1 peer-review-cost-badge';
+                    _modelBadge.parentNode.insertBefore(costBadge, _modelBadge.nextSibling);
+                }
+                if (costBadge) {
+                    costBadge.textContent = '$' + data.api_cost_usd.toFixed(4);
+                    costBadge.title = 'Estimated API cost for this call';
+                    costBadge.classList.remove('d-none');
+                }
             }
 
             // Render 3 layers
@@ -4017,6 +4188,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         container.innerHTML = html;
+        // Initialize Bootstrap tooltips for peer review badges
+        _initPeerReviewTooltips(container);
 
         // Init TinyMCE on the latest card if it's editable
         if (state.reportActionHistory[0] && state.reportActionHistory[0].editable) {
@@ -4041,6 +4214,28 @@ document.addEventListener('DOMContentLoaded', function() {
         if (section) section.classList.remove('d-none');
         if (toggle) toggle.classList.add('d-none');
     };
+
+    // Collapse all action cards + anatomy snippets (called on finalization/regeneration)
+    function collapseSessionOutputs() {
+        // Collapse all action card bodies
+        state.reportActionHistory.forEach(function(_, i) {
+            var body = document.getElementById('reportActionBody_' + i);
+            var chevron = document.getElementById('reportActionChevron_' + i);
+            if (body && !body.classList.contains('d-none')) {
+                body.classList.add('d-none');
+            }
+            if (chevron) chevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        });
+        // Collapse all anatomy snippet bodies
+        (state.anatomySnippetHistory || []).forEach(function(_, i) {
+            var body = document.getElementById('anatomySnippetBody_' + i);
+            var chevron = document.getElementById('anatomySnippetChevron_' + i);
+            if (body && !body.classList.contains('d-none')) {
+                body.classList.add('d-none');
+            }
+            if (chevron) chevron.classList.replace('fa-chevron-up', 'fa-chevron-down');
+        });
+    }
 
     window.toggleReportAction = function(index) {
         var bodyId = 'reportActionBody_' + index;
@@ -4240,23 +4435,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
                   '<div class="mb-2">' +
                     '<label class="form-label fw-semibold small mb-1">Clinical history</label>' +
-                    '<textarea class="form-control form-control-sm" id="saveMdtClinicalHistory" rows="2" placeholder="Age, PMH, presenting complaint, PS, medications"></textarea>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtClinicalHistory" rows="1" style="max-height:200px" placeholder="Age, PMH, presenting complaint, PS, medications"></textarea>' +
                   '</div>' +
                   '<div class="mb-2">' +
                     '<label class="form-label fw-semibold small mb-1">Imaging findings <span class="text-muted">(auto-filled from report)</span></label>' +
-                    '<textarea class="form-control form-control-sm" id="saveMdtImagingFindings" rows="5"></textarea>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtImagingFindings" rows="2" style="max-height:250px"></textarea>' +
                   '</div>' +
                   '<div class="mb-2">' +
                     '<label class="form-label fw-semibold small mb-1">Histology / biopsy</label>' +
-                    '<textarea class="form-control form-control-sm" id="saveMdtHistology" rows="2" placeholder="Tumour type, grade, biomarkers (EGFR/ALK/PD-L1/ER/PR/HER2, etc.)"></textarea>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtHistology" rows="1" style="max-height:150px" placeholder="Tumour type, grade, biomarkers (EGFR/ALK/PD-L1/ER/PR/HER2, etc.)"></textarea>' +
                   '</div>' +
                   '<div class="mb-2">' +
                     '<label class="form-label fw-semibold small mb-1">Lab values</label>' +
-                    '<textarea class="form-control form-control-sm" id="saveMdtLabs" rows="2" placeholder="CBC, LFTs, tumour markers, coagulation, eGFR"></textarea>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtLabs" rows="1" style="max-height:150px" placeholder="CBC, LFTs, tumour markers, coagulation, eGFR"></textarea>' +
                   '</div>' +
                   '<div class="mb-1">' +
                     '<label class="form-label fw-semibold small mb-1">Additional notes</label>' +
-                    '<textarea class="form-control form-control-sm" id="saveMdtNotes" rows="2" placeholder="ECOG, social context, imaging contraindications"></textarea>' +
+                    '<textarea class="form-control form-control-sm" id="saveMdtNotes" rows="1" style="max-height:150px" placeholder="ECOG, social context, imaging contraindications"></textarea>' +
                   '</div>' +
                 '</div>' +
                 '<div class="modal-footer">' +
@@ -4330,7 +4525,19 @@ document.addEventListener('DOMContentLoaded', function() {
             banner.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Using your <strong>DRAFT report</strong> (not yet finalised). Consider finalising first for better AI MDT notes, or edit the imaging findings below as needed.';
         }
 
-        bootstrap.Modal.getOrCreateInstance(modal).show();
+        var bsModal = bootstrap.Modal.getOrCreateInstance(modal);
+        // Auto-resize all textareas once the modal is visible (needs layout)
+        modal.addEventListener('shown.bs.modal', function onShown() {
+            modal.querySelectorAll('textarea').forEach(function(ta) {
+                autoResizeTextarea(ta);
+                // Live resize while typing
+                if (!ta._mdtResizeBound) {
+                    ta.addEventListener('input', function() { autoResizeTextarea(ta); });
+                    ta._mdtResizeBound = true;
+                }
+            });
+        }, { once: true });
+        bsModal.show();
     };
 
     function submitSaveToMdt() {
@@ -4786,6 +4993,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (state.aiAssistReportText && isFullReport) {
             reportSection.classList.add('d-none');
             insertReportText();
+            // Collapse all session outputs (action cards + anatomy snippets)
+            // so the fresh PACS report + Changes Made stay prominent
+            collapseSessionOutputs();
         } else if (state.aiAssistReportText) {
             document.getElementById('aiAssistReportText').textContent = state.aiAssistReportText;
             reportSection.classList.remove('d-none');
@@ -4877,6 +5087,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (badge) badge.textContent = count;
         if (toggle) {
             if (count > 0) { toggle.classList.remove('d-none'); } else { toggle.classList.add('d-none'); }
+        }
+
+        // --- Peer review disclaimer + references (after insights) ---
+        var prContainer = document.getElementById('peerReviewInsightsSection');
+        if (!prContainer) {
+            // Create container once if not present
+            prContainer = document.createElement('div');
+            prContainer.id = 'peerReviewInsightsSection';
+            insightsSection.parentNode.insertBefore(prContainer, insightsSection.nextSibling);
+        }
+        if (state.latestPeerReview && state.latestPeerReview.verification_summary &&
+            state.latestPeerReview.verification_summary.total > 0) {
+            prContainer.innerHTML =
+                (state.latestPeerReview.disclaimer_html || '') +
+                (state.latestPeerReview.references_html || '');
+            prContainer.classList.remove('d-none');
+            _initPeerReviewTooltips(prContainer);
+        } else {
+            prContainer.innerHTML = '';
+            prContainer.classList.add('d-none');
         }
 
         // --- Safety blocker pills ---
@@ -7752,13 +7982,21 @@ document.addEventListener('DOMContentLoaded', function() {
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.55);
-    z-index: 1070;
+    backdrop-filter: blur(4px);
+    z-index: 2000;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
 }
-.mdt-iframe-overlay.d-none { display: none !important; }
+.mdt-iframe-topbar {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mdt-iframe-overlay.d-none { 
+    display: none !important; 
+}
 .mdt-iframe-wrap {
     background: #fff;
     border-radius: 0.6rem;
@@ -7767,7 +8005,7 @@ document.addEventListener('DOMContentLoaded', function() {
     height: min(90vh, 900px);
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden;   /* prevent double scroll */
 }
 .mdt-iframe-topbar {
     display: flex;
@@ -7778,14 +8016,26 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 0.9rem;
 }
 .mdt-iframe-body {
-    flex: 1;
     width: 100%;
+    height: 100%;
     border: 0;
+    display: block;
     background: #fff;
+    overflow: auto;     /* main scroll area */
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+}
+.mdt-iframe-footer {
+    padding: 0.6rem 0.9rem;
+    border-top: 1px solid #e9ecef;
+    background: #fff;
+}
+body.modal-open {
+    overflow: hidden;
 }
 @media (max-width: 768px) {
     .mdt-iframe-overlay { padding: 0.25rem; }
-    .mdt-iframe-wrap { width: 100%; height: 100vh; border-radius: 0; }
+    .mdt-iframe-wrap { width: 100%; height: 100dvh;; border-radius: 0; }
 }
 </style>
 <script>

@@ -4681,6 +4681,27 @@ tbody tr.case-row:hover {
     overflow: hidden !important;
 }
 
+/* Scrollable modals: pin header/footer, scroll body.
+   The <form> wraps modal-body + modal-footer, so it must participate in the flex chain. */
+.modal.app-content-modal .modal-dialog.modal-dialog-scrollable .modal-content {
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+.modal.app-content-modal .modal-dialog.modal-dialog-scrollable .modal-content > form {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    min-height: 0 !important;
+}
+.modal.app-content-modal .modal-dialog.modal-dialog-scrollable .modal-body {
+    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
 .modal.app-content-modal .modal-header {
     background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%) !important;
     color: #fff !important;
@@ -6167,7 +6188,7 @@ body {
 #editorInput,
 #editorOutput {
     overflow: hidden;
-    min-height: 180px;
+    min-height: 60px;
 }
 
 /* Draft card footer — no visible border */
@@ -6941,4 +6962,62 @@ body {
     cursor: pointer;
 }
 .dictation-correction-cancel:hover { background: #f8f9fa; }
+
+/* ── RadInsight Peer Review ─────────────────────────────────────── */
+.peer-review-disclaimer {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 3px solid var(--brand-neutral, #5E899E);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: #495057;
+}
+.peer-review-disclaimer i.fa-shield-alt {
+    color: var(--brand-neutral, #5E899E);
+}
+.peer-review-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    margin-left: 3px;
+    vertical-align: middle;
+    text-decoration: none;
+}
+.peer-review-badge.verified {
+    color: #198754;
+    cursor: pointer;
+}
+.peer-review-badge.verified:hover {
+    color: #0f5132;
+    text-decoration: underline;
+}
+.peer-review-badge.unverified {
+    color: #e2a300;
+    cursor: help;
+}
+.peer-review-badge.unverified:hover {
+    color: #cc8400;
+}
+.peer-review-references .card-header {
+    font-size: 0.82rem;
+}
+.peer-review-references li a {
+    font-size: 0.82rem;
+    text-decoration: none;
+    color: var(--brand-neutral, #5E899E);
+}
+.peer-review-references li a:hover {
+    text-decoration: underline;
+}
+.peer-review-flag {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+.peer-review-cost-badge {
+    font-size: 0.62rem;
+    padding: 1px 5px;
+    font-family: monospace;
+}
 

@@ -462,12 +462,38 @@ def radiq_query():
             'db_links': db_links,
         })
 
+    # --- RadInsight Peer Review ---
+    peer_review_data = None
+    try:
+        from radinsight_peer_review import peer_review
+        pr_result = peer_review(
+            response_html,
+            topic=question[:80],
+            context='radiq',
+            content_type='radiq_query',
+            content_id=str(query_record.id),
+        )
+        peer_review_data = {
+            'verification_summary': pr_result.get('verification_summary'),
+            'references_html': pr_result.get('references_html', ''),
+            'disclaimer_html': pr_result.get('disclaimer_html', ''),
+        }
+        if pr_result.get('verification_summary', {}).get('total', 0) > 0:
+            response_html = (
+                response_html
+                + pr_result.get('disclaimer_html', '')
+                + pr_result.get('references_html', '')
+            )
+    except Exception as exc:
+        logger.debug("Peer review on RadIQ query failed: %s", exc)
+
     return jsonify({
         'success': True,
         'response_html': response_html,
         'query_id': query_record.id,
         'remaining_requests': remaining,
         'db_links': db_links,
+        'peer_review': peer_review_data,
     })
 
 

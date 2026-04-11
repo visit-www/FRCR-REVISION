@@ -724,6 +724,19 @@ ANATOMY_SYSTEM_PROMPT = (
     "- Emphasise normal variants that mimic pathology and cause reporting errors\n"
     "- Include measurements with actionable thresholds\n"
     "- Brief embryology ONLY when it explains why a variant exists\n\n"
+    "FACTUAL ACCURACY RULES (CRITICAL):\n"
+    "- Do NOT fabricate measurements, prevalences, or thresholds. Every number you "
+    "state must reflect established medical literature.\n"
+    "- If you are uncertain about a specific number, state uncertainty explicitly "
+    "(e.g. 'approximately', 'reported range varies in the literature', 'up to').\n"
+    "- Ground your knowledge in standard radiology textbooks: Defined Anatomy by Weir & Abrahams, "
+    "Chapman & Nakielny's Aids to Radiological Differential Diagnosis, "
+    "Defined Anatomy for Image Interpretation, Gray's Anatomy, "
+    "Defined Anatomy (Butler, Mitchell & Healy), "
+    "Defined Anatomy for Diagnostic Imaging (Ryan, McNicholas & Eustace), "
+    "Defined Anatomy for FRCR Part 1 (Defined by Defined Publishers).\n"
+    "- Do NOT invent classification systems, grading scales, or named signs "
+    "that do not exist in indexed medical literature.\n\n"
     "You produce ONLY valid JSON. No markdown fences, no explanation outside the JSON.\n"
     "Use UK English spelling."
 )
@@ -779,6 +792,13 @@ Return a JSON object:
   ],
   "image_captions": [
     "Brief clinical description of what a reference image at this anatomical site would show (1-2 sentences). Describe the specific imaging appearance, modality, and diagnostic significance. Provide 1-3 captions."
+  ],
+  "verifiable_claims": [
+    {{
+      "claim": "The specific factual statement you are making (e.g. 'Fetal-type PCoA is present in 20-32% of individuals')",
+      "type": "prevalence|measurement|threshold|classification|incidence|dose",
+      "search_terms": "Optimised PubMed search terms to verify this claim (e.g. 'fetal posterior communicating artery prevalence')"
+    }}
   ]
 }}
 
@@ -789,7 +809,13 @@ RULES:
 - Every fact must be radiologically accurate — do not fabricate prevalences or measurements
 - Skip any section with nothing genuinely useful to add
 - If modality context is provided, tailor content to that modality
-- NO generic imaging descriptions (do NOT describe normal CT density or normal MRI signal unless it is diagnostically relevant or confusing)"""
+- NO generic imaging descriptions (do NOT describe normal CT density or normal MRI signal unless it is diagnostically relevant or confusing)
+
+VERIFIABLE CLAIMS:
+- List EVERY factual assertion that includes a specific number, percentage, measurement, or named classification threshold
+- Include prevalences, normal ranges, abnormal thresholds, incidence rates, and dose values
+- Provide PubMed-optimised search terms for each claim (medical terminology, not lay language)
+- This helps users verify your content against indexed literature — be thorough and honest"""
 
 
 def render_anatomy_html(data, radiopaedia_image=None, reference_images=None):
@@ -965,32 +991,37 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
         user_prompt=prompt,
         model=sonnet_model,
         max_tokens=3333,
-        temperature=0.3,
+        temperature=0,
         timeout=90,
     )
 
     parsed = _parse_json_response(text)
 
-    # Auto-fetch Radiopaedia images (multiple)
+    # Auto-fetch Radiopaedia case images for visual reference (separate from peer review)
     rp_images = fetch_radiopaedia_images(topic, modality=modality, max_images=3)
     logger.info(f"Radiopaedia images for '{topic}': {len(rp_images)} found")
 
-    # Fallback: if no images fetched, create Radiopaedia search link entries
-    # so the snippet always has clickable Radiopaedia references
-    if not rp_images:
-        from urllib.parse import quote_plus
-        search_url = f"https://radiopaedia.org/search?q={quote_plus(topic)}&scope=cases"
-        rp_images = [{
-            'url': '',
-            'title': f'{topic.title()} — Radiopaedia Cases',
-            'case_url': search_url,
-            'license': 'CC BY-NC-SA 3.0',
-            'author': None,
-            'source_domain': 'radiopaedia.org',
-        }]
-        logger.info(f"Using Radiopaedia search link fallback for '{topic}'")
+    # Render anatomy HTML with case images (if any — no fake search link fallback)
+    content_html = render_anatomy_html(
+        parsed,
+        reference_images=rp_images if rp_images else None,
+    )
 
-    content_html = render_anatomy_html(parsed, reference_images=rp_images)
+    # --- RadInsight Peer Review ---
+    # Verifies numerical claims via PubMed, adds verified Radiopaedia article link,
+    # injects verification badges, disclaimer, and reference section.
+    try:
+        from radinsight_peer_review import peer_review_anatomy
+        pr = peer_review_anatomy(parsed, content_html, topic=topic)
+        content_html = pr['content_html']
+        logger.info(
+            "Peer review for '%s': %d/%d claims verified",
+            topic,
+            pr['verification_summary'].get('verified', 0),
+            pr['verification_summary'].get('total', 0),
+        )
+    except Exception as exc:
+        logger.warning("Peer review failed for '%s', using unverified HTML: %s", topic, exc)
 
     return {
         'title': parsed.get('title', topic.title()),
@@ -1646,6 +1677,13 @@ UNIFIED_ASSIST_V3_SYSTEM_PROMPT = (
     "cluttered with brackets. Never replace trainee-provided values.\n"
     "- Never assert imaging characteristics the trainee did not state.\n\n"
 
+    "FACTUAL ACCURACY IN INSIGHTS AND TEACHING POINTS:\n"
+    "- Do NOT fabricate measurements, prevalences, statistics, or classification details "
+    "in teaching_point, differentials_to_consider, or recommendation_check.\n"
+    "- If citing a specific number (e.g. prevalence, threshold), only use values you are "
+    "confident are established in indexed medical literature. If uncertain, state "
+    "'approximately' or 'reported range varies'.\n\n"
+
     "If the question is not related to radiology, imaging, or clinical practice, "
     "set answer to: 'This query is outside the scope of RadInsights Intelligence. "
     "Please ask radiology or clinical practice related questions.' and return empty "
@@ -1700,7 +1738,14 @@ Return a JSON object with EXACTLY this structure:
     "differentials_to_consider": ["Differential 1", "Differential 2"],
     "recommendation_check": "Are recommendations specific, actionable, and guideline-appropriate? Flag if urgent/critical findings (stroke, PE, tension pneumothorax, ruptured AAA, ectopic pregnancy) lack escalation language or verbal communication documentation. 1 sentence.",
     "teaching_point": "The single most valuable thing you would teach this trainee about THIS case at the workstation right now. Must be specific to these findings. Consider: alternative interpretations of the findings, classic pitfalls, how a subspecialist consultant might interpret this differently. 1-3 sentences.",
-    "cognitive_traps": "Any satisfaction of search, anchoring, or premature closure risks specific to this case. Empty string if none. 1-2 sentences."
+    "cognitive_traps": "Any satisfaction of search, anchoring, or premature closure risks specific to this case. Empty string if none. 1-2 sentences.",
+    "verifiable_claims": [
+      {{
+        "claim": "A specific factual assertion from your answer or teaching_point that includes a number, percentage, threshold, or named classification criterion",
+        "type": "prevalence|measurement|threshold|classification|guideline",
+        "search_terms": "PubMed-optimised search terms to verify this claim"
+      }}
+    ]
   }}
 }}
 
@@ -1761,6 +1806,12 @@ REPORT_ACTION_SYSTEM_PROMPT = (
     "Never include patient-identifiable information (names, dates of birth, hospital numbers). "
     "Never fabricate findings beyond what is explicitly stated in the provided report. "
     "Use British English spelling throughout.\n\n"
+    "FACTUAL ACCURACY RULES:\n"
+    "- Do NOT fabricate measurements, prevalences, statistics, or classification details.\n"
+    "- If uncertain about a specific number, state the uncertainty explicitly.\n"
+    "- Do NOT invent or cite references that do not exist. When mentioning specific "
+    "percentages or thresholds in explanations, only use values you are confident are "
+    "established in indexed medical literature.\n\n"
     "End every response with a <div class='action-further-reading'> section containing "
     "<h6>Further Reading</h6> and 2-3 external references. Use ONLY these sources: "
     "Radiopaedia (https://radiopaedia.org/search?q=[search+terms]), "

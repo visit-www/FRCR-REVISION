@@ -86,6 +86,11 @@ RADIQ_SYSTEM_PROMPT = (
     "- If the query is not related to radiology, imaging, or clinical practice, "
     "return ONLY: {\"off_topic\": true} — nothing else.\n\n"
 
+    "FACTUAL ACCURACY:\n"
+    "- Do NOT fabricate measurements, prevalences, statistics, or dose thresholds.\n"
+    "- If uncertain about a specific number, state the uncertainty explicitly "
+    "(e.g. 'approximately', 'reported range varies').\n"
+    "- Only use values you are confident are established in indexed medical literature.\n\n"
     "REFERENCES:\n"
     "- Cite real, specific publications: Organisation/Author, Title, Year.\n"
     "- NEVER fabricate references. If you cannot confidently recall the "
@@ -185,9 +190,16 @@ CATEGORY_PROMPTS = {
         '  "references": [\n'
         '    {"text": "Author/Org, Title, Year", "known_source": "acr_contrast_manual or rcr_irefer or acr_ac or null"}\n'
         "  ],\n"
-        '  "title": "Clean professional title for the query"\n'
+        '  "title": "Clean professional title for the query",\n'
+        '  "verifiable_claims": [\n'
+        '    {"claim": "The specific factual statement", "type": "measurement|threshold|dose|prevalence|guideline", '
+        '"search_terms": "PubMed search terms to verify this"}\n'
+        "  ]\n"
         "}\n\n"
         "IMPORTANT: Write the answer field FIRST, title field LAST.\n"
+        "VERIFIABLE CLAIMS: List every factual assertion with a specific number, "
+        "percentage, dose, threshold, or named guideline criterion. Provide PubMed-optimised "
+        "search terms for each. This helps users verify your content.\n"
     ),
     'general': (
         "TASK: Answer this query.\n\n"
@@ -200,9 +212,16 @@ CATEGORY_PROMPTS = {
         '  "references": [\n'
         '    {"text": "Author/Org, Title, Year", "known_source": "acr_contrast_manual or rcr_irefer or acr_ac or null"}\n'
         "  ],\n"
-        '  "title": "Clean professional title for the query"\n'
+        '  "title": "Clean professional title for the query",\n'
+        '  "verifiable_claims": [\n'
+        '    {"claim": "The specific factual statement", "type": "measurement|threshold|dose|prevalence|guideline", '
+        '"search_terms": "PubMed search terms to verify this"}\n'
+        "  ]\n"
         "}\n\n"
         "IMPORTANT: Write fields in the order shown. Title LAST.\n"
+        "VERIFIABLE CLAIMS: List every factual assertion with a specific number, "
+        "percentage, dose, threshold, or named guideline criterion. Provide PubMed-optimised "
+        "search terms for each. This helps users verify your content.\n"
     ),
 }
 
