@@ -1898,26 +1898,10 @@ with app.app_context():
         raise
 
 
-        # -- Full reset v2: clear ALL old AI audit logs so admin dashboard
-        #    starts completely fresh with accurate input+output token tracking.
-        #    Idempotent: only runs once (checks for v2 sentinel row).
+        # -- AI audit log reset removed — use admin endpoint POST /api/admin/reset-ai-costs instead.
+        #    Startup migrations are unreliable on serverless (Vercel).
         try:
-            from models import AIAuditLog
-            _RESET_SENTINEL = 'cost_tracking_reset_v2'
-            _has_sentinel = AIAuditLog.query.filter_by(action=_RESET_SENTINEL).first()
-            if not _has_sentinel:
-                # Delete ALL existing rows (including v1 sentinel and any old data)
-                _deleted = AIAuditLog.query.filter(
-                    AIAuditLog.action != _RESET_SENTINEL
-                ).delete(synchronize_session=False)
-                # Insert sentinel
-                db.session.add(AIAuditLog(
-                    user_id=None, action=_RESET_SENTINEL,
-                    provider='system', model='n/a',
-                    input_summary='Full reset — accurate cost tracking starts fresh 2026-04-11',
-                ))
-                db.session.commit()
-                logger.info('AI audit log full reset: removed %d rows, fresh start', _deleted)
+            pass  # No-op — reset via admin API
         except Exception as _reset_err:
             db.session.rollback()
             logger.warning('AI audit log reset skipped: %s', _reset_err)

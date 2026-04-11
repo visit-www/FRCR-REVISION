@@ -2752,6 +2752,21 @@ def ai_documentation():
     return render_template('admin_ai_documentation.html', model_costs=MODEL_COSTS)
 
 
+@admin_bp.route('/reset-ai-costs', methods=['POST'])
+@require_admin
+def reset_ai_costs():
+    """One-time: delete ALL AIAuditLog rows to start fresh. Admin only."""
+    from models import AIAuditLog
+    try:
+        count = AIAuditLog.query.delete(synchronize_session=False)
+        db.session.commit()
+        logger.info("Admin %s reset AI costs: deleted %d rows", current_user.email, count)
+        return jsonify({'success': True, 'deleted': count, 'message': f'Deleted {count} audit log rows. Dashboard is now fresh.'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 # ============================================================================
 # ADMIN AUDIT LOG
 # ============================================================================
