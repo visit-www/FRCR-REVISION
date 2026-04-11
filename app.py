@@ -1898,6 +1898,29 @@ with app.app_context():
         raise
 
 
+        # -- One-time reset: clear pre-2026-04-11 AI audit logs so admin
+        #    dashboard starts fresh with accurate input+output token tracking.
+        #    Idempotent: only runs once (checks for sentinel row).
+        try:
+            from models import AIAuditLog
+            _RESET_SENTINEL = 'cost_tracking_reset_v1'
+            _has_sentinel = AIAuditLog.query.filter_by(action=_RESET_SENTINEL).first()
+            if not _has_sentinel:
+                _deleted = AIAuditLog.query.filter(
+                    AIAuditLog.created_at < datetime(2026, 4, 11)
+                ).delete(synchronize_session=False)
+                # Insert sentinel
+                db.session.add(AIAuditLog(
+                    user_id=None, action=_RESET_SENTINEL,
+                    provider='system', model='n/a',
+                    input_summary='Reset old audit logs — accurate tracking starts 2026-04-11',
+                ))
+                db.session.commit()
+                logger.info('AI audit log reset: removed %d pre-2026-04-11 rows', _deleted)
+        except Exception as _reset_err:
+            db.session.rollback()
+            logger.warning('AI audit log reset skipped: %s', _reset_err)
+
 # ============================================================================
 # SECURITY HELPERS
 # ============================================================================

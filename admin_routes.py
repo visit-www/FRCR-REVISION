@@ -2649,6 +2649,66 @@ def ai_costs():
             for m, d in sorted(model_map.items(), key=lambda x: -x[1]['cost'])
         ]
 
+        # ── By category: admin generation vs user interaction ──
+        # Actions that are admin/content generation (one-time setup cost)
+        _ADMIN_ACTIONS = {
+            'generate_algorithm', 'generate_radiology_template', 'generate_anatomy',
+            'generate_pearl', 'generate_tnm', 'generate_protocol', 'regenerate_protocol',
+            'generate_if_calculator', 'generate_case_data', 'generate_tree',
+            'cost_tracking_reset_v1',
+        }
+        # Actions that are user interaction (per-user recurring cost)
+        _USER_ACTIONS = {
+            'ai_assist', 'ask_claude', 'review_report', 'quick_review',
+            'radiq_query', 'vetting_analyse', 'vetting_protocol',
+            'generate_mdt_summary',
+        }
+        # report_action_* are user interactions
+        admin_cost = 0.0
+        admin_requests = 0
+        user_cost = 0.0
+        user_requests = 0
+        action_cost = 0.0
+        action_requests = 0
+        for r in rows:
+            c = _calc_cost(r.model, r.input_tokens, r.output_tokens)
+            act = r.action or ''
+            if act in _ADMIN_ACTIONS:
+                admin_cost += c
+                admin_requests += 1
+            elif act in _USER_ACTIONS or act.startswith('report_action_'):
+                user_cost += c
+                user_requests += 1
+            else:
+                # Uncategorised — count as user
+                user_cost += c
+                user_requests += 1
+
+        # ── By model family (simplified: Opus / Sonnet / Haiku) ──
+        family_map = {'opus': {'requests': 0, 'cost': 0.0},
+                      'sonnet': {'requests': 0, 'cost': 0.0},
+                      'haiku': {'requests': 0, 'cost': 0.0},
+                      'other': {'requests': 0, 'cost': 0.0}}
+        for r in rows:
+            c = _calc_cost(r.model, r.input_tokens, r.output_tokens)
+            m = (r.model or '').lower()
+            if 'opus' in m:
+                family_map['opus']['requests'] += 1
+                family_map['opus']['cost'] += c
+            elif 'haiku' in m:
+                family_map['haiku']['requests'] += 1
+                family_map['haiku']['cost'] += c
+            elif 'sonnet' in m or m:
+                family_map['sonnet']['requests'] += 1
+                family_map['sonnet']['cost'] += c
+            else:
+                family_map['other']['requests'] += 1
+                family_map['other']['cost'] += c
+        by_family = [
+            {'family': f, 'requests': d['requests'], 'cost_usd': round(d['cost'], 4)}
+            for f, d in family_map.items() if d['requests'] > 0
+        ]
+
         return jsonify({
             'summary': {
                 'total_requests': total_requests,
@@ -2656,10 +2716,23 @@ def ai_costs():
                 'avg_cost_per_request': round(avg_cost, 6),
                 'date_range': {'from': date_from, 'to': date_to},
             },
+            'by_category': {
+                'admin_generation': {
+                    'requests': admin_requests,
+                    'cost_usd': round(admin_cost, 4),
+                    'description': 'One-time content creation (algorithms, templates, protocols, TNM, cases)',
+                },
+                'user_interaction': {
+                    'requests': user_requests,
+                    'cost_usd': round(user_cost, 4),
+                    'description': 'Per-user recurring (reports, Q&A, reviews, vetting, RadIQ, SBA/Viva)',
+                },
+            },
             'by_user': by_user,
             'by_action': by_action,
             'by_day': by_day,
             'by_model': by_model,
+            'by_family': by_family,
         }), 200
 
     except Exception as e:
