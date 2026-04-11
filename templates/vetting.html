@@ -102,7 +102,7 @@
             <!-- Analysis summary card -->
             <div class="card mb-3" style="border-left: 4px solid #5E899E;">
                 <div class="card-body">
-                    <h6 class="mb-2"><i class="fas fa-stethoscope me-2" style="color: #5E899E;"></i>Analysis Result</h6>
+                    <h6 class="mb-2"><i class="fas fa-stethoscope me-2" style="color: #5E899E;"></i>Analysis Result <span id="vettingCostBadge"></span></h6>
                     <div class="row">
                         <div class="col-sm-6">
                             <small class="text-muted d-block">Study Identified</small>
@@ -595,6 +595,11 @@ async function analyseReferral(quickClean) {
         _selectedAlgorithmContext = null;
         populateScene2();
         showScene(2);
+
+        // Admin cost badge
+        if (window.showAdminCostBadge && data.api_cost_usd != null) {
+            showAdminCostBadge(data.api_cost_usd, document.getElementById('vettingCostBadge'));
+        }
     } catch (err) {
         if (err.name === 'AbortError') return;
         alert('Network error. Please try again.');
@@ -1222,6 +1227,12 @@ async function continueToProtocol() {
 
         _protocolSource = 'ai_generated';
         renderScene3(data.protocol);
+
+        // Admin cost badge for protocol generation
+        if (window.showAdminCostBadge && data.api_cost_usd != null) {
+            var protTitle = document.querySelector('#scene3 h6, #scene3 .card-header');
+            if (protTitle) showAdminCostBadge(data.api_cost_usd, protTitle);
+        }
     } catch (err) {
         if (err.name === 'AbortError') return;
         alert('Network error. Please try again.');

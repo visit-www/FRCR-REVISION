@@ -572,6 +572,10 @@
                         var summaryEl = $('#mdtPreSummary');
                         if (summaryEl) summaryEl.value = d.summary || '';
                         showSaved();
+                        // Admin cost badge
+                        if (window.showAdminCostBadge && d.api_cost_usd != null) {
+                            showAdminCostBadge(d.api_cost_usd, genBtn.parentElement);
+                        }
                     })
                     .catch(function(err) { showError(err.message || 'Generation failed'); })
                     .finally(function() {

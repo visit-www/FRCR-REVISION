@@ -508,6 +508,12 @@ async function submitQuery() {
         currentQueryId = data.query_id || null;
         showResponse(data.response_html, data.remaining_requests, data.db_links || []);
         loadHistory();
+
+        // Admin cost badge
+        if (window.showAdminCostBadge && data.api_cost_usd != null) {
+            var radiqTitle = document.querySelector('#responseArea h5, #responseArea .radiq-title');
+            if (radiqTitle) showAdminCostBadge(data.api_cost_usd, radiqTitle);
+        }
     } catch (err) {
         radiqController = null;
         if (err.name === 'AbortError') {
