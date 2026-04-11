@@ -490,6 +490,9 @@
                     <button class="btn btn-outline-secondary btn-sm" id="aiCostExportBtn" title="Export CSV">
                         <i class="fas fa-download me-1"></i> CSV
                     </button>
+                    <button class="btn btn-outline-danger btn-sm" id="aiCostResetBtn" title="Reset all cost data">
+                        <i class="fas fa-trash-alt me-1"></i> Reset
+                    </button>
                 </div>
             </div>
 
@@ -2084,6 +2087,24 @@
 
         // Export CSV
         document.getElementById('aiCostExportBtn')?.addEventListener('click', exportAiCostCsv);
+
+        // Reset button — confirm + call API + reload
+        document.getElementById('aiCostResetBtn')?.addEventListener('click', async function() {
+            if (!confirm('This will permanently delete ALL AI cost tracking data and start fresh.\n\nAre you sure?')) return;
+            if (!confirm('Final confirmation: this cannot be undone. Proceed?')) return;
+            try {
+                const resp = await fetch('/api/admin/reset-ai-costs', {method: 'POST'});
+                const data = await resp.json();
+                if (data.success) {
+                    alert('Done — ' + data.message);
+                    loadAiCosts();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Failed to reset: ' + e.message);
+            }
+        });
 
         async function loadAiCosts() {
             const loading = document.getElementById('ai-cost-loading');
