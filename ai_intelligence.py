@@ -83,15 +83,6 @@ def process_content_intelligence(content_type, content_id, title, body_section, 
 
     cross_links = result.get('cross_links', [])
 
-    # Track AI usage
-    try:
-        from ai_cost_tracker import track_ai_call
-        track_ai_call(0, 'content_intelligence',
-                      model=model_used, output_tokens=token_count,
-                      input_summary=f"CI: {content_type}:{content_id} {title[:100]}")
-    except Exception:
-        pass
-
     return {
         'summary': result['summary'][:200],
         'search_tags': result.get('search_tags', ''),
@@ -252,15 +243,6 @@ def process_ugi(raw_teaching_point, raw_differentials, modality, body_section, e
     if not result or not result.get('diagnosis'):
         raise AIClientError("Invalid UGI response — missing diagnosis")
 
-    # Track AI usage
-    try:
-        from ai_cost_tracker import track_ai_call
-        track_ai_call(0, 'user_intelligence',
-                      model=model_used, output_tokens=token_count,
-                      input_summary=f"UGI: {raw_teaching_point[:100]}")
-    except Exception:
-        pass
-
     return {
         'diagnosis': result['diagnosis'][:300],
         'notes': json.dumps(result.get('notes', [])),
@@ -311,10 +293,10 @@ def process_ugi_for_record(ugi_id):
         db.session.commit()
         logger.info(f"UGI record {ugi_id} processed successfully: {ugi.diagnosis}")
 
-        # Track cost — after commit so no session conflict
+        # Track cost — admin-triggered batch processing, attribute to system (0)
         try:
             from ai_cost_tracker import track_ai_call
-            track_ai_call(ugi.created_by_user_id or 0, 'user_intelligence',
+            track_ai_call(0, 'user_intelligence',
                           model=result.get('processing_model', ''),
                           output_tokens=result.get('processing_tokens'),
                           input_summary=f"UGI #{ugi_id}: {ugi.diagnosis[:100]}")
