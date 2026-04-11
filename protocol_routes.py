@@ -706,6 +706,16 @@ def generate_protocol():
         logger.error(f"Protocol AI generation failed: {exc}")
         return jsonify({'error': str(exc)}), 500
 
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'generate_protocol',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('token_count'),
+                      input_summary=f"protocol: {title[:200]}")
+    except Exception:
+        pass
+
     # Create protocol as DRAFT (is_published=False) — admin must review
     from app import sanitize_clinical_html
     keywords = ', '.join(result.get('suggested_keywords', []))
@@ -767,6 +777,16 @@ def regenerate_protocol(protocol_id):
     except Exception as exc:
         logger.error(f"Protocol regeneration failed for {protocol_id}: {exc}")
         return jsonify({'error': str(exc)}), 500
+
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'regenerate_protocol',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('token_count'),
+                      input_summary=f"protocol regen: {protocol.title[:200]}")
+    except Exception:
+        pass
 
     from app import sanitize_clinical_html
     protocol.content_html = sanitize_clinical_html(result.get('content_html') or None)

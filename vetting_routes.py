@@ -302,9 +302,12 @@ def vetting_analyse():
         return jsonify({'error': str(e)}), 500
 
     # Log successful AI usage
+    from ai_cost_tracker import get_last_usage
+    _usage = get_last_usage()
     log_ai_usage(current_user.id, 'vetting_analyse', provider='anthropic',
                  model=result.get('model', ''),
                  input_summary=referral_text[:500],
+                 input_tokens=_usage.get('input_tokens'),
                  output_tokens=result.get('output_tokens'))
 
     # Quick clean mode: skip protocol/algorithm search (saves DB queries)
@@ -395,9 +398,11 @@ def vetting_generate_protocol():
                      input_summary=f"{study_type} ({modality})", status='error', error_message=str(e))
         return jsonify({'error': str(e)}), 500
 
+    _usage2 = get_last_usage()
     log_ai_usage(current_user.id, 'vetting_protocol', provider='anthropic',
                  model=result.get('model', ''),
                  input_summary=f"{study_type} ({modality})",
+                 input_tokens=_usage2.get('input_tokens'),
                  output_tokens=result.get('output_tokens'))
 
     return jsonify({

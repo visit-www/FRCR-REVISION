@@ -437,8 +437,11 @@ def radiq_query():
     response_html = result['html']
 
     # Audit log for successful RadIQ generation
+    from ai_cost_tracker import get_last_usage
+    _usage = get_last_usage()
     log_ai_usage(current_user.id, 'radiq_query', provider='anthropic',
                  model=result.get('model', ''), input_summary=question[:500],
+                 input_tokens=_usage.get('input_tokens'),
                  output_tokens=result.get('output_tokens'))
 
     # Save to DB

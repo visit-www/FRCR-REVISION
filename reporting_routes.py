@@ -2105,6 +2105,16 @@ def generate_reporting_template():
             user_id=current_user.id,
             resources=resources,
         )
+        # Track AI usage
+        try:
+            from ai_cost_tracker import track_ai_call
+            track_ai_call(current_user.id, 'generate_algorithm',
+                          model=result.get('model', ''),
+                          output_tokens=result.get('token_count'),
+                          input_summary=f"algorithm: {title}")
+        except Exception:
+            pass
+
         # --- RadInsight Peer Review for admin content ---
         try:
             from radinsight_peer_review import peer_review
@@ -2180,6 +2190,16 @@ def generate_radiology_template_route():
     except Exception as exc:
         logger.error(f"Radiology template generation failed: {exc}")
         return jsonify({'error': str(exc)}), 500
+
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'generate_radiology_template',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('token_count'),
+                      input_summary=f"template: {clinical_scenario[:200]}")
+    except Exception:
+        pass
 
     # Save to DB
     slug = re.sub(r'[^a-z0-9]+', '-', clinical_scenario.lower()).strip('-')
@@ -2841,6 +2861,16 @@ def smart_reporter_quick_review():
         logger.error(f"Smart Reporter quick review failed: {exc}")
         return jsonify({'error': f'Quick review failed: {exc}'}), 500
 
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'quick_review',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('token_count'),
+                      input_summary=report_text[:200])
+    except Exception:
+        pass
+
     return jsonify({
         'success': True,
         'improved_report': result.get('improved_report', ''),
@@ -2991,16 +3021,14 @@ def smart_reporter_ai_assist():
         'peer_review': peer_review_data,
     }
 
-    # Admin-only: include estimated API cost (input + output tokens)
-    if getattr(current_user, 'is_admin', False):
-        try:
-            from admin_routes import _calc_cost
-            out_tokens = result.get('output_tokens') or result.get('token_count') or 0
-            in_tokens = result.get('input_tokens') or 0
-            cost = _calc_cost(result.get('model', ''), in_tokens, out_tokens)
+    # Admin-only: include estimated API cost
+    try:
+        from ai_cost_tracker import admin_cost_response
+        cost = admin_cost_response(current_user, result.get('model', ''), result)
+        if cost is not None:
             resp['api_cost_usd'] = cost
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     return jsonify(resp)
 
@@ -3050,8 +3078,11 @@ def smart_reporter_report_action():
         return jsonify({'error': f'Report action failed: {exc}'}), 500
 
     from models import log_ai_usage
+    from ai_cost_tracker import get_last_usage
+    _usage = get_last_usage()
     log_ai_usage(current_user.id, f'report_action_{action}', provider='anthropic',
-                 model=model_used, input_summary=report_text[:200])
+                 model=model_used, input_summary=report_text[:200],
+                 input_tokens=_usage.get('input_tokens'), output_tokens=token_count)
 
     # --- Silent capture: save SBA / Viva to learning database ---
     if action in ('sba', 'viva') and html_text:
@@ -3103,18 +3134,13 @@ def smart_reporter_report_action():
     }
 
     # Admin-only: include estimated API cost
-    if getattr(current_user, 'is_admin', False):
-        try:
-            from admin_routes import _calc_cost
-            from ai_client import call_claude
-            _last = getattr(call_claude, 'last_usage', {})
-            resp['api_cost_usd'] = _calc_cost(
-                model_used,
-                _last.get('input_tokens', 0),
-                token_count or 0,
-            )
-        except Exception:
-            pass
+    try:
+        from ai_cost_tracker import admin_cost_response
+        cost = admin_cost_response(current_user, model_used, {'token_count': token_count})
+        if cost is not None:
+            resp['api_cost_usd'] = cost
+    except Exception:
+        pass
 
     return jsonify(resp)
 
@@ -4239,6 +4265,16 @@ def smart_reporter_anatomy():
     except Exception as exc:
         logger.error(f"Anatomy reference generation failed: {exc}")
         return jsonify({'error': f'Failed to generate anatomy reference: {exc}'}), 500
+
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'generate_anatomy',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('token_count'),
+                      input_summary=f"anatomy: {topic}")
+    except Exception:
+        pass
 
     # If reference images from URL/PDF, re-render with combined images
     if ref_images:

@@ -2229,6 +2229,15 @@ def process_tnm_generator_jobs():
             overwrite=getattr(job, 'overwrite', False)  # Pass overwrite flag
         )
 
+        # Track AI usage for TNM generation
+        try:
+            from ai_cost_tracker import track_ai_call
+            track_ai_call(job.created_by_user_id or 0, 'generate_tnm',
+                          model=result_data.get('model', '') if isinstance(result_data, dict) else '',
+                          input_summary=f"tnm: {job.cancer_name}")
+        except Exception:
+            pass
+
         if success:
             job.status = 'completed'
             job.completed_at = datetime.utcnow()
@@ -7251,6 +7260,16 @@ def generate_preliminary_case_data(case_id):
         return jsonify({'error': str(exc)}), 400
     except Exception as exc:
         return jsonify({'error': f'RadInsights Intelligence generation failed: {exc}'}), 500
+
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'generate_case_data',
+                      model=result.get('model', ''),
+                      output_tokens=result.get('output', {}).get('token_count'),
+                      input_summary=f"case: {case.diagnosis[:200]}")
+    except Exception:
+        pass
 
     output = result.get('output', {})
 

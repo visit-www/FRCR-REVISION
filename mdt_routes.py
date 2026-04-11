@@ -397,6 +397,16 @@ def api_generate_summary(case_id):
         logger.error("MDT summary generation failed for case %s: %s", case_id, e)
         return jsonify({'error': str(e)}), 500
 
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        track_ai_call(current_user.id, 'generate_mdt_summary',
+                      model=model_used,
+                      output_tokens=tokens,
+                      input_summary=f"mdt: {c.diagnosis[:200] if c.diagnosis else ''}")
+    except Exception:
+        pass
+
     # Persist HTML (source of truth after generation)
     c.pre_mdt_summary = html_summary
     db.session.commit()

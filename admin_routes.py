@@ -2532,29 +2532,8 @@ def regenerate_backup_codes():
 # AI COST TRACKER
 # ============================================================================
 
-# Anthropic pricing per million tokens (as of 2026)
-MODEL_COSTS = {
-    'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
-    'claude-sonnet-4-6':          {'input': 3.00, 'output': 15.00},
-    'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
-    'claude-opus-4-6':            {'input': 15.00, 'output': 75.00},
-    'claude-opus-4-5-20251101':   {'input': 15.00, 'output': 75.00},
-    'claude-haiku-4-5-20251001':  {'input': 0.80, 'output': 4.00},
-}
-# Fallback for unknown models
-DEFAULT_MODEL_COST = {'input': 3.00, 'output': 15.00}
-
-
-def _calc_cost(model, input_tokens, output_tokens):
-    """Calculate USD cost from model name and token counts."""
-    rates = DEFAULT_MODEL_COST
-    for key, val in MODEL_COSTS.items():
-        if key in (model or ''):
-            rates = val
-            break
-    inp = (input_tokens or 0) * rates['input'] / 1_000_000
-    out = (output_tokens or 0) * rates['output'] / 1_000_000
-    return round(inp + out, 6)
+# Cost calculation — delegated to standalone ai_cost_tracker module
+from ai_cost_tracker import calc_cost as _calc_cost, MODEL_COSTS, DEFAULT_MODEL_COST
 
 
 @admin_bp.route('/ai-costs', methods=['GET'])

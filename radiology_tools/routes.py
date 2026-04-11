@@ -411,6 +411,17 @@ def generate_calculator():
             overwrite=data.get('overwrite', False),
             resources=resources,
         )
+
+        # Track AI usage
+        try:
+            from ai_cost_tracker import track_ai_call
+            track_ai_call(current_user.id, 'generate_if_calculator',
+                          model=result.get('model', ''),
+                          output_tokens=result.get('token_count'),
+                          input_summary=f"if_calc: {finding_name[:200]}")
+        except Exception:
+            pass
+
         return jsonify(result)
 
     except Exception as exc:
