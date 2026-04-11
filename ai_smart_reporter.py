@@ -1576,9 +1576,15 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         timeout=90,
     )
 
+    # Capture input tokens from last API call for cost tracking
+    _last_usage = getattr(_call_claude_raw, 'last_usage', {})
+    _input_tokens = _last_usage.get('input_tokens', 0)
+
     parsed = _parse_assist_response(text, question)
     parsed['model'] = model
     parsed['token_count'] = tokens
+    parsed['input_tokens'] = _input_tokens
+    parsed['output_tokens'] = tokens
     if model_override and 'opus' in model_override:
         parsed['version'] = 'opus'
         # Ensure cognitive_traps field exists (V3 schema includes it)

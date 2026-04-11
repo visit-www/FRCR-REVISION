@@ -128,7 +128,13 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
             max_tokens,
         )
 
-    token_count = result.get("usage", {}).get("output_tokens", 0)
+    usage = result.get("usage", {})
+    token_count = usage.get("output_tokens", 0)
+    # Store last usage info for cost tracking (avoids breaking 3-tuple return)
+    call_claude.last_usage = {
+        'input_tokens': usage.get("input_tokens", 0),
+        'output_tokens': token_count,
+    }
     return text, effective_model, token_count
 
 

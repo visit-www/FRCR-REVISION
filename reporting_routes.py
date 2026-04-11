@@ -2991,11 +2991,10 @@ def smart_reporter_ai_assist():
         'peer_review': peer_review_data,
     }
 
-    # Admin-only: include estimated API cost
+    # Admin-only: include estimated API cost (input + output tokens)
     if getattr(current_user, 'is_admin', False):
         try:
             from admin_routes import _calc_cost
-            # unified_ai_assist returns 'token_count' (output tokens) not 'output_tokens'
             out_tokens = result.get('output_tokens') or result.get('token_count') or 0
             in_tokens = result.get('input_tokens') or 0
             cost = _calc_cost(result.get('model', ''), in_tokens, out_tokens)
@@ -3107,7 +3106,13 @@ def smart_reporter_report_action():
     if getattr(current_user, 'is_admin', False):
         try:
             from admin_routes import _calc_cost
-            resp['api_cost_usd'] = _calc_cost(model_used, 0, token_count or 0)
+            from ai_client import call_claude
+            _last = getattr(call_claude, 'last_usage', {})
+            resp['api_cost_usd'] = _calc_cost(
+                model_used,
+                _last.get('input_tokens', 0),
+                token_count or 0,
+            )
         except Exception:
             pass
 
