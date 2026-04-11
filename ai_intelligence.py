@@ -310,6 +310,17 @@ def process_ugi_for_record(ugi_id):
 
         db.session.commit()
         logger.info(f"UGI record {ugi_id} processed successfully: {ugi.diagnosis}")
+
+        # Track cost — after commit so no session conflict
+        try:
+            from ai_cost_tracker import track_ai_call
+            track_ai_call(ugi.created_by_user_id or 0, 'user_intelligence',
+                          model=result.get('processing_model', ''),
+                          output_tokens=result.get('processing_tokens'),
+                          input_summary=f"UGI #{ugi_id}: {ugi.diagnosis[:100]}")
+        except Exception:
+            pass
+
         return True
 
     except Exception as exc:

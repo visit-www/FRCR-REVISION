@@ -2591,6 +2591,17 @@ def _do_backfill_intelligence():
                         item.description = result['summary'][:300]
 
                 db.session.commit()
+
+                # Track cost for CI processing (after commit — avoids session conflict)
+                try:
+                    from ai_cost_tracker import track_ai_call
+                    track_ai_call(current_user.id, 'content_intelligence',
+                                  model=result.get('processing_model', ''),
+                                  output_tokens=result.get('processing_tokens'),
+                                  input_summary=f"CI: {ctype}:{item.id}")
+                except Exception:
+                    pass
+
                 processed_count += 1
             except Exception as exc:
                 db.session.rollback()
