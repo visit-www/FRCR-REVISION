@@ -77,7 +77,7 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     if not api_key:
         raise exc("CLAUDE_API_KEY not configured.")
 
-    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     effective_system = system_prompt
     if not skip_preamble:

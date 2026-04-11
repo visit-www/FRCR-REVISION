@@ -968,7 +968,7 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
     Returns:
         dict with: title, content_html, source, model, token_count, radiopaedia_image
     """
-    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     prompt = ANATOMY_PROMPT.format(
         topic=topic,

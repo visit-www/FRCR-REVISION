@@ -1302,7 +1302,7 @@ Return your analysis as JSON with this exact structure:
         if not api_key:
             return jsonify({'success': False, 'error': 'CLAUDE_API_KEY not configured'}), 500
 
-        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
         response = http_requests.post(
             "https://api.anthropic.com/v1/messages",

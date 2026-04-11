@@ -250,7 +250,7 @@ def generate_oncall_response(query_text, user_id, provider='claude', model=None)
     if not api_key:
         raise ProtocolHelperError("RadInsight Intelligence API key not configured.")
 
-    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     # Step 1: Search for matching protocols
     matched_protocols = search_protocols(query_text, limit=5)
@@ -714,7 +714,7 @@ def generate_protocol_content(title, category, source_citation='', additional_co
     if not api_key:
         raise ProtocolHelperError("RadInsight Intelligence API key not configured.")
 
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     formatted_resources = _format_resources_for_prompt(source_citation)
 

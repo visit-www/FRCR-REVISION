@@ -1767,7 +1767,7 @@ def generate_tnm_calculator():
             }), 400
 
         # Get model parameter (default to Sonnet for cost efficiency)
-        model = data.get('model', 'claude-sonnet-4-20250514')
+        model = data.get('model', 'claude-sonnet-4-5-20250929')
 
         success, message, result_data = generate_and_save_tnm_content(
             db=db,

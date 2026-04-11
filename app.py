@@ -7064,7 +7064,7 @@ def check_ai_prelim_cache(case_id):
         # If model not specified, get default from environment (same as ai_prelim.py)
         if not model_name:
             import os
-            model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+            model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
         # Check for stored AI data (AiPrelimCaseData) for reload capability
         has_stored_data = False
@@ -7205,7 +7205,7 @@ def generate_preliminary_case_data(case_id):
         data = request.get_json() or {}
 
     # Support both model (new) and provider (legacy) parameters
-    model = data.get('model', 'claude-sonnet-4-20250514')
+    model = data.get('model', 'claude-sonnet-4-5-20250929')
     notes = (data.get('notes') or '').strip()
     force_regenerate = data.get('force_regenerate', False)
     if isinstance(force_regenerate, str):

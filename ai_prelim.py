@@ -392,7 +392,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
     system_prompt, user_prompt = _build_prompt(case_context)
     # Use provided model or fall back to environment/default
     if model is None:
-        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
     # Prepend shared ABC preamble for consistency with ai_client.py
     from ai_client import ABC_PREAMBLE

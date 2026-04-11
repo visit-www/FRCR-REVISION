@@ -92,7 +92,7 @@ def get_claude_client():
 
 def get_claude_model():
     """Get Claude model name from env or use default (same as ai_tnm.py, ai_prelim.py)."""
-    return os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
+    return os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-5-20250929')
 
 
 def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) -> str:
