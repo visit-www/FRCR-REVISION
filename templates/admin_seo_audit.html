@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}SEO Audit — Admin Docs{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1200px;">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0"><i class="fas fa-search me-2" style="color: #cc9a00;"></i>SEO Audit &mdash; April 2026</h4>
+        <small class="text-muted">Status, gaps, keyword opportunities, and action plan</small>
+    </div>
+    <div>
+        <a href="/api/admin/docs" class="btn btn-sm btn-outline-secondary me-1"><i class="fas fa-book-open me-1"></i>Docs Hub</a>
+        <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+    </div>
+</div>
+
+<!-- Status Overview -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="card border-0 text-center h-100" style="background: #e8f5e9;">
+            <div class="card-body py-3">
+                <h2 class="text-success mb-1"><i class="fas fa-check-circle"></i></h2>
+                <h6 class="text-success">DONE</h6>
+                <small class="text-muted">Meta tags, OG tags, sitemap, robots.txt, noindex on auth, Organization schema, FAQ schema (pricing)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center h-100" style="background: #fff3e0;">
+            <div class="card-body py-3">
+                <h2 class="mb-1" style="color: var(--brand-primary);"><i class="fas fa-exclamation-circle"></i></h2>
+                <h6 style="color: var(--brand-primary);">PARTIAL</h6>
+                <small class="text-muted">Canonical URLs (~6/28), medical schema macros (created, not all applied), FAQ schema (pricing only)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center h-100" style="background: #fce4ec;">
+            <div class="card-body py-3">
+                <h2 class="text-danger mb-1"><i class="fas fa-times-circle"></i></h2>
+                <h6 class="text-danger">MISSING</h6>
+                <small class="text-muted">SoftwareApplication schema, breadcrumb JSON-LD, hreflang, blog/content SEO, email capture</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 text-center h-100" style="background: #e3f2fd;">
+            <div class="card-body py-3">
+                <h2 class="text-primary mb-1"><i class="fas fa-lightbulb"></i></h2>
+                <h6 class="text-primary">OPPORTUNITY</h6>
+                <small class="text-muted">Blog articles, lead magnets, testimonials, comparison page, annual pricing, video demo</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Critical Content Issues -->
+<div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
+    <div class="card-header bg-white"><h5 class="mb-0 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Critical Content Issues</h5></div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-danger"><tr><th>Issue</th><th>Page</th><th>Impact</th><th>Fix</th></tr></thead>
+            <tbody>
+                <tr class="table-warning"><td><strong>"39 TNM calculators"</strong></td><td>Landing page + meta desc</td><td>HIGH &mdash; undersells by 33 calculators</td><td>Change to "72 TNM calculators"</td></tr>
+                <tr class="table-warning"><td><strong>Peer Review not mentioned</strong></td><td>Nowhere</td><td>HIGH &mdash; unique differentiator invisible</td><td>Add to landing trust section</td></tr>
+                <tr class="table-warning"><td><strong>Only 3 of 5 RadIQ agents shown</strong></td><td>Landing page</td><td>MEDIUM</td><td>Update RadIQ section to show all 5</td></tr>
+                <tr><td><strong>PII Guard hidden</strong></td><td>Privacy policy only</td><td>HIGH &mdash; trust signal missing</td><td>Add to landing security section</td></tr>
+                <tr><td><strong>About meta desc too long</strong></td><td>About page</td><td>LOW &mdash; 172 chars, ideal 155</td><td>Trim description</td></tr>
+                <tr><td><strong>No individual TNM URLs in sitemap</strong></td><td>sitemap.xml</td><td>MEDIUM &mdash; 72 pages not indexed</td><td>Add to dynamic sitemap</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Missing Schema -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white"><h5 class="mb-0" style="color: #6b46c1;"><i class="fas fa-code me-2"></i>Missing Schema.org Markup</h5></div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <div class="card border-danger h-100">
+                    <div class="card-body small">
+                        <h6 class="text-danger">SoftwareApplication</h6>
+                        <p class="mb-1">Landing page should declare Smart Reporter, TNM Calculators, RadIQ as software applications.</p>
+                        <span class="badge bg-danger">HIGH</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-warning h-100">
+                    <div class="card-body small">
+                        <h6 class="text-warning">BreadcrumbList JSON-LD</h6>
+                        <p class="mb-1">HTML breadcrumbs exist in mobile nav. Need JSON-LD on all public pages for rich snippets.</p>
+                        <span class="badge bg-warning text-dark">MEDIUM</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-info h-100">
+                    <div class="card-body small">
+                        <h6 class="text-info">FAQ on Landing + About</h6>
+                        <p class="mb-1">Pricing has FAQ schema (6 Q&As). Landing and About should have 5-6 each.</p>
+                        <span class="badge bg-info">MEDIUM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Keyword Opportunities -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white"><h5 class="mb-0 text-success"><i class="fas fa-key me-2"></i>Keyword Opportunities (Not Yet Targeting)</h5></div>
+    <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0">
+            <thead class="table-success"><tr><th>Keyword</th><th>Volume</th><th>Competition</th><th>Our Asset</th><th>Content Needed</th></tr></thead>
+            <tbody>
+                <tr><td>Fleischner guidelines 2017</td><td><span class="badge bg-success">High</span></td><td>Medium</td><td>IF Calculator</td><td>Blog article + link to calculator</td></tr>
+                <tr><td>Bosniak classification</td><td><span class="badge bg-success">High</span></td><td>Medium</td><td>IF Calculator</td><td>Blog article + link to calculator</td></tr>
+                <tr><td>FRCR 2B revision</td><td><span class="badge bg-warning text-dark">Medium</span></td><td>Low</td><td>Entire platform</td><td>Blog: "FRCR 2B Revision Strategy"</td></tr>
+                <tr><td>TNM staging calculator</td><td><span class="badge bg-warning text-dark">Medium</span></td><td>Medium</td><td>72 calculators</td><td>Blog: "TNM Staging Made Simple"</td></tr>
+                <tr><td>radiology report template</td><td><span class="badge bg-success">High</span></td><td>High</td><td>AI + templates</td><td>Blog + landing page optimisation</td></tr>
+                <tr><td>AI radiology report</td><td><span class="badge bg-warning text-dark">Medium</span></td><td>Medium</td><td>Smart Reporter</td><td>Blog: "AI in Radiology Reporting"</td></tr>
+                <tr><td>contrast reaction protocol</td><td><span class="badge bg-warning text-dark">Medium</span></td><td>Low</td><td>6-tab Contrast Card</td><td>Blog: "ACR Guidelines Quick Ref"</td></tr>
+                <tr><td>TI-RADS calculator</td><td><span class="badge bg-warning text-dark">Medium</span></td><td>Low</td><td>IF Calculator</td><td>Already indexed &mdash; verify ranking</td></tr>
+                <tr><td>radiology MDT preparation</td><td><span class="badge bg-light text-dark border">Low</span></td><td>Very Low</td><td>MDT Suite</td><td>Blog: "How to Write an MDT Summary"</td></tr>
+                <tr><td>radiology vetting tool</td><td><span class="badge bg-light text-dark border">Low</span></td><td>Very Low</td><td>Vetting Tool</td><td>Unique &mdash; own the keyword</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Missing Trust Signals -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white"><h5 class="mb-0 text-danger"><i class="fas fa-shield-alt me-2"></i>Missing Trust Signals (E-E-A-T)</h5></div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <h6 class="text-danger">Not Present</h6>
+                <ul class="small">
+                    <li><i class="fas fa-times text-danger me-1"></i>Customer testimonials / case studies</li>
+                    <li><i class="fas fa-times text-danger me-1"></i>"Trusted by X radiologists" social proof</li>
+                    <li><i class="fas fa-times text-danger me-1"></i>Clinical advisory board listed</li>
+                    <li><i class="fas fa-times text-danger me-1"></i>Email capture / newsletter signup</li>
+                    <li><i class="fas fa-times text-danger me-1"></i>Product demo video</li>
+                    <li><i class="fas fa-times text-danger me-1"></i>Blog / content marketing</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-success">Already Present</h6>
+                <ul class="small">
+                    <li><i class="fas fa-check text-success me-1"></i>Developer credentials (radiologist, named on About)</li>
+                    <li><i class="fas fa-check text-success me-1"></i>UK GDPR compliance stated</li>
+                    <li><i class="fas fa-check text-success me-1"></i>PII Guard (patient data protection) &mdash; <em>but not marketed</em></li>
+                    <li><i class="fas fa-check text-success me-1"></i>PubMed-verified AI claims &mdash; <em>but not marketed</em></li>
+                    <li><i class="fas fa-check text-success me-1"></i>Open educational content (free cases, tools)</li>
+                    <li><i class="fas fa-check text-success me-1"></i>Transparent pricing with FAQ</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Action Plan -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white"><h5 class="mb-0" style="color: var(--brand-primary);"><i class="fas fa-tasks me-2"></i>SEO Action Plan</h5></div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="card border-danger h-100">
+                    <div class="card-header bg-danger text-white py-2"><strong>Week 1</strong> &mdash; Quick Wins</div>
+                    <div class="card-body small">
+                        <ol class="mb-0 ps-3">
+                            <li>Fix "39" &rarr; "72" TNM calculators</li>
+                            <li>Add Peer Review to landing</li>
+                            <li>Add PII Guard to landing</li>
+                            <li>Show all 5 RadIQ agents</li>
+                            <li>Trim About meta desc</li>
+                            <li>Add TNM URLs to sitemap</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-warning h-100">
+                    <div class="card-header bg-warning text-dark py-2"><strong>Week 2-3</strong> &mdash; Schema + Structure</div>
+                    <div class="card-body small">
+                        <ol class="mb-0 ps-3" start="7">
+                            <li>SoftwareApplication schema on landing</li>
+                            <li>BreadcrumbList JSON-LD on all public pages</li>
+                            <li>Canonical URLs on remaining pages</li>
+                            <li>FAQ schema on landing (5-6 Q&As)</li>
+                            <li>Verify medical schemas applied everywhere</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-primary h-100">
+                    <div class="card-header bg-primary text-white py-2"><strong>Month 2+</strong> &mdash; Content & Growth</div>
+                    <div class="card-body small">
+                        <ol class="mb-0 ps-3" start="12">
+                            <li>First 3 blog articles</li>
+                            <li>Email capture on landing</li>
+                            <li>FRCR study guide PDF lead magnet</li>
+                            <li>Testimonials section</li>
+                            <li>Google Search Console monitoring</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center py-3">
+    <small class="text-muted">SEO Audit &mdash; April 2026 | Full markdown: <code>docs/SEO_AUDIT_APRIL_2026.md</code></small>
+</div>
+
+</div>
+{% endblock %}

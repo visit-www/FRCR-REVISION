@@ -2766,6 +2766,13 @@ def admin_docs_hub():
     return render_template('admin_docs_hub.html')
 
 
+@admin_bp.route('/seo-audit')
+@require_admin
+def admin_seo_audit():
+    """Admin page: SEO audit findings and action items."""
+    return render_template('admin_seo_audit.html')
+
+
 @admin_bp.route('/reset-ai-costs', methods=['POST'])
 @require_admin
 def reset_ai_costs():
