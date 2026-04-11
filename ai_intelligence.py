@@ -293,10 +293,15 @@ def process_ugi_for_record(ugi_id):
         db.session.commit()
         logger.info(f"UGI record {ugi_id} processed successfully: {ugi.diagnosis}")
 
-        # Track cost — admin-triggered batch processing, attribute to system (0)
+        # Track cost as admin overhead (admin triggers processing, not the user)
+        try:
+            from flask_login import current_user as _cu
+            _admin_id = _cu.id if hasattr(_cu, 'id') and _cu.is_authenticated else 0
+        except Exception:
+            _admin_id = 0
         try:
             from ai_cost_tracker import track_ai_call
-            track_ai_call(0, 'user_intelligence',
+            track_ai_call(_admin_id, 'user_intelligence',
                           model=result.get('processing_model', ''),
                           output_tokens=result.get('processing_tokens'),
                           input_summary=f"UGI #{ugi_id}: {ugi.diagnosis[:100]}")
