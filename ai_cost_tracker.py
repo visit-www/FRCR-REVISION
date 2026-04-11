@@ -168,10 +168,12 @@ def admin_cost_response(user, model: str, result: dict) -> Optional[float]:
     out_tokens = result.get('output_tokens') or result.get('token_count') or 0
     in_tokens = result.get('input_tokens') or 0
 
-    # If result doesn't have tokens, try last_usage
-    if not out_tokens and not in_tokens:
+    # Always try last_usage for any missing token counts
+    if not in_tokens or not out_tokens:
         usage = get_last_usage()
-        in_tokens = usage.get('input_tokens', 0)
-        out_tokens = usage.get('output_tokens', 0)
+        if not in_tokens:
+            in_tokens = usage.get('input_tokens', 0)
+        if not out_tokens:
+            out_tokens = usage.get('output_tokens', 0)
 
     return calc_cost(model, in_tokens, out_tokens)
