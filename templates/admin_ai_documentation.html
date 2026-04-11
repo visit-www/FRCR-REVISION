@@ -1,0 +1,568 @@
+{% extends "base.html" %}
+{% block title %}RadInsight AI Documentation{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3" style="max-width: 1200px;">
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0"><i class="fas fa-brain me-2" style="color: var(--brand-primary);"></i>RadInsight AI Documentation</h4>
+        <small class="text-muted">Source of truth for all AI integrations &mdash; Last updated: 11 April 2026</small>
+    </div>
+    <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Admin</a>
+</div>
+
+<!-- Quick Navigation -->
+<div class="card mb-3 border-0 shadow-sm">
+    <div class="card-body py-2">
+        <strong class="me-2"><i class="fas fa-compass me-1"></i>Jump to:</strong>
+        <a href="#overview" class="badge bg-light text-dark border me-1">Overview</a>
+        <a href="#models" class="badge bg-light text-dark border me-1">Models &amp; Pricing</a>
+        <a href="#packages" class="badge bg-light text-dark border me-1">Standalone Packages</a>
+        <a href="#calls" class="badge bg-light text-dark border me-1">All AI Calls (24)</a>
+        <a href="#prompts" class="badge bg-light text-dark border me-1">System Prompts</a>
+        <a href="#cost-tracking" class="badge bg-light text-dark border me-1">Cost Tracking</a>
+        <a href="#peer-review" class="badge bg-light text-dark border me-1">Peer Review</a>
+        <a href="#guardrails" class="badge bg-light text-dark border me-1">Safety Guardrails</a>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Overview -->
+<!-- ============================================================ -->
+<div id="overview" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-info-circle me-2 text-primary"></i>Architecture Overview</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>How AI is Used</h6>
+                <ul class="small mb-0">
+                    <li><strong>All AI calls</strong> go through <code>ai_client.py</code> &rarr; Anthropic Messages API (<code>requests.post</code>)</li>
+                    <li><strong>No SDK</strong> &mdash; raw HTTP to <code>api.anthropic.com/v1/messages</code></li>
+                    <li><strong>3 model tiers</strong>: Opus (premium), Sonnet (default), Haiku (lightweight)</li>
+                    <li><strong>24 distinct AI call sites</strong> across the application</li>
+                    <li><strong>Every call logged</strong> to <code>AIAuditLog</code> with input+output tokens</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Request Flow</h6>
+                <pre class="bg-light p-2 rounded small mb-0">User action
+  &darr;
+Route handler (Flask blueprint)
+  &darr;
+AI function (ai_smart_reporter.py / ai_radiq.py / etc)
+  &darr;
+_call_claude() wrapper &rarr; ai_client.call_claude()
+  &darr;
+Anthropic Messages API (HTTP POST)
+  &darr;
+Response parsed &rarr; logged to AIAuditLog
+  &darr;
+RadInsight Peer Review (optional post-processing)
+  &darr;
+JSON response to frontend</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Models & Pricing -->
+<!-- ============================================================ -->
+<div id="models" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-microchip me-2" style="color: #6b46c1;"></i>Models &amp; Pricing</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-3">
+                <thead class="table-light">
+                    <tr><th>Model Family</th><th>Model ID</th><th>Input $/M tokens</th><th>Output $/M tokens</th><th>Used For</th></tr>
+                </thead>
+                <tbody>
+                    <tr class="table-success">
+                        <td><strong>Opus</strong> (Premium)</td>
+                        <td><code>claude-opus-4-6</code></td>
+                        <td>$15.00</td><td>$75.00</td>
+                        <td>Report finalization, redo, rewrite, regenerate</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Sonnet</strong> (Default)</td>
+                        <td><code>claude-sonnet-4-5-20250929</code></td>
+                        <td>$3.00</td><td>$15.00</td>
+                        <td>Most features: Q&amp;A, anatomy, SBA/Viva, vetting, RadIQ, admin gen</td>
+                    </tr>
+                    <tr class="table-light">
+                        <td><strong>Haiku</strong> (Lightweight)</td>
+                        <td><code>claude-haiku-4-5-20251001</code></td>
+                        <td>$0.80</td><td>$4.00</td>
+                        <td>Quick spell-check / grammar review only</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h6>Model Routing Logic (Smart Reporter)</h6>
+        <ul class="small">
+            <li><strong>Opus</strong>: finalize, review, check, redo, rewrite, write impression, generate report, regenerate &mdash; frontend sends <code>use_opus: true</code></li>
+            <li><strong>Sonnet</strong>: supplementary/knowledge questions, follow-up after finalization, all report actions (SBA, Viva, MDT, Email)</li>
+            <li><strong>Haiku</strong>: Quick Check (spell/grammar) only</li>
+        </ul>
+
+        <h6>Estimated Cost Per Call</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr><th>Call Type</th><th>Model</th><th>~Input Tokens</th><th>~Output Tokens</th><th>~Cost/Call</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Report finalization (Opus)</td><td>Opus</td><td>~3,000</td><td>~2,000</td><td><strong>~$0.195</strong></td></tr>
+                    <tr><td>Follow-up Q&amp;A (Sonnet)</td><td>Sonnet</td><td>~2,500</td><td>~1,500</td><td>~$0.030</td></tr>
+                    <tr><td>SBA generation</td><td>Sonnet</td><td>~1,500</td><td>~3,000</td><td>~$0.050</td></tr>
+                    <tr><td>Viva generation</td><td>Sonnet</td><td>~1,500</td><td>~2,000</td><td>~$0.035</td></tr>
+                    <tr><td>Anatomy snippet</td><td>Sonnet</td><td>~1,000</td><td>~2,500</td><td>~$0.041</td></tr>
+                    <tr><td>RadIQ query</td><td>Sonnet</td><td>~1,500</td><td>~1,500</td><td>~$0.027</td></tr>
+                    <tr><td>Vetting analysis</td><td>Sonnet</td><td>~2,000</td><td>~800</td><td>~$0.018</td></tr>
+                    <tr><td>Quick review (Haiku)</td><td>Haiku</td><td>~2,000</td><td>~1,500</td><td>~$0.008</td></tr>
+                    <tr><td>Algorithm tree</td><td>Sonnet</td><td>~1,000</td><td>~4,000</td><td>~$0.063</td></tr>
+                    <tr><td>Admin content gen</td><td>Sonnet</td><td>~1,000</td><td>~3,000</td><td>~$0.048</td></tr>
+                </tbody>
+            </table>
+            <small class="text-muted">Estimates based on typical usage. Actual costs vary by input length. Check <a href="/api/admin/dashboard#ai-costs">AI Costs Dashboard</a> for real data.</small>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Standalone Packages -->
+<!-- ============================================================ -->
+<div id="packages" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-puzzle-piece me-2" style="color: var(--brand-neutral);"></i>Standalone Packages</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr><th>Package</th><th>File</th><th>Purpose</th><th>Key Functions</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>AI Client</strong></td>
+                        <td><code>ai_client.py</code></td>
+                        <td>Core HTTP client for Anthropic Messages API. All AI calls go through this.</td>
+                        <td><code>call_claude()</code>, <code>call_claude_thinking()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>AI Cost Tracker</strong></td>
+                        <td><code>ai_cost_tracker.py</code></td>
+                        <td>Centralised cost calculation, usage logging, admin cost badge.</td>
+                        <td><code>track_ai_call()</code>, <code>calc_cost()</code>, <code>get_last_usage()</code>, <code>admin_cost_response()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>RadInsight Peer Review</strong></td>
+                        <td><code>radinsight_peer_review.py</code></td>
+                        <td>Post-processing verification: PubMed claim verification, Radiopaedia article HEAD checks, trust tier badges.</td>
+                        <td><code>peer_review()</code>, <code>peer_review_anatomy()</code>, <code>verify_radiopaedia_article()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>PubMed Service</strong></td>
+                        <td><code>pubmed_service.py</code></td>
+                        <td>PubMed E-utilities search with 24hr file-based caching. Free API, no key needed.</td>
+                        <td><code>search_pubmed()</code>, <code>search_latest_guidelines()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Radiopaedia Search</strong></td>
+                        <td><code>radiopaedia_search_service.py</code></td>
+                        <td>Scrapes Radiopaedia case images (CC BY-NC-SA 3.0) with author attribution.</td>
+                        <td><code>search_radiopaedia_images()</code>, <code>scrape_case_author()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>PII Guard</strong></td>
+                        <td><code>pii_guard.py</code> + <code>static/js/pii-guard*.js</code></td>
+                        <td>Client+server PII detection (28 regex patterns, NHS MOD-11). Blocks API calls while unresolved.</td>
+                        <td><code>PIIGuard.protect()</code>, server-side <code>scan_text()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Smart Reporter AI</strong></td>
+                        <td><code>ai_smart_reporter.py</code></td>
+                        <td>All Smart Reporter AI functions: report gen, Q&amp;A, anatomy, algorithms, actions, templates.</td>
+                        <td><code>unified_ai_assist()</code>, <code>generate_anatomy_reference()</code>, <code>generate_report_action()</code>, <code>generate_algorithm_tree()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>RadIQ AI</strong></td>
+                        <td><code>ai_radiq.py</code></td>
+                        <td>RadIQ clinical Q&amp;A engine. Category-specific prompts (general, radiographer, GP reply, complaint, incident).</td>
+                        <td><code>generate_radiq_response()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vetting AI</strong></td>
+                        <td><code>ai_vetting.py</code></td>
+                        <td>Imaging request vetting: analysis, protocol generation, shorthand.</td>
+                        <td><code>generate_vetting_analysis()</code>, <code>generate_vetting_protocol()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pearl Generator</strong></td>
+                        <td><code>ai_pearl_generator.py</code></td>
+                        <td>Teaching pearl generation + Radiopaedia image fetching + HTML rendering.</td>
+                        <td><code>generate_pearl()</code>, <code>fetch_radiopaedia_images()</code>, <code>render_pearl_html()</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Case AI (Prelim)</strong></td>
+                        <td><code>ai_prelim.py</code></td>
+                        <td>Generates case Q&amp;A pairs, discussion, safety checklist, sources.</td>
+                        <td><code>generate_prelim_case_data()</code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: All AI Calls -->
+<!-- ============================================================ -->
+<div id="calls" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-exchange-alt me-2 text-info"></i>All AI Calls (24 Endpoints)</h5>
+    </div>
+    <div class="card-body p-0">
+
+        <!-- Smart Reporter calls -->
+        <h6 class="px-3 pt-3 pb-1 mb-0 text-muted"><i class="fas fa-user-md me-1"></i>Smart Reporter (11 calls)</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>#</th><th>Feature</th><th>Route</th><th>Action Name</th><th>Model</th><th>Max Tokens</th><th>Temp</th><th>AI Function</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>1</td><td>Report Generation / Finalize</td><td><code>POST /api/smart-reporter/ai-assist</code></td><td><code>ai_assist</code></td><td>Opus (when <code>use_opus</code>)</td><td>4000</td><td>0.2</td><td><code>unified_ai_assist()</code></td></tr>
+                    <tr><td>2</td><td>Supplementary Q&amp;A</td><td><code>POST /api/smart-reporter/ai-assist</code></td><td><code>ai_assist</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>unified_ai_assist()</code></td></tr>
+                    <tr><td>3</td><td>Quick Review (grammar)</td><td><code>POST /api/smart-reporter/quick-review</code></td><td><code>quick_review</code></td><td>Haiku</td><td>4000</td><td>0.3</td><td><code>quick_review()</code></td></tr>
+                    <tr><td>4</td><td>Algorithm Tree</td><td><code>POST /api/smart-reporter/generate-tree</code></td><td><code>generate_tree</code></td><td>Sonnet</td><td>6000</td><td>0.3</td><td><code>generate_algorithm_tree()</code></td></tr>
+                    <tr><td>5</td><td>Ask Claude (legacy)</td><td><code>POST /api/smart-reporter/ask-claude</code></td><td><code>ask_claude</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>ask_claude_about_report()</code></td></tr>
+                    <tr><td>6</td><td>Report Review</td><td><code>POST /api/smart-reporter/review-report</code></td><td><code>review_report</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>quick_review()</code></td></tr>
+                    <tr><td>7</td><td>SBA Generation</td><td><code>POST /api/smart-reporter/report-action</code></td><td><code>report_action_sba</code></td><td>Sonnet</td><td>4500</td><td>0.4</td><td><code>generate_report_action()</code></td></tr>
+                    <tr><td>8</td><td>Viva Generation</td><td><code>POST /api/smart-reporter/report-action</code></td><td><code>report_action_viva</code></td><td>Sonnet</td><td>2500</td><td>0.4</td><td><code>generate_report_action()</code></td></tr>
+                    <tr><td>9</td><td>MDT Summary (action)</td><td><code>POST /api/smart-reporter/report-action</code></td><td><code>report_action_mdt</code></td><td>Sonnet</td><td>800</td><td>0.4</td><td><code>generate_report_action()</code></td></tr>
+                    <tr><td>10</td><td>Email Colleague</td><td><code>POST /api/smart-reporter/report-action</code></td><td><code>report_action_email_colleague</code></td><td>Sonnet</td><td>1500</td><td>0.4</td><td><code>generate_report_action()</code></td></tr>
+                    <tr><td>11</td><td>Email Patient</td><td><code>POST /api/smart-reporter/report-action</code></td><td><code>report_action_email_patient</code></td><td>Sonnet</td><td>1500</td><td>0.4</td><td><code>generate_report_action()</code></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Content generation calls -->
+        <h6 class="px-3 pt-3 pb-1 mb-0 text-muted"><i class="fas fa-book me-1"></i>Content Generation (7 calls)</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>#</th><th>Feature</th><th>Route</th><th>Action Name</th><th>Model</th><th>Max Tokens</th><th>Temp</th><th>AI Function</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>12</td><td>Anatomy Snippet</td><td><code>POST /api/smart-reporter/anatomy</code></td><td><code>generate_anatomy</code></td><td>Sonnet</td><td>3333</td><td>0</td><td><code>generate_anatomy_reference()</code></td></tr>
+                    <tr><td>13</td><td>Teaching Pearl</td><td><code>POST /api/admin/generate-pearl</code></td><td><code>generate_pearl</code></td><td>Sonnet</td><td>3000</td><td>0.3</td><td><code>generate_pearl()</code></td></tr>
+                    <tr><td>14</td><td>Case AI (Prelim Data)</td><td><code>POST /api/case/{id}/ai-prelim</code></td><td><code>generate_case_data</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_prelim_case_data()</code></td></tr>
+                    <tr><td>15</td><td>TNM Calculator</td><td><code>POST /api/admin/tnm/generate</code></td><td><code>generate_tnm</code></td><td>Sonnet</td><td>8000</td><td>0.2</td><td><code>generate_and_save_tnm_content()</code></td></tr>
+                    <tr><td>16</td><td>Admin Algorithm</td><td><code>POST /admin/reporting-algorithms/generate</code></td><td><code>generate_algorithm</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_reporting_template_html()</code></td></tr>
+                    <tr><td>17</td><td>Admin Template</td><td><code>POST /admin/radiology-templates/generate</code></td><td><code>generate_radiology_template</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_radiology_template()</code></td></tr>
+                    <tr><td>18</td><td>IF Calculator</td><td><code>POST /api/radiology-tools/if-calculator/generate</code></td><td><code>generate_if_calculator</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_if_calculator_html()</code></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Clinical tool calls -->
+        <h6 class="px-3 pt-3 pb-1 mb-0 text-muted"><i class="fas fa-stethoscope me-1"></i>Clinical Tools (6 calls)</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>#</th><th>Feature</th><th>Route</th><th>Action Name</th><th>Model</th><th>Max Tokens</th><th>Temp</th><th>AI Function</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>19</td><td>RadIQ Query</td><td><code>POST /api/radiq/query</code></td><td><code>radiq_query</code></td><td>Sonnet</td><td>3000</td><td>0.3</td><td><code>generate_radiq_response()</code></td></tr>
+                    <tr><td>20</td><td>Vetting Analysis</td><td><code>POST /api/vetting/analyse</code></td><td><code>vetting_analyse</code></td><td>Sonnet</td><td>2000</td><td>0.3</td><td><code>generate_vetting_analysis()</code></td></tr>
+                    <tr><td>21</td><td>Vetting Protocol</td><td><code>POST /api/vetting/generate-protocol</code></td><td><code>vetting_protocol</code></td><td>Sonnet</td><td>3000</td><td>0.3</td><td><code>generate_vetting_protocol()</code></td></tr>
+                    <tr><td>22</td><td>MDT Summary</td><td><code>POST /api/mdt/cases/{id}/summary</code></td><td><code>generate_mdt_summary</code></td><td>Sonnet</td><td>800</td><td>0.3</td><td><code>generate_mdt_summary_for_case()</code></td></tr>
+                    <tr><td>23</td><td>Protocol Gen (admin)</td><td><code>POST /radiology-protocols/api/generate</code></td><td><code>generate_protocol</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_protocol_content()</code></td></tr>
+                    <tr><td>24</td><td>Protocol Regen (admin)</td><td><code>POST /radiology-protocols/admin/api/{id}/regenerate</code></td><td><code>regenerate_protocol</code></td><td>Sonnet</td><td>4000</td><td>0.3</td><td><code>generate_protocol_content()</code></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: System Prompts -->
+<!-- ============================================================ -->
+<div id="prompts" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-terminal me-2 text-warning"></i>System Prompts Reference</h5>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted">Click any prompt to expand. All prompts are in their respective <code>ai_*.py</code> files.</p>
+
+        <!-- Smart Reporter V3 (main) -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>UNIFIED_ASSIST_V3_SYSTEM_PROMPT</code> <span class="badge bg-success">Primary</span> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">You are an expert subspecialty consultant radiologist mentoring a trainee at the PACS workstation. You review their draft report, answer their question, and provide clinical quality assessment.
+
+Before producing output, reason through these steps internally:
+STEP 1 &mdash; UNDERSTAND THE CLINICAL SCENARIO
+STEP 2 &mdash; ANALYSE THE FINDINGS
+STEP 3 &mdash; ASSESS REPORT QUALITY AS A CONSULTANT WHO MUST SIGN THIS
+STEP 4 &mdash; IDENTIFY COGNITIVE TRAPS
+STEP 5 &mdash; THEN AND ONLY THEN, PRODUCE YOUR OUTPUT
+
+ABSOLUTE GUARD RAILS:
+- NEVER add findings the trainee didn't describe
+- NEVER fabricate or hallucinate imaging findings
+- NEVER assert imaging characteristics unless the trainee stated them
+- NEVER suggest the trainee add findings they didn't observe
+- NEVER remove or contradict findings the trainee DID describe
+
+FACTUAL ACCURACY IN INSIGHTS AND TEACHING POINTS:
+- Do NOT fabricate measurements, prevalences, statistics, or classification details
+- If citing a specific number, only use values established in indexed medical literature
+
+Includes: SHORTHAND EXPANSION, MEASUREMENT HANDLING, CLASSIFICATION/GRADING (Tiers A/B/C), REST NORMAL SHORTHAND, CONTRADICTION RESOLUTION, REPORT QUALITY BAR rules.
+
+Full prompt: ~3000 tokens. See ai_smart_reporter.py line 1581.</div>
+            </details>
+        </div>
+
+        <!-- Anatomy -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>ANATOMY_SYSTEM_PROMPT</code> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">You are a senior consultant radiologist creating a concise anatomy reference card for radiology registrars and consultants.
+
+Focus ONLY on clinically and radiologically relevant anatomy:
+- Describe anatomy as it appears on imaging, not cadaveric dissection
+- Emphasise normal variants that mimic pathology
+- Include measurements with actionable thresholds
+
+FACTUAL ACCURACY RULES (CRITICAL):
+- Do NOT fabricate measurements, prevalences, or thresholds
+- If uncertain, state uncertainty explicitly
+- Ground knowledge in: Weir &amp; Abrahams, Chapman &amp; Nakielny, Gray's Anatomy, Butler/Mitchell/Healy, Ryan/McNicholas/Eustace
+
+Output: JSON with verifiable_claims field for PubMed verification.
+Temperature: 0 (deterministic). UK English.</div>
+            </details>
+        </div>
+
+        <!-- Report Actions -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>REPORT_ACTION_SYSTEM_PROMPT</code> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">You are a consultant radiologist educator working in the UK NHS.
+Professional, defensible clinical content. Valid HTML only.
+Never include patient-identifiable information.
+Never fabricate findings beyond what is explicitly stated in the provided report.
+
+FACTUAL ACCURACY RULES:
+- Do NOT fabricate measurements, prevalences, statistics
+- Do NOT invent or cite references that do not exist
+
+Ends with Further Reading section: Radiopaedia, Radiology Assistant, or PubMed references.</div>
+            </details>
+        </div>
+
+        <!-- RadIQ -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>RADIQ_SYSTEM_PROMPT</code> <small class="text-muted ms-1">ai_radiq.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">You are RadIQ, an expert consultant radiologist working in the UK NHS.
+ACCURACY IS YOUR TOP PRIORITY. Every clinical claim must be correct. If uncertain, say so.
+
+Rules: UK NHS context, no generic AI language, specify exact contrast agents/drugs.
+For named protocols (Fleischner, Bosniak, LI-RADS, PI-RADS): give actual criteria and thresholds.
+Prioritise: ACR AC, ACR Contrast Manual, ESR iGuide, RCR iRefer.
+
+FACTUAL ACCURACY: Do NOT fabricate measurements, prevalences, dose thresholds.
+REFERENCES: NEVER fabricate. Fewer real references &gt; fabricated ones.
+
+Categories: general (JSON), radiographer (JSON), gp_reply (HTML), complaint (HTML), incident (HTML).
+JSON outputs include verifiable_claims field for PubMed verification.</div>
+            </details>
+        </div>
+
+        <!-- Vetting -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>ANALYSIS_SYSTEM_PROMPT</code> <small class="text-muted ms-1">ai_vetting.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">You are a consultant radiologist vetting imaging requests in an NHS department.
+Analyse a clinical referral and extract structured information.
+
+Rules:
+- Understand clinical context, identify the clinical question
+- Critically analyse whether the requested study is optimal
+- Determine baseline safety checks
+- Flag 0-4 items of study-specific information to confirm
+- FACTUAL ACCURACY: Do NOT fabricate dose thresholds or guideline criteria
+
+Includes: Evidence base (RCR iRefer, NICE, ACR AC), Reference layer, ACR Contrast Manual block, WBCT criteria (RCR 2024 triage).
+Output: JSON with verifiable_claims field.</div>
+            </details>
+        </div>
+
+        <!-- Algorithm Tree -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>TREE_SYSTEM_PROMPT</code> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="white-space: pre-wrap; font-family: monospace;">You are a consultant radiologist with extensive daily subspecialty radiology reporting experience. You generate structured algorithm decision trees for systematic scan reading. Your trees reflect real-world reading order, not textbook chapter order. Output valid JSON only. No markdown fences. No text outside the JSON object.</div>
+            </details>
+        </div>
+
+        <!-- SBA Action -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>ACTION_PROMPTS['sba']</code> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">Create 3 FRCR Part 2B style Single Best Answer (SBA) questions.
+Each tests a DIFFERENT knowledge domain:
+- Q1: Directly about the imaging findings/diagnosis from this case
+- Q2: Related differential diagnosis or mimicking condition (standalone)
+- Q3: Broader principles (classification, variant, guideline, complication)
+
+Q2 and Q3 should be standalone &mdash; answerable without knowing the specific case.
+Format as HTML with &lt;div class='sba-question'&gt; wrapping.
+5 plausible options per question, FRCR 2B difficulty.
+2-3 paragraph explanations covering correct answer and all distractors.</div>
+            </details>
+        </div>
+
+        <!-- Viva Action -->
+        <div class="mb-2">
+            <details>
+                <summary class="fw-semibold"><code>ACTION_PROMPTS['viva']</code> <small class="text-muted ms-1">ai_smart_reporter.py</small></summary>
+                <div class="bg-light p-2 rounded mt-1 small" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;">Create an FRCR Part 2B style viva (oral examination) scenario.
+Examiner-candidate dialogue that progressively explores the case.
+CRITICAL: Must be self-contained &mdash; no assumption candidate can see images.
+First question PRESENTS the key findings (does NOT say "describe the findings").
+4-6 exchanges: findings &rarr; interpretation, differential, likely diagnosis, further imaging, management, pitfalls.
+Model answers should be consultant-level, structured, and concise.</div>
+            </details>
+        </div>
+
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Cost Tracking -->
+<!-- ============================================================ -->
+<div id="cost-tracking" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-chart-line me-2 text-success"></i>Cost Tracking System</h5>
+    </div>
+    <div class="card-body">
+        <h6>How It Works</h6>
+        <ol class="small">
+            <li><code>ai_client.call_claude()</code> stores <code>{input_tokens, output_tokens}</code> in <code>call_claude.last_usage</code> after each API call</li>
+            <li>Route handlers call <code>track_ai_call()</code> or <code>log_ai_usage()</code> which reads tokens and writes to <code>AIAuditLog</code></li>
+            <li>Admin dashboard queries <code>AIAuditLog</code> and calculates costs using <code>MODEL_COSTS</code> from <code>ai_cost_tracker.py</code></li>
+            <li>Admin users see inline <code>$0.00XX</code> cost badge on every AI response in Smart Reporter</li>
+        </ol>
+
+        <h6>Dashboard API</h6>
+        <p class="small"><code>GET /api/admin/ai-costs?days=30&amp;user_id=X</code> &mdash; returns:</p>
+        <ul class="small">
+            <li><strong>summary</strong>: total requests, total cost, avg cost per request</li>
+            <li><strong>by_category</strong>: admin_generation (fixed overhead) vs user_interaction (scales with subscribers)</li>
+            <li><strong>by_user</strong>: per-user breakdown with requests, tokens, cost</li>
+            <li><strong>by_action</strong>: cost per feature (ai_assist, radiq_query, etc.)</li>
+            <li><strong>by_day</strong>: daily cost trend</li>
+            <li><strong>by_model</strong>: cost per exact model version</li>
+            <li><strong>by_family</strong>: simplified Opus / Sonnet / Haiku split</li>
+        </ul>
+
+        <h6>Business Model Insight</h6>
+        <div class="alert alert-info py-2 small mb-0">
+            <strong>Admin generation cost</strong> = fixed overhead (algorithms, templates, TNM, cases, protocols). Does not grow with users.<br>
+            <strong>User interaction cost</strong> = variable (reports, Q&amp;A, vetting, RadIQ, SBA/Viva). Scales with subscriber count.<br>
+            <strong>Key metric:</strong> <em>user interaction cost per active user per month</em> &mdash; this is your marginal cost of serving one subscriber.
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Peer Review -->
+<!-- ============================================================ -->
+<div id="peer-review" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-check-double me-2" style="color: #198754;"></i>RadInsight Peer Review</h5>
+    </div>
+    <div class="card-body">
+        <h6>What It Does</h6>
+        <ul class="small">
+            <li>Post-processes AI output to extract numerical claims (measurements, percentages, thresholds)</li>
+            <li>Verifies claims against PubMed indexed literature</li>
+            <li>HEAD-checks Radiopaedia article URLs (only shows verified clickable links)</li>
+            <li>Annotates claims with trust tiers: <span class="text-success"><i class="fas fa-check-circle"></i> Verified</span> or <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Unverified</span></li>
+        </ul>
+
+        <h6>Claim Extraction (Hybrid)</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr><th>Method</th><th>Used When</th><th>Quality</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>LLM self-extraction</strong> (preferred)</td><td>JSON outputs with <code>verifiable_claims</code> field (anatomy, RadIQ, vetting, insights)</td><td>High &mdash; model identifies its own claims + provides PubMed search terms</td></tr>
+                    <tr><td><strong>Regex fallback</strong></td><td>HTML outputs (SBA, Viva, admin) without <code>verifiable_claims</code></td><td>Medium &mdash; catches numbers but lacks medical context</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h6>Wired Into</h6>
+        <span class="badge bg-success me-1">Anatomy</span>
+        <span class="badge bg-success me-1">Smart Reporter Q&amp;A</span>
+        <span class="badge bg-success me-1">SBA/Viva</span>
+        <span class="badge bg-success me-1">RadIQ</span>
+        <span class="badge bg-success me-1">Vetting</span>
+        <span class="badge bg-success me-1">Admin Generation</span>
+
+        <h6 class="mt-2">Flag Inaccuracy</h6>
+        <p class="small mb-0">Users can flag incorrect claims via the <strong>Flag Inaccuracy</strong> button on any peer-reviewed content. Flags are stored in <code>PeerReviewFlag</code> table with content type, section, and user description. Admin can review via <code>SELECT * FROM peer_review_flag WHERE is_resolved = false</code>.</p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION: Safety Guardrails -->
+<!-- ============================================================ -->
+<div id="guardrails" class="card mb-3 border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom">
+        <h5 class="mb-0"><i class="fas fa-shield-alt me-2 text-danger"></i>Safety Guardrails</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered">
+                <thead class="table-light">
+                    <tr><th>Layer</th><th>What</th><th>Where</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>PII Guard</strong></td><td>28 regex patterns, NHS MOD-11 checksum. Blocks API calls while unresolved PII exists. Client + server.</td><td>All user-facing AI features (Smart Reporter, Vetting, RadIQ)</td></tr>
+                    <tr><td><strong>Prompt Guardrails</strong></td><td>"Do NOT fabricate measurements/prevalences/thresholds." Textbook whitelist. Temperature 0 for anatomy.</td><td>All system prompts (anatomy, V3 assist, RadIQ, vetting, report actions)</td></tr>
+                    <tr><td><strong>Peer Review</strong></td><td>PubMed verification of numerical claims. Amber badges on unverified claims. Disclaimer banner.</td><td>Anatomy, Q&amp;A, SBA/Viva, RadIQ, Vetting, Admin gen</td></tr>
+                    <tr><td><strong>Rate Limiting</strong></td><td>Per-user AI call limits. Checked before every AI generation.</td><td>All route handlers (<code>_check_ai_rate_limit()</code>)</td></tr>
+                    <tr><td><strong>Input Validation</strong></td><td>Max character limits on all text inputs. HTML sanitization on admin content.</td><td>All route handlers + <code>sanitize_clinical_html()</code></td></tr>
+                    <tr><td><strong>Never-Fabricate Rules</strong></td><td>V3 prompt: NEVER add findings trainee didn't describe. NEVER assert characteristics not stated.</td><td>Smart Reporter report generation</td></tr>
+                    <tr><td><strong>Flag Inaccuracy</strong></td><td>User-reported errors → admin review. Human-in-the-loop correction over time.</td><td>All peer-reviewed content</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="text-center py-3">
+    <small class="text-muted">
+        RadInsight AI Documentation &mdash; Auto-generated reference for developers and administrators.<br>
+        Source of truth: this page + <code>ai_cost_tracker.py</code> + <code>radinsight_peer_review.py</code> + individual <code>ai_*.py</code> modules.
+    </small>
+</div>
+
+</div>
+{% endblock %}

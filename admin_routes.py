@@ -2741,6 +2741,18 @@ def ai_costs():
 
 
 # ============================================================================
+# RADINSIGHT AI DOCUMENTATION
+# ============================================================================
+
+@admin_bp.route('/ai-documentation')
+@require_admin
+def ai_documentation():
+    """Admin page: comprehensive AI documentation — models, costs, prompts, packages."""
+    from ai_cost_tracker import MODEL_COSTS
+    return render_template('admin_ai_documentation.html', model_costs=MODEL_COSTS)
+
+
+# ============================================================================
 # ADMIN AUDIT LOG
 # ============================================================================
 
