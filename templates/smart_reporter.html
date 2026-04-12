@@ -2143,21 +2143,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Show "Generate with AI?" prompt when no DB match (preserves existing snippets)
     function _showAnatomyGeneratePrompt(topic, remaining, limit) {
-        var container = document.getElementById('anatomyHistory');
-        if (!container) return;
+        // Remove any existing generate prompt
+        var oldPrompt = document.querySelector('.anatomy-generate-prompt');
+        if (oldPrompt) oldPrompt.remove();
 
-        // Re-render existing snippets first so they're preserved
-        renderAnatomyHistory();
-        container.classList.remove('d-none');
+        // Collapse all existing snippets in history
+        var histContainer = document.getElementById('anatomyHistory');
+        if (histContainer) {
+            histContainer.querySelectorAll('[id^="anatomySnippetBody_"]').forEach(function(body) {
+                body.classList.add('d-none');
+            });
+            histContainer.querySelectorAll('[id^="anatomySnippetChevron_"]').forEach(function(chev) {
+                chev.className = chev.className.replace('fa-chevron-up', 'fa-chevron-down');
+            });
+            // Add "(click to expand)" to all headers that don't have it
+            histContainer.querySelectorAll('.card-header small.fw-semibold').forEach(function(el) {
+                if (!el.querySelector('.text-muted')) {
+                    el.insertAdjacentHTML('beforeend', ' <span class="text-muted" style="font-size: 0.65rem; font-weight: 400;">(click to expand)</span>');
+                }
+            });
+        }
 
         var safeTopic = escapeHtml(topic);
         var creditText = (remaining !== null && remaining !== undefined && limit)
             ? '<span style="color: #dc3545; font-weight: 600;">' + remaining + '/' + limit + ' credits remaining</span>'
             : '';
-
-        // Remove any existing generate prompt before adding new one
-        var oldPrompt = container.querySelector('.anatomy-generate-prompt');
-        if (oldPrompt) oldPrompt.remove();
 
         var promptHtml =
             '<div class="card border-0 shadow-sm mb-2 anatomy-generate-prompt" style="border-left: 3px solid var(--brand-neutral, #5E899E) !important;">' +
@@ -2174,8 +2184,14 @@ document.addEventListener('DOMContentLoaded', function() {
             '</div>' +
             '</div></div>';
 
-        // Insert prompt at the top, above existing snippets
-        container.insertAdjacentHTML('afterbegin', promptHtml);
+        // Insert prompt right after the search section, before snippet history
+        var searchSection = document.getElementById('anatomySearchSection');
+        if (searchSection) {
+            searchSection.insertAdjacentHTML('afterend', promptHtml);
+            // Scroll prompt into view
+            var prompt = document.querySelector('.anatomy-generate-prompt');
+            if (prompt) prompt.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     // Step 2: Generate via AI (called when user confirms, or from pickAnatomySuggestion for cached items)
