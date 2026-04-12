@@ -450,7 +450,7 @@ def delete_user_completely(target_user):
         stats['oncall_queries_deleted'] = OnCallQueryLog.query.filter_by(user_id=user_id).delete()
 
         # Delete case image annotations (private)
-        stats['annotations_deleted'] = CaseImageAnnotation.query.filter_by(user_id=user_id).delete()
+        stats['annotations_deleted'] = CaseImageAnnotation.query.filter_by(created_by_user_id=user_id).delete()
 
         # ===== DELETE ADDITIONAL PRIVATE DATA (newer models) =====
 
