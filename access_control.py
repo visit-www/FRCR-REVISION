@@ -457,8 +457,9 @@ def delete_user_completely(target_user):
         # Vetting sessions (private)
         stats['vetting_sessions_deleted'] = VettingSession.query.filter_by(user_id=user_id).delete()
 
-        # RadIQ feedback (private)
-        stats['radiq_feedback_deleted'] = RadIQFeedback.query.filter_by(user_id=user_id).delete()
+        # RadIQ feedback (private) — can't use RadIQFeedback.query because
+        # the model has a 'query' relationship that shadows SQLAlchemy's .query
+        stats['radiq_feedback_deleted'] = db.session.query(RadIQFeedback).filter_by(user_id=user_id).delete()
 
         # Peer review flags (private)
         stats['peer_review_flags_deleted'] = PeerReviewFlag.query.filter_by(user_id=user_id).delete()
