@@ -2759,11 +2759,14 @@ def admin_marketing():
     return render_template('admin_marketing.html')
 
 
-@admin_bp.route('/docs')
+@admin_bp.route('/docs-hub')
 @require_admin
 def admin_docs_hub():
     """Admin page: documentation hub — links to all admin docs."""
-    return render_template('admin_docs_hub.html')
+    from models import AdminDocument, ClaudeMemoryUpdate
+    db_docs = AdminDocument.query.order_by(AdminDocument.category, AdminDocument.title).all()
+    pending_sync = ClaudeMemoryUpdate.query.filter_by(is_synced=False).count()
+    return render_template('admin_docs_hub.html', db_docs=db_docs, pending_sync=pending_sync)
 
 
 @admin_bp.route('/seo-audit')
@@ -2909,6 +2912,157 @@ def radiq_flagged_count():
     # RadIQFeedback has a 'query' relationship that shadows Model.query
     count = db.session.query(RadIQFeedback).filter_by(is_resolved=False).count()
     return jsonify({'count': count}), 200
+
+
+# ============================================================================
+# EDITABLE ADMIN DOCUMENTS
+# ============================================================================
+
+@admin_bp.route('/documents', methods=['GET'])
+@require_admin
+def list_documents():
+    """List all editable admin documents."""
+    from models import AdminDocument
+    docs = AdminDocument.query.order_by(AdminDocument.category, AdminDocument.title).all()
+    return jsonify({'documents': [d.to_dict() for d in docs]})
+
+
+@admin_bp.route('/documents/<slug>', methods=['GET'])
+@require_admin
+def get_document(slug):
+    """Get a single document by slug."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug=slug).first()
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+    return jsonify(doc.to_dict())
+
+
+@admin_bp.route('/documents/<slug>', methods=['PUT'])
+@require_admin
+def save_document(slug):
+    """Save TinyMCE edits to a document."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug=slug).first()
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    if 'content_html' in data:
+        doc.content_html = data['content_html']
+    if 'title' in data:
+        doc.title = data['title']
+    if 'category' in data:
+        doc.category = data['category']
+    doc.last_edited_by = current_user.id
+
+    try:
+        db.session.commit()
+        log_admin_action(current_user.id, 'document_edit', details=f'Edited document: {slug}')
+        return jsonify({'success': True, 'document': doc.to_dict()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/documents', methods=['POST'])
+@require_admin
+def create_document():
+    """Create a new admin document."""
+    from models import AdminDocument
+    data = request.get_json(silent=True) or {}
+    slug = data.get('slug', '').strip()
+    title = data.get('title', '').strip()
+    if not slug or not title:
+        return jsonify({'error': 'slug and title are required'}), 400
+
+    if AdminDocument.query.filter_by(slug=slug).first():
+        return jsonify({'error': f'Document with slug "{slug}" already exists'}), 409
+
+    doc = AdminDocument(
+        slug=slug,
+        title=title,
+        category=data.get('category', 'general'),
+        content_html=data.get('content_html', ''),
+        last_edited_by=current_user.id,
+    )
+    db.session.add(doc)
+    try:
+        db.session.commit()
+        log_admin_action(current_user.id, 'document_create', details=f'Created document: {slug}')
+        return jsonify({'success': True, 'document': doc.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/documents/<slug>/edit', methods=['GET'])
+@require_admin
+def edit_document_page(slug):
+    """Render the TinyMCE editor page for a document."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug=slug).first()
+    if not doc:
+        return "Document not found", 404
+    return render_template('admin_doc_editor.html', doc=doc)
+
+
+# ============================================================================
+# CLAUDE MEMORY SYNC
+# ============================================================================
+
+@admin_bp.route('/claude-memory-sync', methods=['GET'])
+@require_admin
+def get_memory_updates():
+    """Get unsynced memory updates for Claude coding agent."""
+    from models import ClaudeMemoryUpdate
+    updates = ClaudeMemoryUpdate.query.filter_by(is_synced=False)\
+        .order_by(ClaudeMemoryUpdate.created_at.asc()).all()
+    return jsonify({'updates': [u.to_dict() for u in updates], 'count': len(updates)})
+
+
+@admin_bp.route('/claude-memory-sync', methods=['POST'])
+@require_admin
+def create_memory_update():
+    """Create a new memory update (from 'Sync to Dev Notes' button)."""
+    from models import ClaudeMemoryUpdate
+    data = request.get_json(silent=True) or {}
+    summary = data.get('summary', '').strip()
+    if not summary:
+        return jsonify({'error': 'summary is required'}), 400
+
+    update = ClaudeMemoryUpdate(
+        category=data.get('category', 'project'),
+        summary=summary,
+        details=data.get('details', ''),
+        source_doc_slug=data.get('source_doc_slug'),
+        created_by=current_user.id,
+    )
+    db.session.add(update)
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'update': update.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/claude-memory-sync/mark-synced', methods=['POST'])
+@require_admin
+def mark_memory_synced():
+    """Mark all unsynced memory updates as synced."""
+    from models import ClaudeMemoryUpdate
+    updates = ClaudeMemoryUpdate.query.filter_by(is_synced=False).all()
+    count = len(updates)
+    for u in updates:
+        u.is_synced = True
+        u.synced_at = datetime.utcnow()
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'synced_count': count})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================================

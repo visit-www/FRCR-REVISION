@@ -1727,6 +1727,43 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR4 C4 MDT table creation skipped: %s', _mdt_err)
 
+        # ── Editable Admin Documents + Claude Memory Sync tables ──
+        try:
+            from models import AdminDocument as _AD, ClaudeMemoryUpdate as _CMU
+            if 'admin_document' not in insp.get_table_names():
+                _AD.__table__.create(db.engine, checkfirst=True)
+                logger.info('Created admin_document table')
+            if 'claude_memory_update' not in insp.get_table_names():
+                _CMU.__table__.create(db.engine, checkfirst=True)
+                logger.info('Created claude_memory_update table')
+
+            # Auto-sync markdown docs to DB on every deploy
+            _DOC_MANIFEST = [
+                ('marketing-launch-kit', 'Marketing Launch Kit', 'marketing', 'docs/MARKETING_LAUNCH_KIT.md'),
+                ('business-finance-model', 'Business & Finance Model', 'finance', 'docs/BUSINESS_FINANCE_MODEL.md'),
+                ('seo-audit', 'SEO Audit', 'seo', 'docs/SEO_AUDIT_APRIL_2026.md'),
+                ('ai-documentation', 'AI Documentation', 'technical', 'docs/AI_INTEGRATION_REFERENCE.md'),
+                ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
+            ]
+            import markdown as _md
+            _docs_created = 0
+            for _slug, _title, _cat, _fpath in _DOC_MANIFEST:
+                if not _AD.query.filter_by(slug=_slug).first():
+                    _html = ''
+                    try:
+                        with open(os.path.join(os.path.dirname(__file__), _fpath), 'r') as _f:
+                            _html = _md.markdown(_f.read(), extensions=['tables', 'fenced_code', 'toc'])
+                    except FileNotFoundError:
+                        _html = f'<p><em>Source file {_fpath} not found.</em></p>'
+                    db.session.add(_AD(slug=_slug, title=_title, category=_cat, content_html=_html))
+                    _docs_created += 1
+            if _docs_created:
+                db.session.commit()
+                logger.info('Auto-synced %d admin documents from manifest', _docs_created)
+        except Exception as _adoc_err:
+            db.session.rollback()
+            logger.warning('Admin document table creation skipped: %s', _adoc_err)
+
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',

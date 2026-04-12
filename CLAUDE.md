@@ -31,12 +31,17 @@
 - Always syntax-check Python files before committing: `python3 -c "import py_compile; py_compile.compile('file.py', doraise=True)"`
 
 ## Key Documentation (Admin Frontend)
-- `/api/admin/docs` — Documentation hub (all admin docs)
+- `/api/admin/docs-hub` — Documentation hub (editable docs stored in DB)
 - `/api/admin/ai-documentation` — AI endpoints, models, prompts, packages
 - `/api/admin/marketing` — Marketing launch kit + business model
 - `/api/admin/seo-audit` — SEO audit + action plan
 - `docs/tests/peer_review_test.md` — Peer review test plan
 - `docs/tests/peer_review_package_test.md` — Package-level test plan
+
+## Admin Document Manifest
+- When creating a new markdown doc in `docs/`, **always** add a corresponding row to `_DOC_MANIFEST` in `app.py` (search for `_DOC_MANIFEST`) so it auto-syncs to the admin_document DB table on next deploy
+- Format: `('slug', 'Title', 'category', 'docs/FILENAME.md')`
+- Categories: marketing, finance, seo, technical, qa, general
 
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex

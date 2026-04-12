@@ -4021,3 +4021,69 @@ class MdtCase(db.Model):
 
     def __repr__(self):
         return f'<MdtCase {self.id}: {self.diagnosis[:30]} ({self.status})>'
+
+
+# ── Editable Admin Documents ──────────────────────────────────────────
+
+class AdminDocument(db.Model):
+    """Editable admin documents stored in DB (not filesystem)."""
+    __tablename__ = 'admin_document'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(100), unique=True, nullable=False)
+    title = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(50))  # marketing, finance, seo, technical, qa
+    content_html = db.Column(db.Text)
+    last_edited_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    editor = db.relationship('User', foreign_keys=[last_edited_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'slug': self.slug,
+            'title': self.title,
+            'category': self.category,
+            'content_html': self.content_html,
+            'last_edited_by': self.last_edited_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<AdminDocument {self.slug}>'
+
+
+class ClaudeMemoryUpdate(db.Model):
+    """Pending memory updates for Claude coding agent."""
+    __tablename__ = 'claude_memory_update'
+
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50))  # project, feedback, user, reference
+    summary = db.Column(db.String(500))
+    details = db.Column(db.Text)
+    source_doc_slug = db.Column(db.String(100))
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    is_synced = db.Column(db.Boolean, default=False)
+    synced_at = db.Column(db.DateTime)
+
+    creator = db.relationship('User', foreign_keys=[created_by])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'category': self.category,
+            'summary': self.summary,
+            'details': self.details,
+            'source_doc_slug': self.source_doc_slug,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'is_synced': self.is_synced,
+            'synced_at': self.synced_at.isoformat() if self.synced_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ClaudeMemoryUpdate {self.id}: {self.summary[:40] if self.summary else ""}>'

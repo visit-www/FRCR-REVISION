@@ -10,8 +10,46 @@
         <h4 class="mb-0"><i class="fas fa-book-open me-2" style="color: var(--brand-primary);"></i>Documentation Hub</h4>
         <small class="text-muted">All admin documentation in one place</small>
     </div>
-    <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+    <div class="d-flex gap-2 align-items-center">
+        {% if pending_sync %}
+        <span class="badge bg-warning text-dark"><i class="fas fa-robot me-1"></i>{{ pending_sync }} pending sync{{ 's' if pending_sync != 1 }}</span>
+        {% endif %}
+        <button id="newDocBtn" class="btn btn-sm btn-brand-primary"><i class="fas fa-plus me-1"></i>New Document</button>
+        <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+    </div>
 </div>
+
+{% if db_docs %}
+<!-- Editable Documents (DB-stored) -->
+<h6 class="text-muted mb-2"><i class="fas fa-database me-1"></i>Editable Documents</h6>
+<div class="row g-3 mb-4">
+    {% for doc in db_docs %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid var(--brand-neutral) !important;">
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title" style="color: var(--brand-neutral);">{{ doc.title }}</h5>
+                <p class="card-text small text-muted flex-grow-1">
+                    {% if doc.category %}
+                    <span class="badge" style="background: var(--brand-neutral); color: #fff;">{{ doc.category }}</span>
+                    {% endif %}
+                    {% if doc.updated_at %}
+                    <span class="badge bg-light text-dark border">Updated {{ doc.updated_at.strftime('%b %d') }}</span>
+                    {% endif %}
+                </p>
+                <a href="/api/admin/documents/{{ doc.slug }}/edit" class="btn btn-sm btn-brand-neutral mt-auto"><i class="fas fa-edit me-1"></i>Edit</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<hr class="my-3">
+<h6 class="text-muted mb-2"><i class="fas fa-link me-1"></i>Linked Pages</h6>
+{% else %}
+<div class="alert alert-info mb-4">
+    <i class="fas fa-info-circle me-2"></i>No editable documents yet. Documents from the manifest will appear after the next deploy, or click <strong>+ New Document</strong> to create one now.
+</div>
+{% endif %}
 
 <div class="row g-3">
 
@@ -101,4 +139,96 @@
 
 </div>
 </div>
+
+<!-- New Document Modal -->
+<div class="modal fade" id="newDocModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: var(--brand-primary); color: #fff;">
+                <h5 class="modal-title"><i class="fas fa-plus me-2"></i>New Document</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Title <span class="text-danger">*</span></label>
+                    <input type="text" id="newDocTitle" class="form-control form-control-sm" placeholder="e.g. Marketing Launch Kit">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Slug <span class="text-danger">*</span></label>
+                    <input type="text" id="newDocSlug" class="form-control form-control-sm" placeholder="e.g. marketing-launch-kit">
+                    <small class="text-muted">URL-friendly identifier (lowercase, hyphens only)</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Category</label>
+                    <select id="newDocCategory" class="form-select form-select-sm">
+                        <option value="general">General</option>
+                        <option value="marketing">Marketing</option>
+                        <option value="finance">Finance</option>
+                        <option value="technical">Technical</option>
+                        <option value="seo">SEO</option>
+                        <option value="qa">QA</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="createDocBtn" class="btn btn-sm btn-brand-primary"><i class="fas fa-plus me-1"></i>Create & Edit</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-generate slug from title
+    var titleInput = document.getElementById('newDocTitle');
+    var slugInput = document.getElementById('newDocSlug');
+    titleInput.addEventListener('input', function() {
+        slugInput.value = titleInput.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    });
+
+    // New Document button
+    document.getElementById('newDocBtn').addEventListener('click', function() {
+        document.getElementById('newDocTitle').value = '';
+        document.getElementById('newDocSlug').value = '';
+        new bootstrap.Modal(document.getElementById('newDocModal')).show();
+    });
+
+    // Create & Edit
+    document.getElementById('createDocBtn').addEventListener('click', function() {
+        var title = document.getElementById('newDocTitle').value.trim();
+        var slug = document.getElementById('newDocSlug').value.trim();
+        var category = document.getElementById('newDocCategory').value;
+
+        if (!title || !slug) {
+            alert('Title and slug are required');
+            return;
+        }
+
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating...';
+
+        fetch('/api/admin/documents', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: title, slug: slug, category: category, content_html: '<p>Start writing here...</p>' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/api/admin/documents/' + slug + '/edit';
+            } else {
+                alert('Error: ' + (data.error || 'Unknown'));
+                document.getElementById('createDocBtn').disabled = false;
+                document.getElementById('createDocBtn').innerHTML = '<i class="fas fa-plus me-1"></i>Create & Edit';
+            }
+        })
+        .catch(err => {
+            alert('Network error: ' + err.message);
+            document.getElementById('createDocBtn').disabled = false;
+            document.getElementById('createDocBtn').innerHTML = '<i class="fas fa-plus me-1"></i>Create & Edit';
+        });
+    });
+});
+</script>
 {% endblock %}
