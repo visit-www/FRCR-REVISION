@@ -8166,20 +8166,19 @@ def sitemap_xml():
         (f'{BASE}/', '1.0', 'weekly'),
         (f'{BASE}/pricing', '0.9', 'monthly'),
         (f'{BASE}/about', '0.7', 'monthly'),
-        (f'{BASE}/tnm-calculator', '0.9', 'weekly'),
+        (f'{BASE}/tnm-calculator/', '0.9', 'weekly'),          # trailing slash (Flask 308 without)
         (f'{BASE}/essential-tnm-concepts', '0.6', 'monthly'),
         (f'{BASE}/knowledge-hub', '0.8', 'weekly'),
         (f'{BASE}/case-library', '0.8', 'weekly'),
         (f'{BASE}/reporting-algorithms', '0.8', 'weekly'),
         (f'{BASE}/reporting-templates', '0.7', 'weekly'),
-        (f'{BASE}/incidental-findings', '0.8', 'weekly'),
+        (f'{BASE}/incidental-findings/', '0.8', 'weekly'),     # trailing slash (Flask 308 without)
         (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
-        (f'{BASE}/radiology-pearls', '0.7', 'weekly'),
+        # /radiology-pearls removed — 301 redirects to /knowledge-hub (already listed)
         (f'{BASE}/contrast-reaction-card', '0.8', 'monthly'),
         (f'{BASE}/vetting-essentials', '0.8', 'monthly'),
         (f'{BASE}/paediatric-ct-protocols', '0.8', 'monthly'),
-        (f'{BASE}/learn/sba', '0.6', 'weekly'),
-        (f'{BASE}/learn/viva', '0.6', 'weekly'),
+        # /learn/sba and /learn/viva removed — require login (302 to /auth/login)
         (f'{BASE}/privacy-policy', '0.3', 'yearly'),
         (f'{BASE}/terms-of-use', '0.3', 'yearly'),
         (f'{BASE}/trust-and-accuracy', '0.4', 'monthly'),
