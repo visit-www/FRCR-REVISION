@@ -242,41 +242,62 @@ Each of these could be a 1,500-word SEO article linking to our tools:
 
 ## 9. Priority Action Plan
 
-### Week 1 (Immediate Fixes)
-1. Update "39 TNM calculators" to "72" on landing page + meta descriptions
-2. Add RadInsight Peer Review to landing page
-3. Add PII Guard to landing page security section
-4. Show all 5 RadIQ categories on landing page
-5. Trim About page meta description to 155 chars
-6. Add individual TNM calculator URLs to sitemap
+### Week 1 (Immediate Fixes) — DONE (Apr 12, 2026)
+1. ~~Update "39 TNM calculators" to "72" on landing page + meta descriptions~~ DONE
+2. ~~Add RadInsight Peer Review to landing page~~ DONE
+3. ~~Add PII Guard to landing page security section~~ DONE
+4. ~~Show all 5 RadIQ categories on landing page~~ DONE
+5. ~~Trim About page meta description to 155 chars~~ DONE
+6. ~~Add individual TNM calculator URLs to sitemap~~ Already present
+7. ~~Add missing SEO phrases: "AI assisted radiology reporting", "radiology reporting module"~~ DONE
+8. ~~Highlight undersold features: SBA/Viva, action buttons, vetting, forum, protocols~~ DONE
+
+### Week 1b — Search Engine Submission (DO NOW)
+9. Submit updated sitemap to Google Search Console (https://search.google.com/search-console)
+10. Submit updated sitemap to Bing Webmaster Tools (https://www.bing.com/webmasters)
+11. Request re-indexing of key pages in Google Search Console: /, /about, /pricing, /tnm-calculator
+12. Request re-indexing in Bing Webmaster Tools for the same pages
+13. Verify sitemap is accessible: https://www.radinsights.xyz/sitemap.xml
+14. Check robots.txt is correct: https://www.radinsights.xyz/robots.txt
 
 ### Week 2-3 (Schema + Structure)
-7. Add SoftwareApplication schema to landing page
-8. Add BreadcrumbList JSON-LD to all public pages
-9. Add canonical URLs to remaining ~20 public pages
-10. Add FAQ schema to landing page (5-6 Q&As)
-11. Verify MedicalCondition schema applied to all case view pages
+15. Add SoftwareApplication schema to landing page
+16. Add BreadcrumbList JSON-LD to all public pages
+17. Add canonical URLs to remaining ~20 public pages
+18. Add FAQ schema to landing page (5-6 Q&As)
+19. Verify MedicalCondition schema applied to all case view pages
 
 ### Month 2 (Content)
-12. Create first 3 blog articles (Fleischner, Bosniak, FRCR revision)
-13. Add email capture to landing page
-14. Create FRCR study guide PDF lead magnet
-15. Add testimonials section to landing page
+20. Create first 3 blog articles (Fleischner, Bosniak, FRCR revision)
+21. Add email capture to landing page
+22. Create FRCR study guide PDF lead magnet
+23. Add testimonials section to landing page
 
 ### Month 3+ (Growth)
-16. Remaining 5 blog articles
-17. University/training program partnerships
-18. Google Search Console monitoring + iterative keyword optimization
-19. Internal linking strategy (each blog article links to 2-3 app features)
-20. Consider Google Ads for high-intent keywords ("FRCR revision tool", "TNM calculator")
+24. Remaining 5 blog articles
+25. University/training program partnerships
+26. Google Search Console monitoring + iterative keyword optimization
+27. Internal linking strategy (each blog article links to 2-3 app features)
+28. Consider Google Ads for high-intent keywords ("FRCR revision tool", "TNM calculator")
+29. Bing Webmaster Tools monitoring + keyword analysis
 
 ---
 
-## 10. Google Search Console Reminders
+## 10. Google Search Console & Bing Webmaster Tools
 
+### Google Search Console (https://search.google.com/search-console)
+- [ ] Submit sitemap: https://www.radinsights.xyz/sitemap.xml
+- [ ] Request indexing for: /, /about, /pricing, /tnm-calculator, /knowledge-hub
 - [ ] Resubmit sitemap after each major content deployment
 - [ ] Monitor Coverage report for indexing errors
 - [ ] Monitor Core Web Vitals (Vercel typically scores well)
 - [ ] Check Search Performance for keyword opportunities
 - [ ] Verify new public URLs are being crawled (case-library, protocols, anatomy snippets)
 - [ ] Monitor for "Crawled but not indexed" issues (common with thin content pages)
+
+### Bing Webmaster Tools (https://www.bing.com/webmasters)
+- [ ] Submit sitemap: https://www.radinsights.xyz/sitemap.xml
+- [ ] Request indexing for key pages
+- [ ] Verify site ownership (meta tag or DNS)
+- [ ] Monitor search performance for "radiology reporting module", "AI assisted radiology reporting"
+- [ ] Check keyword rankings monthly
