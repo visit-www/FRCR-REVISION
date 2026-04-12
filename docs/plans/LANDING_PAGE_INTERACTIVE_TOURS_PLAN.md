@@ -92,11 +92,25 @@ Replace passive marketing with interactive, hands-on tours that let prospective 
 - "Enter your email to try RadInsights free" — stores in `User` table as pre-registration or separate `TourLead` table
 - After email: all 4 tours unlocked for that session (cookie-based)
 
+### Data Capture Strategy (IMPLEMENTED)
+- **Tour Capture tool** at `/api/admin/tour-capture` — admin form to record test step data
+- During peer review / feature testing, admin captures each step:
+  - Tour name (Smart Reporter, RadIQ, etc.)
+  - Step number + label (e.g. "A1: Anatomy Search")
+  - User input (what was typed/clicked)
+  - Response JSON (pasted from browser Network tab)
+  - Notes (PASS/FAIL, observations)
+  - Screenshot URL (optional)
+- Data saved to `tour_capture` DB table, filterable by tour
+- Ctrl+Enter shortcut for fast capture during testing sessions
+- This captured data becomes the **source material** for pre-baked tour responses
+
 ### Pre-baked Response System
-- JSON files in `static/tour_data/` containing realistic AI responses for each scenario
+- Tour data pulled from `tour_capture` DB table (captured during real testing sessions)
+- Responses are real AI outputs from actual test cases — not fabricated
 - Frontend renders them with simulated streaming effect (typewriter)
 - Zero Anthropic API cost for anonymous visitors
-- Clearly labelled as "Preview" — no deception, but feels live
+- Clearly labelled as "Interactive Preview" — no deception, but feels live
 
 ### Guided Overlay Component
 - Reusable JS component: `TourGuide.start({ steps: [...], onComplete: showCTA })`
@@ -196,16 +210,18 @@ Phase 2 is not about adding tours — all tours ship in Phase 1. Phase 2 is abou
 
 ## Files to Create/Modify
 
-| File | Action |
-|------|--------|
-| `templates/landing_tours.html` | New — landing page with tour sections |
-| `static/tour_data/*.json` | New — pre-baked AI responses for each tour |
-| `static/js/tour-guide.js` | New — reusable guided overlay component |
-| `static/css/tour.css` | New — tour-specific styles |
-| `app.py` or `public_routes.py` | Route for landing page |
-| `models.py` | Optional: `TourLead` model for email capture |
-| `templates/partials/_tour_cta.html` | New — reusable CTA partial |
-| `templates/partials/_schema_medical.html` | Update — add SoftwareApplication schema |
+| File | Action | Status |
+|------|--------|--------|
+| `models.py` — `TourCapture` | DB table for captured test data | DONE |
+| `admin_routes.py` — tour-capture endpoints | Save/list/delete/filter captures | DONE |
+| `templates/admin_tour_capture.html` | Admin capture form | DONE |
+| `templates/landing_tours.html` | New — landing page with tour sections | TODO |
+| `static/js/tour-guide.js` | New — reusable guided overlay component | TODO |
+| `static/css/tour.css` | New — tour-specific styles | TODO |
+| `app.py` or `public_routes.py` | Route for landing page | TODO |
+| `models.py` — `TourLead` | Email capture model | TODO |
+| `templates/partials/_tour_cta.html` | New — reusable CTA partial | TODO |
+| `templates/partials/_schema_medical.html` | Update — add SoftwareApplication schema | TODO |
 
 ---
 
