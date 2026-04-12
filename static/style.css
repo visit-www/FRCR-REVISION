@@ -6321,12 +6321,19 @@ body {
         flex: 0 0 60%;
         max-width: 60%;
     }
-    .sr-split-mode #editorLeftCol,
-    .sr-split-mode #editorRightCol {
+    /* Left column: sticky editor, fixed height with own scrollbar */
+    .sr-split-mode #editorLeftCol {
         max-height: calc(100vh - var(--navbar-height, 110px) - 60px);
         overflow-y: auto;
         position: sticky;
         top: calc(var(--navbar-height, 110px) + 10px);
+        align-self: flex-start;
+    }
+    /* Right column: natural height, grows with content, single page scroll */
+    .sr-split-mode #editorRightCol {
+        max-height: none;
+        overflow-y: visible;
+        position: static;
     }
 }
 .sr-split-mode #outputSection {
