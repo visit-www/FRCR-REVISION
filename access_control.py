@@ -380,8 +380,15 @@ def delete_user_completely(target_user):
         CaseViewLog, ForumMessage, ForumMessageVote, ForumMessageFlag,
         Case, CaseAuditLog, CaseApprovalQueue, ImportedCaseStaging, AiDiagnosisCache,
         RadIQQuery, ContentRequest, CaseFlag, UserQAProgress, LearningQuestionProgress,
-        PiiOverrideLog, OnCallQueryLog, CaseImageAnnotation, AIAuditLog
+        PiiOverrideLog, OnCallQueryLog, CaseImageAnnotation, AIAuditLog,
+        AdminApprovalCode, AccountRecoveryCode, RadIQFeedback, PeerReviewFlag,
+        VettingSession, AiPrelimCaseData,
     )
+    # Conditional imports for models that may not exist yet
+    try:
+        from models import ReportingSession as _RS, PublishedReport as _PR
+    except ImportError:
+        _RS = _PR = None
     
     user_id = target_user.id
     stats = {
@@ -445,10 +452,38 @@ def delete_user_completely(target_user):
         # Delete case image annotations (private)
         stats['annotations_deleted'] = CaseImageAnnotation.query.filter_by(user_id=user_id).delete()
 
-        # ===== ANONYMIZE FORUM MESSAGES (preserve content, remove author link) =====
-        stats['forum_messages_anonymized'] = ForumMessage.query.filter_by(user_id=user_id).update(
-            {'user_id': None}, synchronize_session=False
-        )
+        # ===== DELETE ADDITIONAL PRIVATE DATA (newer models) =====
+
+        # Vetting sessions (private)
+        stats['vetting_sessions_deleted'] = VettingSession.query.filter_by(user_id=user_id).delete()
+
+        # RadIQ feedback (private)
+        stats['radiq_feedback_deleted'] = RadIQFeedback.query.filter_by(user_id=user_id).delete()
+
+        # Peer review flags (private)
+        stats['peer_review_flags_deleted'] = PeerReviewFlag.query.filter_by(user_id=user_id).delete()
+
+        # Admin approval codes (requesting or target)
+        AdminApprovalCode.query.filter_by(requesting_admin_id=user_id).delete()
+        AdminApprovalCode.query.filter_by(target_user_id=user_id).delete()
+
+        # Account recovery codes (private)
+        AccountRecoveryCode.query.filter_by(user_id=user_id).delete()
+
+        # Reporting sessions (private, legacy)
+        if _RS:
+            _RS.query.filter_by(user_id=user_id).delete()
+
+        # Published reports (private, legacy)
+        if _PR:
+            _PR.query.filter_by(user_id=user_id).delete()
+
+        # AI prelim case data (created_by_user_id is NOT NULL — delete)
+        AiPrelimCaseData.query.filter_by(created_by_user_id=user_id).delete()
+
+        # ===== ANONYMIZE FORUM MESSAGES (preserve content, delete user's messages) =====
+        # ForumMessage.user_id is NOT NULL, so we must delete rather than nullify
+        stats['forum_messages_anonymized'] = ForumMessage.query.filter_by(user_id=user_id).delete()
         
         # ===== NULLIFY CASE REFERENCES (preserve cases, remove author link) =====
         
@@ -463,15 +498,11 @@ def delete_user_completely(target_user):
         )
         stats['cases_updated'] = cases_created + cases_approved
         
-        # Audit logs (preserve trail, remove user link)
-        stats['audit_logs_updated'] = CaseAuditLog.query.filter_by(user_id=user_id).update(
-            {'user_id': None}, synchronize_session=False
-        )
+        # Case audit logs (user_id is NOT NULL — delete rather than nullify)
+        stats['audit_logs_updated'] = CaseAuditLog.query.filter_by(user_id=user_id).delete()
         
-        # Approval queue
-        CaseApprovalQueue.query.filter_by(submitted_by_user_id=user_id).update(
-            {'submitted_by_user_id': None}, synchronize_session=False
-        )
+        # Approval queue (submitted_by_user_id is NOT NULL — delete)
+        CaseApprovalQueue.query.filter_by(submitted_by_user_id=user_id).delete()
         
         # Imported case staging
         ImportedCaseStaging.query.filter_by(enriched_by_user_id=user_id).update(
@@ -481,10 +512,8 @@ def delete_user_completely(target_user):
             {'approved_by_user_id': None}, synchronize_session=False
         )
         
-        # AI diagnosis cache
-        AiDiagnosisCache.query.filter_by(first_user_id=user_id).update(
-            {'first_user_id': None}, synchronize_session=False
-        )
+        # AI diagnosis cache (first_user_id is NOT NULL — delete)
+        AiDiagnosisCache.query.filter_by(first_user_id=user_id).delete()
         
         # Flag resolution references
         ForumMessageFlag.query.filter_by(resolved_by_user_id=user_id).update(
