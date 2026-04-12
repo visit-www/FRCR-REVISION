@@ -3070,6 +3070,69 @@ def view_document_page(slug):
 
 
 # ============================================================================
+# TOUR CAPTURE
+# ============================================================================
+
+@admin_bp.route('/tour-capture', methods=['GET'])
+@require_admin
+def tour_capture_page():
+    """Render the tour capture form."""
+    return render_template('admin_tour_capture.html')
+
+
+@admin_bp.route('/tour-capture/save', methods=['POST'])
+@require_admin
+def save_tour_capture():
+    """Save a captured test step."""
+    from models import TourCapture
+    data = request.get_json(silent=True) or {}
+    if not data.get('tour_name') or not data.get('step_label'):
+        return jsonify({'error': 'tour_name and step_label required'}), 400
+
+    capture = TourCapture(
+        tour_name=data['tour_name'],
+        step_number=data.get('step_number', 0),
+        step_label=data['step_label'],
+        user_input=data.get('user_input', ''),
+        response_json=data.get('response_json', ''),
+        notes=data.get('notes', ''),
+        screenshot_url=data.get('screenshot_url', ''),
+    )
+    db.session.add(capture)
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'capture': capture.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/tour-capture/list', methods=['GET'])
+@require_admin
+def list_tour_captures():
+    """List all captured steps, optionally filtered by tour_name."""
+    from models import TourCapture
+    tour = request.args.get('tour')
+    q = TourCapture.query.order_by(TourCapture.tour_name, TourCapture.step_number)
+    if tour:
+        q = q.filter_by(tour_name=tour)
+    return jsonify({'captures': [c.to_dict() for c in q.all()]})
+
+
+@admin_bp.route('/tour-capture/<int:capture_id>', methods=['DELETE'])
+@require_admin
+def delete_tour_capture(capture_id):
+    """Delete a captured step."""
+    from models import TourCapture
+    capture = TourCapture.query.get(capture_id)
+    if not capture:
+        return jsonify({'error': 'Not found'}), 404
+    db.session.delete(capture)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ============================================================================
 # CLAUDE MEMORY SYNC
 # ============================================================================
 

@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Tour Capture{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block content %}
+<style>
+.capture-card { border-left: 4px solid var(--brand-primary) !important; }
+.capture-card.saved { border-left-color: var(--brand-success) !important; opacity: 0.7; }
+.saved-list .saved-item { font-size: .85rem; padding: 6px 10px; border-bottom: 1px solid #eee; }
+.saved-list .saved-item:last-child { border-bottom: none; }
+#responseJson { font-family: monospace; font-size: .8rem; }
+</style>
+
+<div class="container-fluid py-3" style="max-width: 900px;">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h4 class="mb-0"><i class="fas fa-camera me-2" style="color: var(--brand-primary);"></i>Tour Capture</h4>
+        <small class="text-muted">Capture test steps for landing page interactive tours</small>
+    </div>
+    <div class="d-flex gap-2">
+        <span id="captureCount" class="badge bg-light text-dark border align-self-center">0 captured</span>
+        <a href="/admin" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+    </div>
+</div>
+
+<!-- Capture Form -->
+<div class="card capture-card border-0 shadow-sm mb-3">
+    <div class="card-body">
+        <div class="row g-2 mb-2">
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">Tour</label>
+                <select id="tourName" class="form-select form-select-sm">
+                    <option value="smart-reporter">Smart Reporter</option>
+                    <option value="radiq">RadIQ</option>
+                    <option value="vetting">Vetting</option>
+                    <option value="mdt">MDT</option>
+                    <option value="tnm-calculator">TNM Calculator</option>
+                    <option value="radiology-tools">Radiology Tools</option>
+                    <option value="cases">Cases</option>
+                    <option value="knowledge-hub">Knowledge Hub</option>
+                    <option value="protocols">Protocols & Safety</option>
+                    <option value="practice">Practice (SBA/Viva)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-bold small">Step #</label>
+                <input type="number" id="stepNumber" class="form-control form-control-sm" value="1" min="1">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold small">Step Label</label>
+                <input type="text" id="stepLabel" class="form-control form-control-sm" placeholder="e.g. A1: Anatomy Search">
+            </div>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label fw-bold small">User Input <span class="text-muted fw-normal">(what you typed/clicked)</span></label>
+            <textarea id="userInput" class="form-control form-control-sm" rows="2" placeholder="e.g. circle of Willis"></textarea>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label fw-bold small">Response JSON <span class="text-muted fw-normal">(paste from Network tab)</span></label>
+            <textarea id="responseJson" class="form-control form-control-sm" rows="4" placeholder="Paste API response here..."></textarea>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label fw-bold small">Notes <span class="text-muted fw-normal">(observations, bugs, pass/fail)</span></label>
+            <textarea id="notes" class="form-control form-control-sm" rows="2" placeholder="e.g. PASS - badges rendered correctly"></textarea>
+        </div>
+
+        <div class="mb-2">
+            <label class="form-label fw-bold small">Screenshot URL <span class="text-muted fw-normal">(optional — drag to Cloudinary or paste URL)</span></label>
+            <input type="text" id="screenshotUrl" class="form-control form-control-sm" placeholder="https://...">
+        </div>
+
+        <div class="d-flex gap-2">
+            <button id="saveBtn" class="btn btn-sm btn-brand-primary"><i class="fas fa-save me-1"></i>Save Step</button>
+            <button id="clearBtn" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eraser me-1"></i>Clear</button>
+        </div>
+    </div>
+</div>
+
+<div id="saveStatus" class="d-none alert py-1 px-3 mb-2" style="font-size: .85rem;"></div>
+
+<!-- Saved Captures -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="fas fa-list me-2"></i>Captured Steps</h6>
+        <select id="filterTour" class="form-select form-select-sm" style="width: auto;">
+            <option value="">All Tours</option>
+            <option value="smart-reporter">Smart Reporter</option>
+            <option value="radiq">RadIQ</option>
+            <option value="vetting">Vetting</option>
+            <option value="mdt">MDT</option>
+            <option value="tnm-calculator">TNM Calculator</option>
+            <option value="radiology-tools">Radiology Tools</option>
+            <option value="cases">Cases</option>
+            <option value="knowledge-hub">Knowledge Hub</option>
+            <option value="protocols">Protocols & Safety</option>
+            <option value="practice">Practice (SBA/Viva)</option>
+        </select>
+    </div>
+    <div class="card-body p-0 saved-list" id="savedList">
+        <div class="text-center text-muted py-4"><small>No captures yet</small></div>
+    </div>
+</div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    function showStatus(msg, type) {
+        var el = document.getElementById('saveStatus');
+        el.className = 'alert py-1 px-3 mb-2 alert-' + type;
+        el.textContent = msg;
+        el.classList.remove('d-none');
+        setTimeout(function() { el.classList.add('d-none'); }, 3000);
+    }
+
+    function loadCaptures() {
+        var tour = document.getElementById('filterTour').value;
+        var url = '/api/admin/tour-capture/list' + (tour ? '?tour=' + tour : '');
+        fetch(url).then(r => r.json()).then(data => {
+            var list = document.getElementById('savedList');
+            var captures = data.captures || [];
+            document.getElementById('captureCount').textContent = captures.length + ' captured';
+
+            if (!captures.length) {
+                list.innerHTML = '<div class="text-center text-muted py-4"><small>No captures yet</small></div>';
+                return;
+            }
+
+            list.innerHTML = captures.map(function(c) {
+                var inputPreview = (c.user_input || '').substring(0, 80);
+                var hasJson = c.response_json && c.response_json.length > 2;
+                return '<div class="saved-item d-flex justify-content-between align-items-center">' +
+                    '<div>' +
+                        '<strong class="text-primary">' + c.tour_name + ' #' + c.step_number + '</strong> ' +
+                        '<span class="text-muted">' + (c.step_label || '') + '</span>' +
+                        (inputPreview ? '<br><small class="text-muted"><i class="fas fa-keyboard me-1"></i>' + inputPreview + '</small>' : '') +
+                        (hasJson ? ' <span class="badge bg-success" style="font-size:.6rem;">JSON</span>' : '') +
+                        (c.screenshot_url ? ' <span class="badge bg-info" style="font-size:.6rem;">IMG</span>' : '') +
+                        (c.notes ? '<br><small class="text-secondary"><i class="fas fa-sticky-note me-1"></i>' + c.notes.substring(0, 100) + '</small>' : '') +
+                    '</div>' +
+                    '<button class="btn btn-sm btn-outline-danger delete-capture" data-id="' + c.id + '" title="Delete"><i class="fas fa-times"></i></button>' +
+                '</div>';
+            }).join('');
+
+            // Wire up delete buttons
+            list.querySelectorAll('.delete-capture').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (!confirm('Delete this capture?')) return;
+                    fetch('/api/admin/tour-capture/' + this.dataset.id, { method: 'DELETE' })
+                        .then(function() { loadCaptures(); });
+                });
+            });
+        });
+    }
+
+    // Save
+    document.getElementById('saveBtn').addEventListener('click', function() {
+        var data = {
+            tour_name: document.getElementById('tourName').value,
+            step_number: parseInt(document.getElementById('stepNumber').value) || 1,
+            step_label: document.getElementById('stepLabel').value.trim(),
+            user_input: document.getElementById('userInput').value,
+            response_json: document.getElementById('responseJson').value,
+            notes: document.getElementById('notes').value,
+            screenshot_url: document.getElementById('screenshotUrl').value.trim()
+        };
+
+        if (!data.step_label) {
+            showStatus('Step label is required', 'warning');
+            return;
+        }
+
+        fetch('/api/admin/tour-capture/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.success) {
+                showStatus('Step #' + data.step_number + ' saved', 'success');
+                // Auto-increment step number
+                document.getElementById('stepNumber').value = data.step_number + 1;
+                // Clear input fields but keep tour and label prefix
+                document.getElementById('userInput').value = '';
+                document.getElementById('responseJson').value = '';
+                document.getElementById('notes').value = '';
+                document.getElementById('screenshotUrl').value = '';
+                loadCaptures();
+            } else {
+                showStatus('Error: ' + (result.error || 'Unknown'), 'danger');
+            }
+        })
+        .catch(err => showStatus('Network error: ' + err.message, 'danger'));
+    });
+
+    // Clear
+    document.getElementById('clearBtn').addEventListener('click', function() {
+        document.getElementById('stepLabel').value = '';
+        document.getElementById('userInput').value = '';
+        document.getElementById('responseJson').value = '';
+        document.getElementById('notes').value = '';
+        document.getElementById('screenshotUrl').value = '';
+    });
+
+    // Filter
+    document.getElementById('filterTour').addEventListener('change', loadCaptures);
+
+    // Keyboard shortcut: Ctrl+Enter to save
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('saveBtn').click();
+        }
+    });
+
+    // Initial load
+    loadCaptures();
+});
+</script>
+{% endblock %}

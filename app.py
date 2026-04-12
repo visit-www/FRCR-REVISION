@@ -1736,6 +1736,10 @@ with app.app_context():
             if 'claude_memory_update' not in insp.get_table_names():
                 _CMU.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created claude_memory_update table')
+            from models import TourCapture as _TC
+            if 'tour_capture' not in insp.get_table_names():
+                _TC.__table__.create(db.engine, checkfirst=True)
+                logger.info('Created tour_capture table')
 
             # Auto-sync markdown docs to DB on every deploy
             # Manifest: (slug, title, category, filepath)

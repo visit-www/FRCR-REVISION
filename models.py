@@ -4087,3 +4087,36 @@ class ClaudeMemoryUpdate(db.Model):
 
     def __repr__(self):
         return f'<ClaudeMemoryUpdate {self.id}: {self.summary[:40] if self.summary else ""}>'
+
+
+# ── Tour Capture ──────────────────────────────────────────────────────
+
+class TourCapture(db.Model):
+    """Captured test step data for building landing page interactive tours."""
+    __tablename__ = 'tour_capture'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tour_name = db.Column(db.String(100), nullable=False)  # e.g. 'smart-reporter', 'radiq', 'vetting', 'mdt'
+    step_number = db.Column(db.Integer, nullable=False)
+    step_label = db.Column(db.String(200))  # e.g. 'A1: Anatomy Search'
+    user_input = db.Column(db.Text)  # what the user typed/clicked
+    response_json = db.Column(db.Text)  # pasted from Network tab
+    notes = db.Column(db.Text)  # anything else — observations, bugs, etc.
+    screenshot_url = db.Column(db.String(500))  # optional Cloudinary/R2 URL
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tour_name': self.tour_name,
+            'step_number': self.step_number,
+            'step_label': self.step_label,
+            'user_input': self.user_input,
+            'response_json': self.response_json,
+            'notes': self.notes,
+            'screenshot_url': self.screenshot_url,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<TourCapture {self.tour_name}#{self.step_number}: {self.step_label}>'
