@@ -2969,6 +2969,16 @@ def save_document(slug):
     doc.last_edited_by = current_user.id
 
     try:
+        # Auto-create memory sync entry on every save
+        from models import ClaudeMemoryUpdate
+        sync = ClaudeMemoryUpdate(
+            category='project',
+            summary=f'Document updated: {doc.title}',
+            details=f'Admin edited "{doc.title}" ({slug}) — category: {doc.category}',
+            source_doc_slug=slug,
+            created_by=current_user.id,
+        )
+        db.session.add(sync)
         db.session.commit()
         log_admin_action(current_user.id, 'document_edit', details=f'Edited document: {slug}')
         return jsonify({'success': True, 'document': doc.to_dict()})
