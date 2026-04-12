@@ -4264,11 +4264,29 @@ def smart_reporter_anatomy():
     ).first()
 
     if cached and cached.template_html and not force_regenerate:
+        html = cached.template_html
+        # On-demand peer review for cached snippets that lack verification badges
+        if cached.is_ai_generated and 'peer-review-badge' not in html:
+            try:
+                from radinsight_peer_review import peer_review_anatomy
+                # Pass HTML as ai_output so claims are extracted from the rendered content
+                pr = peer_review_anatomy(html, html, topic=cached.title)
+                html = pr['content_html']
+                # Persist the peer-reviewed HTML so we don't re-run next time
+                cached.template_html = html
+                db.session.commit()
+                logger.info("On-demand peer review for cached '%s': %d/%d verified",
+                            cached.title,
+                            pr['verification_summary'].get('verified', 0),
+                            pr['verification_summary'].get('total', 0))
+            except Exception as pr_exc:
+                logger.warning("On-demand peer review failed for '%s': %s", cached.title, pr_exc)
+
         return jsonify({
             'success': True,
             'cached': True,
             'title': cached.title,
-            'content_html': cached.template_html,
+            'content_html': html,
             'algorithm_id': cached.id,
             'is_ai_generated': cached.is_ai_generated,
             'source': 'database',
