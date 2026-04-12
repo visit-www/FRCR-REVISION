@@ -2747,7 +2747,11 @@ def ai_costs():
 @admin_bp.route('/ai-documentation')
 @require_admin
 def ai_documentation():
-    """Admin page: comprehensive AI documentation — models, costs, prompts, packages."""
+    """Admin page: AI documentation — serves from DB if available, falls back to template."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug='ai-documentation').first()
+    if doc:
+        return render_template('admin_doc_view.html', doc=doc)
     from ai_cost_tracker import MODEL_COSTS
     return render_template('admin_ai_documentation.html', model_costs=MODEL_COSTS)
 
@@ -2755,7 +2759,11 @@ def ai_documentation():
 @admin_bp.route('/marketing')
 @require_admin
 def admin_marketing():
-    """Admin page: marketing launch kit and business model."""
+    """Admin page: marketing — serves from DB if available, falls back to template."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug='marketing').first()
+    if doc:
+        return render_template('admin_doc_view.html', doc=doc)
     return render_template('admin_marketing.html')
 
 
@@ -2772,7 +2780,11 @@ def admin_docs_hub():
 @admin_bp.route('/seo-audit')
 @require_admin
 def admin_seo_audit():
-    """Admin page: SEO audit findings and action items."""
+    """Admin page: SEO audit — serves from DB if available, falls back to template."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug='seo-audit').first()
+    if doc:
+        return render_template('admin_doc_view.html', doc=doc)
     return render_template('admin_seo_audit.html')
 
 
@@ -3005,6 +3017,17 @@ def edit_document_page(slug):
     if not doc:
         return "Document not found", 404
     return render_template('admin_doc_editor.html', doc=doc)
+
+
+@admin_bp.route('/documents/<slug>/view', methods=['GET'])
+@require_admin
+def view_document_page(slug):
+    """Render a read-only view of a DB-stored document."""
+    from models import AdminDocument
+    doc = AdminDocument.query.filter_by(slug=slug).first()
+    if not doc:
+        return "Document not found", 404
+    return render_template('admin_doc_view.html', doc=doc)
 
 
 # ============================================================================

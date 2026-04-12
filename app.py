@@ -1738,22 +1738,35 @@ with app.app_context():
                 logger.info('Created claude_memory_update table')
 
             # Auto-sync markdown docs to DB on every deploy
+            # Manifest: (slug, title, category, filepath)
+            # .md files are converted from markdown; .html templates have Jinja stripped
             _DOC_MANIFEST = [
                 ('marketing-launch-kit', 'Marketing Launch Kit', 'marketing', 'docs/MARKETING_LAUNCH_KIT.md'),
                 ('business-finance-model', 'Business & Finance Model', 'finance', 'docs/BUSINESS_FINANCE_MODEL.md'),
-                ('seo-audit', 'SEO Audit', 'seo', 'docs/SEO_AUDIT_APRIL_2026.md'),
-                ('ai-documentation', 'AI Documentation', 'technical', 'docs/AI_INTEGRATION_REFERENCE.md'),
+                ('seo-audit-report', 'SEO Audit', 'seo', 'docs/SEO_AUDIT_APRIL_2026.md'),
+                ('ai-documentation-ref', 'AI Documentation', 'technical', 'docs/AI_INTEGRATION_REFERENCE.md'),
                 ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
                 ('landing-page-tours', 'Landing Page Interactive Tours Plan', 'marketing', 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'),
+                # HTML template pages (migrated to DB-editable)
+                ('ai-documentation', 'AI Documentation (Full Page)', 'technical', 'templates/admin_ai_documentation.html'),
+                ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
+                ('seo-audit', 'SEO Audit — April 2026', 'seo', 'templates/admin_seo_audit.html'),
             ]
             import markdown as _md
+            import re as _re
             _docs_created = 0
             for _slug, _title, _cat, _fpath in _DOC_MANIFEST:
                 if not _AD.query.filter_by(slug=_slug).first():
                     _html = ''
                     try:
                         with open(os.path.join(os.path.dirname(__file__), _fpath), 'r') as _f:
-                            _html = _md.markdown(_f.read(), extensions=['tables', 'fenced_code', 'toc'])
+                            _raw = _f.read()
+                        if _fpath.endswith('.md'):
+                            _html = _md.markdown(_raw, extensions=['tables', 'fenced_code', 'toc'])
+                        elif _fpath.endswith('.html'):
+                            # Extract content between {% block content %} and {% endblock %}
+                            _m = _re.search(r'\{%\s*block\s+content\s*%\}(.*?)(?:\{%\s*endblock\s*%\})', _raw, _re.DOTALL)
+                            _html = _m.group(1).strip() if _m else _raw
                     except FileNotFoundError:
                         _html = f'<p><em>Source file {_fpath} not found.</em></p>'
                     db.session.add(_AD(slug=_slug, title=_title, category=_cat, content_html=_html))

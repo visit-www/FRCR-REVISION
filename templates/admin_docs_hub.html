@@ -35,78 +35,14 @@
                     <span class="badge bg-light text-dark border">Updated {{ doc.updated_at.strftime('%b %d') }}</span>
                     {% endif %}
                 </p>
-                <a href="/api/admin/documents/{{ doc.slug }}/edit" class="btn btn-sm btn-brand-neutral mt-auto"><i class="fas fa-edit me-1"></i>Edit</a>
+                <div class="d-flex gap-2 mt-auto">
+                    <a href="/api/admin/documents/{{ doc.slug }}/view" class="btn btn-sm btn-outline-secondary"><i class="fas fa-eye me-1"></i>View</a>
+                    <a href="/api/admin/documents/{{ doc.slug }}/edit" class="btn btn-sm btn-brand-neutral"><i class="fas fa-edit me-1"></i>Edit</a>
+                </div>
             </div>
         </div>
     </div>
     {% endfor %}
-
-    {# ── Built-in admin pages ── #}
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #6b46c1 !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title" style="color: #6b46c1;"><i class="fas fa-brain me-2"></i>AI Documentation</h5>
-                <p class="card-text small text-muted flex-grow-1">All 24 AI call sites, models, pricing, system prompts, standalone packages, cost tracking, peer review, safety guardrails.</p>
-                <div><span class="badge" style="background: #6b46c1;">Technical</span> <span class="badge bg-light text-dark border">24 AI Endpoints</span></div>
-                <a href="/api/admin/ai-documentation" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid var(--brand-primary) !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title" style="color: var(--brand-primary);"><i class="fas fa-bullhorn me-2"></i>Marketing Launch Kit</h5>
-                <p class="card-text small text-muted flex-grow-1">Brand identity, target audiences, full feature inventory, pricing messaging, content calendar, competitor analysis.</p>
-                <div><span class="badge" style="background: var(--brand-primary); color: #fff;">Marketing</span> <span class="badge bg-light text-dark border">Launch Ready</span></div>
-                <a href="/api/admin/marketing" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #198754 !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title text-success"><i class="fas fa-chart-pie me-2"></i>Business & Finance</h5>
-                <p class="card-text small text-muted flex-grow-1">Unit economics, cost structure, breakeven analysis, margin per tier, growth levers, risk factors.</p>
-                <div><span class="badge bg-success">Finance</span> <span class="badge bg-light text-dark border">4 Tiers</span></div>
-                <a href="/api/admin/marketing#business" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid var(--brand-neutral) !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title" style="color: var(--brand-neutral);"><i class="fas fa-dollar-sign me-2"></i>Live Cost Dashboard</h5>
-                <p class="card-text small text-muted flex-grow-1">Real-time AI spend: by user, by action, by model, daily trends. Admin vs user cost split. CSV export.</p>
-                <div><span class="badge" style="background: var(--brand-neutral); color: #fff;">Live Data</span> <span class="badge bg-light text-dark border">Charts</span></div>
-                <a href="/admin#ai-costs" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title text-danger"><i class="fas fa-clipboard-check me-2"></i>Test Plans</h5>
-                <p class="card-text small text-muted flex-grow-1">Peer Review module test (9 sections), anatomy snippet UX tests, regression checks.</p>
-                <div><span class="badge bg-danger">QA</span> <span class="badge bg-light text-dark border">Step-by-Step</span></div>
-                <a href="/api/admin/marketing#peer-review-test" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 col-lg-4">
-        <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid #ffc107 !important;">
-            <div class="card-body d-flex flex-column">
-                <h5 class="card-title" style="color: #cc9a00;"><i class="fas fa-search me-2"></i>SEO Audit</h5>
-                <p class="card-text small text-muted flex-grow-1">Schema gaps, keyword opportunities, missing trust signals, sitemap coverage, action plan with timeline.</p>
-                <div><span class="badge bg-warning text-dark">SEO</span> <span class="badge bg-light text-dark border">April 2026</span></div>
-                <a href="/api/admin/seo-audit" class="btn btn-sm btn-outline-secondary mt-2"><i class="fas fa-eye me-1"></i>View</a>
-            </div>
-        </div>
-    </div>
 
 </div>
 </div>
