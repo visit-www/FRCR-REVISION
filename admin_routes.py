@@ -2772,7 +2772,7 @@ def admin_marketing():
 def admin_docs_hub():
     """Admin page: documentation hub — links to all admin docs."""
     from models import AdminDocument, ClaudeMemoryUpdate
-    db_docs = AdminDocument.query.order_by(AdminDocument.category, AdminDocument.title).all()
+    db_docs = AdminDocument.query.filter(AdminDocument.category != '_system').order_by(AdminDocument.category, AdminDocument.title).all()
     pending_sync = ClaudeMemoryUpdate.query.filter_by(is_synced=False).count()
     return render_template('admin_docs_hub.html', db_docs=db_docs, pending_sync=pending_sync)
 

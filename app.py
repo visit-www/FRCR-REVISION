@@ -1748,12 +1748,18 @@ with app.app_context():
                 ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
                 ('seo-audit', 'SEO Audit', 'seo', 'templates/admin_seo_audit.html'),
             ]
-            # Clean up old duplicate slugs from earlier manifest versions
-            for _old_slug in ('marketing-launch-kit', 'seo-audit-report', 'ai-documentation-ref'):
-                _old_doc = _AD.query.filter_by(slug=_old_slug).first()
-                if _old_doc:
-                    db.session.delete(_old_doc)
-                    logger.info('Removed duplicate admin doc: %s', _old_slug)
+            # One-time cleanup: remove old duplicates + stale template docs for fresh re-extraction
+            # Sentinel: only run if the sentinel doc doesn't exist yet
+            if not _AD.query.filter_by(slug='_cleanup_v2_done').first():
+                for _old_slug in ('marketing-launch-kit', 'seo-audit-report', 'ai-documentation-ref',
+                                  'seo-audit', 'ai-documentation', 'marketing'):
+                    _old_doc = _AD.query.filter_by(slug=_old_slug).first()
+                    if _old_doc:
+                        db.session.delete(_old_doc)
+                        logger.info('Cleanup v2: removed %s for re-creation', _old_slug)
+                db.session.add(_AD(slug='_cleanup_v2_done', title='Cleanup v2 sentinel', category='general', content_html=''))
+                db.session.flush()
+                logger.info('Cleanup v2 complete')
             import markdown as _md
             import re as _re
             _docs_created = 0
@@ -1773,6 +1779,10 @@ with app.app_context():
                         _html = f'<p><em>Source file {_fpath} not found.</em></p>'
                     db.session.add(_AD(slug=_slug, title=_title, category=_cat, content_html=_html))
                     _docs_created += 1
+            # Remove sentinel from visible docs
+            _sentinel = _AD.query.filter_by(slug='_cleanup_v2_done').first()
+            if _sentinel:
+                _sentinel.category = '_system'  # hidden from hub query
             if _docs_created:
                 db.session.commit()
                 logger.info('Auto-synced %d admin documents from manifest', _docs_created)
