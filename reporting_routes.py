@@ -244,15 +244,24 @@ def normalize_modality(raw):
 reporting_bp = Blueprint('reporting', __name__)
 
 TIER_LIMITS = {
-    'free':      {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
-    'standard':  {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
-    'elite':     {'sr_monthly': 300,  'radiq_monthly': 40,  'trial_days': None},
-    'elite_pro': {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
+    # Trial: 10 SR + 5 RadIQ for 7 days (whichever runs out first)
+    # Post-trial: 2 SR + 1 RadIQ per month (perpetual free taste)
+    'free':           {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
+    'free_post_trial': {'sr_monthly': 2,   'radiq_monthly': 1,   'trial_days': None},
+    'standard':       {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
+    'elite':          {'sr_monthly': 300,  'radiq_monthly': 40,  'trial_days': None},
+    'elite_pro':      {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
 }
 
 
 def _check_ai_rate_limit(usage_type='sr'):
-    """Tier-based monthly AI rate limit. Returns (ok, remaining, error_response)."""
+    """Tier-based monthly AI rate limit. Returns (ok, remaining, error_response).
+
+    Free tier logic:
+    - During trial (first 7 days): 10 SR + 5 RadIQ actions
+    - After trial expires: 2 SR + 1 RadIQ per month (perpetual free taste)
+    - All non-AI content remains free forever
+    """
     from datetime import date, timedelta
     from models import UserRole
 
@@ -261,17 +270,19 @@ def _check_ai_rate_limit(usage_type='sr'):
         return True, 9999, None
 
     tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
-    limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
-    # Trial expiry check (free tier only, non-grandfathered)
+    # Determine effective limits for free tier based on trial status
+    trial_expired = False
     if tier == 'free' and current_user.trial_started_at is not None:
-        trial_end = current_user.trial_started_at + timedelta(days=limits['trial_days'])
+        trial_end = current_user.trial_started_at + timedelta(days=7)
         if datetime.utcnow() > trial_end:
-            return False, 0, (jsonify({
-                'error': 'Your 7-day free trial has ended. Upgrade to continue using AI features.',
-                'upgrade_required': True,
-                'trial_expired': True,
-            }), 429)
+            trial_expired = True
+
+    # Use post-trial limits if trial has expired
+    if tier == 'free' and trial_expired:
+        limits = TIER_LIMITS['free_post_trial']
+    else:
+        limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
     # Monthly reset — if usage_reset_date is in a different month/year, reset counters
     today = date.today()
@@ -290,11 +301,16 @@ def _check_ai_rate_limit(usage_type='sr'):
         limit = limits['sr_monthly']
 
     if used >= limit:
+        if trial_expired:
+            msg = (f'You have used your {limit} free {"RadIQ query" if usage_type == "radiq" else "Smart Reporter action"}{"s" if limit > 1 else ""} '
+                   f'this month. Upgrade for unlimited access.')
+        else:
+            msg = (f'You have used all {limit} {"RadIQ queries" if usage_type == "radiq" else "Smart Reporter actions"} '
+                   f'for this month. Upgrade for more.')
         return False, 0, (jsonify({
-            'error': f'You have used all {limit} {"RadIQ queries" if usage_type == "radiq" else "Smart Reporter actions"} '
-                     f'for this month. Upgrade for more.',
+            'error': msg,
             'upgrade_required': True,
-            'trial_expired': False,
+            'trial_expired': trial_expired,
             'limit': limit,
             'tier': tier,
         }), 429)
@@ -329,7 +345,24 @@ def get_ai_usage():
     from models import UserRole
 
     tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
-    limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+    # Trial info
+    trial_expired = False
+    trial_days_left = None
+    if tier == 'free' and current_user.trial_started_at is not None:
+        trial_end = current_user.trial_started_at + timedelta(days=7)
+        now = datetime.utcnow()
+        if now > trial_end:
+            trial_expired = True
+            trial_days_left = 0
+        else:
+            trial_days_left = (trial_end - now).days
+
+    # Use post-trial limits if trial expired
+    if tier == 'free' and trial_expired:
+        limits = TIER_LIMITS['free_post_trial']
+    else:
+        limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
 
     # Monthly reset check
     today = date.today()
@@ -350,18 +383,6 @@ def get_ai_usage():
         radiq_used = 0
         sr_limit = 9999
         radiq_limit = 9999
-
-    # Trial info
-    trial_expired = False
-    trial_days_left = None
-    if tier == 'free' and current_user.trial_started_at is not None:
-        trial_end = current_user.trial_started_at + timedelta(days=limits['trial_days'])
-        now = datetime.utcnow()
-        if now > trial_end:
-            trial_expired = True
-            trial_days_left = 0
-        else:
-            trial_days_left = (trial_end - now).days
 
     return jsonify({
         'sr_remaining': max(0, sr_limit - sr_used),
