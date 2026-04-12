@@ -4282,6 +4282,32 @@ def smart_reporter_anatomy():
             except Exception as pr_exc:
                 logger.warning("On-demand peer review failed for '%s': %s", cached.title, pr_exc)
 
+        # Check if this is a partial match (topic searched vs title returned)
+        _topic_lower = topic.lower().strip()
+        _title_lower = cached.title.lower().strip()
+        is_partial = (_topic_lower not in _title_lower and _title_lower not in _topic_lower)
+
+        # Calculate remaining credits without incrementing
+        _remaining = None
+        _limit = None
+        try:
+            from models import UserRole
+            _tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+            if current_user.role == UserRole.ADMIN:
+                _remaining = 9999
+            else:
+                _trial_expired = False
+                if _tier == 'free' and current_user.trial_started_at:
+                    from datetime import timedelta as _td
+                    if datetime.utcnow() > current_user.trial_started_at + _td(days=7):
+                        _trial_expired = True
+                _lims = TIER_LIMITS.get('free_post_trial' if (_tier == 'free' and _trial_expired) else _tier, TIER_LIMITS['free'])
+                _limit = _lims['sr_monthly']
+                _used = current_user.sr_usage_month or 0
+                _remaining = max(0, _limit - _used)
+        except Exception:
+            pass
+
         return jsonify({
             'success': True,
             'cached': True,
@@ -4290,14 +4316,40 @@ def smart_reporter_anatomy():
             'algorithm_id': cached.id,
             'is_ai_generated': cached.is_ai_generated,
             'source': 'database',
+            'partial_match': is_partial,
+            'searched_topic': topic if is_partial else None,
+            'remaining_requests': _remaining,
+            'request_limit': _limit,
         })
 
     # No DB match: if check_only, tell frontend so it can prompt the user
     if check_only:
+        # Calculate remaining credits for the generate prompt
+        _nm_remaining = None
+        _nm_limit = None
+        try:
+            from models import UserRole
+            _nm_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+            if current_user.role == UserRole.ADMIN:
+                _nm_remaining = 9999
+            else:
+                _nm_trial_expired = False
+                if _nm_tier == 'free' and current_user.trial_started_at:
+                    from datetime import timedelta as _td2
+                    if datetime.utcnow() > current_user.trial_started_at + _td2(days=7):
+                        _nm_trial_expired = True
+                _nm_lims = TIER_LIMITS.get('free_post_trial' if (_nm_tier == 'free' and _nm_trial_expired) else _nm_tier, TIER_LIMITS['free'])
+                _nm_limit = _nm_lims['sr_monthly']
+                _nm_used = current_user.sr_usage_month or 0
+                _nm_remaining = max(0, _nm_limit - _nm_used)
+        except Exception:
+            pass
         return jsonify({
             'success': True,
             'no_match': True,
             'topic': topic,
+            'remaining_requests': _nm_remaining,
+            'request_limit': _nm_limit,
         })
 
     # Rate limit before AI generation (cache miss = will call Claude)
