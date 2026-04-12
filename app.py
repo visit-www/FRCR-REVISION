@@ -1796,6 +1796,16 @@ with app.app_context():
                     '', _ai_doc.content_html, flags=_re2.DOTALL)
                 logger.info('Patched ai-documentation: removed Groq Whisper')
 
+            # Re-sync landing-page-tours from updated markdown
+            _tours_doc = _AD.query.filter_by(slug='landing-page-tours').first()
+            if _tours_doc and 'Data Capture Strategy' not in (_tours_doc.content_html or ''):
+                try:
+                    with open(os.path.join(os.path.dirname(__file__), 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'), 'r') as _f:
+                        _tours_doc.content_html = _md.markdown(_f.read(), extensions=['tables', 'fenced_code', 'toc'])
+                    logger.info('Re-synced landing-page-tours from updated markdown')
+                except FileNotFoundError:
+                    pass
+
             if _docs_created:
                 db.session.commit()
                 logger.info('Auto-synced %d admin documents from manifest', _docs_created)
