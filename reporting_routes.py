@@ -4265,8 +4265,8 @@ def smart_reporter_anatomy():
 
     if cached and cached.template_html and not force_regenerate:
         html = cached.template_html
-        # On-demand peer review for cached snippets that lack verification badges
-        if cached.is_ai_generated and 'peer-review-badge' not in html:
+        # On-demand peer review for any cached snippet that lacks verification badges
+        if 'peer-review-badge' not in html:
             try:
                 from radinsight_peer_review import peer_review_anatomy
                 # Pass HTML as ai_output so claims are extracted from the rendered content
