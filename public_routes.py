@@ -59,18 +59,16 @@ def case_preview(case_id):
         case_id=case.id
     ).limit(3).all()
 
-    # Truncate discussion server-side for security
-    discussion_teaser = ''
-    if case.discussion:
-        discussion_teaser = case.discussion[:150]
+    # Full discussion — educational content is free, AI features are paid
+    discussion_html = case.discussion or ''
 
-    # Count questions for gated display
+    # Questions for display
     question_count = len(case.question_items) if case.question_items else 0
 
     return render_template('public_case_preview.html',
                            case=case,
                            images=images,
-                           discussion_teaser=discussion_teaser,
+                           discussion_html=discussion_html,
                            question_count=question_count)
 
 

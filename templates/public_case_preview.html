@@ -68,46 +68,20 @@
             </div>
             {% endif %}
 
-            <!-- Discussion (gated preview) -->
-            {% if discussion_teaser %}
+            <!-- Full Discussion (ungated — educational content is free) -->
+            {% if discussion_html %}
             <div class="mb-4">
                 <h5 class="mb-3"><i class="fas fa-comments me-2" style="color:#5E899E;"></i>Discussion</h5>
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
-                        <div class="content-teaser">
-                            <p class="mb-0 text-muted">{{ discussion_teaser }}...</p>
-                            <div class="gated-fade-overlay"></div>
-                        </div>
+                        {{ discussion_html | safe }}
                     </div>
                 </div>
             </div>
             {% endif %}
 
-            <!-- Gated Content Summary -->
-            <div class="card border-0 shadow-sm mb-4" style="background:#f8f9fa;">
-                <div class="card-body text-center py-4">
-                    <i class="fas fa-lock mb-2" style="font-size:1.5rem;color:#5E899E;"></i>
-                    <h6 class="mb-2" style="color:#2c3e50;">Full case content available to registered users</h6>
-                    <div class="d-flex justify-content-center gap-3 flex-wrap mb-3">
-                        {% if discussion_teaser %}
-                        <span class="badge bg-white text-dark border"><i class="fas fa-comments me-1" style="color:#5E899E;"></i>Full Discussion</span>
-                        {% endif %}
-                        {% if question_count > 0 %}
-                        <span class="badge bg-white text-dark border"><i class="fas fa-question-circle me-1" style="color:#e96304;"></i>{{ question_count }} Question{{ 's' if question_count != 1 }}</span>
-                        {% endif %}
-                        <span class="badge bg-white text-dark border"><i class="fas fa-lightbulb me-1" style="color:#ffc107;"></i>Teaching Points</span>
-                        <span class="badge bg-white text-dark border"><i class="fas fa-scroll me-1" style="color:#5E899E;"></i>Image Stacks</span>
-                    </div>
-                    <div class="d-flex justify-content-center gap-2">
-                        <a href="{{ url_for('auth.register', next='/view-case/' ~ case.id) }}" class="btn btn-brand-primary btn-sm">
-                            <i class="fas fa-user-plus me-1"></i>Create Free Account
-                        </a>
-                        <a href="{{ url_for('auth.login', next='/view-case/' ~ case.id) }}" class="btn btn-outline-secondary btn-sm">
-                            <i class="fas fa-sign-in-alt me-1"></i>Sign In
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <!-- CTA — sign up for AI features -->
+            {% include 'partials/_public_cta.html' %}
 
             <!-- Disclaimer -->
             <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
