@@ -4295,6 +4295,7 @@ def smart_reporter_anatomy():
             _tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
             if current_user.role == UserRole.ADMIN:
                 _remaining = 9999
+                _limit = 9999
             else:
                 _trial_expired = False
                 if _tier == 'free' and current_user.trial_started_at:
@@ -4332,6 +4333,7 @@ def smart_reporter_anatomy():
             _nm_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
             if current_user.role == UserRole.ADMIN:
                 _nm_remaining = 9999
+                _nm_limit = 9999
             else:
                 _nm_trial_expired = False
                 if _nm_tier == 'free' and current_user.trial_started_at:

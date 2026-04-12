@@ -2141,10 +2141,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Show "Generate with AI?" prompt when no DB match
+    // Show "Generate with AI?" prompt when no DB match (preserves existing snippets)
     function _showAnatomyGeneratePrompt(topic, remaining, limit) {
         var container = document.getElementById('anatomyHistory');
         if (!container) return;
+
+        // Re-render existing snippets first so they're preserved
+        renderAnatomyHistory();
         container.classList.remove('d-none');
 
         var safeTopic = escapeHtml(topic);
@@ -2152,8 +2155,12 @@ document.addEventListener('DOMContentLoaded', function() {
             ? '<span style="color: #dc3545; font-weight: 600;">' + remaining + '/' + limit + ' credits remaining</span>'
             : '';
 
-        container.innerHTML =
-            '<div class="card border-0 shadow-sm mb-2" style="border-left: 3px solid var(--brand-neutral, #5E899E) !important;">' +
+        // Remove any existing generate prompt before adding new one
+        var oldPrompt = container.querySelector('.anatomy-generate-prompt');
+        if (oldPrompt) oldPrompt.remove();
+
+        var promptHtml =
+            '<div class="card border-0 shadow-sm mb-2 anatomy-generate-prompt" style="border-left: 3px solid var(--brand-neutral, #5E899E) !important;">' +
             '<div class="card-body p-3 text-center">' +
             '<i class="fas fa-search me-1 text-muted"></i>' +
             '<span class="text-muted" style="font-size: 0.85rem;">No cached anatomy snippet found for <strong>"' + safeTopic + '"</strong></span>' +
@@ -2161,11 +2168,14 @@ document.addEventListener('DOMContentLoaded', function() {
             '<button type="button" class="btn btn-sm btn-brand-primary" onclick="showAnatomyPanel(\'' + safeTopic.replace(/'/g, "\\'") + '\')">' +
             '<i class="fas fa-magic me-1"></i>Generate with RadInsight Intelligence' +
             '</button>' +
-            ' <button type="button" class="btn btn-sm btn-outline-secondary ms-1" onclick="document.getElementById(\'anatomyHistory\').classList.add(\'d-none\')">' +
+            ' <button type="button" class="btn btn-sm btn-outline-secondary ms-1" onclick="this.closest(\'.anatomy-generate-prompt\').remove()">' +
             'Cancel</button>' +
             (creditText ? '<div class="mt-1"><small>' + creditText + '</small></div>' : '') +
             '</div>' +
             '</div></div>';
+
+        // Insert prompt at the top, above existing snippets
+        container.insertAdjacentHTML('afterbegin', promptHtml);
     }
 
     // Step 2: Generate via AI (called when user confirms, or from pickAnatomySuggestion for cached items)
