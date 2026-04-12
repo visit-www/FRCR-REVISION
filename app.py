@@ -1741,17 +1741,19 @@ with app.app_context():
             # Manifest: (slug, title, category, filepath)
             # .md files are converted from markdown; .html templates have Jinja stripped
             _DOC_MANIFEST = [
-                ('marketing-launch-kit', 'Marketing Launch Kit', 'marketing', 'docs/MARKETING_LAUNCH_KIT.md'),
                 ('business-finance-model', 'Business & Finance Model', 'finance', 'docs/BUSINESS_FINANCE_MODEL.md'),
-                ('seo-audit-report', 'SEO Audit', 'seo', 'docs/SEO_AUDIT_APRIL_2026.md'),
-                ('ai-documentation-ref', 'AI Documentation', 'technical', 'docs/AI_INTEGRATION_REFERENCE.md'),
                 ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
                 ('landing-page-tours', 'Landing Page Interactive Tours Plan', 'marketing', 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'),
-                # HTML template pages (migrated to DB-editable)
-                ('ai-documentation', 'AI Documentation (Full Page)', 'technical', 'templates/admin_ai_documentation.html'),
+                ('ai-documentation', 'AI Documentation', 'technical', 'templates/admin_ai_documentation.html'),
                 ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
-                ('seo-audit', 'SEO Audit — April 2026', 'seo', 'templates/admin_seo_audit.html'),
+                ('seo-audit', 'SEO Audit', 'seo', 'templates/admin_seo_audit.html'),
             ]
+            # Clean up old duplicate slugs from earlier manifest versions
+            for _old_slug in ('marketing-launch-kit', 'seo-audit-report', 'ai-documentation-ref'):
+                _old_doc = _AD.query.filter_by(slug=_old_slug).first()
+                if _old_doc:
+                    db.session.delete(_old_doc)
+                    logger.info('Removed duplicate admin doc: %s', _old_slug)
             import markdown as _md
             import re as _re
             _docs_created = 0

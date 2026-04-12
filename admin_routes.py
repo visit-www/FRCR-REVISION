@@ -3018,6 +3018,35 @@ def create_document():
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/documents/<slug>', methods=['DELETE'])
+@require_admin
+def delete_document(slug):
+    """Delete a document and auto-sync the deletion to Claude memory."""
+    from models import AdminDocument, ClaudeMemoryUpdate
+    doc = AdminDocument.query.filter_by(slug=slug).first()
+    if not doc:
+        return jsonify({'error': 'Document not found'}), 404
+
+    title = doc.title
+    category = doc.category
+    sync = ClaudeMemoryUpdate(
+        category='project',
+        summary=f'Document deleted: {title}',
+        details=f'Admin deleted "{title}" ({slug}) — was in category: {category}',
+        source_doc_slug=slug,
+        created_by=current_user.id,
+    )
+    db.session.add(sync)
+    db.session.delete(doc)
+    try:
+        db.session.commit()
+        log_admin_action(current_user.id, 'document_delete', details=f'Deleted document: {slug}')
+        return jsonify({'success': True, 'deleted': slug})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/documents/<slug>/edit', methods=['GET'])
 @require_admin
 def edit_document_page(slug):
