@@ -2878,7 +2878,9 @@ def list_radiq_flagged():
 def resolve_radiq_feedback(feedback_id):
     """Resolve a flagged RadIQ response."""
     from models import RadIQFeedback
-    feedback = RadIQFeedback.query.get_or_404(feedback_id)
+    feedback = db.session.query(RadIQFeedback).get(feedback_id)
+    if not feedback:
+        return jsonify({'error': 'Feedback not found.'}), 404
     if feedback.is_resolved:
         return jsonify({'error': 'Already resolved.'}), 400
 
@@ -2904,7 +2906,8 @@ def resolve_radiq_feedback(feedback_id):
 def radiq_flagged_count():
     """Return count of unresolved RadIQ flags."""
     from models import RadIQFeedback
-    count = RadIQFeedback.query.filter_by(is_resolved=False).count()
+    # RadIQFeedback has a 'query' relationship that shadows Model.query
+    count = db.session.query(RadIQFeedback).filter_by(is_resolved=False).count()
     return jsonify({'count': count}), 200
 
 

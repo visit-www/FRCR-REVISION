@@ -585,7 +585,7 @@ def radiq_feedback():
         return jsonify({'error': 'Query not found.'}), 404
 
     # Check for duplicate
-    existing = RadIQFeedback.query.filter_by(query_id=query_id, user_id=current_user.id).first()
+    existing = db.session.query(RadIQFeedback).filter_by(query_id=query_id, user_id=current_user.id).first()
     if existing:
         return jsonify({'error': 'You have already flagged this response.'}), 409
 
