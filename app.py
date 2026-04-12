@@ -1783,6 +1783,15 @@ with app.app_context():
             _sentinel = _AD.query.filter_by(slug='_cleanup_v2_done').first()
             if _sentinel:
                 _sentinel.category = '_system'  # hidden from hub query
+            # One-time DB content patches (Option B: DB is source of truth)
+            _ai_doc = _AD.query.filter_by(slug='ai-documentation').first()
+            if _ai_doc and 'Groq Whisper' in (_ai_doc.content_html or ''):
+                import re as _re2
+                _ai_doc.content_html = _re2.sub(
+                    r'<tr>\s*<td><strong>Voice Transcription</strong></td>.*?</tr>',
+                    '', _ai_doc.content_html, flags=_re2.DOTALL)
+                logger.info('Patched ai-documentation: removed Groq Whisper')
+
             if _docs_created:
                 db.session.commit()
                 logger.info('Auto-synced %d admin documents from manifest', _docs_created)

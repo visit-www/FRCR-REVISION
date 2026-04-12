@@ -46,6 +46,18 @@
 - Format: `('slug', 'Title', 'category', 'docs/FILENAME.md')`
 - Categories: marketing, finance, seo, technical, qa, general
 
+## Editing Admin Documents (DB is source of truth)
+- The DB `admin_document` table is the **single source of truth** for all admin docs
+- Template files (`templates/admin_*.html`) are only used for initial seeding — do NOT edit them to update content
+- To patch doc content in a code session, write a **one-time migration block** in `app.py` that updates the DB row directly:
+  ```python
+  _doc = _AD.query.filter_by(slug='the-slug').first()
+  if _doc and 'old text' in (_doc.content_html or ''):
+      _doc.content_html = _doc.content_html.replace('old text', 'new text')
+  ```
+- Admin edits docs via TinyMCE in browser — changes are live immediately
+- Every save auto-creates a `ClaudeMemoryUpdate` entry for coding agent sync
+
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex
 - Admin-only features: guard with `getattr(current_user, 'is_admin', False)`
