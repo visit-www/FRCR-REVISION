@@ -15,7 +15,7 @@
         <span class="badge bg-warning text-dark"><i class="fas fa-robot me-1"></i>{{ pending_sync }} pending sync{{ 's' if pending_sync != 1 }}</span>
         {% endif %}
         <button id="newDocBtn" class="btn btn-sm btn-brand-primary"><i class="fas fa-plus me-1"></i>New Document</button>
-        <a href="/api/admin/dashboard" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
+        <a href="/admin" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Dashboard</a>
     </div>
 </div>
 
@@ -97,7 +97,7 @@
 
     <!-- AI Cost Tracker -->
     <div class="col-md-6 col-lg-4">
-        <a href="/api/admin/dashboard#ai-costs" class="text-decoration-none">
+        <a href="/admin#ai-costs" class="text-decoration-none">
             <div class="card h-100 border-0 shadow-sm" style="border-left: 4px solid var(--brand-neutral) !important;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: var(--brand-neutral);"><i class="fas fa-dollar-sign me-2"></i>Live Cost Dashboard</h5>

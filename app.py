@@ -1744,6 +1744,7 @@ with app.app_context():
                 ('seo-audit', 'SEO Audit', 'seo', 'docs/SEO_AUDIT_APRIL_2026.md'),
                 ('ai-documentation', 'AI Documentation', 'technical', 'docs/AI_INTEGRATION_REFERENCE.md'),
                 ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
+                ('landing-page-tours', 'Landing Page Interactive Tours Plan', 'marketing', 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'),
             ]
             import markdown as _md
             _docs_created = 0
