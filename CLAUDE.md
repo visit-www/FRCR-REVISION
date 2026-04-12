@@ -10,10 +10,9 @@
 
 ## Memory Sync Protocol
 
-**When the user says "update memory" or "sync memory" or "check for updates":**
+**At the START of every session**, proactively check for pending memory updates:
 
-1. Fetch pending memory updates from the production database:
-   - Ask the user to run: `curl -s https://www.radinsights.xyz/api/admin/claude-memory-sync | python3 -m json.tool`
+1. Ask the user to run: `curl -s https://www.radinsights.xyz/api/admin/claude-memory-sync | python3 -m json.tool`
    - Or if running locally: `curl -s http://localhost:5000/api/admin/claude-memory-sync`
 2. For each unsynced entry in the response:
    - Read the `summary`, `category`, and `details` fields
@@ -22,8 +21,12 @@
 3. After processing, tell the user to mark entries as synced:
    - `curl -X POST https://www.radinsights.xyz/api/admin/claude-memory-sync/mark-synced`
 
+**Also check periodically** during long sessions (every ~4-6 hours of active work).
+
 **When the user says "what changed?" or "what's new?":**
 - Same protocol — check the sync endpoint first before answering
+
+**Note:** Every document save in the admin Docs Hub auto-creates a sync entry — no manual action needed from the admin side.
 
 ## Deployment Rules
 - Vercel auto-deploys on `git push` to main — NEVER run `vercel --prod` manually
