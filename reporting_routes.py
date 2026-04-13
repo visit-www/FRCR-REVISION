@@ -4269,18 +4269,19 @@ def smart_reporter_anatomy():
         if 'peer-review-badge' not in html:
             try:
                 from radinsight_peer_review import peer_review_anatomy
-                # Pass HTML as ai_output so claims are extracted from the rendered content
+                logger.info("Starting on-demand peer review for cached '%s' (%d chars HTML)", cached.title, len(html))
                 pr = peer_review_anatomy(html, html, topic=cached.title)
+                claims_count = len(pr.get('claims', []))
+                logger.info("Peer review result for '%s': %d claims found, %d/%d verified",
+                            cached.title, claims_count,
+                            pr['verification_summary'].get('verified', 0),
+                            pr['verification_summary'].get('total', 0))
                 html = pr['content_html']
                 # Persist the peer-reviewed HTML so we don't re-run next time
                 cached.template_html = html
                 db.session.commit()
-                logger.info("On-demand peer review for cached '%s': %d/%d verified",
-                            cached.title,
-                            pr['verification_summary'].get('verified', 0),
-                            pr['verification_summary'].get('total', 0))
             except Exception as pr_exc:
-                logger.warning("On-demand peer review failed for '%s': %s", cached.title, pr_exc)
+                logger.warning("On-demand peer review failed for '%s': %s", cached.title, pr_exc, exc_info=True)
 
         # Check if this is a partial match (topic searched vs title returned)
         _topic_lower = topic.lower().strip()
