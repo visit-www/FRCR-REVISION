@@ -128,7 +128,7 @@
             'max-height:80vh;overflow-y:auto;display:none;';
         el.innerHTML =
             '<div style="background:linear-gradient(135deg,#5E899E 0%,#4a7285 100%);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
-                '<span style="font-weight:600;font-size:.95rem;"><i class="fas fa-check-circle me-2"></i>Verify with PubMed</span>' +
+                '<span style="font-weight:600;font-size:.95rem;"><i class="fas fa-check-circle me-2"></i>Verify Reference</span>' +
                 '<button onclick="SelectionVerify._closeVerify()" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;"><i class="fas fa-times"></i></button>' +
             '</div>' +
             '<div style="padding:16px;">' +
@@ -140,6 +140,7 @@
                     '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Custom Verification Label <small class="text-muted">(optional — rewrite for clarity)</small></label>' +
                     '<input type="text" id="verifyCustomLabel" class="form-control form-control-sm" placeholder="e.g. normal stapes footplate thickness range">' +
                 '</div>' +
+                // Search section
                 '<div class="mb-2">' +
                     '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Search PubMed & Radiopaedia</label>' +
                     '<div class="input-group input-group-sm">' +
@@ -153,29 +154,81 @@
                     '</div>' +
                 '</div>' +
                 '<div id="verifyResults" style="font-size:.85rem;"></div>' +
-                '<div id="verifySelectedPaper" class="d-none mt-2 p-2 rounded" style="background:rgba(25,135,84,.08);border:1px solid var(--brand-success);font-size:.85rem;"></div>' +
+                // Selected references list
+                '<div class="mb-2">' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Selected References <small class="text-muted" id="verifyRefCount">(0)</small></label>' +
+                    '<div id="verifySelectedRefs" style="font-size:.82rem;"></div>' +
+                '</div>' +
+                // Manual add section
+                '<div class="mb-2" style="border-top:1px dashed #ccc;padding-top:8px;">' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;"><i class="fas fa-plus-circle me-1" style="color:var(--brand-primary);"></i>Add Reference Manually</label>' +
+                    '<div class="row g-1 mb-1">' +
+                        '<div class="col-8"><input type="text" id="manualRefTitle" class="form-control form-control-sm" placeholder="Title"></div>' +
+                        '<div class="col-4"><input type="text" id="manualRefYear" class="form-control form-control-sm" placeholder="Year"></div>' +
+                    '</div>' +
+                    '<div class="row g-1 mb-1">' +
+                        '<div class="col-6"><input type="text" id="manualRefAuthors" class="form-control form-control-sm" placeholder="Authors (e.g. Smith J, Jones A)"></div>' +
+                        '<div class="col-6"><input type="text" id="manualRefJournal" class="form-control form-control-sm" placeholder="Journal"></div>' +
+                    '</div>' +
+                    '<div class="row g-1 mb-1">' +
+                        '<div class="col-8"><input type="text" id="manualRefDoi" class="form-control form-control-sm" placeholder="DOI or URL (optional)"></div>' +
+                        '<div class="col-4"><button class="btn btn-sm w-100" style="background:var(--brand-primary);color:#fff;" onclick="SelectionVerify._addManualRef()"><i class="fas fa-plus me-1"></i>Add</button></div>' +
+                    '</div>' +
+                '</div>' +
                 '<div class="mt-3 d-flex gap-2 justify-content-end">' +
                     '<button class="btn btn-sm" style="background:#6c757d;color:#fff;" onclick="SelectionVerify._closeVerify()">Cancel</button>' +
-                    '<button id="verifySaveBtn" class="btn btn-sm" style="background:var(--brand-primary);color:#fff;" onclick="SelectionVerify._saveVerification()"><i class="fas fa-check me-1"></i>Save Verification</button>' +
+                    '<button id="verifySaveBtn" class="btn btn-sm" style="background:var(--brand-primary);color:#fff;" onclick="SelectionVerify._saveVerification()"><i class="fas fa-check me-1"></i>Save All</button>' +
                 '</div>' +
             '</div>';
         document.body.appendChild(el);
         return el;
     }
 
-    var _selectedPaper = null;
+    var _selectedPapers = [];
 
     function _showVerifyPanel() {
         if (!_verifyPanel) _verifyPanel = _createVerifyPanel();
-        _selectedPaper = null;
+        _selectedPapers = [];
 
         document.getElementById('verifySelectedText').textContent = _currentSelection.text;
         document.getElementById('verifyCustomLabel').value = '';
         document.getElementById('verifySearchQuery').value = _currentSelection.text.substring(0, 80);
-        document.getElementById('verifyResults').innerHTML = '<small class="text-muted">Click search to find PubMed references</small>';
-        document.getElementById('verifySelectedPaper').classList.add('d-none');
+        document.getElementById('verifyResults').innerHTML = '<small class="text-muted">Click search to find references</small>';
+        _renderSelectedRefs();
+
+        // Clear manual fields
+        ['manualRefTitle','manualRefYear','manualRefAuthors','manualRefJournal','manualRefDoi'].forEach(function(id) {
+            var el = document.getElementById(id); if (el) el.value = '';
+        });
 
         _verifyPanel.style.display = 'block';
+    }
+
+    function _renderSelectedRefs() {
+        var container = document.getElementById('verifySelectedRefs');
+        var countEl = document.getElementById('verifyRefCount');
+        if (!container) return;
+        countEl.textContent = '(' + _selectedPapers.length + ')';
+        if (!_selectedPapers.length) {
+            container.innerHTML = '<small class="text-muted">No references added yet. Search or add manually below.</small>';
+            return;
+        }
+        var html = '';
+        _selectedPapers.forEach(function(p, i) {
+            var authors = typeof p.pubmed_authors === 'string' ? p.pubmed_authors : (p.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); }).join(', ');
+            var shortAuth = authors.length > 40 ? authors.substring(0, 40) + '...' : authors;
+            var srcBadge = p.source === 'radiopaedia'
+                ? '<span class="badge" style="font-size:.5rem;background:#2d6b4f;color:#fff;">Radiopaedia</span>'
+                : p.source === 'manual'
+                ? '<span class="badge" style="font-size:.5rem;background:var(--brand-primary);color:#fff;">Manual</span>'
+                : '<span class="badge" style="font-size:.5rem;background:#1a5276;color:#fff;">PubMed</span>';
+            html += '<div class="d-flex justify-content-between align-items-center p-1 mb-1 rounded" style="background:rgba(25,135,84,.06);border:1px solid rgba(25,135,84,.2);">' +
+                '<small><strong>' + (p.title || 'Untitled').substring(0, 50) + '</strong> ' + srcBadge +
+                '<br><span class="text-muted">' + shortAuth + (p.year ? ' (' + p.year + ')' : '') + '</span></small>' +
+                '<button class="btn btn-sm py-0 px-1" style="font-size:.7rem;color:#dc3545;" onclick="SelectionVerify._removeRef(' + i + ')" title="Remove"><i class="fas fa-times"></i></button>' +
+                '</div>';
+        });
+        container.innerHTML = html;
     }
 
     // Public API
@@ -260,69 +313,116 @@
             var resultsDiv = document.getElementById('verifyResults');
             var papers = resultsDiv._papers || [];
             if (!papers[idx]) return;
-            _selectedPaper = papers[idx];
+            var p = papers[idx];
 
-            var sp = document.getElementById('verifySelectedPaper');
-            var authorList = (_selectedPaper.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); });
-            var authors = authorList.slice(0, 3).join(', ');
-            if (authorList.length > 3) authors += ' et al.';
-            sp.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i><strong>' + (_selectedPaper.title || '') + '</strong><br>' +
-                '<small>' + authors + ' — ' + (_selectedPaper.journal || '') + ' (' + (_selectedPaper.year || '') + ')</small>';
-            sp.classList.remove('d-none');
+            // Avoid duplicates
+            var isDupe = _selectedPapers.some(function(sp) {
+                return (sp.pmid && sp.pmid === p.pmid) || (sp.title === p.title && sp.source === p.source);
+            });
+            if (isDupe) { if (window.showToast) showToast('Already added', 'info'); return; }
 
-            // Highlight selected in results
+            var authorList = (p.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); });
+            _selectedPapers.push({
+                source: p.source || 'pubmed',
+                title: String(p.title || ''),
+                authors: authorList,
+                pubmed_authors: authorList.join(', '),
+                journal: p.journal || '',
+                year: p.year || '',
+                doi: p.doi || '',
+                pmid: p.pmid || '',
+                pubmed_link: p.pubmed_link || '',
+            });
+            _renderSelectedRefs();
+
+            // Highlight in results
             resultsDiv.querySelectorAll('[data-paper-idx]').forEach(function(el) {
                 el.style.background = el.dataset.paperIdx == idx ? 'rgba(25,135,84,.1)' : '#fff';
                 el.style.borderColor = el.dataset.paperIdx == idx ? 'var(--brand-success)' : '#e0e0e0';
             });
         },
 
+        _addManualRef: function() {
+            var title = (document.getElementById('manualRefTitle').value || '').trim();
+            if (!title) { if (window.showToast) showToast('Title is required', 'warning'); return; }
+
+            _selectedPapers.push({
+                source: 'manual',
+                title: title,
+                authors: [],
+                pubmed_authors: (document.getElementById('manualRefAuthors').value || '').trim(),
+                journal: (document.getElementById('manualRefJournal').value || '').trim(),
+                year: (document.getElementById('manualRefYear').value || '').trim(),
+                doi: (document.getElementById('manualRefDoi').value || '').trim(),
+                pmid: '',
+                pubmed_link: (document.getElementById('manualRefDoi').value || '').trim(),
+            });
+            _renderSelectedRefs();
+
+            // Clear manual fields
+            ['manualRefTitle','manualRefYear','manualRefAuthors','manualRefJournal','manualRefDoi'].forEach(function(id) {
+                var el = document.getElementById(id); if (el) el.value = '';
+            });
+        },
+
+        _removeRef: function(idx) {
+            _selectedPapers.splice(idx, 1);
+            _renderSelectedRefs();
+        },
+
         _saveVerification: function() {
+            if (!_selectedPapers.length) {
+                if (window.showToast) showToast('Add at least one reference before saving.', 'warning');
+                return;
+            }
+
             var btn = document.getElementById('verifySaveBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
 
-            var payload = {
-                content_type: _currentSelection.contentType,
-                content_id: _currentSelection.contentId,
-                selected_text: _currentSelection.text,
-                custom_label: document.getElementById('verifyCustomLabel').value.trim(),
-            };
+            var customLabel = document.getElementById('verifyCustomLabel').value.trim();
+            var saved = 0;
+            var total = _selectedPapers.length;
 
-            if (_selectedPaper) {
-                payload.pubmed_doi = _selectedPaper.doi || '';
-                payload.pubmed_pmid = _selectedPaper.pmid || '';
-                payload.pubmed_title = _selectedPaper.title || '';
-                payload.pubmed_authors = (_selectedPaper.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); }).join(', ');
-                payload.pubmed_journal = _selectedPaper.journal || '';
-                payload.pubmed_year = _selectedPaper.year || '';
-            }
+            // Save each reference as a separate ManualVerification
+            _selectedPapers.forEach(function(paper) {
+                var payload = {
+                    content_type: _currentSelection.contentType,
+                    content_id: _currentSelection.contentId,
+                    selected_text: _currentSelection.text,
+                    custom_label: customLabel,
+                    pubmed_doi: paper.doi || '',
+                    pubmed_pmid: paper.pmid || '',
+                    pubmed_title: paper.title || '',
+                    pubmed_authors: paper.pubmed_authors || '',
+                    pubmed_journal: paper.journal || '',
+                    pubmed_year: paper.year || '',
+                };
 
-            fetch('/api/admin/manual-verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check me-1"></i>Save Verification';
-                if (data.success) {
-                    SelectionVerify._closeVerify();
-                    // Inject the badge inline immediately
-                    SelectionVerify._injectManualBadge(
-                        _currentSelection.text,
-                        data.verification || payload
-                    );
-                    if (window.showToast) showToast('Verification saved successfully.', 'success');
-                } else {
-                    if (window.showToast) showToast('Error: ' + (data.error || 'Unknown'), 'error');
-                }
-            })
-            .catch(function(err) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check me-1"></i>Save Verification';
-                if (window.showToast) showToast('Network error: ' + err.message, 'error');
+                fetch('/api/admin/manual-verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    saved++;
+                    if (saved === total) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Save All';
+                        SelectionVerify._closeVerify();
+                        // Inject badge for the first reference
+                        SelectionVerify._injectManualBadge(_currentSelection.text, _selectedPapers[0]);
+                        if (window.showToast) showToast(total + ' reference' + (total > 1 ? 's' : '') + ' saved.', 'success');
+                    }
+                })
+                .catch(function() {
+                    saved++;
+                    if (saved === total) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check me-1"></i>Save All';
+                    }
+                });
             });
         },
 
