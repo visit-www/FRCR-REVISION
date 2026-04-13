@@ -44,7 +44,7 @@ PREFERRED_JOURNALS = [
 ]
 
 # Cache configuration
-CACHE_DIR = os.path.join(os.path.dirname(__file__), 'cache', 'pubmed')
+CACHE_DIR = os.path.join('/tmp' if os.environ.get('VERCEL') else os.path.dirname(__file__), 'cache', 'pubmed')
 CACHE_DURATION_HOURS = 24  # Cache results for 24 hours
 
 

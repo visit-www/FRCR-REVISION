@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Cache configuration (mirrors pubmed_service.py pattern)
 # ---------------------------------------------------------------------------
-CACHE_DIR = os.path.join(os.path.dirname(__file__), 'cache', 'peer_review')
+CACHE_DIR = os.path.join('/tmp' if os.environ.get('VERCEL') else os.path.dirname(__file__), 'cache', 'peer_review')
 CACHE_DURATION_HOURS = 24
 
 
