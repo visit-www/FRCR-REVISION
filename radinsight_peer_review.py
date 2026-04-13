@@ -553,12 +553,11 @@ def render_references_html(
 
 
 def render_flag_button_html(content_type: str = '', content_id: str = '') -> str:
-    """Render the 'Flag Inaccuracy' button."""
+    """Render the 'Flag Inaccuracy' button (uses global flag modal)."""
     return (
         f'<button class="btn btn-sm btn-outline-danger peer-review-flag mt-2" '
-        f'data-content-type="{_esc(content_type)}" '
-        f'data-content-id="{_esc(content_id)}" '
-        f'onclick="openPeerReviewFlagModal(this)">'
+        f'onclick="openGlobalFlagModal({{contentType:\'{_esc(content_type)}\','
+        f'contentId:\'{_esc(content_id)}\'}})">'
         f'<i class="fas fa-flag me-1"></i>Flag Inaccuracy'
         f'</button>'
     )
