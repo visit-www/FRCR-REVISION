@@ -3158,26 +3158,31 @@ def admin_verify_search():
         except Exception as e:
             logger.warning("PubMed search failed for '%s': %s", query, e)
 
-    # Radiopaedia articles
+    # Radiopaedia articles (via DuckDuckGo scoped search — Radiopaedia renders client-side)
     if source in ('radiopaedia', 'all'):
         try:
             import requests as _req
-            from urllib.parse import urlencode
-            params = {'q': query, 'scope': 'articles', 'lang': 'us'}
-            url = f"https://radiopaedia.org/search?{urlencode(params)}"
-            resp = _req.get(url, headers={'User-Agent': 'RadInsights/1.0'}, timeout=10)
-            if resp.status_code == 200:
-                from bs4 import BeautifulSoup
-                soup = BeautifulSoup(resp.text, 'html.parser')
-                for a in soup.select('a.search-result-title')[:5]:
+            from bs4 import BeautifulSoup
+            _ddg_resp = _req.post(
+                'https://html.duckduckgo.com/html/',
+                data={'q': f'site:radiopaedia.org/articles {query}'},
+                headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'},
+                timeout=10,
+            )
+            if _ddg_resp.status_code == 200:
+                _ddg_soup = BeautifulSoup(_ddg_resp.text, 'html.parser')
+                for a in _ddg_soup.select('.result__a')[:5]:
                     href = a.get('href', '')
                     title = a.get_text(strip=True)
-                    if href and title:
-                        full_url = 'https://radiopaedia.org' + href if href.startswith('/') else href
+                    if 'radiopaedia.org/articles/' in href and title:
+                        # Clean URL (DuckDuckGo may add tracking params)
+                        clean_url = href.split('?')[0] if '?' in href else href
+                        if not clean_url.startswith('http'):
+                            continue
                         results.append({
                             'source': 'radiopaedia',
                             'title': title,
-                            'pubmed_link': full_url,
+                            'pubmed_link': clean_url,
                             'authors': [],
                             'journal': 'Radiopaedia.org',
                             'year': '',
