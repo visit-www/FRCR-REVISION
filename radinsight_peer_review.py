@@ -570,16 +570,41 @@ def render_flag_button_html(content_type: str = '', content_id: str = '') -> str
 def _inject_badges_into_anatomy_html(html: str, claims: list[dict]) -> str:
     """Inject verification badges into already-rendered anatomy HTML.
 
-    Strategy: for each claim, find the escaped text in the HTML and append
-    the verification badge after it.
+    Strategy: for each claim, find the key numerical value in the HTML
+    and append the verification badge after it. Falls back to full
+    sentence match if numerical match fails.
     """
     for claim in claims:
-        raw_text = claim['text']
-        escaped_text = _esc(raw_text)
         badge = render_verification_badge(claim)
-        # Insert badge after the claim text (inside the <td> or <li>)
-        if escaped_text in html:
-            html = html.replace(escaped_text, escaped_text + ' ' + badge, 1)
+        raw_text = claim['text']
+        escaped_full = _esc(raw_text)
+
+        # Try 1: full sentence match (works for inline text)
+        if escaped_full in html:
+            html = html.replace(escaped_full, escaped_full + ' ' + badge, 1)
+            continue
+
+        # Try 2: match the numerical portion (e.g., "0.6-5%", "15-20%")
+        # This handles text split across HTML tags (table cells, list items)
+        numbers = re.findall(r'\d+(?:\.\d+)?(?:\s*[-–]\s*\d+(?:\.\d+)?)?%?(?:\s*(?:mm|cm|m[Ll]|mg|g|Hz|kHz))?', raw_text)
+        injected = False
+        for num in numbers:
+            escaped_num = _esc(num)
+            # Find it inside tag content (not inside attributes)
+            pattern = r'(>[^<]*?)(' + re.escape(escaped_num) + r')([^<]*?<)'
+            match = re.search(pattern, html)
+            if match:
+                replacement = match.group(1) + match.group(2) + ' ' + badge + match.group(3)
+                html = html[:match.start()] + replacement + html[match.end():]
+                injected = True
+                break
+        if injected:
+            continue
+
+        # Try 3: find a short distinctive phrase (first 40 chars)
+        short = _esc(raw_text[:40].strip())
+        if short and short in html:
+            html = html.replace(short, short + ' ' + badge, 1)
 
     return html
 
