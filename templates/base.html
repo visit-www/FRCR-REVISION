@@ -786,10 +786,14 @@
     <!-- Global Flag Modal + Selection Verify (all authenticated users) -->
     {% if current_user.is_authenticated %}
     {% include 'partials/_flag_modal.html' %}
-    <script src="{{ url_for('static', filename='js/selection-verify.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='js/selection-verify.js') }}?v=3"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         SelectionVerify.init({ isAdmin: {{ 'true' if current_user.role.value == 'admin' else 'false' }} });
+        // Auto-initialize admin badge controls on any page with peer review badges
+        SelectionVerify.initAdminBadgeControls();
+        // Auto-render manual verifications for any content on this page
+        SelectionVerify.autoRenderManualBadges();
     });
     </script>
     {% endif %}

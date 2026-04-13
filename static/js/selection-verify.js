@@ -375,7 +375,7 @@
         initAdminBadgeControls: function() {
             if (!_isAdmin) return;
             document.querySelectorAll('.peer-review-badge.unverified').forEach(function(badge) {
-                if (badge.dataset.dismissReady) return; // avoid double-init
+                if (badge.dataset.dismissReady) return;
                 badge.dataset.dismissReady = 'true';
                 badge.style.cursor = 'pointer';
                 badge.title = (badge.title || '') + ' (click to dismiss)';
@@ -388,6 +388,72 @@
                 });
             });
         },
+
+        /**
+         * Auto-detect content areas on page and render manual verifications.
+         * Also watches for dynamically loaded content (AJAX responses).
+         */
+        autoRenderManualBadges: function() {
+            // Detect content types from DOM and fetch their manual verifications
+            var _contentMap = {
+                '#anatomyHistory': 'anatomy_snippet',
+                '.ai-answer-text': 'smart_reporter_qa',
+                '.radiq-response': 'radiq_answer',
+                '.vetting-analysis': 'vetting_analysis',
+                '#caseDiscussion': 'case_discussion',
+                '.algorithm-content': 'reporting_algorithm',
+                '.template-content': 'radiology_template',
+                '.protocol-content': 'imaging_protocol',
+                '.pearl-content': 'radiology_pearl',
+            };
+
+            // Check which content types are present on this page
+            var typesPresent = {};
+            Object.keys(_contentMap).forEach(function(sel) {
+                if (document.querySelector(sel)) {
+                    typesPresent[_contentMap[sel]] = true;
+                }
+            });
+
+            // Fetch manual verifications for each present type
+            Object.keys(typesPresent).forEach(function(ct) {
+                SelectionVerify.renderManualBadges(ct);
+            });
+
+            // Watch for dynamically added content (AJAX-loaded)
+            var observer = new MutationObserver(function(mutations) {
+                var needsInit = false;
+                mutations.forEach(function(m) {
+                    if (m.addedNodes.length) {
+                        m.addedNodes.forEach(function(node) {
+                            if (node.nodeType === 1) {
+                                // Check if new content has peer review badges
+                                if (node.querySelector && node.querySelector('.peer-review-badge')) {
+                                    needsInit = true;
+                                }
+                                // Check if new content matches any content selector
+                                if (node.matches && CONTENT_SELECTORS.split(', ').some(function(s) {
+                                    try { return node.matches(s) || node.querySelector(s); } catch(e) { return false; }
+                                })) {
+                                    needsInit = true;
+                                }
+                            }
+                        });
+                    }
+                });
+                if (needsInit) {
+                    // Debounce — wait for all mutations to settle
+                    clearTimeout(SelectionVerify._mutationTimer);
+                    SelectionVerify._mutationTimer = setTimeout(function() {
+                        SelectionVerify.initAdminBadgeControls();
+                    }, 300);
+                }
+            });
+
+            observer.observe(document.body, { childList: true, subtree: true });
+        },
+
+        _mutationTimer: null,
     };
 
     // Helper: find text in container and inject badge after it
