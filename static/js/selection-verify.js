@@ -300,6 +300,11 @@
                 btn.innerHTML = '<i class="fas fa-check me-1"></i>Save Verification';
                 if (data.success) {
                     SelectionVerify._closeVerify();
+                    // Inject the badge inline immediately
+                    SelectionVerify._injectManualBadge(
+                        _currentSelection.text,
+                        data.verification || payload
+                    );
                     if (window.showToast) showToast('Verification saved successfully.', 'success');
                 } else {
                     if (window.showToast) showToast('Error: ' + (data.error || 'Unknown'), 'error');
@@ -311,5 +316,105 @@
                 if (window.showToast) showToast('Network error: ' + err.message, 'error');
             });
         },
+
+        /**
+         * Inject a manual verification badge next to matching text in the DOM.
+         */
+        _injectManualBadge: function(selectedText, verification) {
+            if (!selectedText || selectedText.length < 3) return;
+            var containers = document.querySelectorAll(CONTENT_SELECTORS);
+            var label = verification.custom_label || selectedText;
+            var doi = verification.pubmed_doi;
+            var link = doi ? 'https://doi.org/' + doi : (verification.pubmed_pmid ? 'https://pubmed.ncbi.nlm.nih.gov/' + verification.pubmed_pmid + '/' : '');
+            var tooltip = 'Manually verified' + (verification.pubmed_journal ? ': ' + verification.pubmed_journal + ' ' + (verification.pubmed_year || '') : '');
+
+            containers.forEach(function(container) {
+                _findAndBadge(container, selectedText, link, tooltip);
+            });
+        },
+
+        /**
+         * Admin: dismiss an unverified badge (remove from DOM).
+         */
+        _dismissUnverified: function(el) {
+            if (el && el.parentElement) {
+                el.remove();
+                // Update summary counts if present
+                _updateVerificationSummary();
+            }
+        },
+
+        /**
+         * Load and render manual verifications for content visible on page.
+         * Call after content loads (e.g., anatomy snippet, RadIQ answer).
+         */
+        renderManualBadges: function(contentType, contentId) {
+            fetch('/api/admin/manual-verify?content_type=' + encodeURIComponent(contentType || '') +
+                  (contentId ? '&content_id=' + encodeURIComponent(contentId) : ''))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    (data.verifications || []).forEach(function(v) {
+                        SelectionVerify._injectManualBadge(v.selected_text, v);
+                    });
+                })
+                .catch(function() {});
+        },
+
+        /**
+         * Add dismiss buttons to all unverified badges (admin only).
+         */
+        initAdminBadgeControls: function() {
+            if (!_isAdmin) return;
+            document.querySelectorAll('.peer-review-badge.unverified').forEach(function(badge) {
+                if (badge.dataset.dismissReady) return; // avoid double-init
+                badge.dataset.dismissReady = 'true';
+                badge.style.cursor = 'pointer';
+                badge.title = (badge.title || '') + ' (click to dismiss)';
+                badge.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm('Dismiss this unverified warning?')) {
+                        SelectionVerify._dismissUnverified(badge);
+                    }
+                });
+            });
+        },
     };
+
+    // Helper: find text in container and inject badge after it
+    function _findAndBadge(container, text, link, tooltip) {
+        var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+        var node;
+        while (node = walker.nextNode()) {
+            var idx = node.textContent.indexOf(text);
+            if (idx === -1) continue;
+
+            // Found the text — inject badge after it
+            var badge;
+            if (link) {
+                badge = document.createElement('a');
+                badge.href = link;
+                badge.target = '_blank';
+                badge.rel = 'noopener noreferrer';
+            } else {
+                badge = document.createElement('span');
+            }
+            badge.className = 'peer-review-badge manual-verified';
+            badge.title = tooltip;
+            badge.innerHTML = ' <i class="fas fa-user-check" style="color:#198754;font-size:.75em;"></i>';
+
+            // Split the text node and insert badge
+            var after = node.splitText(idx + text.length);
+            node.parentNode.insertBefore(badge, after);
+            return; // Only badge first occurrence
+        }
+    }
+
+    function _updateVerificationSummary() {
+        // Recount badges and update any summary elements
+        var verified = document.querySelectorAll('.peer-review-badge.verified, .peer-review-badge.manual-verified').length;
+        var unverified = document.querySelectorAll('.peer-review-badge.unverified').length;
+        document.querySelectorAll('.peer-review-summary-verified').forEach(function(el) { el.textContent = verified; });
+        document.querySelectorAll('.peer-review-summary-unverified').forEach(function(el) { el.textContent = unverified; });
+    }
 })();

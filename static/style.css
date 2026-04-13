@@ -7006,6 +7006,14 @@ body {
 .peer-review-badge.unverified:hover {
     color: #cc8400;
 }
+.peer-review-badge.manual-verified {
+    color: #198754;
+    cursor: pointer;
+    font-weight: 600;
+}
+.peer-review-badge.manual-verified:hover {
+    color: #0f5132;
+}
 .peer-review-references .card-header {
     font-size: 0.82rem;
 }

@@ -2294,6 +2294,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var container = document.getElementById('anatomyHistory');
         if (container) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // Load manual verifications and add admin badge controls
+        if (window.SelectionVerify) {
+            if (algId) SelectionVerify.renderManualBadges('anatomy_snippet', String(algId));
+            SelectionVerify.initAdminBadgeControls();
+        }
     }
 
     function renderAnatomyHistory() {
