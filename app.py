@@ -1748,6 +1748,7 @@ with app.app_context():
                 ('business-finance-model', 'Business & Finance Model', 'finance', 'docs/BUSINESS_FINANCE_MODEL.md'),
                 ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
                 ('landing-page-tours', 'Landing Page Interactive Tours Plan', 'marketing', 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'),
+                ('peer-review-v2', 'Peer Review v2 — Manual Verification + Global Flags', 'technical', 'docs/plans/PEER_REVIEW_V2_PLAN.md'),
                 ('ai-documentation', 'AI Documentation', 'technical', 'templates/admin_ai_documentation.html'),
                 ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
                 ('seo-audit', 'SEO Audit', 'seo', 'templates/admin_seo_audit.html'),
