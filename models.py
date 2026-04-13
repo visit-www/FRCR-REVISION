@@ -3479,16 +3479,20 @@ class RadIQFeedback(db.Model):
 # ==================== PEER REVIEW FLAG MODEL ====================
 
 class PeerReviewFlag(db.Model):
-    """User-flagged inaccuracies in AI-generated content (RadInsight Peer Review)."""
+    """User-flagged inaccuracies in any content across the app."""
     __tablename__ = 'peer_review_flag'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
-    content_type = db.Column(db.String(50), nullable=False)  # anatomy_snippet, radiq_query, report_action_sba, etc.
+    content_type = db.Column(db.String(50), nullable=False)  # anatomy_snippet, radiq_answer, smart_reporter_report, etc.
     content_id = db.Column(db.String(100), nullable=True)  # Optional DB id of the content
     section = db.Column(db.String(100), nullable=True)  # Which section was flagged
     details = db.Column(db.Text, nullable=False)  # User's description of the inaccuracy
     claim_text = db.Column(db.Text, nullable=True)  # The specific claim flagged
+    selected_text = db.Column(db.Text, nullable=True)  # Text user had selected when flagging
+    error_type = db.Column(db.String(50), nullable=True)  # incorrect_number, wrong_anatomy, outdated_guideline, etc.
+    severity = db.Column(db.String(10), nullable=True)  # low, medium, high
+    page_url = db.Column(db.String(500), nullable=True)  # URL where flag was raised
 
     # Resolution tracking (admin)
     is_resolved = db.Column(db.Boolean, default=False, index=True)
@@ -3500,6 +3504,26 @@ class PeerReviewFlag(db.Model):
 
     flagger = db.relationship('User', foreign_keys=[user_id], backref='peer_review_flags')
     resolver = db.relationship('User', foreign_keys=[resolved_by_user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_email': self.flagger.email if self.flagger else None,
+            'content_type': self.content_type,
+            'content_id': self.content_id,
+            'error_type': self.error_type,
+            'severity': self.severity,
+            'selected_text': self.selected_text,
+            'details': self.details,
+            'claim_text': self.claim_text,
+            'page_url': self.page_url,
+            'is_resolved': self.is_resolved,
+            'resolved_by_user_id': self.resolved_by_user_id,
+            'resolved_at': self.resolved_at.isoformat() if self.resolved_at else None,
+            'resolution_notes': self.resolution_notes,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
 
     __table_args__ = (
         db.Index('idx_pr_flag_unresolved', 'is_resolved', 'created_at'),

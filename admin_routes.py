@@ -3133,6 +3133,128 @@ def delete_tour_capture(capture_id):
 
 
 # ============================================================================
+# CONTENT FLAGS (Global — submit open to all users, manage admin-only)
+# ============================================================================
+
+@admin_bp.route('/content-flags', methods=['POST'])
+@login_required
+def submit_content_flag():
+    """Submit a content flag (any authenticated user)."""
+    from models import PeerReviewFlag
+    data = request.get_json(silent=True) or {}
+    details = (data.get('details') or '').strip()
+    if not details:
+        return jsonify({'error': 'Please describe the issue.'}), 400
+
+    flag = PeerReviewFlag(
+        user_id=current_user.id,
+        content_type=(data.get('content_type') or 'unknown')[:50],
+        content_id=(data.get('content_id') or '')[:100],
+        error_type=(data.get('error_type') or '')[:50],
+        severity=(data.get('severity') or 'medium')[:10],
+        selected_text=(data.get('selected_text') or '')[:1000],
+        details=details[:2000],
+        page_url=(data.get('page_url') or '')[:500],
+    )
+    db.session.add(flag)
+    try:
+        db.session.commit()
+        logger.info("Content flag submitted: type=%s error=%s user=%d", flag.content_type, flag.error_type, current_user.id)
+        return jsonify({'success': True, 'flag_id': flag.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/content-flags', methods=['GET'])
+@require_admin
+def list_content_flags():
+    """List content flags with optional filters."""
+    from models import PeerReviewFlag
+    q = PeerReviewFlag.query.order_by(PeerReviewFlag.created_at.desc())
+
+    ct = request.args.get('content_type')
+    if ct:
+        q = q.filter_by(content_type=ct)
+    et = request.args.get('error_type')
+    if et:
+        q = q.filter_by(error_type=et)
+    sev = request.args.get('severity')
+    if sev:
+        q = q.filter_by(severity=sev)
+    resolved = request.args.get('resolved')
+    if resolved == 'true':
+        q = q.filter_by(is_resolved=True)
+    elif resolved == 'false':
+        q = q.filter_by(is_resolved=False)
+
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 50, type=int), 200)
+    paginated = q.paginate(page=page, per_page=per_page, error_out=False)
+
+    return jsonify({
+        'flags': [f.to_dict() for f in paginated.items],
+        'total': paginated.total,
+        'pages': paginated.pages,
+        'page': page,
+    })
+
+
+@admin_bp.route('/content-flags/<int:flag_id>/resolve', methods=['POST'])
+@require_admin
+def resolve_content_flag(flag_id):
+    """Resolve a content flag."""
+    from models import PeerReviewFlag
+    flag = PeerReviewFlag.query.get(flag_id)
+    if not flag:
+        return jsonify({'error': 'Flag not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    flag.is_resolved = True
+    flag.resolved_by_user_id = current_user.id
+    flag.resolved_at = datetime.utcnow()
+    flag.resolution_notes = (data.get('notes') or '')[:2000]
+
+    try:
+        db.session.commit()
+        log_admin_action(current_user.id, 'flag_resolve', details=f'Resolved flag #{flag_id}')
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/content-flags/<int:flag_id>/dismiss', methods=['POST'])
+@require_admin
+def dismiss_content_flag(flag_id):
+    """Dismiss a content flag (resolve without action)."""
+    from models import PeerReviewFlag
+    flag = PeerReviewFlag.query.get(flag_id)
+    if not flag:
+        return jsonify({'error': 'Flag not found'}), 404
+
+    flag.is_resolved = True
+    flag.resolved_by_user_id = current_user.id
+    flag.resolved_at = datetime.utcnow()
+    flag.resolution_notes = 'Dismissed'
+    try:
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/content-flags/count', methods=['GET'])
+@require_admin
+def content_flags_count():
+    """Return count of unresolved flags."""
+    from models import PeerReviewFlag
+    count = PeerReviewFlag.query.filter_by(is_resolved=False).count()
+    return jsonify({'count': count})
+
+
+# ============================================================================
 # CLAUDE MEMORY SYNC
 # ============================================================================
 

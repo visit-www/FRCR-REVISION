@@ -1,0 +1,176 @@
+<!-- Global Flag Inaccuracy Modal — loaded in base.html for authenticated users -->
+<div class="modal fade" id="globalFlagModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 12px; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--brand-neutral) 0%, #4a7285 100%); color: #fff; padding: 14px 20px;">
+                <h6 class="modal-title mb-0"><i class="fas fa-flag me-2"></i>Flag Content Issue</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+
+                <!-- Selected text preview (auto-filled if text was selected) -->
+                <div id="flagSelectedPreview" class="d-none mb-3 p-2 rounded" style="background: #f8f9fa; border-left: 3px solid var(--brand-neutral); font-size: .85rem;">
+                    <small class="text-muted d-block mb-1"><i class="fas fa-quote-left me-1"></i>Selected text</small>
+                    <span id="flagSelectedText" style="font-style: italic;"></span>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-7">
+                        <label class="form-label small fw-bold mb-1">Content Type</label>
+                        <select id="flagContentType" class="form-select form-select-sm">
+                            <option value="" disabled selected>Select type...</option>
+                            <option value="anatomy_snippet">Anatomy Snippet</option>
+                            <option value="smart_reporter_report">Smart Reporter Report</option>
+                            <option value="smart_reporter_qa">Smart Reporter Q&A</option>
+                            <option value="radiq_answer">RadIQ Answer</option>
+                            <option value="vetting_analysis">Vetting Analysis</option>
+                            <option value="case_discussion">Case Discussion</option>
+                            <option value="sba_question">SBA Question</option>
+                            <option value="viva_question">Viva Question</option>
+                            <option value="reporting_algorithm">Reporting Algorithm</option>
+                            <option value="radiology_template">Radiology Template</option>
+                            <option value="imaging_protocol">Imaging Protocol</option>
+                            <option value="radiology_pearl">Radiology Pearl</option>
+                            <option value="tnm_calculator">TNM Calculator</option>
+                            <option value="incidental_finding_tool">Incidental Finding Tool</option>
+                        </select>
+                    </div>
+                    <div class="col-5">
+                        <label class="form-label small fw-bold mb-1">Severity</label>
+                        <div class="d-flex gap-2 mt-1">
+                            <label class="form-check-label" style="font-size: .8rem;">
+                                <input type="radio" name="flagSeverity" value="low" class="form-check-input" style="margin-top: 2px;"> Low
+                            </label>
+                            <label class="form-check-label" style="font-size: .8rem;">
+                                <input type="radio" name="flagSeverity" value="medium" class="form-check-input" checked style="margin-top: 2px;"> Med
+                            </label>
+                            <label class="form-check-label" style="font-size: .8rem;">
+                                <input type="radio" name="flagSeverity" value="high" class="form-check-input" style="margin-top: 2px;"> High
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">Error Type</label>
+                    <select id="flagErrorType" class="form-select form-select-sm">
+                        <option value="" disabled selected>What's wrong?</option>
+                        <option value="incorrect_number">Incorrect measurement or number</option>
+                        <option value="wrong_anatomy">Wrong anatomical term</option>
+                        <option value="outdated_guideline">Outdated guideline or reference</option>
+                        <option value="missing_info">Missing important information</option>
+                        <option value="hallucination">AI hallucination / fabricated claim</option>
+                        <option value="formatting">Formatting or display issue</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label small fw-bold mb-1">Description <span class="text-danger">*</span></label>
+                    <textarea id="flagDetails" class="form-control form-control-sm" rows="3" placeholder="What's wrong and what should it say? Be specific..."></textarea>
+                </div>
+
+            </div>
+            <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid #eee;">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="flagSubmitBtn" class="btn btn-sm" style="background: var(--brand-neutral); color: #fff;">
+                    <i class="fas fa-flag me-1"></i>Submit Flag
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // State for current flag context
+    var _flagContext = { contentType: '', contentId: '', selectedText: '', pageUrl: '' };
+
+    // Global function to open flag modal from anywhere
+    window.openGlobalFlagModal = function(opts) {
+        opts = opts || {};
+        _flagContext.contentType = opts.contentType || '';
+        _flagContext.contentId = opts.contentId || '';
+        _flagContext.selectedText = opts.selectedText || '';
+        _flagContext.pageUrl = opts.pageUrl || window.location.pathname;
+
+        // Pre-fill content type if provided
+        var ctSelect = document.getElementById('flagContentType');
+        if (_flagContext.contentType) {
+            ctSelect.value = _flagContext.contentType;
+        } else {
+            ctSelect.selectedIndex = 0;
+        }
+
+        // Show selected text preview
+        var preview = document.getElementById('flagSelectedPreview');
+        var textEl = document.getElementById('flagSelectedText');
+        if (_flagContext.selectedText) {
+            textEl.textContent = _flagContext.selectedText.substring(0, 300);
+            preview.classList.remove('d-none');
+        } else {
+            preview.classList.add('d-none');
+        }
+
+        // Reset form
+        document.getElementById('flagErrorType').selectedIndex = 0;
+        document.getElementById('flagDetails').value = '';
+        document.querySelectorAll('input[name="flagSeverity"]').forEach(function(r) { r.checked = r.value === 'medium'; });
+
+        new bootstrap.Modal(document.getElementById('globalFlagModal')).show();
+    };
+
+    // Submit handler
+    document.addEventListener('DOMContentLoaded', function() {
+        var submitBtn = document.getElementById('flagSubmitBtn');
+        if (!submitBtn) return;
+
+        submitBtn.addEventListener('click', function() {
+            var details = document.getElementById('flagDetails').value.trim();
+            if (!details) {
+                document.getElementById('flagDetails').classList.add('is-invalid');
+                return;
+            }
+            document.getElementById('flagDetails').classList.remove('is-invalid');
+
+            var severity = 'medium';
+            document.querySelectorAll('input[name="flagSeverity"]').forEach(function(r) { if (r.checked) severity = r.value; });
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Submitting...';
+
+            fetch('/api/admin/content-flags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content_type: document.getElementById('flagContentType').value || _flagContext.contentType,
+                    content_id: _flagContext.contentId,
+                    error_type: document.getElementById('flagErrorType').value,
+                    severity: severity,
+                    selected_text: _flagContext.selectedText,
+                    details: details,
+                    page_url: _flagContext.pageUrl,
+                })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-flag me-1"></i>Submit Flag';
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('globalFlagModal')).hide();
+                    if (window.showToast) {
+                        showToast('Thank you — flag submitted for review.', 'success');
+                    }
+                } else {
+                    if (window.showToast) showToast('Error: ' + (data.error || 'Unknown'), 'error');
+                }
+            })
+            .catch(function(err) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-flag me-1"></i>Submit Flag';
+                if (window.showToast) showToast('Network error: ' + err.message, 'error');
+            });
+        });
+    });
+})();
+</script>

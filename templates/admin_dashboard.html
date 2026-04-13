@@ -99,6 +99,11 @@
             </a>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="content-flags-tab" data-bs-toggle="tab" data-bs-target="#content-flags-content" type="button" role="tab">
+                <i class="fas fa-flag"></i> Content Flags <span id="flagCountBadge" class="badge bg-danger ms-1" style="display: none; font-size: .6rem;">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="ai-costs-tab" data-bs-toggle="tab" data-bs-target="#ai-costs-content" type="button" role="tab" aria-controls="ai-costs-content" aria-selected="false">
                 <i class="fas fa-dollar-sign"></i> AI Costs
             </button>
@@ -432,7 +437,43 @@
         </div>
         <!-- End R2 Bucket Manager Tab -->
 
-        <!-- App Documents tab removed — now lives at /api/admin/docs-hub -->
+        <!-- Content Flags Tab -->
+        <div class="tab-pane fade" id="content-flags-content" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="fas fa-flag me-2 text-danger"></i>Content Flags</h5>
+                <div class="d-flex gap-2">
+                    <select id="flagFilterType" class="form-select form-select-sm" style="width: auto; font-size: .8rem;">
+                        <option value="">All Types</option>
+                        <option value="anatomy_snippet">Anatomy Snippet</option>
+                        <option value="smart_reporter_report">Smart Reporter Report</option>
+                        <option value="smart_reporter_qa">Smart Reporter Q&A</option>
+                        <option value="radiq_answer">RadIQ Answer</option>
+                        <option value="vetting_analysis">Vetting Analysis</option>
+                        <option value="case_discussion">Case Discussion</option>
+                        <option value="sba_question">SBA</option>
+                        <option value="viva_question">Viva</option>
+                        <option value="reporting_algorithm">Algorithm</option>
+                        <option value="radiology_template">Template</option>
+                        <option value="imaging_protocol">Protocol</option>
+                        <option value="radiology_pearl">Pearl</option>
+                    </select>
+                    <select id="flagFilterSeverity" class="form-select form-select-sm" style="width: auto; font-size: .8rem;">
+                        <option value="">All Severity</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                    <select id="flagFilterResolved" class="form-select form-select-sm" style="width: auto; font-size: .8rem;">
+                        <option value="false">Unresolved</option>
+                        <option value="true">Resolved</option>
+                        <option value="">All</option>
+                    </select>
+                </div>
+            </div>
+            <div id="flagsTableContainer">
+                <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+            </div>
+        </div>
 
         <!-- AI Costs Tab -->
         <div class="tab-pane fade" id="ai-costs-content" role="tabpanel" aria-labelledby="ai-costs-tab">
@@ -1758,7 +1799,107 @@
     // APP DOCUMENTS TAB
     // ============================================================================
 
-    // App Documents tab removed — now lives at /api/admin/docs-hub
+    // ========================================================================
+    // CONTENT FLAGS TAB
+    // ========================================================================
+    (function() {
+        var flagsLoaded = false;
+
+        // Load flag count on page load
+        fetch('/api/admin/content-flags/count').then(r => r.json()).then(data => {
+            var badge = document.getElementById('flagCountBadge');
+            if (data.count > 0) {
+                badge.textContent = data.count;
+                badge.style.display = 'inline';
+            }
+        }).catch(function() {});
+
+        // Load flags when tab shown
+        var flagTab = document.getElementById('content-flags-tab');
+        if (flagTab) {
+            flagTab.addEventListener('shown.bs.tab', function() { loadFlags(); });
+        }
+
+        ['flagFilterType', 'flagFilterSeverity', 'flagFilterResolved'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.addEventListener('change', function() { loadFlags(); });
+        });
+
+        function loadFlags() {
+            var params = new URLSearchParams();
+            var ct = document.getElementById('flagFilterType').value;
+            var sev = document.getElementById('flagFilterSeverity').value;
+            var res = document.getElementById('flagFilterResolved').value;
+            if (ct) params.set('content_type', ct);
+            if (sev) params.set('severity', sev);
+            if (res) params.set('resolved', res);
+
+            var container = document.getElementById('flagsTableContainer');
+            container.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
+            fetch('/api/admin/content-flags?' + params.toString())
+                .then(r => r.json())
+                .then(function(data) {
+                    var flags = data.flags || [];
+                    if (!flags.length) {
+                        container.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-check-circle fa-2x mb-2" style="color: var(--brand-success);"></i><br>No flags to review</div>';
+                        return;
+                    }
+
+                    var sevColors = { high: 'danger', medium: 'warning', low: 'secondary' };
+                    var html = '<div class="table-responsive"><table class="table table-sm table-hover align-middle" style="font-size: .85rem;">';
+                    html += '<thead class="table-light"><tr><th>Severity</th><th>Type</th><th>Error</th><th>Details</th><th>User</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+
+                    flags.forEach(function(f) {
+                        var sevBadge = '<span class="badge bg-' + (sevColors[f.severity] || 'secondary') + '">' + (f.severity || '?') + '</span>';
+                        var typeBadge = '<span class="badge bg-light text-dark border" style="font-size:.7rem;">' + (f.content_type || '').replace(/_/g, ' ') + '</span>';
+                        var errorType = (f.error_type || '').replace(/_/g, ' ') || '-';
+                        var selectedSnip = f.selected_text ? '<br><small class="text-muted fst-italic">"' + f.selected_text.substring(0, 80) + (f.selected_text.length > 80 ? '...' : '') + '"</small>' : '';
+                        var details = f.details ? f.details.substring(0, 120) + (f.details.length > 120 ? '...' : '') : '-';
+                        var date = f.created_at ? new Date(f.created_at).toLocaleDateString() : '-';
+
+                        html += '<tr' + (f.is_resolved ? ' class="table-light"' : '') + '>';
+                        html += '<td>' + sevBadge + '</td>';
+                        html += '<td>' + typeBadge + '</td>';
+                        html += '<td><small>' + errorType + '</small></td>';
+                        html += '<td>' + details + selectedSnip + '</td>';
+                        html += '<td><small>' + (f.user_email || 'Unknown') + '</small></td>';
+                        html += '<td><small>' + date + '</small></td>';
+                        html += '<td>';
+                        if (!f.is_resolved) {
+                            html += '<button class="btn btn-sm btn-outline-success py-0 px-1 me-1" onclick="resolveFlag(' + f.id + ')" title="Resolve"><i class="fas fa-check"></i></button>';
+                            html += '<button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="dismissFlag(' + f.id + ')" title="Dismiss"><i class="fas fa-times"></i></button>';
+                        } else {
+                            html += '<small class="text-success"><i class="fas fa-check-circle"></i> ' + (f.resolution_notes === 'Dismissed' ? 'Dismissed' : 'Resolved') + '</small>';
+                        }
+                        html += '</td></tr>';
+                    });
+
+                    html += '</tbody></table></div>';
+                    html += '<small class="text-muted">' + data.total + ' total flag' + (data.total !== 1 ? 's' : '') + '</small>';
+                    container.innerHTML = html;
+                })
+                .catch(function(err) {
+                    container.innerHTML = '<div class="alert alert-danger">Error loading flags: ' + err.message + '</div>';
+                });
+        }
+
+        window.resolveFlag = function(id) {
+            var notes = prompt('Resolution notes (optional):');
+            if (notes === null) return;
+            fetch('/api/admin/content-flags/' + id + '/resolve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notes })
+            }).then(function() { loadFlags(); });
+        };
+
+        window.dismissFlag = function(id) {
+            if (!confirm('Dismiss this flag?')) return;
+            fetch('/api/admin/content-flags/' + id + '/dismiss', { method: 'POST' })
+                .then(function() { loadFlags(); });
+        };
+    })();
 
     // ========================================================================
     // AI COSTS TAB

@@ -1741,6 +1741,24 @@ with app.app_context():
                 _TC.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created tour_capture table')
 
+            # Add new columns to peer_review_flag if missing
+            if 'peer_review_flag' in insp.get_table_names():
+                _prf_cols = {c['name'] for c in insp.get_columns('peer_review_flag')}
+                _new_prf = {
+                    'selected_text': 'TEXT',
+                    'error_type': 'VARCHAR(50)',
+                    'severity': 'VARCHAR(10)',
+                    'page_url': 'VARCHAR(500)',
+                }
+                for _col, _type in _new_prf.items():
+                    if _col not in _prf_cols:
+                        try:
+                            db.session.execute(text(f'ALTER TABLE peer_review_flag ADD COLUMN {_col} {_type}'))
+                            logger.info('Added peer_review_flag.%s', _col)
+                        except Exception:
+                            pass
+                db.session.commit()
+
             # Auto-sync markdown docs to DB on every deploy
             # Manifest: (slug, title, category, filepath)
             # .md files are converted from markdown; .html templates have Jinja stripped
