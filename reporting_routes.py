@@ -4269,8 +4269,11 @@ def smart_reporter_anatomy():
 
     if cached and cached.template_html and not force_regenerate:
         html = cached.template_html
-        # On-demand peer review for any cached snippet that lacks verification badges
-        if 'peer-review-badge' not in html and 'peer-review-disclaimer' not in html:
+        # On-demand peer review for any cached snippet that lacks inline verification badges
+        # Strip stale peer review elements first (disclaimer without badges = failed previous run)
+        if 'peer-review-badge' not in html:
+            from radinsight_peer_review import strip_automated_badges
+            html = strip_automated_badges(html)
             try:
                 from radinsight_peer_review import peer_review_anatomy
                 logger.info("Starting on-demand peer review for cached '%s' (%d chars HTML)", cached.title, len(html))

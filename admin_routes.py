@@ -3136,21 +3136,59 @@ def delete_tour_capture(capture_id):
 # MANUAL VERIFICATION (Admin PubMed search + verify)
 # ============================================================================
 
-@admin_bp.route('/pubmed-search', methods=['GET'])
+@admin_bp.route('/verify-search', methods=['GET'])
 @require_admin
-def admin_pubmed_search():
-    """Search PubMed for verification. Returns top results."""
+def admin_verify_search():
+    """Search PubMed + Radiopaedia for verification. Returns combined results."""
     query = request.args.get('q', '').strip()
+    source = request.args.get('source', 'all')  # pubmed, radiopaedia, all
     if not query or len(query) < 3:
         return jsonify({'error': 'Query too short (min 3 chars)'}), 400
 
-    try:
-        from pubmed_service import search_pubmed
-        results = search_pubmed(query, max_results=5)
-        return jsonify({'results': results, 'query': query})
-    except Exception as e:
-        logger.warning("PubMed search failed for '%s': %s", query, e)
-        return jsonify({'error': str(e), 'results': []}), 500
+    results = []
+
+    # PubMed
+    if source in ('pubmed', 'all'):
+        try:
+            from pubmed_service import search_pubmed
+            pm_results = search_pubmed(query, max_results=5)
+            for r in pm_results:
+                r['source'] = 'pubmed'
+            results.extend(pm_results)
+        except Exception as e:
+            logger.warning("PubMed search failed for '%s': %s", query, e)
+
+    # Radiopaedia articles
+    if source in ('radiopaedia', 'all'):
+        try:
+            import requests as _req
+            from urllib.parse import urlencode
+            params = {'q': query, 'scope': 'articles', 'lang': 'us'}
+            url = f"https://radiopaedia.org/search?{urlencode(params)}"
+            resp = _req.get(url, headers={'User-Agent': 'RadInsights/1.0'}, timeout=10)
+            if resp.status_code == 200:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(resp.text, 'html.parser')
+                for a in soup.select('a.search-result-title')[:5]:
+                    href = a.get('href', '')
+                    title = a.get_text(strip=True)
+                    if href and title:
+                        full_url = 'https://radiopaedia.org' + href if href.startswith('/') else href
+                        results.append({
+                            'source': 'radiopaedia',
+                            'title': title,
+                            'pubmed_link': full_url,
+                            'authors': [],
+                            'journal': 'Radiopaedia.org',
+                            'year': '',
+                            'doi': None,
+                            'pmid': None,
+                            'has_free_full_text': True,
+                        })
+        except Exception as e:
+            logger.warning("Radiopaedia search failed for '%s': %s", query, e)
+
+    return jsonify({'results': results, 'query': query})
 
 
 @admin_bp.route('/manual-verify', methods=['POST'])

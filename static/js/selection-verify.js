@@ -141,10 +141,15 @@
                     '<input type="text" id="verifyCustomLabel" class="form-control form-control-sm" placeholder="e.g. normal stapes footplate thickness range">' +
                 '</div>' +
                 '<div class="mb-2">' +
-                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">PubMed Search</label>' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Search PubMed & Radiopaedia</label>' +
                     '<div class="input-group input-group-sm">' +
-                        '<input type="text" id="verifySearchQuery" class="form-control" placeholder="Search PubMed...">' +
-                        '<button class="btn btn-sm" style="background:var(--brand-neutral);color:#fff;" onclick="SelectionVerify._searchPubMed()"><i class="fas fa-search"></i></button>' +
+                        '<input type="text" id="verifySearchQuery" class="form-control" placeholder="Search for references...">' +
+                        '<select id="verifySearchSource" class="form-select" style="max-width:120px;font-size:.8rem;">' +
+                            '<option value="all">All</option>' +
+                            '<option value="pubmed">PubMed</option>' +
+                            '<option value="radiopaedia">Radiopaedia</option>' +
+                        '</select>' +
+                        '<button class="btn btn-sm" style="background:var(--brand-neutral);color:#fff;" onclick="SelectionVerify._searchVerify()"><i class="fas fa-search"></i></button>' +
                     '</div>' +
                 '</div>' +
                 '<div id="verifyResults" style="font-size:.85rem;"></div>' +
@@ -205,13 +210,14 @@
             if (_verifyPanel) _verifyPanel.style.display = 'none';
         },
 
-        _searchPubMed: function() {
+        _searchVerify: function() {
             var query = document.getElementById('verifySearchQuery').value.trim();
             if (!query) return;
+            var source = document.getElementById('verifySearchSource').value;
             var resultsDiv = document.getElementById('verifyResults');
-            resultsDiv.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Searching PubMed...</div>';
+            resultsDiv.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Searching...</div>';
 
-            fetch('/api/admin/pubmed-search?q=' + encodeURIComponent(query))
+            fetch('/api/admin/verify-search?q=' + encodeURIComponent(query) + '&source=' + source)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     var results = data.results || [];
@@ -226,16 +232,19 @@
                         if (authorList.length > 3) authors += ' et al.';
                         var title = String(r.title || 'Untitled');
                         var link = r.pubmed_link || ('https://pubmed.ncbi.nlm.nih.gov/' + (r.pmid || '') + '/');
+                        var srcBadge = r.source === 'radiopaedia'
+                            ? '<span class="badge" style="font-size:.55rem;background:#2d6b4f;color:#fff;">Radiopaedia</span>'
+                            : '<span class="badge" style="font-size:.55rem;background:#1a5276;color:#fff;">PubMed</span>';
                         html += '<div class="p-2 mb-1 rounded" style="border:1px solid #e0e0e0;cursor:pointer;transition:background .15s;" ' +
                             'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
                             'onclick="SelectionVerify._pickPaper(' + i + ')" data-paper-idx="' + i + '">' +
                             '<div class="d-flex justify-content-between align-items-start">' +
-                            '<strong style="font-size:.8rem;">' + title + '</strong>' +
+                            '<div><strong style="font-size:.8rem;">' + title + '</strong> ' + srcBadge + '</div>' +
                             '<a href="' + link + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" ' +
-                            'style="font-size:.7rem;white-space:nowrap;margin-left:8px;" title="Open in PubMed">' +
+                            'style="font-size:.7rem;white-space:nowrap;margin-left:8px;" title="Open reference">' +
                             '<i class="fas fa-external-link-alt"></i></a></div>' +
-                            '<small class="text-muted">' + authors + ' — ' + (r.journal || '') + ' (' + (r.year || '') + ')' +
-                            (r.has_free_full_text ? ' <span class="badge bg-success" style="font-size:.6rem;">Free Full Text</span>' : '') +
+                            '<small class="text-muted">' + (authors ? authors + ' — ' : '') + (r.journal || '') + (r.year ? ' (' + r.year + ')' : '') +
+                            (r.has_free_full_text ? ' <span class="badge bg-success" style="font-size:.6rem;">Free</span>' : '') +
                             '</small></div>';
                     });
                     resultsDiv.innerHTML = html;
