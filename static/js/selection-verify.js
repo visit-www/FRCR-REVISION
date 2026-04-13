@@ -221,14 +221,22 @@
                     }
                     var html = '';
                     results.forEach(function(r, i) {
-                        var authors = (r.authors || []).slice(0, 3).join(', ');
-                        if ((r.authors || []).length > 3) authors += ' et al.';
+                        var authorList = (r.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); });
+                        var authors = authorList.slice(0, 3).join(', ');
+                        if (authorList.length > 3) authors += ' et al.';
+                        var title = String(r.title || 'Untitled');
+                        var link = r.pubmed_link || ('https://pubmed.ncbi.nlm.nih.gov/' + (r.pmid || '') + '/');
                         html += '<div class="p-2 mb-1 rounded" style="border:1px solid #e0e0e0;cursor:pointer;transition:background .15s;" ' +
                             'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
                             'onclick="SelectionVerify._pickPaper(' + i + ')" data-paper-idx="' + i + '">' +
-                            '<strong style="font-size:.8rem;">' + (r.title || 'Untitled') + '</strong><br>' +
-                            '<small class="text-muted">' + authors + ' — ' + (r.journal || '') + ' (' + (r.year || '') + ')</small>' +
-                            '</div>';
+                            '<div class="d-flex justify-content-between align-items-start">' +
+                            '<strong style="font-size:.8rem;">' + title + '</strong>' +
+                            '<a href="' + link + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" ' +
+                            'style="font-size:.7rem;white-space:nowrap;margin-left:8px;" title="Open in PubMed">' +
+                            '<i class="fas fa-external-link-alt"></i></a></div>' +
+                            '<small class="text-muted">' + authors + ' — ' + (r.journal || '') + ' (' + (r.year || '') + ')' +
+                            (r.has_free_full_text ? ' <span class="badge bg-success" style="font-size:.6rem;">Free Full Text</span>' : '') +
+                            '</small></div>';
                     });
                     resultsDiv.innerHTML = html;
                     // Store results for picking
@@ -246,8 +254,9 @@
             _selectedPaper = papers[idx];
 
             var sp = document.getElementById('verifySelectedPaper');
-            var authors = (_selectedPaper.authors || []).slice(0, 3).join(', ');
-            if ((_selectedPaper.authors || []).length > 3) authors += ' et al.';
+            var authorList = (_selectedPaper.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); });
+            var authors = authorList.slice(0, 3).join(', ');
+            if (authorList.length > 3) authors += ' et al.';
             sp.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i><strong>' + (_selectedPaper.title || '') + '</strong><br>' +
                 '<small>' + authors + ' — ' + (_selectedPaper.journal || '') + ' (' + (_selectedPaper.year || '') + ')</small>';
             sp.classList.remove('d-none');
@@ -275,7 +284,7 @@
                 payload.pubmed_doi = _selectedPaper.doi || '';
                 payload.pubmed_pmid = _selectedPaper.pmid || '';
                 payload.pubmed_title = _selectedPaper.title || '';
-                payload.pubmed_authors = (_selectedPaper.authors || []).join(', ');
+                payload.pubmed_authors = (_selectedPaper.authors || []).map(function(a) { return typeof a === 'object' ? (a.name || '') : String(a); }).join(', ');
                 payload.pubmed_journal = _selectedPaper.journal || '';
                 payload.pubmed_year = _selectedPaper.year || '';
             }

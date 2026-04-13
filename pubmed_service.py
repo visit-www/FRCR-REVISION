@@ -236,7 +236,7 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                     
                     # Get article data
                     article_data = medline.get('Article', {})
-                    title = article_data.get('ArticleTitle', 'No title')
+                    title = str(article_data.get('ArticleTitle', 'No title'))
                     
                     # Authors
                     author_list = article_data.get('AuthorList', [])
@@ -408,11 +408,22 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
                                         full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
                                     break
                             
+                            # Normalize authors to list of strings
+                            raw_authors = summary.get('authors', [])
+                            norm_authors = []
+                            for a in raw_authors[:5]:
+                                if isinstance(a, dict):
+                                    norm_authors.append(a.get('name', ''))
+                                elif isinstance(a, str):
+                                    norm_authors.append(a)
+                                else:
+                                    norm_authors.append(str(a))
+
                             article_dict = {
                                 'pmid': pmid,
-                                'title': summary.get('title', 'No title'),
-                                'authors': summary.get('authors', []),
-                                'journal': summary.get('source', 'Unknown Journal'),
+                                'title': str(summary.get('title', 'No title')),
+                                'authors': norm_authors,
+                                'journal': str(summary.get('source', 'Unknown Journal')),
                                 'journal_iso': summary.get('source', ''),
                                 'year': summary.get('pubdate', '').split(' ')[0] if summary.get('pubdate') else '',
                                 'abstract': '',  # Not available in summary
