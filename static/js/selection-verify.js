@@ -3,19 +3,18 @@
  *
  * Shows a floating popup when user selects text in content areas.
  * - All users: "Flag" button to report inaccuracies
- * - Admin only: "Verify" button (PubMed search — future Phase 1)
+ * - Admin only: "Verify" button → PubMed search + save verification
  *
  * Usage: SelectionVerify.init({ isAdmin: true/false })
- * Auto-detects content type from closest [data-content-type] attribute.
  */
 (function() {
     'use strict';
 
     var _popup = null;
+    var _verifyPanel = null;
     var _isAdmin = false;
     var _currentSelection = { text: '', contentType: '', contentId: '' };
 
-    // Content areas where selection popup should appear
     var CONTENT_SELECTORS = [
         '#anatomyHistory',
         '.ai-answer-text',
@@ -46,14 +45,10 @@
     function _show(x, y) {
         if (!_popup) _popup = _createPopup();
 
-        var html = '';
-
-        // Flag button (all users)
-        html += '<button class="btn btn-sm py-0 px-2" style="font-size:.75rem;background:var(--brand-neutral);color:#fff;border:none;border-radius:6px;" ' +
+        var html = '<button class="btn btn-sm py-0 px-2" style="font-size:.75rem;background:var(--brand-neutral);color:#fff;border:none;border-radius:6px;" ' +
             'onclick="SelectionVerify._flag()" title="Flag this content">' +
             '<i class="fas fa-flag me-1"></i>Flag</button>';
 
-        // Admin verify button (future — PubMed search)
         if (_isAdmin) {
             html += '<button class="btn btn-sm py-0 px-2" style="font-size:.75rem;background:#198754;color:#fff;border:none;border-radius:6px;" ' +
                 'onclick="SelectionVerify._verify()" title="Verify with PubMed">' +
@@ -63,8 +58,7 @@
         _popup.innerHTML = html;
         _popup.style.display = 'flex';
 
-        // Position: above selection, centered
-        var popW = 150;
+        var popW = _isAdmin ? 180 : 90;
         var popH = 36;
         var left = Math.min(Math.max(10, x - popW / 2), window.innerWidth - popW - 10);
         var top = Math.max(10, y - popH - 10);
@@ -77,17 +71,12 @@
     }
 
     function _detectContentType(el) {
-        // Walk up from selection to find data-content-type
         var node = el;
         while (node && node !== document.body) {
             if (node.dataset && node.dataset.contentType) return node.dataset.contentType;
-            if (node.dataset && node.dataset.contentId) {
-                _currentSelection.contentId = node.dataset.contentId;
-            }
+            if (node.dataset && node.dataset.contentId) _currentSelection.contentId = node.dataset.contentId;
             node = node.parentElement;
         }
-
-        // Fallback: detect from container class/id
         if (el.closest('#anatomyHistory')) return 'anatomy_snippet';
         if (el.closest('.ai-answer-text')) return 'smart_reporter_qa';
         if (el.closest('.report-action-content')) {
@@ -110,33 +99,78 @@
     }
 
     function _onMouseUp(e) {
-        // Small delay to let selection finalize
         setTimeout(function() {
             var sel = window.getSelection();
             var text = (sel ? sel.toString() : '').trim();
+            if (text.length < 3) { _hide(); return; }
 
-            if (text.length < 3) {
-                _hide();
-                return;
-            }
-
-            // Check if selection is within a content area
             var anchorNode = sel.anchorNode;
             var el = anchorNode && anchorNode.nodeType === 3 ? anchorNode.parentElement : anchorNode;
-            if (!el || !el.closest(CONTENT_SELECTORS)) {
-                _hide();
-                return;
-            }
+            if (!el || !el.closest(CONTENT_SELECTORS)) { _hide(); return; }
 
             _currentSelection.text = text.substring(0, 500);
             _currentSelection.contentType = _detectContentType(el);
             _currentSelection.contentId = '';
 
-            // Get position from selection range
             var range = sel.getRangeAt(0);
             var rect = range.getBoundingClientRect();
             _show(rect.left + rect.width / 2, rect.top);
         }, 50);
+    }
+
+    // ── Verify Panel (Admin PubMed search) ──
+    function _createVerifyPanel() {
+        var el = document.createElement('div');
+        el.id = 'verifyPanel';
+        el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+            'background:var(--brand-bg-offwhite,#fdfdfb);border:2px solid var(--brand-success,#a8d5ba);' +
+            'border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:10001;width:480px;max-width:90vw;' +
+            'max-height:80vh;overflow-y:auto;display:none;';
+        el.innerHTML =
+            '<div style="background:linear-gradient(135deg,#5E899E 0%,#4a7285 100%);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
+                '<span style="font-weight:600;font-size:.95rem;"><i class="fas fa-check-circle me-2"></i>Verify with PubMed</span>' +
+                '<button onclick="SelectionVerify._closeVerify()" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;"><i class="fas fa-times"></i></button>' +
+            '</div>' +
+            '<div style="padding:16px;">' +
+                '<div class="mb-2">' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Selected Text</label>' +
+                    '<div id="verifySelectedText" style="background:rgba(94,137,158,.08);border-left:3px solid var(--brand-neutral);padding:8px 10px;border-radius:4px;font-size:.85rem;font-style:italic;"></div>' +
+                '</div>' +
+                '<div class="mb-2">' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">Custom Verification Label <small class="text-muted">(optional — rewrite for clarity)</small></label>' +
+                    '<input type="text" id="verifyCustomLabel" class="form-control form-control-sm" placeholder="e.g. normal stapes footplate thickness range">' +
+                '</div>' +
+                '<div class="mb-2">' +
+                    '<label style="font-weight:500;font-size:.85rem;margin-bottom:4px;display:block;">PubMed Search</label>' +
+                    '<div class="input-group input-group-sm">' +
+                        '<input type="text" id="verifySearchQuery" class="form-control" placeholder="Search PubMed...">' +
+                        '<button class="btn btn-sm" style="background:var(--brand-neutral);color:#fff;" onclick="SelectionVerify._searchPubMed()"><i class="fas fa-search"></i></button>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="verifyResults" style="font-size:.85rem;"></div>' +
+                '<div id="verifySelectedPaper" class="d-none mt-2 p-2 rounded" style="background:rgba(25,135,84,.08);border:1px solid var(--brand-success);font-size:.85rem;"></div>' +
+                '<div class="mt-3 d-flex gap-2 justify-content-end">' +
+                    '<button class="btn btn-sm" style="background:#6c757d;color:#fff;" onclick="SelectionVerify._closeVerify()">Cancel</button>' +
+                    '<button id="verifySaveBtn" class="btn btn-sm" style="background:var(--brand-primary);color:#fff;" onclick="SelectionVerify._saveVerification()"><i class="fas fa-check me-1"></i>Save Verification</button>' +
+                '</div>' +
+            '</div>';
+        document.body.appendChild(el);
+        return el;
+    }
+
+    var _selectedPaper = null;
+
+    function _showVerifyPanel() {
+        if (!_verifyPanel) _verifyPanel = _createVerifyPanel();
+        _selectedPaper = null;
+
+        document.getElementById('verifySelectedText').textContent = _currentSelection.text;
+        document.getElementById('verifyCustomLabel').value = '';
+        document.getElementById('verifySearchQuery').value = _currentSelection.text.substring(0, 80);
+        document.getElementById('verifyResults').innerHTML = '<small class="text-muted">Click search to find PubMed references</small>';
+        document.getElementById('verifySelectedPaper').classList.add('d-none');
+
+        _verifyPanel.style.display = 'block';
     }
 
     // Public API
@@ -145,11 +179,9 @@
             opts = opts || {};
             _isAdmin = !!opts.isAdmin;
             document.addEventListener('mouseup', _onMouseUp);
-            // Hide on click outside
             document.addEventListener('mousedown', function(e) {
                 if (_popup && !_popup.contains(e.target)) _hide();
             });
-            // Hide on scroll
             document.addEventListener('scroll', _hide, true);
         },
 
@@ -166,10 +198,109 @@
 
         _verify: function() {
             _hide();
-            // Phase 1 future: open PubMed search panel
-            if (window.showToast) {
-                showToast('PubMed verification coming soon. Use Flag to report issues for now.', 'info');
+            _showVerifyPanel();
+        },
+
+        _closeVerify: function() {
+            if (_verifyPanel) _verifyPanel.style.display = 'none';
+        },
+
+        _searchPubMed: function() {
+            var query = document.getElementById('verifySearchQuery').value.trim();
+            if (!query) return;
+            var resultsDiv = document.getElementById('verifyResults');
+            resultsDiv.innerHTML = '<div class="text-center py-2"><div class="spinner-border spinner-border-sm text-primary"></div> Searching PubMed...</div>';
+
+            fetch('/api/admin/pubmed-search?q=' + encodeURIComponent(query))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var results = data.results || [];
+                    if (!results.length) {
+                        resultsDiv.innerHTML = '<small class="text-muted">No results found. Try different search terms.</small>';
+                        return;
+                    }
+                    var html = '';
+                    results.forEach(function(r, i) {
+                        var authors = (r.authors || []).slice(0, 3).join(', ');
+                        if ((r.authors || []).length > 3) authors += ' et al.';
+                        html += '<div class="p-2 mb-1 rounded" style="border:1px solid #e0e0e0;cursor:pointer;transition:background .15s;" ' +
+                            'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
+                            'onclick="SelectionVerify._pickPaper(' + i + ')" data-paper-idx="' + i + '">' +
+                            '<strong style="font-size:.8rem;">' + (r.title || 'Untitled') + '</strong><br>' +
+                            '<small class="text-muted">' + authors + ' — ' + (r.journal || '') + ' (' + (r.year || '') + ')</small>' +
+                            '</div>';
+                    });
+                    resultsDiv.innerHTML = html;
+                    // Store results for picking
+                    resultsDiv._papers = results;
+                })
+                .catch(function(err) {
+                    resultsDiv.innerHTML = '<small class="text-danger">Error: ' + err.message + '</small>';
+                });
+        },
+
+        _pickPaper: function(idx) {
+            var resultsDiv = document.getElementById('verifyResults');
+            var papers = resultsDiv._papers || [];
+            if (!papers[idx]) return;
+            _selectedPaper = papers[idx];
+
+            var sp = document.getElementById('verifySelectedPaper');
+            var authors = (_selectedPaper.authors || []).slice(0, 3).join(', ');
+            if ((_selectedPaper.authors || []).length > 3) authors += ' et al.';
+            sp.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i><strong>' + (_selectedPaper.title || '') + '</strong><br>' +
+                '<small>' + authors + ' — ' + (_selectedPaper.journal || '') + ' (' + (_selectedPaper.year || '') + ')</small>';
+            sp.classList.remove('d-none');
+
+            // Highlight selected in results
+            resultsDiv.querySelectorAll('[data-paper-idx]').forEach(function(el) {
+                el.style.background = el.dataset.paperIdx == idx ? 'rgba(25,135,84,.1)' : '#fff';
+                el.style.borderColor = el.dataset.paperIdx == idx ? 'var(--brand-success)' : '#e0e0e0';
+            });
+        },
+
+        _saveVerification: function() {
+            var btn = document.getElementById('verifySaveBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+            var payload = {
+                content_type: _currentSelection.contentType,
+                content_id: _currentSelection.contentId,
+                selected_text: _currentSelection.text,
+                custom_label: document.getElementById('verifyCustomLabel').value.trim(),
+            };
+
+            if (_selectedPaper) {
+                payload.pubmed_doi = _selectedPaper.doi || '';
+                payload.pubmed_pmid = _selectedPaper.pmid || '';
+                payload.pubmed_title = _selectedPaper.title || '';
+                payload.pubmed_authors = (_selectedPaper.authors || []).join(', ');
+                payload.pubmed_journal = _selectedPaper.journal || '';
+                payload.pubmed_year = _selectedPaper.year || '';
             }
+
+            fetch('/api/admin/manual-verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Save Verification';
+                if (data.success) {
+                    SelectionVerify._closeVerify();
+                    if (window.showToast) showToast('Verification saved successfully.', 'success');
+                } else {
+                    if (window.showToast) showToast('Error: ' + (data.error || 'Unknown'), 'error');
+                }
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Save Verification';
+                if (window.showToast) showToast('Network error: ' + err.message, 'error');
+            });
         },
     };
 })();

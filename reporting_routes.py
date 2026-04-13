@@ -2069,6 +2069,10 @@ def update_reporting_template(template_id):
             val = data[field].strip() if isinstance(data[field], str) else data[field]
             if field == 'modality' and isinstance(val, str):
                 val = normalize_modality(val)
+            # Strip automated peer review badges when content HTML changes
+            if field in ('template_html', 'algorithm_html') and val:
+                from radinsight_peer_review import strip_automated_badges
+                val = strip_automated_badges(val)
             setattr(template, field, val)
 
     if 'is_available' in data:

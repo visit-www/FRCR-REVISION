@@ -3133,6 +3133,87 @@ def delete_tour_capture(capture_id):
 
 
 # ============================================================================
+# MANUAL VERIFICATION (Admin PubMed search + verify)
+# ============================================================================
+
+@admin_bp.route('/pubmed-search', methods=['GET'])
+@require_admin
+def admin_pubmed_search():
+    """Search PubMed for verification. Returns top results."""
+    query = request.args.get('q', '').strip()
+    if not query or len(query) < 3:
+        return jsonify({'error': 'Query too short (min 3 chars)'}), 400
+
+    try:
+        from pubmed_service import search_pubmed
+        results = search_pubmed(query, max_results=5)
+        return jsonify({'results': results, 'query': query})
+    except Exception as e:
+        logger.warning("PubMed search failed for '%s': %s", query, e)
+        return jsonify({'error': str(e), 'results': []}), 500
+
+
+@admin_bp.route('/manual-verify', methods=['POST'])
+@require_admin
+def save_manual_verification():
+    """Save a manual verification (admin selected text + PubMed reference)."""
+    from models import ManualVerification
+    data = request.get_json(silent=True) or {}
+    selected = (data.get('selected_text') or '').strip()
+    if not selected:
+        return jsonify({'error': 'selected_text is required'}), 400
+
+    mv = ManualVerification(
+        content_type=(data.get('content_type') or 'unknown')[:50],
+        content_id=(data.get('content_id') or '')[:100],
+        selected_text=selected[:1000],
+        custom_label=(data.get('custom_label') or '')[:1000] or None,
+        pubmed_doi=(data.get('pubmed_doi') or '')[:200] or None,
+        pubmed_pmid=(data.get('pubmed_pmid') or '')[:20] or None,
+        pubmed_title=(data.get('pubmed_title') or '')[:500] or None,
+        pubmed_authors=(data.get('pubmed_authors') or '')[:500] or None,
+        pubmed_journal=(data.get('pubmed_journal') or '')[:200] or None,
+        pubmed_year=(data.get('pubmed_year') or '')[:10] or None,
+        verified_by_user_id=current_user.id,
+    )
+    db.session.add(mv)
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'verification': mv.to_dict()}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/manual-verify', methods=['GET'])
+@require_admin
+def list_manual_verifications():
+    """List manual verifications, optionally filtered by content_type/content_id."""
+    from models import ManualVerification
+    q = ManualVerification.query.order_by(ManualVerification.created_at.desc())
+    ct = request.args.get('content_type')
+    if ct:
+        q = q.filter_by(content_type=ct)
+    cid = request.args.get('content_id')
+    if cid:
+        q = q.filter_by(content_id=cid)
+    return jsonify({'verifications': [v.to_dict() for v in q.limit(100).all()]})
+
+
+@admin_bp.route('/manual-verify/<int:mv_id>', methods=['DELETE'])
+@require_admin
+def delete_manual_verification(mv_id):
+    """Delete a manual verification."""
+    from models import ManualVerification
+    mv = ManualVerification.query.get(mv_id)
+    if not mv:
+        return jsonify({'error': 'Not found'}), 404
+    db.session.delete(mv)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ============================================================================
 # CONTENT FLAGS (Global — submit open to all users, manage admin-only)
 # ============================================================================
 

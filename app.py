@@ -1740,6 +1740,10 @@ with app.app_context():
             if 'tour_capture' not in insp.get_table_names():
                 _TC.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created tour_capture table')
+            from models import ManualVerification as _MV
+            if 'manual_verification' not in insp.get_table_names():
+                _MV.__table__.create(db.engine, checkfirst=True)
+                logger.info('Created manual_verification table')
 
             # Add new columns to peer_review_flag if missing
             if 'peer_review_flag' in insp.get_table_names():

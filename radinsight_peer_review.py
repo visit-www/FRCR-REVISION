@@ -785,3 +785,30 @@ def peer_review_anatomy(
 
     pr['content_html'] = rendered_html
     return pr
+
+
+# ---------------------------------------------------------------------------
+# Stale badge handling: strip automated badges on content edit
+# ---------------------------------------------------------------------------
+
+def strip_automated_badges(html: str) -> str:
+    """Remove all automated peer review elements from HTML.
+
+    Strips: inline badges (verified/unverified), disclaimer banner,
+    references section, and flag button. Preserves manual-verified badges.
+    """
+    if not html:
+        return html
+    # Remove inline badges: <a class="peer-review-badge verified"...>...</a>
+    # and <span class="peer-review-badge unverified"...>...</span>
+    html = re.sub(r'<a[^>]*class="peer-review-badge[^"]*"[^>]*>.*?</a>', '', html, flags=re.DOTALL)
+    html = re.sub(r'<span[^>]*class="peer-review-badge[^"]*"[^>]*>.*?</span>', '', html, flags=re.DOTALL)
+    # Remove disclaimer banner
+    html = re.sub(r'<div[^>]*class="peer-review-disclaimer[^"]*"[^>]*>.*?</div>', '', html, flags=re.DOTALL)
+    # Remove references section
+    html = re.sub(r'<div[^>]*class="peer-review-references[^"]*"[^>]*>.*?</div>\s*</div>', '', html, flags=re.DOTALL)
+    # Remove flag button
+    html = re.sub(r'<button[^>]*class="[^"]*peer-review-flag[^"]*"[^>]*>.*?</button>', '', html, flags=re.DOTALL)
+    # Clean up leftover whitespace
+    html = re.sub(r'\n\s*\n\s*\n', '\n\n', html)
+    return html.strip()

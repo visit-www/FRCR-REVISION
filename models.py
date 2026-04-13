@@ -4144,3 +4144,47 @@ class TourCapture(db.Model):
 
     def __repr__(self):
         return f'<TourCapture {self.tour_name}#{self.step_number}: {self.step_label}>'
+
+
+# ── Manual Verification (Admin Peer Review) ───────────────────────────
+
+class ManualVerification(db.Model):
+    """Admin-verified claims with PubMed references. Stored separately from HTML
+    so they persist across content edits and re-renders."""
+    __tablename__ = 'manual_verification'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content_type = db.Column(db.String(50), nullable=False)  # anatomy_snippet, etc.
+    content_id = db.Column(db.String(100), nullable=True)  # DB id of the content
+    selected_text = db.Column(db.Text, nullable=False)  # original selected text
+    custom_label = db.Column(db.Text, nullable=True)  # admin rewrite (e.g. "normal stapes footplate thickness")
+    pubmed_doi = db.Column(db.String(200), nullable=True)
+    pubmed_pmid = db.Column(db.String(20), nullable=True)
+    pubmed_title = db.Column(db.Text, nullable=True)
+    pubmed_authors = db.Column(db.String(500), nullable=True)
+    pubmed_journal = db.Column(db.String(200), nullable=True)
+    pubmed_year = db.Column(db.String(10), nullable=True)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    verifier = db.relationship('User', foreign_keys=[verified_by_user_id])
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'content_type': self.content_type,
+            'content_id': self.content_id,
+            'selected_text': self.selected_text,
+            'custom_label': self.custom_label,
+            'pubmed_doi': self.pubmed_doi,
+            'pubmed_pmid': self.pubmed_pmid,
+            'pubmed_title': self.pubmed_title,
+            'pubmed_authors': self.pubmed_authors,
+            'pubmed_journal': self.pubmed_journal,
+            'pubmed_year': self.pubmed_year,
+            'verified_by_user_id': self.verified_by_user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ManualVerification {self.id}: {(self.custom_label or self.selected_text)[:40]}>'
