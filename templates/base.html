@@ -97,7 +97,7 @@
     {% block breadcrumb_schema %}{% endblock %}
     {% block extra_schema %}{% endblock %}
 </head>
-<body>
+<body{% if current_user.is_authenticated and current_user.role.value == 'admin' %} class="is-admin"{% endif %}>
     <a href="#main-content" class="visually-hidden-focusable skip-link">Skip to main content</a>
     <!-- Smart Navigation Bar -->
     <nav class="navbar navbar-expand-lg sticky-top">
@@ -703,6 +703,71 @@
 
     {% block scripts %}{% endblock %}
 
+    {% if current_user.is_authenticated and current_user.is_admin %}
+    <!-- Admin: warn on Radiopaedia URLs in reference inputs -->
+    <script>
+    (function(){
+        var blocked = ['radiopaedia.org'];
+        var warnClass = 'radiopaedia-url-warning';
+        var selector = '.ref-url-input, input[name="reference_url"], input[placeholder*="radiopaedia"], input[placeholder*="URL"]';
+        function checkRefUrl(input){
+            var val = (input.value || '').toLowerCase();
+            var parent = input.closest('.input-group') || input.parentElement;
+            var existing = parent.querySelector('.' + warnClass);
+            var isBlocked = blocked.some(function(d){ return val.indexOf(d) !== -1; });
+            if (isBlocked && !existing) {
+                var w = document.createElement('div');
+                w.className = warnClass + ' text-danger mt-1';
+                w.style.fontSize = '0.8rem';
+                w.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i><strong>Radiopaedia blocks URL fetching.</strong> Please save the article as PDF and upload it instead.';
+                parent.after(w);
+                input.style.borderColor = '#dc3545';
+            } else if (!isBlocked && existing) {
+                existing.remove();
+                input.style.borderColor = '';
+            }
+        }
+        // Live detection on typing/pasting
+        document.addEventListener('input', function(e){
+            if (e.target.matches(selector)) checkRefUrl(e.target);
+        });
+        document.addEventListener('paste', function(e){
+            if (e.target.matches(selector)) setTimeout(function(){ checkRefUrl(e.target); }, 50);
+        });
+        // Also check on form submit — show alert if Radiopaedia URL still present
+        document.addEventListener('submit', function(e){
+            var form = e.target;
+            var inputs = form.querySelectorAll(selector);
+            var blockedUrls = [];
+            inputs.forEach(function(inp){
+                var v = (inp.value || '').toLowerCase();
+                if (blocked.some(function(d){ return v.indexOf(d) !== -1; })) blockedUrls.push(inp.value);
+            });
+            if (blockedUrls.length) {
+                alert('Warning: Radiopaedia URLs will be skipped (they block automated access).\n\nPlease download the article as PDF and upload it instead.\n\nSkipped: ' + blockedUrls.join(', '));
+            }
+        });
+        // Scan existing inputs on page load
+        document.addEventListener('DOMContentLoaded', function(){
+            document.querySelectorAll(selector).forEach(checkRefUrl);
+        });
+        // Also scan after dynamic inputs are added (MutationObserver)
+        var obs = new MutationObserver(function(mutations){
+            mutations.forEach(function(m){
+                m.addedNodes.forEach(function(n){
+                    if (n.nodeType === 1) {
+                        if (n.matches && n.matches(selector)) checkRefUrl(n);
+                        var nested = n.querySelectorAll ? n.querySelectorAll(selector) : [];
+                        nested.forEach(checkRefUrl);
+                    }
+                });
+            });
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+    })();
+    </script>
+    {% endif %}
+
     <!-- Set --navbar-height CSS variable for sticky elements below the navbar -->
     <script>
     (function() {
@@ -764,6 +829,22 @@
         gtag('config', 'G-ZSSC3PLZFN');
     });
     </script>
+    <!-- Initialize Bootstrap tooltips and popovers (CMV badges, info buttons) -->
+    <script>
+    function initCmvTooltips() {
+        document.querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-initialized])').forEach(function(el) {
+            new bootstrap.Tooltip(el, { container: 'body' });
+            el.setAttribute('data-bs-initialized', '1');
+        });
+        document.querySelectorAll('[data-bs-toggle="popover"]:not([data-bs-initialized])').forEach(function(el) {
+            new bootstrap.Popover(el, { container: 'body' });
+            el.setAttribute('data-bs-initialized', '1');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', initCmvTooltips);
+    var _cmvObserver = new MutationObserver(function() { setTimeout(initCmvTooltips, 100); });
+    _cmvObserver.observe(document.body, { childList: true, subtree: true });
+    </script>
     {% if current_user.is_authenticated and current_user.is_admin %}
     <script>
     // Global admin cost badge helper — call after any AI response
@@ -786,7 +867,8 @@
     <!-- Global Flag Modal + Selection Verify (all authenticated users) -->
     {% if current_user.is_authenticated %}
     {% include 'partials/_flag_modal.html' %}
-    <script src="{{ url_for('static', filename='js/selection-verify.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='js/cmv-badges.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='js/selection-verify.js') }}?v=4"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         SelectionVerify.init({ isAdmin: {{ 'true' if current_user.role.value == 'admin' else 'false' }} });

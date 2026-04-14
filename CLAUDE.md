@@ -58,6 +58,13 @@
 - Admin edits docs via TinyMCE in browser — changes are live immediately
 - Every save auto-creates a `ClaudeMemoryUpdate` entry for coding agent sync
 
+## Modal Design Rule
+- **ALWAYS** add `app-content-modal` class to every Bootstrap modal: `<div class="modal fade app-content-modal">`
+- This applies the app's branded modal styling (teal header, brand colors, rounded corners)
+- NEVER use plain Bootstrap modals without this class — they look inconsistent with the app design
+- For red/danger modals (PII Guard): use `pii-guard-modal` class instead
+- See `.app-content-modal` in `static/style.css` for the full styling
+
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex
 - Admin-only features: guard with `getattr(current_user, 'is_admin', False)`

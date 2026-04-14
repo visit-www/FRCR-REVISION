@@ -2155,6 +2155,7 @@ def generate_reporting_template():
                     'verification_summary': pr_result.get('verification_summary'),
                     'references_html': pr_result.get('references_html', ''),
                     'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                    'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
                 }
         except Exception as pr_exc:
             logger.debug("Peer review on admin algorithm generation failed: %s", pr_exc)
@@ -3041,11 +3042,14 @@ def smart_reporter_ai_assist():
                 topic=body_section or modality or '',
                 context='teaching',
                 content_type='smart_reporter_assist',
+                body_section=body_section,
+                modality=modality,
             )
             peer_review_data = {
                 'verification_summary': pr_result.get('verification_summary'),
                 'references_html': pr_result.get('references_html', ''),
                 'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
             }
     except Exception as exc:
         logger.debug("Peer review on ai-assist failed: %s", exc)
@@ -3152,11 +3156,14 @@ def smart_reporter_report_action():
                 topic=body_section or modality or '',
                 context=action,
                 content_type=f'report_action_{action}',
+                body_section=body_section,
+                modality=modality,
             )
             peer_review_data = {
                 'verification_summary': pr_result.get('verification_summary'),
                 'references_html': pr_result.get('references_html', ''),
                 'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
             }
             # Append disclaimer and references to HTML if claims found
             if pr_result.get('verification_summary', {}).get('total', 0) > 0:
@@ -4269,26 +4276,10 @@ def smart_reporter_anatomy():
 
     if cached and cached.template_html and not force_regenerate:
         html = cached.template_html
-        # On-demand peer review for any cached snippet that lacks inline verification badges
-        # Strip stale peer review elements first (disclaimer without badges = failed previous run)
-        if 'peer-review-badge' not in html:
-            from radinsight_peer_review import strip_automated_badges
-            html = strip_automated_badges(html)
-            try:
-                from radinsight_peer_review import peer_review_anatomy
-                logger.info("Starting on-demand peer review for cached '%s' (%d chars HTML)", cached.title, len(html))
-                pr = peer_review_anatomy(html, html, topic=cached.title)
-                claims_count = len(pr.get('claims', []))
-                logger.info("Peer review result for '%s': %d claims found, %d/%d verified",
-                            cached.title, claims_count,
-                            pr['verification_summary'].get('verified', 0),
-                            pr['verification_summary'].get('total', 0))
-                html = pr['content_html']
-                # Persist the peer-reviewed HTML so we don't re-run next time
-                cached.template_html = html
-                db.session.commit()
-            except Exception as pr_exc:
-                logger.warning("On-demand peer review failed for '%s': %s", cached.title, pr_exc, exc_info=True)
+        # CMV badges are now rendered client-side from PeerReviewClaim DB table.
+        # No server-side badge baking needed. CMV verification happens at:
+        # 1. Content generation time (peer_review_anatomy persists claims to DB)
+        # 2. Admin dashboard "Verify" button (retroactive verification)
 
         # Check if this is a partial match (topic searched vs title returned)
         _topic_lower = topic.lower().strip()
@@ -5191,7 +5182,24 @@ def _build_generation_context(instructions='', reference_urls=None, pdf_files=No
         reference_urls = [reference_urls] if reference_urls.strip() else []
     reference_urls = [u.strip() for u in (reference_urls or []) if u and u.strip()]
 
-    for ref_url in reference_urls:
+    # Filter out Radiopaedia URLs (they block bot requests with 406)
+    _blocked_domains = ('radiopaedia.org',)
+    _skipped_urls = []
+    _valid_urls = []
+    for _u in reference_urls:
+        if any(d in _u.lower() for d in _blocked_domains):
+            _skipped_urls.append(_u)
+            logger.info("Skipping blocked-domain URL (upload PDF instead): %s", _u)
+        else:
+            _valid_urls.append(_u)
+    if _skipped_urls:
+        parts.append(
+            "NOTE: The following Radiopaedia URLs were skipped because Radiopaedia blocks "
+            "automated access. Please download the article as PDF and upload it instead:\n"
+            + '\n'.join(f"  - {u}" for u in _skipped_urls)
+        )
+
+    for ref_url in _valid_urls:
         try:
             from clinical_tool_generator import fetch_url_content
             content = fetch_url_content(ref_url, max_chars=4000)
@@ -5335,11 +5343,14 @@ def admin_generate_pearl():
                 topic=topic,
                 context='admin',
                 content_type='radiology_pearl',
+                body_section=body_section,
+                modality=modality,
             )
             peer_review_data = {
                 'verification_summary': pr_result.get('verification_summary'),
                 'references_html': pr_result.get('references_html', ''),
                 'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
             }
     except Exception as pr_exc:
         logger.debug("Peer review on pearl generation failed: %s", pr_exc)
@@ -5391,6 +5402,38 @@ def peer_review_flag():
 
     logger.info("Peer review flag submitted: type=%s user=%d", flag.content_type, current_user.id)
     return jsonify({'success': True, 'flag_id': flag.id})
+
+
+# ==================== CMV CLAIMS API (for client-side badge rendering) ====================
+
+@reporting_bp.route('/api/peer-review/claims', methods=['GET'])
+@login_required
+def get_cmv_claims():
+    """Get CMV claims for a content item. Used by JS to render badges client-side."""
+    from models import PeerReviewClaim
+    ctype = request.args.get('content_type', '')
+    cid = request.args.get('content_id', '')
+    if not ctype or not cid:
+        return jsonify({'claims': [], 'summary': {}})
+
+    claims = PeerReviewClaim.query.filter_by(
+        content_type=ctype, content_id=cid
+    ).order_by(PeerReviewClaim.id).all()
+
+    claims_dicts = [c.to_dict() for c in claims]
+    agreed = sum(1 for c in claims_dicts if c.get('badge_state') == 'agreed')
+    admin_verified = sum(1 for c in claims_dicts if c.get('badge_state') == 'admin_verified')
+    disputed = sum(1 for c in claims_dicts if c.get('badge_state') == 'disputed')
+    uncertain = sum(1 for c in claims_dicts if c.get('badge_state') == 'uncertain')
+
+    return jsonify({
+        'claims': claims_dicts,
+        'summary': {
+            'agreed': agreed, 'admin_verified': admin_verified,
+            'disputed': disputed, 'uncertain': uncertain,
+            'total': len(claims_dicts),
+        },
+    })
 
 
 # ==================== VOICE DICTATION (Groq Whisper) ====================

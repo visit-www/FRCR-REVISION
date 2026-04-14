@@ -1,0 +1,497 @@
+{% extends "base.html" %}
+{% block title %}Cross-Model Verification Dashboard - RadInsights Admin{% endblock %}
+{% block robots_meta %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-shield-alt me-1"></i>CMV Dashboard
+    </li>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/api/admin/dashboard"><i class="fas fa-cog"></i> Admin</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Cross-Model Verification</li>
+        </ol>
+    </nav>
+
+    <h2 class="mb-4"><i class="fas fa-shield-alt me-2" style="color:var(--brand-neutral)"></i>Cross-Model Verification Dashboard</h2>
+
+    <!-- Summary Cards -->
+    <div class="row g-3 mb-4" id="cmv-summary">
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-success" id="stat-agreed">-</div>
+                    <small class="text-muted">Agreed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-danger" id="stat-disputed">-</div>
+                    <small class="text-muted">Disputed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-warning" id="stat-uncertain">-</div>
+                    <small class="text-muted">Uncertain</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-0 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-primary" id="stat-reviewed">-</div>
+                    <small class="text-muted">Admin Reviewed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unified: Content Browser + Verify + Claims Filter -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-3">
+            <!-- Row 1: Browse & verify content -->
+            <div class="row g-2 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Content Type</label>
+                    <select class="form-select form-select-sm" id="verify-type" onchange="searchVerifyContent(); loadClaims();">
+                        <option value="anatomy_snippet">Anatomy Snippet</option>
+                        <option value="reporting_algorithm">Algorithm</option>
+                        <option value="radiology_pearl">Pearl</option>
+                        <option value="radiq_query">RadIQ Query</option>
+                        <option value="case">Case</option>
+                        <option value="radiology_tool">Radiology Tool</option>
+                        <option value="protocol">Protocol</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Show</label>
+                    <select class="form-select form-select-sm" id="verify-show" onchange="searchVerifyContent()">
+                        <option value="unverified">Unverified only</option>
+                        <option value="all">All</option>
+                        <option value="verified">Verified only</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Search <small class="text-muted">(optional)</small></label>
+                    <input type="text" class="form-control form-control-sm" id="verify-search" placeholder="Filter by name..." oninput="searchVerifyContent()">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Selected</label>
+                    <div id="verify-selected" class="form-control form-control-sm bg-light text-muted" style="min-height:31px;font-size:0.8rem;">None</div>
+                    <input type="hidden" id="verify-id">
+                </div>
+                <div class="col-auto d-flex align-items-end gap-1">
+                    <button class="btn btn-sm btn-brand-primary" onclick="verifySingle()" id="verify-single-btn" title="Verify selected item">
+                        <i class="fas fa-shield-alt me-1"></i>Verify
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="bulkVerifyType()" id="bulk-type-btn" title="Verify all unverified items of this content type">
+                        <i class="fas fa-robot me-1"></i>Verify All
+                    </button>
+                </div>
+                <div class="col-auto d-flex align-items-end" id="verify-single-result"></div>
+            </div>
+            <!-- Content list -->
+            <div id="verify-content-list" class="mt-2 border rounded" style="max-height:250px;overflow-y:auto;"></div>
+
+            <!-- Row 2: Claims table filters -->
+            <div class="row g-2 align-items-center mt-3 pt-2 border-top">
+                <div class="col-auto"><small class="text-muted fw-bold">Filter Claims:</small></div>
+                <div class="col-auto">
+                    <select class="form-select form-select-sm" id="filter-verdict" onchange="loadClaims()">
+                        <option value="">All Verdicts</option>
+                        <option value="agree">Agreed</option>
+                        <option value="disagree">Disputed</option>
+                        <option value="uncertain">Uncertain</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select form-select-sm" id="filter-override" onchange="loadClaims()">
+                        <option value="">All</option>
+                        <option value="has_override">Admin Reviewed</option>
+                        <option value="no_override">Not Reviewed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Claims Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <style>
+                    #cmv-claims-table td, #cmv-claims-table th {
+                        white-space: normal !important;
+                        word-wrap: break-word;
+                        overflow-wrap: break-word;
+                    }
+                    #cmv-claims-table { table-layout: fixed; width: 100%; }
+                </style>
+                <table class="table table-hover mb-0" id="cmv-claims-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:4%">#</th>
+                            <th style="width:8%">Type</th>
+                            <th style="width:25%">Claim</th>
+                            <th style="width:8%">Verdict</th>
+                            <th style="width:5%">Conf.</th>
+                            <th style="width:35%">Reasoning</th>
+                            <th style="width:15%">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="claims-body">
+                        <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer text-center" id="pagination"></div>
+    </div>
+</div>
+
+<!-- Edit Claim Modal -->
+<div class="modal fade app-content-modal" id="editClaimModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-shield-alt me-2"></i>Review Claim</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Claim Text</label>
+                    <p id="edit-claim-text" class="bg-light p-2 rounded small"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">CMV Peer Review</label>
+                    <p id="edit-gemini-info" class="small text-muted"></p>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Admin Override</label>
+                    <select class="form-select" id="edit-override">
+                        <option value="">No override (use CMV verdict)</option>
+                        <option value="verified">Verified (confirmed correct)</option>
+                        <option value="incorrect">Incorrect (confirmed wrong)</option>
+                        <option value="dismissed">Dismissed (not a real claim)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reference URL <small class="text-muted">(PubMed / Radiopaedia)</small></label>
+                    <input type="url" class="form-control form-control-sm" id="edit-ref-url" placeholder="https://pubmed.ncbi.nlm.nih.gov/...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reference Title</label>
+                    <input type="text" class="form-control form-control-sm" id="edit-ref-title" placeholder="Author et al. Journal (Year)">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Admin Notes</label>
+                    <textarea class="form-control form-control-sm" id="edit-notes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-brand-primary" onclick="saveClaim()">
+                    <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let editingClaimId = null;
+
+function loadClaims(page) {
+    currentPage = page || 1;
+    const params = new URLSearchParams({
+        page: currentPage,
+        per_page: 50,
+        content_type: document.getElementById('verify-type').value,
+        verdict: document.getElementById('filter-verdict').value,
+        override: document.getElementById('filter-override').value,
+    });
+
+    fetch(`/api/admin/peer-review/claims?${params}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.summary) {
+                document.getElementById('stat-agreed').textContent = data.summary.agreed;
+                document.getElementById('stat-disputed').textContent = data.summary.disputed;
+                document.getElementById('stat-uncertain').textContent = data.summary.uncertain;
+                document.getElementById('stat-reviewed').textContent = data.summary.admin_reviewed;
+            }
+
+            const tbody = document.getElementById('claims-body');
+            if (!data.claims || data.claims.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No claims found. Select a content type and click Verify to get started.</td></tr>';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            tbody.innerHTML = data.claims.map(c => {
+                const verdictBadge = {
+                    'agree': '<span class="badge bg-success">Agreed</span>',
+                    'disagree': '<span class="badge bg-danger">Disputed</span>',
+                    'uncertain': '<span class="badge bg-warning text-dark">Uncertain</span>',
+                    'pending': '<span class="badge bg-secondary">Pending</span>',
+                }[c.gemini_verdict] || '<span class="badge bg-secondary">Unknown</span>';
+
+                const overrideBadge = c.admin_override
+                    ? `<br><span class="badge bg-primary mt-1">${c.admin_override}</span>`
+                    : '';
+
+                const confBadge = c.gemini_confidence
+                    ? `<small class="text-muted">${c.gemini_confidence.toUpperCase()}</small>`
+                    : '';
+
+                const typeShort = (c.content_type || '').replace('report_action_', '').replace('_', ' ');
+
+                return `<tr>
+                    <td class="small">${c.id}</td>
+                    <td><small class="text-muted">${typeShort}</small></td>
+                    <td class="small">${escHtml(c.claim_text || '')}</td>
+                    <td>${verdictBadge}${overrideBadge}</td>
+                    <td>${confBadge}</td>
+                    <td class="small text-muted">${escHtml(c.gemini_reasoning || '')}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editClaim(${c.id})" title="Edit">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="reVerifyContent('${c.content_type}','${c.content_id}')" title="Re-run CMV">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteClaim(${c.id})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            let pagHtml = '';
+            if (data.pages > 1) {
+                for (let p = 1; p <= data.pages; p++) {
+                    pagHtml += `<button class="btn btn-sm ${p === data.page ? 'btn-brand-neutral' : 'btn-outline-secondary'} mx-1" onclick="loadClaims(${p})">${p}</button>`;
+                }
+            }
+            pagHtml += `<span class="ms-2 text-muted small">${data.total} total claims</span>`;
+            document.getElementById('pagination').innerHTML = pagHtml;
+        })
+        .catch(err => {
+            document.getElementById('claims-body').innerHTML = `<tr><td colspan="7" class="text-danger">${err.message}</td></tr>`;
+        });
+}
+
+function editClaim(claimId) {
+    editingClaimId = claimId;
+    fetch(`/api/admin/peer-review/claims?per_page=200`)
+        .then(r => r.json())
+        .then(data => {
+            const claim = data.claims.find(c => c.id === claimId);
+            if (!claim) return alert('Claim not found');
+
+            document.getElementById('edit-claim-text').textContent = claim.claim_text;
+            document.getElementById('edit-gemini-info').textContent =
+                `${(claim.gemini_verdict||'').toUpperCase()} (${claim.gemini_confidence || 'n/a'}) — ${claim.gemini_reasoning || 'No reasoning'}` +
+                (claim.gemini_correction ? ` | Correction: ${claim.gemini_correction}` : '');
+            document.getElementById('edit-override').value = claim.admin_override || '';
+            document.getElementById('edit-ref-url').value = claim.admin_reference_url || '';
+            document.getElementById('edit-ref-title').value = claim.admin_reference_title || '';
+            document.getElementById('edit-notes').value = claim.admin_notes || '';
+
+            new bootstrap.Modal(document.getElementById('editClaimModal')).show();
+        });
+}
+
+function saveClaim() {
+    if (!editingClaimId) return;
+    const body = {
+        admin_override: document.getElementById('edit-override').value || null,
+        admin_reference_url: document.getElementById('edit-ref-url').value || null,
+        admin_reference_title: document.getElementById('edit-ref-title').value || null,
+        admin_notes: document.getElementById('edit-notes').value || null,
+    };
+
+    fetch(`/api/admin/peer-review/claims/${editingClaimId}`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('editClaimModal')).hide();
+            loadClaims(currentPage);
+        } else {
+            alert(data.error || 'Failed to save');
+        }
+    });
+}
+
+function deleteClaim(claimId) {
+    if (!confirm('Delete this claim? This cannot be undone.')) return;
+    fetch(`/api/admin/peer-review/claims/${claimId}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) loadClaims(currentPage);
+        });
+}
+
+// --- Content browser & verify ---
+
+let _searchTimeout = null;
+function searchVerifyContent() {
+    clearTimeout(_searchTimeout);
+    _searchTimeout = setTimeout(() => {
+        const ctype = document.getElementById('verify-type').value;
+        const q = document.getElementById('verify-search').value.trim();
+        const show = document.getElementById('verify-show').value;
+        const listEl = document.getElementById('verify-content-list');
+
+        listEl.innerHTML = '<div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading...</div>';
+
+        fetch(`/api/admin/peer-review/search-content?content_type=${ctype}&q=${encodeURIComponent(q)}&show=${show}`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data.results || data.results.length === 0) {
+                    listEl.innerHTML = '<div class="text-center text-muted py-3 small">No ' + show + ' content found for this type.</div>';
+                    return;
+                }
+                const selectedId = document.getElementById('verify-id').value;
+                listEl.innerHTML = '<table class="table table-sm table-hover mb-0"><tbody>' +
+                    data.results.map(r => {
+                        const badge = r.has_claims
+                            ? '<span class="badge bg-success" style="font-size:0.6rem;">verified</span>'
+                            : '<span class="badge bg-warning text-dark" style="font-size:0.6rem;">pending</span>';
+                        const section = r.body_section ? `<small class="text-muted">(${r.body_section})</small>` : '';
+                        const isSelected = String(r.id) === String(selectedId);
+                        const rowStyle = isSelected ? 'background:#e7f1ff;' : 'cursor:pointer;';
+                        return `<tr style="${rowStyle}" onclick="selectVerifyItem('${r.id}','${escHtml(r.title).replace(/'/g, "\\\\'")}')">
+                            <td class="small" style="width:50px"><strong>#${r.id}</strong></td>
+                            <td class="small">${escHtml(r.title).substring(0, 80)} ${section}</td>
+                            <td style="width:80px">${badge}</td>
+                        </tr>`;
+                    }).join('') +
+                    '</tbody></table>' +
+                    `<div class="text-muted small text-end pe-2">${data.total} items</div>`;
+            });
+    }, 300);
+}
+
+function selectVerifyItem(id, title) {
+    document.getElementById('verify-id').value = id;
+    document.getElementById('verify-selected').innerHTML = `<strong>#${id}</strong> ${title.substring(0, 40)}`;
+    document.getElementById('verify-selected').classList.remove('text-muted');
+    document.getElementById('verify-selected').classList.add('text-dark');
+    searchVerifyContent();
+}
+
+function verifySingle() {
+    const ctype = document.getElementById('verify-type').value;
+    const cid = document.getElementById('verify-id').value;
+    if (!cid) { alert('Select a content item from the list first'); return; }
+
+    const btn = document.getElementById('verify-single-btn');
+    const resultEl = document.getElementById('verify-single-result');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Verifying...';
+    resultEl.innerHTML = '';
+
+    fetch('/api/admin/peer-review/verify-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ content_type: ctype, content_id: cid }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Verify';
+        if (data.success) {
+            const s = data.summary || {};
+            resultEl.innerHTML = `<span class="badge bg-success">${data.claims_count} claims</span> `
+                + `<span class="badge bg-success">${s.agreed||0} agreed</span> `
+                + (s.disputed ? `<span class="badge bg-danger">${s.disputed} disputed</span> ` : '')
+                + (s.uncertain ? `<span class="badge bg-warning text-dark">${s.uncertain} uncertain</span>` : '');
+            loadClaims(currentPage);
+            searchVerifyContent();
+        } else {
+            resultEl.innerHTML = `<span class="text-danger small">${data.error || 'Failed'}</span>`;
+        }
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Verify';
+        resultEl.innerHTML = `<span class="text-danger small">${err.message}</span>`;
+    });
+}
+
+function bulkVerifyType() {
+    const ctype = document.getElementById('verify-type').value;
+    const typeName = document.getElementById('verify-type').selectedOptions[0].text;
+    if (!confirm(`Verify all unverified ${typeName} items? This will run CMV for each (rate-limited to ~13/min).`)) return;
+
+    const btn = document.getElementById('bulk-type-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+
+    fetch('/api/admin/peer-review/bulk-verify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ content_type: ctype, max_items: 10 }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Verify All';
+        alert(`Processed: ${data.processed}, Errors: ${data.errors}`);
+        loadClaims(currentPage);
+        searchVerifyContent();
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Verify All';
+    });
+}
+
+function reVerifyContent(contentType, contentId) {
+    if (!confirm('Re-run CMV verification on this content? Existing auto-verdicts will be replaced.')) return;
+    fetch('/api/admin/peer-review/verify-content', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ content_type: contentType, content_id: contentId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Verified: ${data.claims_count} claims found (${data.summary.agreed || 0} agreed, ${data.summary.disputed || 0} disputed, ${data.summary.uncertain || 0} uncertain)`);
+            loadClaims(currentPage);
+        } else {
+            alert(data.error || 'Verification failed');
+        }
+    })
+    .catch(err => alert('Error: ' + err.message));
+}
+
+function escHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', () => {
+    loadClaims(1);
+    searchVerifyContent();
+});
+</script>
+{% endblock %}

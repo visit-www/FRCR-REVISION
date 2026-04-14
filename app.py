@@ -1771,6 +1771,7 @@ with app.app_context():
                 ('deployment-runbook', 'Deployment Runbook', 'technical', 'docs/DEPLOYMENT_RUNBOOK.md'),
                 ('landing-page-tours', 'Landing Page Interactive Tours Plan', 'marketing', 'docs/plans/LANDING_PAGE_INTERACTIVE_TOURS_PLAN.md'),
                 ('peer-review-v2', 'Peer Review v2 — Manual Verification + Global Flags', 'technical', 'docs/plans/PEER_REVIEW_V2_PLAN.md'),
+                ('json-storage-refactor', 'JSON Storage Refactor — All AI Outputs', 'technical', 'docs/plans/JSON_STORAGE_REFACTOR_PLAN.md'),
                 ('ai-documentation', 'AI Documentation', 'technical', 'templates/admin_ai_documentation.html'),
                 ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
                 ('seo-audit', 'SEO Audit', 'seo', 'templates/admin_seo_audit.html'),
@@ -1828,6 +1829,114 @@ with app.app_context():
                     logger.info('Re-synced landing-page-tours from updated markdown')
                 except FileNotFoundError:
                     pass
+
+            # -- CMV (Cross-Model Verification) doc patches (Apr 2026) --
+            # Patch marketing doc: add CMV feature
+            _mkt_doc = _AD.query.filter_by(slug='marketing').first()
+            if _mkt_doc and 'Cross-Model Verification' not in (_mkt_doc.content_html or ''):
+                _cmv_mkt_block = """
+<h3>Cross-Model Verification (CMV) — Key Differentiator</h3>
+<p><strong>RadInsights is the first radiology platform to implement Cross-Model Verification.</strong>
+Every AI-generated statistical claim, measurement, prevalence rate, dose value, and guideline reference
+is automatically sent to an independent AI model (Gemini) for fact-checking. This is the industry-standard
+"LLM-as-Judge" approach used in enterprise AI safety — now applied to clinical content.</p>
+<ul>
+<li><strong>5-state badge system:</strong> Agreed (green), Disputed (red), Uncertain (amber), Admin Verified (blue), Dismissed</li>
+<li><strong>Context-aware:</strong> Verification considers body section, imaging modality, and patient population</li>
+<li><strong>Tolerance logic:</strong> Measurements within 15% = acceptable variation; staging criteria = strict matching</li>
+<li><strong>Admin dashboard:</strong> Full claim review, manual reference attachment, bulk retroactive processing</li>
+<li><strong>Transparent to users:</strong> Every content piece shows a trust badge with "How this works" explanation</li>
+</ul>
+<p><strong>Marketing angle:</strong> "Every claim independently fact-checked" — no other radiology AI tool does this.
+Position as: trust, transparency, clinical safety. Target messaging: "We don't ask you to trust AI blindly."</p>
+"""
+                _mkt_doc.content_html = (_mkt_doc.content_html or '') + _cmv_mkt_block
+                logger.info('Patched marketing doc: added CMV section')
+
+            # Patch SEO doc: add CMV SEO strategy
+            _seo_doc = _AD.query.filter_by(slug='seo-audit').first()
+            if _seo_doc and 'Cross-Model Verification' not in (_seo_doc.content_html or ''):
+                _cmv_seo_block = """
+<h3>Cross-Model Verification — SEO Capitalisation</h3>
+<p><strong>Target keywords:</strong> cross-model verification radiology, AI fact-checking medical, verified AI radiology,
+independent AI verification, radiology AI accuracy, LLM-as-judge medical, AI claim verification</p>
+<ul>
+<li><strong>Trust page updated:</strong> /trust now describes 5-step verification pipeline with CMV as step 2</li>
+<li><strong>Meta descriptions updated:</strong> Landing page, trust page, and OG tags now mention CMV</li>
+<li><strong>Schema.org featureList:</strong> Added "Cross-Model Verification of AI claims" to WebApplication schema</li>
+<li><strong>Content-level trust badges:</strong> Every AI output shows "Cross-Model Verified" badge — Google indexes this as trust signal</li>
+<li><strong>Unique positioning:</strong> No competitor in radiology AI space has this feature — excellent for "AI safety in radiology" queries</li>
+</ul>
+<p><strong>Recommended actions:</strong></p>
+<ol>
+<li>Create a dedicated /cross-model-verification page explaining the technology (long-tail SEO)</li>
+<li>Add CMV to the /about page and footer trust signals</li>
+<li>Submit updated sitemap to GSC after deploy</li>
+<li>Blog post: "Why we built Cross-Model Verification for radiology AI" (target: medical AI safety audience)</li>
+</ol>
+"""
+                _seo_doc.content_html = (_seo_doc.content_html or '') + _cmv_seo_block
+                logger.info('Patched seo-audit doc: added CMV SEO strategy')
+
+            # Patch AI documentation doc: add CMV technical details
+            _ai_doc2 = _AD.query.filter_by(slug='ai-documentation').first()
+            if _ai_doc2 and 'Cross-Model Verification' not in (_ai_doc2.content_html or ''):
+                _cmv_ai_block = """
+<h3>Cross-Model Verification (CMV) — Technical</h3>
+<table class="table table-sm">
+<tr><td><strong>Verification Model</strong></td><td>Gemini 2.5 Flash (Google AI)</td></tr>
+<tr><td><strong>API</strong></td><td>generativelanguage.googleapis.com/v1beta (free tier: 15 RPM, 1500 RPD)</td></tr>
+<tr><td><strong>Module</strong></td><td>gemini_verify.py (standalone) + radinsight_peer_review.py (orchestrator)</td></tr>
+<tr><td><strong>DB Model</strong></td><td>PeerReviewClaim — persists verdicts with admin override support</td></tr>
+<tr><td><strong>Temperature</strong></td><td>0.1 (low for factual accuracy)</td></tr>
+<tr><td><strong>Response Format</strong></td><td>application/json (structured claims array)</td></tr>
+<tr><td><strong>Timeout</strong></td><td>30 seconds</td></tr>
+<tr><td><strong>Cost</strong></td><td>$0 (free tier)</td></tr>
+</table>
+<p><strong>Claim types verified:</strong> measurement, epidemiology, criteria, dose, guideline, comparative</p>
+<p><strong>Verdict states:</strong> agree, disagree, uncertain (+ admin overrides: verified, incorrect, dismissed)</p>
+<p><strong>Integration points:</strong> anatomy, Smart Reporter, RadIQ, Vetting, SBA/Viva, pearls, algorithms (10 total)</p>
+"""
+                _ai_doc2.content_html = (_ai_doc2.content_html or '') + _cmv_ai_block
+                logger.info('Patched ai-documentation doc: added CMV technical section')
+
+            # Patch business model doc: add CMV as feature differentiator
+            _biz_doc = _AD.query.filter_by(slug='business-finance-model').first()
+            if _biz_doc and 'Cross-Model Verification' not in (_biz_doc.content_html or ''):
+                _cmv_biz_block = """
+<h3>Cross-Model Verification — Competitive Advantage</h3>
+<p><strong>Cost:</strong> $0/month (Gemini free tier). <strong>Value:</strong> Major trust differentiator in the radiology AI market.</p>
+<p>No competitor in the radiology AI space currently offers independent cross-model fact-checking of AI outputs.
+This positions RadInsights as the most transparent and safety-conscious platform in the market.</p>
+<ul>
+<li><strong>Retention impact:</strong> Users who see verified content are more likely to trust and continue using AI features</li>
+<li><strong>Conversion impact:</strong> Trust badges on public content (anatomy, algorithms) serve as social proof for prospects</li>
+<li><strong>Regulatory readiness:</strong> Documented verification pipeline strengthens clinical governance positioning</li>
+</ul>
+"""
+                _biz_doc.content_html = (_biz_doc.content_html or '') + _cmv_biz_block
+                logger.info('Patched business-finance-model doc: added CMV competitive advantage')
+
+            # Update peer-review-v2 doc to reflect CMV replacing PubMed
+            _pr_doc = _AD.query.filter_by(slug='peer-review-v2').first()
+            if _pr_doc and 'Cross-Model Verification' not in (_pr_doc.content_html or ''):
+                _cmv_pr_block = """
+<h3>Cross-Model Verification (CMV) — Replaces PubMed Auto-Search (Apr 2026)</h3>
+<p>The original PubMed-based auto-verification has been replaced with Gemini Cross-Model Verification.
+PubMed regex matching was unreliable — most claims returned "unverified" because keyword search could not
+match specific statistical claims to paper abstracts.</p>
+<p><strong>New architecture:</strong></p>
+<ol>
+<li>AI generates content (Claude Opus/Sonnet)</li>
+<li>Entire output sent to Gemini 2.5 Flash with context metadata (body section, modality, topic)</li>
+<li>Gemini independently identifies and verifies ALL statistical claims</li>
+<li>Results persisted in PeerReviewClaim DB table (5-state badge system)</li>
+<li>Admin can override any verdict and attach manual PubMed/Radiopaedia references</li>
+</ol>
+<p>Manual verification (admin adding PubMed/Radiopaedia references) and user flag inaccuracy remain unchanged.</p>
+"""
+                _pr_doc.content_html = (_pr_doc.content_html or '') + _cmv_pr_block
+                logger.info('Patched peer-review-v2 doc: added CMV update')
 
             if _docs_created:
                 db.session.commit()

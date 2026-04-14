@@ -15,6 +15,9 @@
     var _isAdmin = false;
     var _currentSelection = { text: '', contentType: '', contentId: '' };
 
+    function _escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function _escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
     var CONTENT_SELECTORS = [
         '#anatomyHistory',
         '.ai-answer-text',
@@ -29,6 +32,9 @@
         '.pearl-content',
         '.doc-content',
         '.markdown-body',
+        '.anatomy-content',
+        '#detailContent',
+        '.detail-body',
         '[data-selectable="true"]',
     ].join(', ');
 
@@ -95,6 +101,12 @@
         if (el.closest('.template-content')) return 'radiology_template';
         if (el.closest('.protocol-content')) return 'imaging_protocol';
         if (el.closest('.pearl-content')) return 'radiology_pearl';
+        if (el.closest('.anatomy-content')) return 'anatomy_snippet';
+        if (el.closest('#detailContent')) {
+            var dc = el.closest('[data-content-type]');
+            if (dc) return dc.dataset.contentType;
+            return 'anatomy_snippet';
+        }
         return '';
     }
 
@@ -106,7 +118,7 @@
 
             var anchorNode = sel.anchorNode;
             var el = anchorNode && anchorNode.nodeType === 3 ? anchorNode.parentElement : anchorNode;
-            if (!el || !el.closest(CONTENT_SELECTORS)) { _hide(); return; }
+            if (!el || !(el.closest(CONTENT_SELECTORS) || el.closest('#detailPanel'))) { _hide(); return; }
 
             _currentSelection.text = text.substring(0, 500);
             _currentSelection.contentType = _detectContentType(el);
@@ -448,9 +460,174 @@
         _dismissUnverified: function(el) {
             if (el && el.parentElement) {
                 el.remove();
-                // Update summary counts if present
                 _updateVerificationSummary();
             }
+        },
+
+        /**
+         * Admin: show inline actions popup for a CMV badge claim.
+         */
+        _showClaimActions: function(badge, claimId) {
+            // Remove any existing popup
+            var old = document.getElementById('cmvClaimPopup');
+            if (old) old.remove();
+
+            var popup = document.createElement('div');
+            popup.id = 'cmvClaimPopup';
+            popup.style.cssText = 'position:fixed;background:#fff;border:2px solid var(--brand-neutral,#5E899E);' +
+                'border-radius:8px;padding:8px 10px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:10001;' +
+                'display:flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:320px;';
+
+            popup.innerHTML =
+                '<button class="btn btn-sm py-0 px-2" style="font-size:.72rem;background:#198754;color:#fff;border:none;border-radius:5px;" ' +
+                'onclick="SelectionVerify._updateClaim(' + claimId + ',\'verified\')" title="Confirm correct">' +
+                '<i class="fas fa-check me-1"></i>Verify</button>' +
+                '<button class="btn btn-sm py-0 px-2" style="font-size:.72rem;background:#dc3545;color:#fff;border:none;border-radius:5px;" ' +
+                'onclick="SelectionVerify._updateClaim(' + claimId + ',\'incorrect\')" title="Mark incorrect">' +
+                '<i class="fas fa-times me-1"></i>Incorrect</button>' +
+                '<button class="btn btn-sm py-0 px-2" style="font-size:.72rem;background:#6c757d;color:#fff;border:none;border-radius:5px;" ' +
+                'onclick="SelectionVerify._updateClaim(' + claimId + ',\'dismissed\')" title="Not a real claim">' +
+                '<i class="fas fa-ban me-1"></i>Dismiss</button>' +
+                '<button class="btn btn-sm py-0 px-2" style="font-size:.72rem;background:var(--brand-neutral);color:#fff;border:none;border-radius:5px;" ' +
+                'onclick="SelectionVerify._editClaim(' + claimId + ')" title="Review with notes & references">' +
+                '<i class="fas fa-pen me-1"></i>Review</button>';
+
+            document.body.appendChild(popup);
+
+            var rect = badge.getBoundingClientRect();
+            popup.style.left = Math.min(rect.left, window.innerWidth - 340) + 'px';
+            popup.style.top = (rect.bottom + 4) + 'px';
+
+            // Close on outside click
+            setTimeout(function() {
+                document.addEventListener('click', function _close(ev) {
+                    if (!popup.contains(ev.target) && ev.target !== badge) {
+                        popup.remove();
+                        document.removeEventListener('click', _close);
+                    }
+                });
+            }, 50);
+        },
+
+        /**
+         * Admin: open full review panel for a CMV claim (notes, reference, override).
+         */
+        _editClaim: function(claimId) {
+            var popup = document.getElementById('cmvClaimPopup');
+            if (popup) popup.remove();
+
+            // Fetch claim data first
+            fetch('/api/admin/peer-review/claims?per_page=500')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var claim = (data.claims || []).find(function(c) { return c.id === claimId; });
+                    if (!claim) { alert('Claim not found'); return; }
+
+                    var panel = document.createElement('div');
+                    panel.id = 'cmvEditPanel';
+                    panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+                        'background:var(--brand-bg-offwhite,#fdfdfb);border:2px solid var(--brand-neutral,#5E899E);' +
+                        'border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.25);z-index:10002;width:500px;max-width:95vw;' +
+                        'max-height:85vh;overflow-y:auto;';
+
+                    var geminiInfo = (claim.gemini_verdict || '').toUpperCase() + ' (' + (claim.gemini_confidence || 'n/a') + ')';
+                    if (claim.gemini_reasoning) geminiInfo += ' — ' + claim.gemini_reasoning;
+                    if (claim.gemini_correction) geminiInfo += ' | Correction: ' + claim.gemini_correction;
+
+                    panel.innerHTML =
+                        '<div style="background:linear-gradient(135deg,#5E899E,#4a7285);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
+                        '  <strong><i class="fas fa-shield-alt me-2"></i>Review Claim #' + claimId + '</strong>' +
+                        '  <button onclick="document.getElementById(\'cmvEditPanel\').remove()" style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;">&times;</button>' +
+                        '</div>' +
+                        '<div style="padding:16px;">' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Claim</label><p class="bg-light p-2 rounded small mb-0">' + _escHtml(claim.claim_text) + '</p></div>' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Gemini Says</label><p class="small text-muted mb-0">' + _escHtml(geminiInfo) + '</p></div>' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Override</label>' +
+                        '    <select class="form-select form-select-sm" id="cmvEditOverride">' +
+                        '      <option value=""' + (!claim.admin_override ? ' selected' : '') + '>No override</option>' +
+                        '      <option value="verified"' + (claim.admin_override === 'verified' ? ' selected' : '') + '>Verified</option>' +
+                        '      <option value="incorrect"' + (claim.admin_override === 'incorrect' ? ' selected' : '') + '>Incorrect</option>' +
+                        '      <option value="dismissed"' + (claim.admin_override === 'dismissed' ? ' selected' : '') + '>Dismissed</option>' +
+                        '    </select></div>' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Reference URL</label>' +
+                        '    <input type="url" class="form-control form-control-sm" id="cmvEditRefUrl" placeholder="https://pubmed.ncbi.nlm.nih.gov/..." value="' + _escAttr(claim.admin_reference_url || '') + '"></div>' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Reference Title</label>' +
+                        '    <input type="text" class="form-control form-control-sm" id="cmvEditRefTitle" placeholder="Author et al. (Year)" value="' + _escAttr(claim.admin_reference_title || '') + '"></div>' +
+                        '  <div class="mb-3"><label class="form-label fw-bold small">Notes</label>' +
+                        '    <textarea class="form-control form-control-sm" id="cmvEditNotes" rows="2">' + _escHtml(claim.admin_notes || '') + '</textarea></div>' +
+                        '  <div class="d-flex gap-2">' +
+                        '    <button class="btn btn-brand-primary btn-sm" onclick="SelectionVerify._saveClaimEdit(' + claimId + ')"><i class="fas fa-save me-1"></i>Save</button>' +
+                        '    <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'cmvEditPanel\').remove()">Cancel</button>' +
+                        '  </div>' +
+                        '</div>';
+
+                    document.body.appendChild(panel);
+                });
+        },
+
+        _saveClaimEdit: function(claimId) {
+            var body = {
+                admin_override: document.getElementById('cmvEditOverride').value || null,
+                admin_reference_url: document.getElementById('cmvEditRefUrl').value || null,
+                admin_reference_title: document.getElementById('cmvEditRefTitle').value || null,
+                admin_notes: document.getElementById('cmvEditNotes').value || null,
+            };
+            fetch('/api/admin/peer-review/claims/' + claimId, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var panel = document.getElementById('cmvEditPanel');
+                if (panel) panel.remove();
+                if (data.success) {
+                    // Update badge in DOM
+                    var badge = document.querySelector('.cmv-badge[data-claim-id="' + claimId + '"]');
+                    if (badge && body.admin_override === 'verified') {
+                        badge.className = 'cmv-badge cmv-badge-admin-verified';
+                        badge.querySelector('i').className = 'fas fa-shield-alt';
+                    } else if (badge && body.admin_override === 'dismissed') {
+                        badge.style.display = 'none';
+                    } else if (badge && body.admin_override === 'incorrect') {
+                        badge.className = 'cmv-badge cmv-badge-disputed';
+                        badge.querySelector('i').className = 'fas fa-times-circle';
+                    }
+                } else {
+                    alert(data.error || 'Save failed');
+                }
+            });
+        },
+
+        /**
+         * Admin: update a CMV claim override via API (quick action).
+         */
+        _updateClaim: function(claimId, override) {
+            fetch('/api/admin/peer-review/claims/' + claimId, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ admin_override: override }),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var popup = document.getElementById('cmvClaimPopup');
+                if (popup) popup.remove();
+                if (data.success) {
+                    // Update badge appearance in DOM
+                    var badge = document.querySelector('.cmv-badge[data-claim-id="' + claimId + '"]');
+                    if (badge) {
+                        if (override === 'dismissed') {
+                            badge.style.display = 'none';
+                        } else if (override === 'verified') {
+                            badge.className = 'cmv-badge cmv-badge-admin-verified';
+                            badge.querySelector('i').className = 'fas fa-shield-alt';
+                        } else if (override === 'incorrect') {
+                            badge.className = 'cmv-badge cmv-badge-disputed';
+                            badge.querySelector('i').className = 'fas fa-times-circle';
+                        }
+                    }
+                }
+            });
         },
 
         /**
@@ -474,6 +651,8 @@
          */
         initAdminBadgeControls: function() {
             if (!_isAdmin) return;
+
+            // Legacy peer-review badges
             document.querySelectorAll('.peer-review-badge.unverified').forEach(function(badge) {
                 if (badge.dataset.dismissReady) return;
                 badge.dataset.dismissReady = 'true';
@@ -485,6 +664,20 @@
                     if (confirm('Dismiss this unverified warning?')) {
                         SelectionVerify._dismissUnverified(badge);
                     }
+                });
+            });
+
+            // CMV badges — admin click to edit/dismiss claim inline
+            document.querySelectorAll('.cmv-badge[data-claim-id]').forEach(function(badge) {
+                if (badge.dataset.adminReady) return;
+                badge.dataset.adminReady = 'true';
+                badge.style.cursor = 'pointer';
+                badge.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var claimId = badge.dataset.claimId;
+                    if (!claimId) return;
+                    SelectionVerify._showClaimActions(badge, claimId);
                 });
             });
         },
@@ -505,6 +698,8 @@
                 '.template-content': 'radiology_template',
                 '.protocol-content': 'imaging_protocol',
                 '.pearl-content': 'radiology_pearl',
+                '.anatomy-content': 'anatomy_snippet',
+                '#detailContent': 'anatomy_snippet',
             };
 
             // Check which content types are present on this page
@@ -528,7 +723,7 @@
                         m.addedNodes.forEach(function(node) {
                             if (node.nodeType === 1) {
                                 // Check if new content has peer review badges
-                                if (node.querySelector && node.querySelector('.peer-review-badge')) {
+                                if (node.querySelector && (node.querySelector('.peer-review-badge') || node.querySelector('.cmv-badge'))) {
                                     needsInit = true;
                                 }
                                 // Check if new content matches any content selector

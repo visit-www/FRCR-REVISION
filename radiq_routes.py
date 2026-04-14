@@ -419,10 +419,12 @@ def radiq_query():
             'verification_summary': pr_result.get('verification_summary'),
             'references_html': pr_result.get('references_html', ''),
             'disclaimer_html': pr_result.get('disclaimer_html', ''),
+            'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
         }
         if pr_result.get('verification_summary', {}).get('total', 0) > 0:
             response_html = (
-                response_html
+                pr_result.get('content_trust_badge_html', '')
+                + response_html
                 + pr_result.get('disclaimer_html', '')
                 + pr_result.get('references_html', '')
             )

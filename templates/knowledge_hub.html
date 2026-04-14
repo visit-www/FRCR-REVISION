@@ -24,7 +24,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="kh-page py-3 px-0">
+<div class="kh-page py-3 px-2 px-md-4">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
@@ -112,100 +112,106 @@
         </div>
     </div>
 
-    <!-- Two-Panel Layout -->
-    <div class="row g-3">
-        <!-- LEFT PANEL: Item List -->
-        <div class="col-lg-3 mb-3 mb-lg-0">
-            <div class="knowledge-hub-sidebar">
-                <!-- Tag Cloud (collapsible) -->
-                {% if tag_cloud %}
-                <div class="mb-2">
-                    <button class="btn btn-sm btn-link text-muted p-0 mb-1" data-bs-toggle="collapse" data-bs-target="#tagCloudPanel" style="font-size: 0.72rem; text-decoration: none;">
-                        <i class="fas fa-tags me-1"></i>Tags <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
+    <!-- Top Row: Two-Column Browser (20vh) -->
+    <div class="row g-2 mb-2">
+        <!-- LEFT: Radiology Pearls -->
+        <div class="col-md-6">
+            <div class="kh-browser-panel" style="background: linear-gradient(135deg, #fff8f0 0%, #fff3e6 100%); border: 1px solid #ffe0c2; border-radius: 8px; height: 20vh; min-height: 140px; display: flex; flex-direction: column;">
+                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom: 1px solid #ffe0c2;">
+                    <div>
+                        <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>
+                        <strong class="small">Radiology Pearls</strong>
+                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">{{ pearl_count }}</span>
+                    </div>
+                    {% if tag_cloud %}
+                    <button class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="collapse" data-bs-target="#tagCloudPanel" style="font-size: 0.65rem;">
+                        <i class="fas fa-tags"></i>
                     </button>
-                    <div class="collapse" id="tagCloudPanel">
-                        <div class="tag-cloud p-2 rounded" style="background: #f8f9fa;">
-                            {% for tag, count in tag_cloud %}
-                            <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
-                            {% endfor %}
-                        </div>
+                    {% endif %}
+                </div>
+                {% if tag_cloud %}
+                <div class="collapse px-2 py-1" id="tagCloudPanel" style="border-bottom: 1px solid #ffe0c2;">
+                    <div class="tag-cloud" style="font-size: 0.65rem;">
+                        {% for tag, count in tag_cloud %}
+                        <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
+                        {% endfor %}
                     </div>
                 </div>
                 {% endif %}
-
-                <!-- Item List -->
-                <div class="knowledge-hub-item-list">
+                <div class="knowledge-hub-item-list flex-grow-1 overflow-auto px-1 py-1" id="pearlList">
                     {% for p in pearls %}
                     <div class="knowledge-item" data-id="pearl-{{ p.id }}" data-type="pearl"
                          data-body-section="{{ p.body_section or '' }}" data-modality="{{ p.modality or '' }}"
                          data-tags="{{ (p.tags or '')|lower }}" data-text="{{ p.pearl_text|striptags|lower }}"
                          onclick="selectItem(this)">
                         <div class="d-flex align-items-start gap-2">
-                            <i class="fas fa-gem mt-1 flex-shrink-0" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                            <i class="fas fa-gem mt-1 flex-shrink-0" style="color: #6b46c1; font-size: 0.6rem;"></i>
                             <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(90) }}</div>
+                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(80) }}</div>
                                 <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                                    {% if p.modality %}
-                                    <span class="modality-badge" data-modality="{{ p.modality }}">{{ p.modality }}</span>
-                                    {% endif %}
-                                    {% if p.body_section %}
-                                    <span class="section-badge">{{ p.body_section }}</span>
-                                    {% endif %}
-                                    {% if not p.is_verified %}
-                                    <span class="badge bg-warning text-dark" style="font-size: 0.5rem;">Pending</span>
-                                    {% endif %}
+                                    {% if p.modality %}<span class="modality-badge" data-modality="{{ p.modality }}" style="font-size:0.55rem;">{{ p.modality }}</span>{% endif %}
+                                    {% if p.body_section %}<span class="section-badge" style="font-size:0.55rem;">{{ p.body_section }}</span>{% endif %}
+                                    {% if not p.is_verified %}<span class="badge bg-warning text-dark" style="font-size: 0.45rem;">Pending</span>{% endif %}
                                 </div>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
+                    {% if not pearls %}
+                    <div class="text-center py-3 text-muted small">No pearls yet</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Anatomy Snippets -->
+        <div class="col-md-6">
+            <div class="kh-browser-panel" style="background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ec 100%); border: 1px solid #a3cfbb; border-radius: 8px; height: 20vh; min-height: 140px; display: flex; flex-direction: column;">
+                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom: 1px solid #a3cfbb;">
+                    <div>
+                        <i class="fas fa-bone me-1" style="color: #6f42c1;"></i>
+                        <strong class="small">Anatomy Snippets</strong>
+                        <span class="badge bg-success ms-1" style="font-size: 0.6rem;">{{ snippet_count }}</span>
+                    </div>
+                </div>
+                <div class="knowledge-hub-item-list flex-grow-1 overflow-auto px-1 py-1" id="snippetList">
                     {% for s in snippets %}
                     <div class="knowledge-item" data-id="anatomy-{{ s.id }}" data-type="anatomy"
                          data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality="{{ s.modality or '' }}"
                          data-tags="{{ (s.keywords or '')|lower }}" data-text="{{ s.title|lower }} {{ (s.description or '')|lower }}"
                          onclick="selectItem(this)">
                         <div class="d-flex align-items-start gap-2">
-                            <i class="fas fa-bone mt-1 flex-shrink-0" style="color: #6f42c1; font-size: 0.7rem;"></i>
+                            <i class="fas fa-bone mt-1 flex-shrink-0" style="color: #6f42c1; font-size: 0.6rem;"></i>
                             <div class="flex-grow-1" style="min-width: 0;">
                                 <div class="knowledge-item-title">{{ s.title }}</div>
                                 <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                                    {% if s.modality %}
-                                    <span class="modality-badge" data-modality="{{ s.modality }}">{{ s.modality }}</span>
-                                    {% endif %}
-                                    {% if s.body_section %}
-                                    <span class="section-badge">{{ s.body_section }}</span>
-                                    {% endif %}
+                                    {% if s.modality %}<span class="modality-badge" data-modality="{{ s.modality }}" style="font-size:0.55rem;">{{ s.modality }}</span>{% endif %}
+                                    {% if s.body_section %}<span class="section-badge" style="font-size:0.55rem;">{{ s.body_section }}</span>{% endif %}
                                 </div>
                             </div>
                         </div>
                     </div>
                     {% endfor %}
-
-                    {% if not pearls and not snippets %}
-                    <div class="text-center py-4 text-muted">
-                        <i class="fas fa-book-medical" style="font-size: 2rem; opacity: 0.3;"></i>
-                        <p class="mt-2 small">No items yet. Use Smart Reporter to generate content.</p>
-                    </div>
+                    {% if not snippets %}
+                    <div class="text-center py-3 text-muted small">No snippets yet</div>
                     {% endif %}
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- RIGHT DETAIL PANEL -->
-        <div class="col-lg-9">
-            <div id="detailPanel" class="knowledge-hub-detail">
-                <!-- Placeholder -->
-                <div id="detailPlaceholder" class="text-center py-5 text-muted">
-                    <div class="mb-3">
-                        <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.15; color: var(--brand-neutral);"></i>
-                    </div>
-                    <p class="mb-1 fw-semibold" style="color: var(--brand-text-secondary);">Select an item to view details</p>
-                    <small>Use body section chips, modality filters, or search to find content</small>
-                </div>
-                <!-- Detail content (populated by JS) -->
-                <div id="detailContent" class="d-none"></div>
+    <!-- Bottom: Full-Width Content Detail -->
+    <div id="detailPanel" class="knowledge-hub-detail px-2 px-md-3" style="max-height: 75vh; overflow-y: auto;">
+        <!-- Placeholder -->
+        <div id="detailPlaceholder" class="text-center py-5 text-muted" style="padding-top: 10vh !important;">
+            <div class="mb-3">
+                <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.15; color: var(--brand-neutral);"></i>
             </div>
+            <p class="mb-1 fw-semibold" style="color: var(--brand-text-secondary);">Select a pearl or anatomy snippet above</p>
+            <small>Use the search bar or filters to find content</small>
         </div>
+        <!-- Detail content (populated by JS) -->
+        <div id="detailContent" class="d-none"></div>
     </div>
 </div>
 
@@ -546,8 +552,8 @@
 /* ==================== PAGE LAYOUT OVERRIDE ==================== */
 /* Reduce parent container padding so Knowledge Hub uses near-full viewport width */
 #main-content:has(> .kh-page) {
-    padding-left: 10px !important;
-    padding-right: 10px !important;
+    padding-left: 24px !important;
+    padding-right: 24px !important;
 }
 /* Fallback for browsers without :has() — targets via JS-added class */
 #main-content.kh-active {
@@ -659,18 +665,16 @@
 
 /* ==================== ITEM LIST ==================== */
 .knowledge-hub-item-list {
-    max-height: calc(100vh - 340px);
     overflow-y: auto;
-    border: 1px solid #e9ecef;
-    border-radius: 10px;
-    background: #fff;
+    background: transparent;
 }
 .knowledge-item {
-    padding: 12px 14px;
-    border-bottom: 1px solid #f0f2f5;
+    padding: 6px 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
     cursor: pointer;
     transition: background 0.15s, border-left-color 0.15s;
-    border-left: 4px solid transparent;
+    border-left: 3px solid transparent;
+    font-size: 0.82rem;
 }
 .knowledge-item:last-child { border-bottom: none; }
 .knowledge-item:hover {
@@ -1145,40 +1149,60 @@ function selectItem(el) {
 
         var adminSections = '';
 
+        // Build detail: compact header → full content → footer at bottom
         detailContent.innerHTML =
-            '<div class="detail-card"' + (aSectionColor ? ' style="border-left: 5px solid ' + aSectionColor.border + ';"' : '') + '>' +
-            '  <div class="detail-header">' +
-            '    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
-            '      <div class="d-flex align-items-center gap-2">' +
-            '        <i class="fas fa-bone" style="color: #6f42c1;"></i>' +
-            '        <span class="fw-semibold">' + data.dataset.title + '</span>' +
-            '      </div>' +
-            '      <div class="d-flex gap-1 flex-wrap">' +
+            '<div class="detail-header d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom"' +
+            (aSectionColor ? ' style="border-left: 4px solid ' + aSectionColor.border + '; padding-left: 12px;"' : '') + '>' +
+            '  <div class="d-flex align-items-center gap-2">' +
+            '    <i class="fas fa-bone" style="color: #6f42c1;"></i>' +
+            '    <span class="fw-semibold">' + data.dataset.title + '</span>' +
+            '  </div>' +
+            '  <div class="d-flex gap-1 flex-wrap align-items-center">' +
             (aModality ? '<span class="modality-badge" style="background: ' + (aModColor || DEFAULT_COLOR).bg + '; color: ' + (aModColor || DEFAULT_COLOR).text + '; border: 1px solid ' + (aModColor || DEFAULT_COLOR).border + ';">' + aModality + '</span>' : '') +
             (data.dataset.bodySection ? '<span class="section-badge" style="background: ' + (aSectionColor || DEFAULT_COLOR).bg + '; color: ' + (aSectionColor || DEFAULT_COLOR).text + '; border: 1px solid ' + (aSectionColor || DEFAULT_COLOR).border + ';">' + data.dataset.bodySection + '</span>' : '') +
-            '      </div>' +
-            '    </div>' +
-            '  </div>' +
-            '  <div class="detail-body">' +
-            '    <div class="anatomy-content">' + data.innerHTML + '</div>' +
-            '  </div>' +
-            '  <div class="detail-footer d-flex gap-2 flex-wrap">' +
-            '    <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
-            '    <a href="/anatomy-snippets/' + data.dataset.slug + '" class="btn btn-sm btn-brand-neutral"><i class="fas fa-external-link-alt me-1"></i>Full View</a>' +
             {% if is_admin %}
-            '    <button class="btn btn-sm btn-outline-secondary" onclick="editSnippet(' + data.dataset.snippetId + ')"><i class="fas fa-edit me-1"></i>Edit</button>' +
-            '    <button class="btn btn-sm btn-outline-warning" onclick="regenerateSnippet(' + data.dataset.snippetId + ', \'' + (data.dataset.title || '').replace(/'/g, "\\'") + '\')"><i class="fas fa-sync-alt me-1"></i>Regenerate</button>' +
+            '    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyDetailContent()" title="Copy"><i class="fas fa-copy"></i></button>' +
+            '    <button class="btn btn-sm btn-outline-secondary" onclick="editSnippet(' + data.dataset.snippetId + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '    <button class="btn btn-sm btn-outline-warning" onclick="regenerateSnippet(' + data.dataset.snippetId + ', \'' + (data.dataset.title || '').replace(/'/g, "\\'") + '\')" title="Regenerate"><i class="fas fa-sync-alt"></i></button>' +
+            {% else %}
+            '    <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyDetailContent()" title="Copy"><i class="fas fa-copy"></i></button>' +
             {% endif %}
             '  </div>' +
             '</div>' +
-            adminSections +
+            '<div class="anatomy-content" data-selectable="true" data-content-type="anatomy_snippet" data-content-id="' + snippetId + '">' +
+            data.innerHTML +
+            '</div>' +
             '<div id="linkedContentSection" class="mt-3"></div>';
+        // Clean up stored HTML artifacts
+        var contentEl = detailContent.querySelector('.anatomy-content');
+        if (contentEl) {
+            // Remove duplicate title (stored HTML has h3 title, we show it in header)
+            var firstHeading = contentEl.querySelector('h1, h2, h3');
+            if (firstHeading) {
+                var headingText = firstHeading.textContent.trim().toLowerCase();
+                var titleText = (data.dataset.title || '').trim().toLowerCase();
+                if (headingText === titleText || titleText.indexOf(headingText) !== -1 || headingText.indexOf(titleText) !== -1) {
+                    firstHeading.remove();
+                }
+            }
+        }
         loadLinkedContent('algorithm', snippetId);
     }
 
     placeholder.classList.add('d-none');
     detailContent.classList.remove('d-none');
+    document.getElementById('detailPanel').scrollTop = 0;
+    document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Load CMV badges from DB
+    var contentEl = detailContent.querySelector('[data-content-type][data-content-id]');
+    if (contentEl && typeof CmvBadges !== 'undefined') {
+        CmvBadges.load(contentEl, contentEl.dataset.contentType, contentEl.dataset.contentId);
+    }
 }
+
+// CMV badges: use CmvBadges.load() from static/js/cmv-badges.js
+// Dead CMV code removed — see static/js/cmv-badges.js
 
 function copyDetailContent() {
     var content = document.querySelector('#detailContent .pearl-content, #detailContent .anatomy-content');
@@ -1739,8 +1763,13 @@ function generateSnippet(forceRegenerate) {
         _genSnippetState.html = data.content_html || '';
         _genSnippetState.algorithmId = data.algorithm_id;
         document.getElementById('genSnippetPreviewContent').innerHTML = _genSnippetState.html;
+        if (typeof CmvBadges !== 'undefined') CmvBadges.load(document.getElementById('genSnippetPreviewContent'), 'anatomy_snippet', data.algorithm_id);
         document.getElementById('snippetPreview').classList.remove('d-none');
         document.getElementById('snippetLoading').classList.add('d-none');
+        // Admin cost badge (admin snippet generation only)
+        if (data.api_cost_usd != null && typeof showAdminCostBadge === 'function') {
+            showAdminCostBadge(data.api_cost_usd, document.getElementById('snippetPreview'));
+        }
         // Hide generate button, show save button
         document.getElementById('generateSnippetBtn').classList.add('d-none');
         document.getElementById('genSnippetSaveBtn').classList.remove('d-none');

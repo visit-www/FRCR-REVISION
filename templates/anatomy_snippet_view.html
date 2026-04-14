@@ -193,6 +193,14 @@
     }
 </style>
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof CmvBadges !== 'undefined') {
+        var container = document.querySelector('.anatomy-content');
+        if (container) CmvBadges.load(container, 'anatomy_snippet', '{{ snippet.id }}');
+    }
+});
+</script>
+<script>
 function copyAnatomyText() {
     var content = document.querySelector('.anatomy-content');
     var text = content.innerText || content.textContent;

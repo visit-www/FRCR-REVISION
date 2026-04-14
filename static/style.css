@@ -7036,3 +7036,165 @@ body {
     font-family: monospace;
 }
 
+/* ===== Cross-Model Verification (CMV) Badge System ===== */
+
+/* Content-level trust badge */
+.cmv-trust-badge {
+    border-radius: 6px;
+    padding: 8px 14px;
+    margin-bottom: 10px;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.cmv-trust-badge .cmv-trust-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+}
+.cmv-trust-passed {
+    background: linear-gradient(135deg, #d1e7dd 0%, #e8f5e9 100%);
+    border: 1px solid #a3cfbb;
+    color: #0f5132;
+}
+.cmv-trust-partial {
+    background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%);
+    border: 1px solid #ffda6a;
+    color: #664d03;
+}
+.cmv-trust-caution {
+    background: linear-gradient(135deg, #f8d7da 0%, #fce4ec 100%);
+    border: 1px solid #f1aeb5;
+    color: #842029;
+}
+.cmv-trust-pending {
+    background: linear-gradient(135deg, #e2e3e5 0%, #f0f1f3 100%);
+    border: 1px solid #c6c8ca;
+    color: #41464b;
+}
+.cmv-info-btn {
+    font-size: 0.75rem;
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.7;
+}
+.cmv-info-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+/* Inline claim badges — 5 states */
+.cmv-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    margin-left: 3px;
+    vertical-align: middle;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    z-index: 10;
+}
+.cmv-badge:hover {
+    opacity: 0.85;
+    transform: scale(1.15);
+}
+.cmv-badge-agreed {
+    color: #fff;
+    background: #198754;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+}
+.cmv-badge-agreed:hover {
+    background: #0f5132;
+}
+.cmv-badge-agreed-medium {
+    color: #fff;
+    background: #5cb885;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+}
+.cmv-badge-agreed-medium:hover {
+    background: #449d6e;
+}
+.cmv-badge-disputed {
+    color: #fff;
+    background: #dc3545;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+}
+.cmv-badge-disputed:hover {
+    background: #a71d2a;
+}
+.cmv-badge-uncertain {
+    color: #000;
+    background: #ffc107;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+}
+.cmv-badge-uncertain:hover {
+    background: #e0a800;
+}
+.cmv-badge-admin-verified {
+    color: #fff;
+    background: #0d6efd;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+.cmv-badge-admin-verified:hover {
+    background: #0a58ca;
+}
+
+/* Admin inline edit button — hidden by default, shown only for admin */
+.cmv-admin-edit {
+    font-size: 0.6rem;
+    color: #6c757d;
+    vertical-align: middle;
+    margin-left: 2px;
+    display: none;
+}
+body.is-admin .cmv-admin-edit {
+    display: inline;
+}
+.cmv-admin-edit:hover {
+    color: var(--brand-primary, #e96304);
+}
+
+/* CMV disclaimer (extends existing peer-review-disclaimer) */
+.cmv-disclaimer {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 3px solid var(--brand-neutral, #5E899E);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    color: #495057;
+}
+.cmv-disclaimer i.fa-shield-alt {
+    color: var(--brand-neutral, #5E899E);
+}
+
+/* CMV references (extends existing) */
+.cmv-references .card-header {
+    font-size: 0.82rem;
+}
+.cmv-references li a {
+    font-size: 0.82rem;
+    text-decoration: none;
+    color: var(--brand-neutral, #5E899E);
+}
+.cmv-references li a:hover {
+    text-decoration: underline;
+}
+

@@ -4257,7 +4257,8 @@
         }
         
         discussionDiv.innerHTML = renderedContent;
-        
+        if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
+
         // Event delegation handles clicks - no need to attach handlers per marker
         
         // Parse and display references section

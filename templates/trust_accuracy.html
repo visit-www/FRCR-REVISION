@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trust &amp; Accuracy - RadInsights</title>
-    <meta name="description" content="How RadInsights ensures clinical accuracy through peer review, content verification, and robust data security measures.">
+    <meta name="description" content="How RadInsights ensures clinical accuracy through Cross-Model Verification (independent AI fact-checking), expert peer review, and multi-layered data security. Every statistical claim is independently verified.">
     <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
     <link rel="canonical" href="https://www.radinsights.xyz/trust" />
 
     <!-- Open Graph -->
     <meta property="og:title" content="Trust &amp; Accuracy - RadInsights">
-    <meta property="og:description" content="How RadInsights ensures clinical accuracy through peer review, expert verification, and multi-layered data security measures.">
+    <meta property="og:description" content="Cross-Model Verification: every AI-generated claim independently fact-checked by a second AI model. Expert peer review, PII protection, and HIPAA-aligned audit trails.">
     <meta property="og:url" content="https://www.radinsights.xyz/trust">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="RadInsights">
@@ -334,6 +334,36 @@
             .process-step, .security-card { margin-bottom: 1rem; }
         }
     </style>
+
+    <!-- Schema.org: Trust & Verification Page -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MedicalWebPage",
+      "name": "Trust & Accuracy — Cross-Model Verification",
+      "url": "https://www.radinsights.xyz/trust",
+      "description": "How RadInsights ensures clinical accuracy through Cross-Model Verification — an independent AI model fact-checks every statistical claim, measurement, and guideline reference in AI-generated radiology content.",
+      "specialty": {
+        "@type": "MedicalSpecialty",
+        "name": "Radiology"
+      },
+      "medicalAudience": {
+        "@type": "MedicalAudience",
+        "audienceType": "MedicalProfessional"
+      },
+      "mainEntity": {
+        "@type": "HowTo",
+        "name": "RadInsights 5-Step Verification Pipeline",
+        "step": [
+          {"@type": "HowToStep", "position": 1, "name": "AI Generation", "text": "Content drafted using medically-trained large language models with domain-specific prompts crafted by a consultant radiologist."},
+          {"@type": "HowToStep", "position": 2, "name": "Cross-Model Verification", "text": "Every statistical claim is sent to an independent AI model for fact-checking, considering clinical context including body region, imaging modality, and patient population."},
+          {"@type": "HowToStep", "position": 3, "name": "Expert Review", "text": "A consultant radiologist reviews every generated item. Cross-model verification results guide the review, with disputed claims receiving priority attention."},
+          {"@type": "HowToStep", "position": 4, "name": "Verification & Publishing", "text": "Administrators can override automated verdicts, attach PubMed or Radiopaedia references, and formally verify content before publishing."},
+          {"@type": "HowToStep", "position": 5, "name": "Continuous Maintenance", "text": "Published content is periodically reviewed against updated guidelines. Users can flag inaccuracies directly through the platform."}
+        ]
+      }
+    }
+    </script>
 </head>
 <body>
     <!-- Back Button -->
@@ -351,7 +381,7 @@
                         <h1 class="hero-title mb-0">Trust &amp; Accuracy</h1>
                     </div>
                     <p class="hero-subtitle">
-                        Clinical accuracy is not optional. Every piece of content on RadInsights is verified through a structured peer-review process and protected by multi-layered data security.
+                        Clinical accuracy is not optional. Every AI-generated claim on RadInsights undergoes Cross-Model Verification &mdash; an independent AI model fact-checks every statistical claim, measurement, and guideline reference. Combined with expert review and multi-layered data security.
                     </p>
                 </div>
             </div>
@@ -394,11 +424,11 @@
     <section class="section section-alt">
         <div class="container">
             <h2 class="section-title">Peer-Review Process</h2>
-            <p class="section-subtitle">Every piece of clinical content follows a structured four-step verification pipeline.</p>
+            <p class="section-subtitle">Every piece of clinical content follows a structured five-step verification pipeline.</p>
 
             <div class="row g-4 mt-2">
                 <!-- Step 1: Generation -->
-                <div class="col-md-6 col-lg-3">
+                <div class="col-md-6 col-lg-4">
                     <div class="process-step step-teal">
                         <span class="step-number num-teal">1</span>
                         <div class="step-icon icon-teal">
@@ -416,10 +446,35 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Expert Review -->
-                <div class="col-md-6 col-lg-3">
+                <!-- Step 2: Cross-Model Verification (NEW) -->
+                <div class="col-md-6 col-lg-4">
+                    <div class="process-step" style="border-top: 5px solid #0d6efd;">
+                        <span class="step-number" style="background: linear-gradient(135deg, #0d6efd, #6ea8fe);">2</span>
+                        <div class="step-icon" style="background: linear-gradient(135deg, #0d6efd, #6ea8fe);">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>Cross-Model Verification</h4>
+                        <p>
+                            Every statistical claim, measurement, prevalence rate, dose, and guideline reference
+                            is automatically sent to an <strong>independent AI model</strong> for fact-checking.
+                            This model considers clinical context (body region, modality, patient population)
+                            and flags any claim it disagrees with, including a suggested correction.
+                        </p>
+                        <ul>
+                            <li><strong style="color:#198754;">Agreed</strong> &mdash; independently confirmed</li>
+                            <li><strong style="color:#ffc107;">Uncertain</strong> &mdash; could not verify</li>
+                            <li><strong style="color:#dc3545;">Disputed</strong> &mdash; flagged with correction</li>
+                        </ul>
+                        <div class="mt-2">
+                            <span class="verification-badge" style="background:#e7f1ff; color:#0d6efd;"><i class="fas fa-shield-alt"></i> Cross-Model Verified</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Expert Review -->
+                <div class="col-md-6 col-lg-4">
                     <div class="process-step step-orange">
-                        <span class="step-number num-orange">2</span>
+                        <span class="step-number num-orange">3</span>
                         <div class="step-icon icon-orange">
                             <i class="fas fa-user-md"></i>
                         </div>
@@ -427,7 +482,8 @@
                         <p>
                             A consultant radiologist reviews every generated item for clinical accuracy,
                             completeness, and adherence to current guidelines (RCR, ACR, NICE, AJCC).
-                            Errors are corrected before any content reaches users.
+                            Cross-model verification results guide the review &mdash; disputed claims
+                            receive priority attention. Errors are corrected before content reaches users.
                         </p>
                         <div class="mt-2">
                             <span class="verification-badge badge-reviewed"><i class="fas fa-stethoscope"></i> Expert-Reviewed</span>
@@ -435,18 +491,18 @@
                     </div>
                 </div>
 
-                <!-- Step 3: Verification & Publishing -->
-                <div class="col-md-6 col-lg-3">
+                <!-- Step 4: Verification & Publishing -->
+                <div class="col-md-6 col-lg-4">
                     <div class="process-step step-green">
-                        <span class="step-number num-green">3</span>
+                        <span class="step-number num-green">4</span>
                         <div class="step-icon icon-green">
                             <i class="fas fa-check-double"></i>
                         </div>
                         <h4>Verification</h4>
                         <p>
-                            Reviewed content is formally verified through the admin panel. Only verified
-                            items are published and visible to all users. Unverified content remains in
-                            draft status and is clearly labelled.
+                            Reviewed content is formally verified through the admin panel. Administrators
+                            can override automated verdicts, attach PubMed or Radiopaedia references to
+                            individual claims, and dismiss false positives. Only verified items are published.
                         </p>
                         <div class="mt-2">
                             <span class="verification-badge badge-verified"><i class="fas fa-check-circle"></i> Verified</span>
@@ -454,18 +510,18 @@
                     </div>
                 </div>
 
-                <!-- Step 4: Continuous Monitoring -->
-                <div class="col-md-6 col-lg-3">
+                <!-- Step 5: Continuous Monitoring -->
+                <div class="col-md-6 col-lg-4">
                     <div class="process-step step-purple">
-                        <span class="step-number num-purple">4</span>
+                        <span class="step-number num-purple">5</span>
                         <div class="step-icon icon-purple">
                             <i class="fas fa-sync-alt"></i>
                         </div>
                         <h4>Maintenance</h4>
                         <p>
                             Published content is periodically reviewed against updated guidelines.
-                            Users can submit content requests and corrections directly through the
-                            platform. Every edit is tracked with timestamps and authorship.
+                            Users can flag inaccuracies directly through the platform.
+                            Every edit is tracked with timestamps and authorship.
                         </p>
                         <div class="mt-2">
                             <span class="verification-badge badge-reviewed"><i class="fas fa-history"></i> Tracked</span>

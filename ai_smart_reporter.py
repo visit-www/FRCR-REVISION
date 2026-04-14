@@ -990,12 +990,31 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
         system_prompt=ANATOMY_SYSTEM_PROMPT,
         user_prompt=prompt,
         model=sonnet_model,
-        max_tokens=3333,
+        max_tokens=8000,
         temperature=0,
-        timeout=90,
+        timeout=150,
     )
 
     parsed = _parse_json_response(text)
+
+    # If JSON was truncated (max_tokens hit), retry with conciseness instruction
+    if not parsed and text and text.strip().startswith('{'):
+        logger.warning("Anatomy JSON truncated for '%s' — retrying with conciseness instruction", topic)
+        concise_prompt = prompt + (
+            "\n\nIMPORTANT: Your previous response was too long and got truncated. "
+            "Be MORE CONCISE this time. Limit key_structures to the 10 most important. "
+            "Keep each field to 1 sentence. Limit normal_variants to 5. "
+            "Limit pathology_at_this_site to 5."
+        )
+        text, model, tokens = _call_claude(
+            system_prompt=ANATOMY_SYSTEM_PROMPT,
+            user_prompt=concise_prompt,
+            model=sonnet_model,
+            max_tokens=8000,
+            temperature=0,
+            timeout=150,
+        )
+        parsed = _parse_json_response(text)
 
     # Auto-fetch Radiopaedia case images for visual reference (separate from peer review)
     rp_images = fetch_radiopaedia_images(topic, modality=modality, max_images=3)
@@ -1012,7 +1031,8 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
     # injects verification badges, disclaimer, and reference section.
     try:
         from radinsight_peer_review import peer_review_anatomy
-        pr = peer_review_anatomy(parsed, content_html, topic=topic)
+        pr = peer_review_anatomy(parsed, content_html, topic=topic,
+                                 body_section=body_section, modality=modality)
         content_html = pr['content_html']
         logger.info(
             "Peer review for '%s': %d/%d claims verified",

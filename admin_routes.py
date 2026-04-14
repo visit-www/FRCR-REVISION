@@ -3437,6 +3437,529 @@ def mark_memory_synced():
 
 
 # ============================================================================
+# ============================================================================
+# CROSS-MODEL VERIFICATION (CMV) — PEER REVIEW ADMIN
+# ============================================================================
+
+@admin_bp.route('/peer-review/claims', methods=['GET'])
+@require_admin
+def list_cmv_claims():
+    """List all CMV claims with filtering. Admin dashboard API."""
+    from models import PeerReviewClaim
+
+    content_type = request.args.get('content_type', '')
+    verdict = request.args.get('verdict', '')
+    override = request.args.get('override', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+
+    query = PeerReviewClaim.query
+
+    if content_type:
+        query = query.filter_by(content_type=content_type)
+    if verdict:
+        query = query.filter_by(gemini_verdict=verdict)
+    if override == 'has_override':
+        query = query.filter(PeerReviewClaim.admin_override.isnot(None))
+    elif override == 'no_override':
+        query = query.filter(PeerReviewClaim.admin_override.is_(None))
+
+    query = query.order_by(PeerReviewClaim.created_at.desc())
+    paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # Summary stats
+    total_claims = PeerReviewClaim.query.count()
+    agreed_count = PeerReviewClaim.query.filter_by(gemini_verdict='agree').count()
+    disputed_count = PeerReviewClaim.query.filter_by(gemini_verdict='disagree').count()
+    uncertain_count = PeerReviewClaim.query.filter_by(gemini_verdict='uncertain').count()
+    admin_reviewed = PeerReviewClaim.query.filter(PeerReviewClaim.admin_override.isnot(None)).count()
+
+    return jsonify({
+        'claims': [c.to_dict() for c in paginated.items],
+        'total': paginated.total,
+        'page': paginated.page,
+        'pages': paginated.pages,
+        'summary': {
+            'total': total_claims,
+            'agreed': agreed_count,
+            'disputed': disputed_count,
+            'uncertain': uncertain_count,
+            'admin_reviewed': admin_reviewed,
+        },
+    })
+
+
+@admin_bp.route('/peer-review/claims/<int:claim_id>', methods=['PATCH'])
+@require_admin
+def update_cmv_claim(claim_id):
+    """Admin override on a CMV claim: change verdict, add reference, dismiss."""
+    from models import PeerReviewClaim
+
+    claim = PeerReviewClaim.query.get_or_404(claim_id)
+    data = request.get_json() or {}
+
+    allowed_overrides = ('verified', 'incorrect', 'dismissed', None)
+    override = data.get('admin_override')
+    if override is not None and override not in allowed_overrides:
+        return jsonify({'error': f'Invalid override value. Allowed: {allowed_overrides}'}), 400
+
+    if 'admin_override' in data:
+        claim.admin_override = data['admin_override']
+    if 'admin_notes' in data:
+        claim.admin_notes = data['admin_notes']
+    if 'admin_reference_url' in data:
+        claim.admin_reference_url = data['admin_reference_url']
+    if 'admin_reference_title' in data:
+        claim.admin_reference_title = data['admin_reference_title']
+
+    claim.reviewed_by_admin_id = current_user.id
+    claim.reviewed_at = datetime.utcnow()
+
+    db.session.commit()
+    logger.info("Admin %s updated CMV claim #%d: override=%s", current_user.email, claim_id, claim.admin_override)
+
+    return jsonify({'success': True, 'claim': claim.to_dict()})
+
+
+@admin_bp.route('/peer-review/claims/<int:claim_id>', methods=['DELETE'])
+@require_admin
+def delete_cmv_claim(claim_id):
+    """Delete a CMV claim (noise removal)."""
+    from models import PeerReviewClaim
+
+    claim = PeerReviewClaim.query.get_or_404(claim_id)
+    db.session.delete(claim)
+    db.session.commit()
+    logger.info("Admin %s deleted CMV claim #%d", current_user.email, claim_id)
+
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/peer-review/content-claims', methods=['GET'])
+@require_admin
+def get_content_claims():
+    """Get all CMV claims for a specific content item. Used by client-side badge rendering."""
+    from models import PeerReviewClaim
+    ctype = request.args.get('content_type', '')
+    cid = request.args.get('content_id', '')
+    if not ctype:
+        return jsonify({'claims': []})
+    query = PeerReviewClaim.query.filter_by(content_type=ctype)
+    if cid:
+        query = query.filter_by(content_id=cid)
+    claims = query.order_by(PeerReviewClaim.id).all()
+    return jsonify({'claims': [c.to_dict() for c in claims]})
+
+
+@admin_bp.route('/peer-review/search-content', methods=['GET'])
+@require_admin
+def search_cmv_content():
+    """Search for content items by type and name for CMV verification.
+
+    By default shows unverified items first. If q is provided, searches by name.
+    """
+    ctype = request.args.get('content_type', '')
+    q = request.args.get('q', '').strip()
+    show = request.args.get('show', 'unverified')  # unverified, all, verified
+    results = []
+
+    # Get IDs that already have CMV claims for this content type
+    verified_ids = set()
+    try:
+        from models import PeerReviewClaim
+        existing = db.session.query(PeerReviewClaim.content_id).filter(
+            PeerReviewClaim.content_type == ctype
+        ).distinct().all()
+        verified_ids = {r[0] for r in existing if r[0]}
+    except Exception:
+        pass
+
+    try:
+        if ctype in ('anatomy_snippet', 'reporting_algorithm'):
+            from models import ReportingAlgorithm
+            query = ReportingAlgorithm.query
+            if ctype == 'anatomy_snippet':
+                query = query.filter(ReportingAlgorithm.origin == 'anatomy_cache')
+            else:
+                query = query.filter(ReportingAlgorithm.origin != 'anatomy_cache')
+            if q:
+                query = query.filter(ReportingAlgorithm.title.ilike(f'%{q}%'))
+            items = query.order_by(ReportingAlgorithm.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': item.title or f'Algorithm #{item.id}',
+                    'body_section': item.body_section or '',
+                    'has_claims': has_claims,
+                })
+
+        elif ctype == 'radiology_pearl':
+            from models import RadiologyPearl
+            query = RadiologyPearl.query
+            if q:
+                query = query.filter(RadiologyPearl.pearl_text.ilike(f'%{q}%'))
+            items = query.order_by(RadiologyPearl.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': (item.pearl_text or '')[:80],
+                    'body_section': item.body_section or '',
+                    'has_claims': has_claims,
+                })
+
+        elif ctype == 'radiq_query':
+            from models import RadIQQuery
+            query = RadIQQuery.query
+            if q:
+                query = query.filter(RadIQQuery.question.ilike(f'%{q}%'))
+            items = query.order_by(RadIQQuery.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': (item.question or '')[:80],
+                    'body_section': '',
+                    'has_claims': has_claims,
+                })
+
+        elif ctype == 'case':
+            from models import Case
+            query = Case.query
+            if q:
+                query = query.filter(Case.title.ilike(f'%{q}%'))
+            items = query.order_by(Case.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': item.title or f'Case #{item.id}',
+                    'body_section': getattr(item, 'body_part', '') or '',
+                    'has_claims': has_claims,
+                })
+
+        elif ctype == 'radiology_tool':
+            from models import IncidentalFindingCalculator
+            query = IncidentalFindingCalculator.query
+            if q:
+                query = query.filter(IncidentalFindingCalculator.title.ilike(f'%{q}%'))
+            items = query.order_by(IncidentalFindingCalculator.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': item.title or f'Tool #{item.id}',
+                    'body_section': getattr(item, 'body_section', '') or '',
+                    'has_claims': has_claims,
+                })
+
+        elif ctype == 'protocol':
+            from models import ImagingProtocol
+            query = ImagingProtocol.query
+            if q:
+                query = query.filter(ImagingProtocol.title.ilike(f'%{q}%'))
+            items = query.order_by(ImagingProtocol.id.desc()).limit(50).all()
+            for item in items:
+                has_claims = str(item.id) in verified_ids
+                if show == 'unverified' and has_claims:
+                    continue
+                if show == 'verified' and not has_claims:
+                    continue
+                results.append({
+                    'id': item.id,
+                    'title': item.title or f'Protocol #{item.id}',
+                    'body_section': getattr(item, 'body_section', '') or '',
+                    'has_claims': has_claims,
+                })
+
+    except Exception as exc:
+        logger.error("CMV content search failed: %s", exc)
+
+    return jsonify({'results': results, 'total': len(results)})
+
+
+def _has_cmv_claims(content_type, content_id):
+    """Check if content already has CMV claims."""
+    try:
+        from models import PeerReviewClaim
+        return PeerReviewClaim.query.filter_by(
+            content_type=content_type, content_id=content_id
+        ).count() > 0
+    except Exception:
+        return False
+
+
+@admin_bp.route('/peer-review/verify-content', methods=['POST'])
+@require_admin
+def verify_single_content():
+    """Re-run CMV on a single content item by type and ID.
+
+    Fetches the content from DB, sends to Gemini, persists claims.
+    No regeneration needed — just re-verifies existing content.
+    """
+    from gemini_verify import verify_content
+    from radinsight_peer_review import _persist_claims
+
+    data = request.get_json() or {}
+    ctype = data.get('content_type', '')
+    cid = data.get('content_id', '')
+
+    if not ctype:
+        return jsonify({'error': 'content_type required'}), 400
+
+    # Fetch content text from DB based on type
+    content_text = ''
+    topic = ''
+    body_sec = ''
+    mod = ''
+
+    try:
+        if ctype == 'reporting_algorithm':
+            from models import ReportingAlgorithm
+            obj = ReportingAlgorithm.query.get(int(cid))
+            if obj:
+                content_text = obj.template_html or obj.algorithm_html or ''
+                topic = obj.title or ''
+                body_sec = obj.body_section or ''
+        elif ctype == 'anatomy_snippet':
+            from models import ReportingAlgorithm
+            obj = ReportingAlgorithm.query.get(int(cid))
+            if obj:
+                content_text = obj.template_html or ''
+                topic = obj.title or ''
+                body_sec = obj.body_section or ''
+        elif ctype == 'radiology_pearl':
+            from models import RadiologyPearl
+            obj = RadiologyPearl.query.get(int(cid))
+            if obj:
+                content_text = obj.pearl_text or ''
+                body_sec = obj.body_section or ''
+                mod = obj.modality or ''
+        elif ctype == 'radiq_query':
+            from models import RadIQQuery
+            obj = RadIQQuery.query.get(int(cid))
+            if obj:
+                content_text = obj.response_text or ''
+                topic = obj.question[:80] if obj.question else ''
+        elif ctype == 'case':
+            from models import Case
+            obj = Case.query.get(int(cid))
+            if obj:
+                content_text = obj.discussion or obj.ai_discussion or ''
+                topic = obj.title or ''
+                body_sec = getattr(obj, 'body_part', '') or ''
+        elif ctype == 'radiology_tool':
+            from models import IncidentalFindingCalculator
+            obj = IncidentalFindingCalculator.query.get(int(cid))
+            if obj:
+                content_text = obj.algorithm_html or obj.description or ''
+                topic = obj.title or ''
+                body_sec = getattr(obj, 'body_section', '') or ''
+        elif ctype == 'protocol':
+            from models import ImagingProtocol
+            obj = ImagingProtocol.query.get(int(cid))
+            if obj:
+                content_text = obj.detailed_protocol_html or obj.shorthand_text or ''
+                topic = obj.title or ''
+                body_sec = obj.body_section or ''
+                mod = obj.modality or ''
+        elif ctype in ('smart_reporter_assist', 'vetting_analysis',
+                        'report_action_sba', 'report_action_viva', 'learning_question'):
+            # These are transient AI outputs — no persistent DB content to re-verify
+            return jsonify({'error': f'{ctype} is a transient AI output. It can only be verified at generation time.'}), 400
+        else:
+            return jsonify({'error': f'Unsupported content_type: {ctype}'}), 400
+    except Exception as exc:
+        return jsonify({'error': f'Failed to fetch content: {exc}'}), 500
+
+    if not content_text:
+        return jsonify({'error': 'Content not found or empty'}), 404
+
+    # Strip any existing CMV badges before sending to Gemini (avoid badge HTML in verification)
+    from radinsight_peer_review import strip_automated_badges
+    clean_content = strip_automated_badges(content_text)
+
+    # Run Gemini CMV
+    gresult = verify_content(
+        ai_output=clean_content,
+        body_section=body_sec,
+        modality=mod,
+        topic=topic,
+    )
+
+    if gresult.get('error'):
+        return jsonify({'error': f'Gemini verification failed: {gresult["error"]}'}), 502
+
+    # Persist claims
+    if gresult.get('claims'):
+        _persist_claims(
+            gresult['claims'], ctype, str(cid),
+            body_section=body_sec, modality=mod,
+            topic=topic, model=gresult.get('model', ''),
+        )
+
+    return jsonify({
+        'success': True,
+        'content_type': ctype,
+        'content_id': cid,
+        'claims_count': len(gresult.get('claims', [])),
+        'summary': gresult.get('summary', {}),
+    })
+
+
+@admin_bp.route('/peer-review/bulk-verify', methods=['POST'])
+@require_admin
+def bulk_verify_content():
+    """Trigger retroactive CMV on unverified content of a specific type.
+
+    Respects Gemini free tier rate limits (15 RPM).
+    """
+    from models import PeerReviewClaim
+    from gemini_verify import verify_content
+    from radinsight_peer_review import _persist_claims, strip_automated_badges
+    import time as _time
+
+    data = request.get_json() or {}
+    content_type = data.get('content_type', '')
+    max_items = min(data.get('max_items', 10), 10)
+
+    if not content_type:
+        return jsonify({'error': 'content_type required'}), 400
+
+    processed = 0
+    errors = 0
+    results = []
+
+    # Get IDs already verified for this type
+    verified_ids = set()
+    existing = db.session.query(PeerReviewClaim.content_id).filter(
+        PeerReviewClaim.content_type == content_type
+    ).distinct().all()
+    verified_ids = {r[0] for r in existing if r[0]}
+
+    # Build list of (id, text, topic, body_section, modality) for the content type
+    items_to_verify = []
+    try:
+        if content_type in ('anatomy_snippet', 'reporting_algorithm'):
+            from models import ReportingAlgorithm
+            query = ReportingAlgorithm.query.filter(ReportingAlgorithm.template_html.isnot(None))
+            if content_type == 'anatomy_snippet':
+                query = query.filter(ReportingAlgorithm.origin == 'anatomy_cache')
+            else:
+                query = query.filter(ReportingAlgorithm.origin != 'anatomy_cache')
+            for obj in query.limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    items_to_verify.append((str(obj.id), obj.template_html, obj.title or '',
+                                            obj.body_section or '', ''))
+
+        elif content_type == 'radiology_pearl':
+            from models import RadiologyPearl
+            for obj in RadiologyPearl.query.limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    items_to_verify.append((str(obj.id), obj.pearl_text or '', '',
+                                            obj.body_section or '', obj.modality or ''))
+
+        elif content_type == 'radiq_query':
+            from models import RadIQQuery
+            for obj in RadIQQuery.query.order_by(RadIQQuery.id.desc()).limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    items_to_verify.append((str(obj.id), obj.response_text or '',
+                                            (obj.question or '')[:80], '', ''))
+
+        elif content_type == 'case':
+            from models import Case
+            for obj in Case.query.limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    text = obj.discussion or obj.ai_discussion or ''
+                    items_to_verify.append((str(obj.id), text, obj.title or '',
+                                            getattr(obj, 'body_part', '') or '', ''))
+
+        elif content_type == 'radiology_tool':
+            from models import IncidentalFindingCalculator
+            for obj in IncidentalFindingCalculator.query.limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    text = obj.algorithm_html or obj.description or ''
+                    items_to_verify.append((str(obj.id), text, obj.title or '',
+                                            getattr(obj, 'body_section', '') or '', ''))
+
+        elif content_type == 'protocol':
+            from models import ImagingProtocol
+            for obj in ImagingProtocol.query.limit(max_items * 3).all():
+                if str(obj.id) not in verified_ids:
+                    text = obj.detailed_protocol_html or obj.shorthand_text or ''
+                    items_to_verify.append((str(obj.id), text, obj.title or '',
+                                            obj.body_section or '', obj.modality or ''))
+    except Exception as exc:
+        return jsonify({'error': f'Failed to load content: {exc}'}), 500
+
+    # Verify each item with rate limiting
+    for cid, text, topic, body_sec, mod in items_to_verify[:max_items]:
+        if not text or len(text.strip()) < 20:
+            continue
+        try:
+            clean_text = strip_automated_badges(text) if '<' in text else text
+            gresult = verify_content(
+                ai_output=clean_text,
+                body_section=body_sec,
+                modality=mod,
+                topic=topic,
+            )
+            if gresult.get('error'):
+                errors += 1
+                results.append({'id': cid, 'error': gresult['error']})
+                if '429' in str(gresult['error']):
+                    _time.sleep(10)  # Back off on rate limit
+                continue
+            if gresult.get('claims'):
+                _persist_claims(
+                    gresult['claims'], content_type, cid,
+                    body_section=body_sec, modality=mod,
+                    topic=topic, model=gresult.get('model', ''),
+                )
+            processed += 1
+            results.append({'id': cid, 'claims': len(gresult.get('claims', []))})
+            _time.sleep(5)  # Rate limit: ~12 RPM (safe for free tier)
+        except Exception as exc:
+            errors += 1
+            logger.error("Bulk CMV failed for %s #%s: %s", content_type, cid, exc)
+
+    return jsonify({
+        'success': True,
+        'processed': processed,
+        'errors': errors,
+        'results': results,
+        'pending': len(items_to_verify) - processed - errors,
+    })
+
+
+@admin_bp.route('/peer-review/dashboard')
+@require_admin
+def cmv_dashboard():
+    """Render the CMV admin dashboard page."""
+    return render_template('admin_cmv_dashboard.html')
+
+
 # ERROR HANDLERS
 # ============================================================================
 

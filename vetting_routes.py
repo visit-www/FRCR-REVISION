@@ -354,6 +354,7 @@ def vetting_analyse():
                 'verification_summary': pr_result.get('verification_summary'),
                 'references_html': pr_result.get('references_html', ''),
                 'disclaimer_html': pr_result.get('disclaimer_html', ''),
+                'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
             }
     except Exception as exc:
         logger.debug("Peer review on vetting analysis failed: %s", exc)

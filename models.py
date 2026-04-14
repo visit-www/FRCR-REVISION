@@ -4188,3 +4188,104 @@ class ManualVerification(db.Model):
 
     def __repr__(self):
         return f'<ManualVerification {self.id}: {(self.custom_label or self.selected_text)[:40]}>'
+
+
+# ==================== CROSS-MODEL VERIFICATION (CMV) ====================
+
+class PeerReviewClaim(db.Model):
+    """Persisted claim verification via Gemini Cross-Model Verification.
+
+    Each row represents a single statistical/measurement claim extracted
+    from AI-generated content and verified by an independent LLM (Gemini).
+    Admin can override any verdict and attach manual references.
+    """
+    __tablename__ = 'peer_review_claim'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # What content this claim belongs to
+    content_type = db.Column(db.String(50), nullable=False, index=True)
+    content_id = db.Column(db.String(100), nullable=True, index=True)
+
+    # The claim itself
+    claim_text = db.Column(db.Text, nullable=False)
+    claim_type = db.Column(db.String(30), nullable=True)  # measurement, epidemiology, criteria, dose, guideline
+
+    # Gemini verdict
+    gemini_verdict = db.Column(db.String(20), nullable=False, default='pending')  # agree, disagree, uncertain, pending, error
+    gemini_confidence = db.Column(db.String(10), nullable=True)  # high, medium, low
+    gemini_reasoning = db.Column(db.Text, nullable=True)
+    gemini_correction = db.Column(db.Text, nullable=True)  # Only if disagree
+    gemini_model = db.Column(db.String(50), nullable=True)  # e.g. gemini-2.0-flash
+
+    # Admin override
+    admin_override = db.Column(db.String(20), nullable=True)  # verified, incorrect, dismissed, null=no override
+    admin_notes = db.Column(db.Text, nullable=True)
+    admin_reference_url = db.Column(db.String(500), nullable=True)  # PubMed/Radiopaedia link
+    admin_reference_title = db.Column(db.String(300), nullable=True)
+    reviewed_by_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+
+    # Context metadata (passed to Gemini for accurate verification)
+    context_body_section = db.Column(db.String(100), nullable=True)
+    context_modality = db.Column(db.String(50), nullable=True)
+    context_topic = db.Column(db.String(300), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by_admin_id])
+
+    @property
+    def effective_verdict(self):
+        """Admin override trumps Gemini verdict."""
+        if self.admin_override:
+            return self.admin_override
+        return self.gemini_verdict
+
+    @property
+    def badge_state(self):
+        """Return badge rendering state: agreed, disputed, uncertain, admin_verified, dismissed."""
+        if self.admin_override == 'dismissed':
+            return 'dismissed'
+        if self.admin_override == 'verified':
+            return 'admin_verified'
+        if self.admin_override == 'incorrect':
+            return 'disputed'
+        if self.gemini_verdict == 'agree':
+            return 'agreed'
+        if self.gemini_verdict == 'disagree':
+            return 'disputed'
+        return 'uncertain'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'content_type': self.content_type,
+            'content_id': self.content_id,
+            'claim_text': self.claim_text,
+            'claim_type': self.claim_type,
+            'gemini_verdict': self.gemini_verdict,
+            'gemini_confidence': self.gemini_confidence,
+            'gemini_reasoning': self.gemini_reasoning,
+            'gemini_correction': self.gemini_correction,
+            'admin_override': self.admin_override,
+            'admin_notes': self.admin_notes,
+            'admin_reference_url': self.admin_reference_url,
+            'admin_reference_title': self.admin_reference_title,
+            'effective_verdict': self.effective_verdict,
+            'badge_state': self.badge_state,
+            'context_topic': self.context_topic,
+            'context_body_section': self.context_body_section,
+            'context_modality': self.context_modality,
+            'reviewed_at': self.reviewed_at.isoformat() if self.reviewed_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<PeerReviewClaim {self.id}: {self.claim_text[:50]} [{self.effective_verdict}]>'
+
+    __table_args__ = (
+        db.Index('idx_prc_content', 'content_type', 'content_id'),
+        db.Index('idx_prc_verdict', 'gemini_verdict'),
+        db.Index('idx_prc_override', 'admin_override'),
+    )
