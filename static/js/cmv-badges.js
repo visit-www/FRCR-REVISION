@@ -207,7 +207,7 @@
         if (total === 0) return;
 
         var parts = [];
-        if (aiConfirmed > 0) parts.push(aiConfirmed + ' AI-confirmed');
+        if (aiConfirmed > 0) parts.push(aiConfirmed + ' CMV verified');
         if (expertReviewed > 0) parts.push(expertReviewed + ' verified by expert panel');
 
         containerEl.insertAdjacentHTML('afterbegin',
@@ -279,8 +279,8 @@
                     detailHtml = '<small class="text-muted">Verified by expert panel</small>';
                 }
             } else if (c.badge_state === 'agreed') {
-                statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>AI-Confirmed</span>';
-                detailHtml = '<small class="text-muted">Cross-verified with high confidence</small>';
+                statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>CMV Verified</span>';
+                detailHtml = '<small class="text-muted">Cross-model verified with high confidence</small>';
             } else if (c.badge_state === 'disputed' && c.admin_override === 'incorrect') {
                 // Resolved dispute — show version history
                 statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-history me-1"></i>Refined</span>';
