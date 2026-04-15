@@ -3808,6 +3808,9 @@
     // ── JSON Discussion Renderer (structured data → HTML) ──
     function renderJsonDiscussion(disc) {
         const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+        // Convert ALL CAPS words/phrases (3+ chars) to styled emphasis
+        const emphCaps = s => esc(s).replace(/\b([A-Z]{3,}(?:\s+[A-Z]{3,})*)\b/g,
+            '<strong class="important-text" style="color:#e74c3c;font-weight:700;">$1</strong>');
         const parts = [];
 
         // CSS class map per section type
@@ -3884,10 +3887,10 @@
             // Generic array (strings or objects)
             if (Array.isArray(content)) {
                 const items = content.map(function(item) {
-                    if (typeof item === 'string') return `<li>${esc(item)}</li>`;
+                    if (typeof item === 'string') return `<li>${emphCaps(item)}</li>`;
                     if (typeof item === 'object') {
                         const vals = Object.entries(item).map(function(kv) {
-                            return kv[1] && String(kv[1]) !== 'null' ? `<strong>${esc(kv[0])}:</strong> ${esc(String(kv[1]))}` : '';
+                            return kv[1] && String(kv[1]) !== 'null' ? `<strong>${esc(kv[0])}:</strong> ${emphCaps(String(kv[1]))}` : '';
                         }).filter(Boolean).join(' &mdash; ');
                         return vals ? `<li>${vals}</li>` : '';
                     }
@@ -3899,7 +3902,7 @@
 
             // String content
             if (typeof content === 'string') {
-                parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><p>${esc(content)}</p></div>`);
+                parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><p>${emphCaps(content)}</p></div>`);
             }
         });
 
