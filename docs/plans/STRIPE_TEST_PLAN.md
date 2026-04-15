@@ -1,8 +1,9 @@
 # Stripe Payment Gateway — Comprehensive Test Plan
 
 > **Created:** March 30, 2026
-> **Status:** Planned
-> **Scope:** Full subscription lifecycle testing — signup, trial, upgrade, downgrade, cancellation, edge cases, webhooks
+> **Updated:** April 15, 2026 — lookup keys, 4 tiers, AI action billing, credit pack 25 actions
+> **Status:** Ready to Execute
+> **Scope:** Full subscription lifecycle testing — signup, trial, upgrade, downgrade, cancellation, credit top-ups, edge cases, webhooks
 > **Keyword:** `RADINSIGHTS-STRIPE-TESTS-2026`
 
 ---
@@ -31,19 +32,23 @@
 
 ## 1. Executive Summary
 
-RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first architecture for subscription management. The app has three tiers (Free, Standard at £9/mo, Elite at £29/mo) with a 7-day trial for new free users. This plan covers 60+ test cases across 10 suites verifying the complete payment lifecycle.
+RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first architecture for subscription management. Four tiers: Free, Standard (£9/mo), Elite (£29/mo), Elite Pro (£99/mo) with a 7-day trial for free users. **Prices resolved via Stripe lookup keys** (no price ID env vars). Launch/post-launch auto-switch on 2026-07-17. Billing unit: **AI actions** (not reports). Credit top-up: 25 AI actions for £6. This plan covers 70+ test cases across 11 suites.
 
 **Key files under test:**
-- `stripe_routes.py` — Main routes, checkout, plan changes, webhooks (593 lines)
+- `stripe_routes.py` — Lookup key resolution, checkout, plan changes, credit purchases, webhooks
 - `access_control.py` — `upgrade_to_paid()`, `downgrade_to_free()` helpers
-- `reporting_routes.py` — `_check_ai_rate_limit()`, `TIER_LIMITS`
-- `models.py` — `User` model subscription fields, enums
-- `templates/pricing.html` — Pricing UI, checkout triggers, plan change modal
+- `reporting_routes.py` — `_check_ai_rate_limit()`, `TIER_LIMITS`, credit consumption
+- `models.py` — `User` model subscription fields, `report_credits` for top-ups
+- `templates/pricing.html` — Pricing UI, checkout triggers, plan change modal, credit purchase
+- `templates/smart_reporter.html`, `templates/radiq.html` — Upgrade modals, buy credits
 
 **Architecture pattern:**
+- **Price resolution:** `_resolve_price_id(plan)` → `stripe.Price.list(lookup_keys=[...])` → cached
+- **Pricing phase:** Auto-switch via `POST_LAUNCH_DATE` (2026-07-17) or `PRICING_PHASE` env var
 - **Upgrades:** `Subscription.modify()` + `proration_behavior='create_prorations'` + `billing_cycle_anchor='now'`
 - **Downgrades:** `cancel_at_period_end=True` → webhook handles tier change at period end
 - **Free → Paid:** Stripe Checkout hosted session → `checkout.session.completed` webhook
+- **Credit top-up:** One-time payment → `checkout.session.completed` with `type=credit_pack` metadata → adds 25 AI actions
 - **Webhook is single source of truth** for subscription state
 
 ---
@@ -69,12 +74,13 @@ Account deletion             POST /auth/deactivate           Subscription.cancel
 ```
 subscription_status:  FREE | PAID | CANCELED
 payment_status:       NO_SUBSCRIPTION | ACTIVE | PAST_DUE | CANCELED
-subscription_tier:    'free' | 'standard' | 'elite'
+subscription_tier:    'free' | 'standard' | 'elite' | 'elite_pro'
 stripe_customer_id:   'cus_xxx' (Stripe Customer ID)
 subscription_start_date: DateTime
 subscription_end_date:   DateTime
 trial_started_at:        DateTime (NULL = grandfathered, no trial)
-pending_subscription_tier:       'standard' | 'free' | None
+pending_subscription_tier:       'standard' | 'elite' | 'free' | None
+report_credits:          Integer (purchased AI action credits, consumed when monthly limit hit)
 pending_change_effective_date:   DateTime | None
 sr_usage_month:    Integer (Smart Reporter actions this month)
 radiq_usage_month: Integer (RadIQ queries this month)
@@ -83,12 +89,16 @@ usage_reset_date:  Date (1st of billing month)
 
 ### Tier Limits
 
-| Tier | SR Actions/mo | RadIQ Queries/mo | Trial Days |
-|------|--------------|-------------------|------------|
-| Free | 10 | 5 | 7 |
-| Standard | 75 | 20 | — |
-| Elite | 1,500 | 60 | — |
-| Admin | 9,999 | 9,999 | — |
+| Tier | SR Actions/mo | ~Reports | RadIQ Queries/mo | Trial Days |
+|------|--------------|----------|-------------------|------------|
+| Free | 10 | ~4 | 5 | 7 |
+| Free (post-trial) | 2 | ~1 | 1 | — |
+| Standard | 50 | ~20 | 20 | — |
+| Elite | 160 | ~64 | 50 | — |
+| Elite Pro | 550 | ~220 | 80 | — |
+| Admin | 9,999 | ∞ | 9,999 | — |
+
+> Each AI interaction = 1 action. Report estimates assume ~2.5 actions/report average.
 
 ---
 
@@ -102,21 +112,28 @@ usage_reset_date:  Date (1st of billing month)
   STRIPE_SECRET_KEY=sk_test_...
   STRIPE_PUBLISHABLE_KEY=pk_test_...
   STRIPE_WEBHOOK_SECRET=whsec_...
-  STRIPE_STANDARD_PRICE_ID=price_test_standard_...
-  STRIPE_ELITE_PRICE_ID=price_test_elite_...
   ```
+  No price ID env vars needed — prices resolved via lookup keys at runtime.
+- [ ] **Stripe test-mode products created** with these lookup keys on their prices:
+  - `STRIPE_STANDARD_LAUNCH_PRICE_ID` (£9/mo recurring)
+  - `STRIPE_ELITE_LAUNCH_PRICE_ID` (£29/mo recurring)
+  - `STRIPE_ELITE_PRO_LAUNCH_PRICE_ID` (£99/mo recurring)
+  - `STRIPE_CREDIT_PACK_PRICE_ID` (£6 one-time)
+  - Post-launch keys optional for testing: `STRIPE_STANDARD_POST_LAUNCH_PRICE_ID`, `STRIPE_ELITE_POST_LAUNCH_PRICE_ID`, `STRIPE_ELITE_PRO_POST_LAUNCH_PRICE_ID`
 - [ ] Webhook endpoint registered in Stripe Dashboard: `https://radinsights.xyz/stripe/webhook`
   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
 - [ ] For local testing: Stripe CLI installed (`stripe listen --forward-to localhost:5000/stripe/webhook`)
 - [ ] Test user accounts created (not admin — admin bypasses limits)
+- [ ] Optional: set `PRICING_PHASE=launch` env var to force launch pricing during test
 
 ### 3.2 Test User Matrix
 
 | User | Email | Purpose |
 |------|-------|---------|
 | `test-free@test.com` | Fresh signup, trial testing | Signup & trial |
-| `test-standard@test.com` | Standard subscriber | Upgrade/downgrade |
-| `test-elite@test.com` | Elite subscriber | Downgrade/cancel |
+| `test-standard@test.com` | Standard subscriber | Upgrade/downgrade/credits |
+| `test-elite@test.com` | Elite subscriber | Upgrade/downgrade/credits |
+| `test-elitepro@test.com` | Elite Pro subscriber | Downgrade/cancel/credits |
 | `test-expired@test.com` | Trial-expired user | Expiry wall |
 | `test-edge@test.com` | Edge case testing | Double-click, failures |
 
@@ -207,7 +224,7 @@ if datetime.utcnow() > trial_end:
 | 6 | Verify `subscription_start_date` | Set to now |
 | 7 | Verify `subscription_end_date` | ~30 days from now |
 | 8 | Verify trial is superseded | Trial no longer relevant — paid plan active |
-| 9 | Verify SR limit | 75/month (Standard), NOT 10 (Free) |
+| 9 | Verify SR limit | 50/month (Standard), NOT 10 (Free) |
 
 ### T1.4 — Grandfathered User (No Trial)
 
@@ -230,7 +247,7 @@ if datetime.utcnow() > trial_end:
 | 3 | `POST /stripe/preview-change` | Returns `{ type: 'upgrade', amount_due, credit, new_price }` |
 | 4 | Confirm upgrade in modal | `POST /stripe/change-plan` with `{ plan: 'elite' }` |
 | 5 | Check Stripe API call | `Subscription.modify()` with `proration_behavior='create_prorations'` + `billing_cycle_anchor='now'` |
-| 6 | Verify immediate access | `subscription_tier='elite'` in DB, AI limit = 1500 SR |
+| 6 | Verify immediate access | `subscription_tier='elite'` in DB, AI limit = 160 SR |
 | 7 | Verify Stripe invoice | Prorated credit for unused Standard days, charge for full Elite month |
 | 8 | Verify new billing cycle | Resets to today (not original cycle start) |
 | 9 | Verify `pending_subscription_tier` | NULL (no pending change — immediate upgrade) |
@@ -258,7 +275,7 @@ user.subscription_start_date = datetime.utcnow()
 | 3 | Complete with `4242 4242 4242 4242` | Redirected to `/stripe/success` |
 | 4 | Webhook `checkout.session.completed` | DB updated to `subscription_tier='standard'` |
 | 5 | Verify trial superseded | `subscription_status='paid'`, active Standard plan |
-| 6 | Verify SR limit | 75/month (not 10) |
+| 6 | Verify SR limit | 50/month (not 10) |
 
 ### T2.3 — Free to Elite (First Payment)
 
@@ -268,7 +285,7 @@ user.subscription_start_date = datetime.utcnow()
 | 2 | Click "Get Elite" on `/pricing` | Stripe Checkout session created |
 | 3 | Complete payment | Redirected to success |
 | 4 | Webhook fires | `subscription_tier='elite'`, `subscription_status='paid'` |
-| 5 | Verify SR limit | 1500/month |
+| 5 | Verify SR limit | 160/month |
 
 ### T2.4 — Auto-Checkout via URL Parameter
 
@@ -565,8 +582,8 @@ if current_tier == requested_tier:
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Standard user: 75 SR actions | All succeed |
-| 2 | 76th SR action | Blocked |
+| 1 | Standard user: 50 SR actions | All succeed |
+| 2 | 51st SR action | Blocked (unless user has purchased credits) |
 | 3 | Standard user: 20 RadIQ queries | All succeed |
 | 4 | 21st RadIQ query | Blocked |
 
@@ -574,7 +591,13 @@ if current_tier == requested_tier:
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Elite user: verify 1500 SR / 60 RadIQ limits | Correctly enforced |
+| 1 | Elite user: verify 160 SR / 50 RadIQ limits | Correctly enforced |
+
+### T8.3b — Elite Pro Tier Limits
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Elite Pro user: verify 550 SR / 80 RadIQ limits | Correctly enforced |
 
 ### T8.4 — Monthly Reset
 
@@ -590,7 +613,7 @@ if current_tier == requested_tier:
 |------|--------|-----------------|
 | 1 | Free user at 10/10 SR limit | Blocked |
 | 2 | User upgrades to Standard | |
-| 3 | Verify new limit applies | 75/month, counter may or may not reset (verify behavior) |
+| 3 | Verify new limit applies | 50/month (Standard), counter may or may not reset (verify behavior) |
 
 ### T8.6 — Admin Bypass
 
@@ -607,12 +630,15 @@ if current_tier == requested_tier:
 
 | Test | Scenario | Expected UI |
 |------|----------|-------------|
-| 9.1a | Anonymous visitor | 3 tiers shown, "Sign Up" CTAs |
-| 9.1b | Free user (trial active) | "Trial: X days left" badge, "Get Standard" / "Get Elite" buttons |
+| 9.1a | Anonymous visitor | 4 tiers shown (Free/Standard/Elite/Elite Pro), "Sign Up" CTAs |
+| 9.1b | Free user (trial active) | "Trial: X days left" badge, upgrade buttons for Standard/Elite/Elite Pro |
 | 9.1c | Free user (trial expired) | "Trial expired" warning, upgrade CTAs prominent |
-| 9.1d | Standard subscriber | "Current Plan" badge on Standard, "Upgrade" on Elite, "Downgrade" to Free |
-| 9.1e | Elite subscriber | "Current Plan" badge on Elite, "Downgrade" to Standard/Free |
-| 9.1f | Pending downgrade | Yellow banner: "Switching to [plan] on [date]" with "Undo" button |
+| 9.1d | Standard subscriber | "Current Plan" on Standard, "Upgrade" on Elite/Elite Pro, "Downgrade" to Free, **credit top-up section visible** |
+| 9.1e | Elite subscriber | "Current Plan" on Elite, "Upgrade" on Elite Pro, "Downgrade" to Standard/Free, **credit top-up section visible** |
+| 9.1f | Elite Pro subscriber | "Current Plan" on Elite Pro, "Downgrade" to Elite/Standard/Free, **credit top-up section visible** |
+| 9.1g | Pending downgrade | Yellow banner: "Switching to [plan] on [date]" with "Undo" button |
+| 9.1h | All tiers show AI actions | "50 AI actions/month (~20 reports)" format, NOT just "20 reports/month" |
+| 9.1i | Explanatory note visible | Below comparison table: how AI actions work, estimates are averages |
 
 ### T9.2 — Plan Change Modal
 
@@ -786,9 +812,28 @@ class TestRateLimiting:
     def test_free_tier_radiq_limit(self)
     def test_standard_tier_limits(self)
     def test_elite_tier_limits(self)
+    def test_elite_pro_tier_limits(self)
     def test_admin_bypass(self)
     def test_monthly_reset(self)
     def test_trial_expired_blocks(self)
+
+class TestCreditTopUp:
+    def test_buy_credits_paid_user(self)
+    def test_buy_credits_free_user_blocked(self)
+    def test_credits_consumed_after_monthly_limit(self)
+    def test_credits_not_consumed_before_limit(self)
+    def test_buy_credits_radiq_also_works(self)
+    def test_webhook_adds_25_action_credits(self)
+
+class TestLookupKeys:
+    def test_resolve_price_id_standard(self)
+    def test_resolve_price_id_elite(self)
+    def test_resolve_price_id_elite_pro(self)
+    def test_resolve_price_id_credit_pack(self)
+    def test_pricing_phase_launch(self)
+    def test_pricing_phase_post_launch(self)
+    def test_pricing_phase_env_override(self)
+    def test_tier_from_subscription_both_phases(self)
 ```
 
 ### 16.2 Manual Test Checklist Template
@@ -799,22 +844,35 @@ Tester: __________
 Environment: ☐ Local ☐ Staging ☐ Production
 Stripe Mode: ☐ Test ☐ Live
 
-Test ID | Description                      | Pass/Fail | Notes
---------|----------------------------------|-----------|------
-T1.1    | Free signup → trial 7 days       |           |
-T1.2    | Trial expiry wall (Day 8)        |           |
-T1.3    | Direct paid signup               |           |
-T2.1    | Standard → Elite (mid-month)     |           |
-T2.2    | Free → Standard                  |           |
-T3.1    | Elite → Standard (scheduled)     |           |
-T3.2    | Standard → Free (cancel)         |           |
-T3.4    | Undo scheduled downgrade         |           |
-T4.1    | Account deletion (paid)          |           |
-T5.1    | Card declined at checkout        |           |
-T5.3    | 3D Secure challenge              |           |
-T6.1    | Double-click upgrade             |           |
-T8.1    | Free tier SR limit (10)          |           |
-T9.1    | Pricing page display states      |           |
+Test ID | Description                          | Pass/Fail | Notes
+--------|--------------------------------------|-----------|------
+T1.1    | Free signup → trial 7 days           |           |
+T1.2    | Trial expiry wall (Day 8)            |           |
+T1.3    | Direct paid signup                   |           |
+T2.1    | Standard → Elite (mid-month)         |           |
+T2.2    | Free → Standard                      |           |
+T2.5    | Free → Elite Pro                     |           |
+T2.6    | Standard → Elite Pro                 |           |
+T3.1    | Elite → Standard (scheduled)         |           |
+T3.2    | Standard → Free (cancel)             |           |
+T3.5    | Elite Pro → Elite (scheduled)        |           |
+T3.4    | Undo scheduled downgrade             |           |
+T4.1    | Account deletion (paid)              |           |
+T5.1    | Card declined at checkout            |           |
+T5.3    | 3D Secure challenge                  |           |
+T6.1    | Double-click upgrade                 |           |
+T8.1    | Free tier SR limit (10)              |           |
+T8.2    | Standard tier SR limit (50)          |           |
+T8.3    | Elite tier SR limit (160)            |           |
+T8.3b   | Elite Pro tier SR limit (550)        |           |
+T9.1    | Pricing page: 4 tiers + AI actions   |           |
+T11.1   | Buy credits (paid user)              |           |
+T11.2   | Buy credits (free user blocked)      |           |
+T11.3   | Credits consumed after limit hit     |           |
+T11.4   | Credits for RadIQ after limit hit    |           |
+T12.1   | Lookup key resolves (launch phase)   |           |
+T12.2   | Phase auto-switch logic              |           |
+T12.3   | PRICING_PHASE env override           |           |
 ```
 
 ---
@@ -826,7 +884,7 @@ T9.1    | Pricing page display states      |           |
 Before running any test:
 - [ ] Stripe Dashboard is in **Test mode**
 - [ ] Webhook endpoint is receiving events (check Stripe Dashboard → Webhooks → Recent events)
-- [ ] Test price IDs are configured in `.env`
+- [ ] Stripe test-mode products have correct lookup keys on prices
 - [ ] Local DB has test users (or create fresh)
 - [ ] Stripe CLI forwarding is active (if testing locally)
 
@@ -843,22 +901,28 @@ After each test session:
 | Suite | Tests | Priority | Automation |
 |-------|-------|----------|------------|
 | 1. Signup & Trial | 4 | P0 | Automated |
-| 2. Upgrades | 4 | P0 | Automated |
-| 3. Downgrades | 4 | P0 | Automated |
+| 2. Upgrades | 6 | P0 | Automated |
+| 3. Downgrades | 5 | P0 | Automated |
 | 4. Cancellation | 3 | P1 | Automated |
 | 5. Payment Failures | 5 | P1 | Semi-auto (needs test cards) |
 | 6. Edge Cases | 7 | P1 | Automated |
 | 7. Webhooks | 7+ | P0 | Automated |
-| 8. Rate Limiting | 6 | P1 | Automated |
-| 9. UI/UX | 12 | P2 | Manual |
+| 8. Rate Limiting | 8 | P1 | Automated |
+| 9. UI/UX | 15+ | P2 | Manual |
 | 10. Security | 4+ | P1 | Automated |
-| **Total** | **56+** | | |
+| 11. Credit Top-Ups | 6 | P0 | Automated |
+| 12. Lookup Keys & Pricing Phase | 8 | P0 | Automated |
+| **Total** | **78+** | | |
 
 ---
 
 > **Next steps:**
-> 1. Set up Stripe test mode with correct price IDs
-> 2. Create test users
-> 3. Run T1.x (signup/trial) suite first
-> 4. Run T7.x (webhook) suite to verify webhook-first architecture
-> 5. Run remaining suites in priority order
+> 1. Create test-mode Stripe products with correct lookup keys on prices
+> 2. Create test users (6 accounts: free, standard, elite, elite_pro, expired, edge)
+> 3. Run T12.x (lookup keys) first — verify prices resolve correctly
+> 4. Run T1.x (signup/trial) suite
+> 5. Run T2.x (upgrades) including Elite Pro paths
+> 6. Run T11.x (credit top-ups) — buy, consume, verify RadIQ credits
+> 7. Run T7.x (webhooks) — verify webhook-first architecture
+> 8. Run T9.x (UI/UX) — verify all 4 tiers show correctly with AI action counts
+> 9. Run remaining suites in priority order

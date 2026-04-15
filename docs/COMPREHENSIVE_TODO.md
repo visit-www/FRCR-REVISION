@@ -182,8 +182,8 @@
 | 79 | Vetting Tool — TinyMCE Inline Editing on Output | TODO | Output sections (clinical details, shorthand, detailed protocol) are read-only with copy buttons. Add inline editing so users can tweak before copying. |
 | 80 | Vetting Tool — Publish Draft Protocols & Algorithms | TODO | 49 admin protocols in draft, 20 algorithms in draft. Need admin review, verification, and publishing to make them available in the protocol picker during vetting. |
 | 81 | Vetting Tool — Protocol Usage Analytics | TODO | Track which protocols are used most frequently via VettingSession.protocol_id. Display usage count in admin protocol list. |
-| 82 | Create Elite Pro price in Stripe dashboard | TODO | Create a new recurring price in Stripe for Elite Pro tier: £99/mo (launch) / £120/mo (post-launch). Note the price ID. |
-| 83 | Set STRIPE_ELITE_PRO_PRICE_ID env var on Vercel | TODO | After creating the Stripe price (#82), set `STRIPE_ELITE_PRO_PRICE_ID` env var in Vercel project settings. Code in `stripe_routes.py` already reads this var. |
+| 82 | Create Elite Pro price in Stripe dashboard | DONE | Created all Stripe products with lookup keys: Standard, Elite, Elite Pro (launch + post-launch prices), Credit Pack. No price ID env vars needed — resolved via lookup keys at runtime. |
+| 83 | ~~Set STRIPE_ELITE_PRO_PRICE_ID env var on Vercel~~ | DONE | No longer needed — switched to Stripe lookup keys. Old price ID env vars can be removed from Vercel. |
 | 84 | Smart Reporter — Regeneration workflow | DONE | Finalize→Regenerate button transformation, confirm dialog, Go+Cancel buttons, regen question prefix ("Rewrite and finalize..."), auto-insert into PACS, Opus routing. E2E tested Apr 2026. |
 | 85 | Smart Reporter — Post-finalization UX polish | DONE | Sonnet full_report frontend guard, stale report text cleanup, model badge on all endpoints, Changes Made auto-collapse, markdown rendering, fill-in edit guard, textarea resize fix. |
 | 86 | Smart Reporter — Action card management | DONE | MDT/Email replace-on-regen with confirmation, SBA/Viva always stack new cards, collapsible action history, MDT switched from Haiku to Sonnet. |
