@@ -253,7 +253,7 @@
         var html = '<div class="cmv-verification-log mt-4">' +
             '<div class="cmv-vlog-toggle" onclick="this.parentElement.classList.toggle(\'cmv-vlog-expanded\')">' +
             '<i class="fas fa-shield-alt me-2"></i>' +
-            '<span>Verification Log</span>' +
+            '<span>Peer Review Log</span>' +
             '<span class="badge bg-light text-dark border ms-2">' + tableClaims.length + ' claims</span>' +
             '<i class="fas fa-chevron-down cmv-vlog-arrow ms-auto"></i>' +
             '</div>' +
