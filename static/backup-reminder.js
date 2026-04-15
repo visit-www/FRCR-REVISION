@@ -88,7 +88,7 @@ class BackupReminder {
                 </p>
                 <p class="mb-3">Keep your data safe by downloading a backup now!</p>
                 <div class="d-grid gap-2">
-                    <a href="/admin/backup" class="btn btn-success btn-sm">
+                    <a href="/api/backup/manager" class="btn btn-success btn-sm">
                         <i class="bi fas fa-download"></i> Go to Backup Manager
                     </a>
                     <button class="btn btn-outline-secondary btn-sm" data-dismiss="reminder">

@@ -1134,9 +1134,12 @@ def _build_backup_data():
             'walkthrough_answers_json': rs.walkthrough_answers_json,
             'report_text': rs.report_text,
             'status': rs.status, 'provider': rs.provider,
-            'model_name': rs.model_name, 'tokens_used': rs.tokens_used,
+            'model_name': rs.model_name,
+            'generation_tokens': rs.generation_tokens,
+            'ask_claude_count': rs.ask_claude_count,
             'created_at': rs.created_at.isoformat() if rs.created_at else None,
             'completed_at': rs.completed_at.isoformat() if rs.completed_at else None,
+            'updated_at': rs.updated_at.isoformat() if rs.updated_at else None,
         })
 
     for pr in PublishedReport.query.all():
@@ -4514,7 +4517,8 @@ def restore_backup():
                 status=rs_data.get('status'),
                 provider=rs_data.get('provider'),
                 model_name=rs_data.get('model_name'),
-                tokens_used=rs_data.get('tokens_used'),
+                generation_tokens=rs_data.get('generation_tokens'),
+                ask_claude_count=rs_data.get('ask_claude_count', 0),
             )
             if rs_data.get('created_at'):
                 rs.created_at = _parse_datetime_for_sqlite(rs_data['created_at']) or datetime.utcnow()
