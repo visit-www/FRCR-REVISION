@@ -573,7 +573,7 @@ def generate_tnm_intelligence_api():
     module = data.get('module', '').strip() or None
     body_part = data.get('body_part', '').strip() or None
     case_id = data.get('case_id')
-    model = data.get('model', 'claude-sonnet-4-5-20250929')  # Default to Sonnet for cost efficiency
+    model = data.get('model', 'claude-sonnet-4-6')  # Default to Sonnet for cost efficiency
 
     try:
         from ai_tnm import generate_tnm_intelligence, _map_to_ajcc_site

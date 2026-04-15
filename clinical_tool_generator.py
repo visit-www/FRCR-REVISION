@@ -1023,7 +1023,7 @@ def generate_clinical_tool(topic, mode='full_tool', context=None, resources=None
         )
         system_prompt = RT_SYSTEM_PROMPT
 
-    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     text, used_model, token_count = _call_claude(
         system_prompt=system_prompt,

@@ -968,7 +968,7 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
     Returns:
         dict with: title, content_html, source, model, token_count, radiopaedia_image
     """
-    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     prompt = ANATOMY_PROMPT.format(
         topic=topic,
@@ -1217,7 +1217,7 @@ def generate_radiology_template(clinical_scenario, modality='', body_section='',
         resources_section=resources_section,
     )
 
-    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     text, model, tokens = _call_claude(
         system_prompt=RADIOLOGY_TEMPLATE_SYSTEM_PROMPT,
@@ -1581,7 +1581,7 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         report_status_section=report_status_section,
     )
 
-    effective_model = model_override or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    effective_model = model_override or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     # Opus (finalize/review): lower temperature for consistent, reproducible output
     # Sonnet (advisory/follow-up): slightly higher for natural knowledge responses
@@ -2239,7 +2239,7 @@ def generate_mdt_summary_for_case(context):
     summary_text, model_used, tokens = _call_claude(
         system_prompt=MDT_SYSTEM_PROMPT,
         user_prompt=user_prompt,
-        model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929"),
+        model=os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6"),
         max_tokens=1100,   # 320-word output + 8 sections + guideline citations
         temperature=0.2,   # low temp for consistency + reduced hallucination
         timeout=60,
@@ -2486,7 +2486,7 @@ def generate_report_action(report_text, action, clinical_question='',
         f"{insight_context}"
     )
 
-    model = ACTION_MODELS.get(action, os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929"))
+    model = ACTION_MODELS.get(action, os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6"))
     max_tokens = ACTION_TOKEN_LIMITS.get(action, 1500)
 
     html_text, model_used, tokens = _call_claude(

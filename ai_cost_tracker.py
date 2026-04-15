@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 MODEL_COSTS = {
     # Sonnet family
-    'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
+    'claude-sonnet-4-6': {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-6':          {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
     # Opus family

@@ -156,7 +156,7 @@ def generate_pearl(topic, modality='', body_section='', additional_context=''):
     Raises:
         PearlGeneratorError on failure
     """
-    model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+    model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
 
     user_prompt = PEARL_USER_PROMPT.format(
         topic=topic,
