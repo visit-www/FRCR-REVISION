@@ -80,71 +80,84 @@
 
             unplaced.push({
                 el: el,
-                full: claimText.replace(/\s+/g, ' '),
-                w5: words.length >= 5 ? words.slice(0, 5).join(' ') : '',
-                w3: words.length >= 3 ? words.slice(0, 3).join(' ') : '',
-                wLast3: words.length >= 3 ? words.slice(-3).join(' ') : '',
+                claim: claim,
+                full: claimText.replace(/\s+/g, ' ').toLowerCase(),
+                w8: words.length >= 8 ? words.slice(0, 8).join(' ').toLowerCase() : '',
+                w5: words.length >= 5 ? words.slice(0, 5).join(' ').toLowerCase() : '',
+                w3: words.length >= 3 ? words.slice(0, 3).join(' ').toLowerCase() : '',
+                wLast5: words.length >= 5 ? words.slice(-5).join(' ').toLowerCase() : '',
             });
         });
 
-        function tryPlace(searchText, item) {
+        // Collect all content elements (li, td, p, div with data-field) that hold text
+        var contentEls = [];
+        containerEl.querySelectorAll('li, td, p, div[data-field]').forEach(function(el) {
+            // Skip elements that are just containers of other content elements
+            if (el.tagName === 'DIV' && el.querySelector('ul, ol, table, p')) return;
+            var text = (el.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (text.length > 3) {
+                contentEls.push({ el: el, text: text });
+            }
+        });
+
+        function tryPlaceOnElement(searchText, item) {
             if (!searchText || searchText.length < 4) return false;
-            var searchLower = searchText.toLowerCase();
-            var walker = document.createTreeWalker(containerEl, NodeFilter.SHOW_TEXT, null, false);
-            var node;
-            while (node = walker.nextNode()) {
-                if (badgedNodes.has(node)) continue;
-                var textNorm = node.textContent.replace(/\s+/g, ' ');
-                var pos = textNorm.toLowerCase().indexOf(searchLower);
-                if (pos === -1) continue;
-                if (node.nextSibling && node.nextSibling.classList && node.nextSibling.classList.contains('cmv-badge')) continue;
-                var origPos = 0, normIdx = 0;
-                while (normIdx < pos + searchText.length && origPos < node.textContent.length) {
-                    if (/\s/.test(node.textContent[origPos])) {
-                        while (origPos + 1 < node.textContent.length && /\s/.test(node.textContent[origPos + 1])) origPos++;
-                    }
-                    origPos++; normIdx++;
+            // Find the best matching element — prefer longest overlap
+            var bestEl = null;
+            var bestScore = 0;
+            for (var i = 0; i < contentEls.length; i++) {
+                var ce = contentEls[i];
+                if (badgedNodes.has(ce.el)) continue;
+                if (ce.text.indexOf(searchText) !== -1) {
+                    // Full match — score by specificity (shorter element = more specific)
+                    var score = searchText.length / ce.text.length;
+                    if (score > bestScore) { bestScore = score; bestEl = ce; }
                 }
-                var splitPos = Math.min(origPos, node.textContent.length);
-                var afterText = node.splitText(splitPos);
-                node.parentNode.insertBefore(document.createTextNode(' '), afterText);
-                node.parentNode.insertBefore(item.el, afterText);
-                badgedNodes.add(node);
-                badgedNodes.add(afterText);
+            }
+            if (bestEl) {
+                // Avoid duplicate badge on same element
+                if (bestEl.el.querySelector('.cmv-badge')) {
+                    // Already has a badge — append after existing
+                    bestEl.el.appendChild(document.createTextNode(' '));
+                    bestEl.el.appendChild(item.el);
+                } else {
+                    bestEl.el.appendChild(document.createTextNode(' '));
+                    bestEl.el.appendChild(item.el);
+                }
+                badgedNodes.add(bestEl.el);
                 return true;
             }
             return false;
         }
 
-        // Tiered search: full → 5 words → 3 words → last 3 words
-        unplaced = unplaced.filter(function(i) { return !tryPlace(i.full, i); });
-        unplaced = unplaced.filter(function(i) { return !tryPlace(i.w5, i); });
-        unplaced = unplaced.filter(function(i) { return !tryPlace(i.w3, i); });
-        unplaced = unplaced.filter(function(i) { return !tryPlace(i.wLast3, i); });
+        // Tiered element-level search: full → 8 words → 5 words → 3 words → last 5 words
+        unplaced = unplaced.filter(function(i) { return !tryPlaceOnElement(i.full, i); });
+        unplaced = unplaced.filter(function(i) { return !tryPlaceOnElement(i.w8, i); });
+        unplaced = unplaced.filter(function(i) { return !tryPlaceOnElement(i.w5, i); });
+        unplaced = unplaced.filter(function(i) { return !tryPlaceOnElement(i.w3, i); });
+        unplaced = unplaced.filter(function(i) { return !tryPlaceOnElement(i.wLast5, i); });
 
-        // Show unplaced badges (especially disputed ones) in a summary block
-        if (unplaced.length > 0) {
-            var disputedUnplaced = unplaced.filter(function(i) {
-                return i.el.classList.contains('cmv-badge-disputed');
+        // Any remaining unplaced disputed/uncertain badges — show in summary block
+        var importantUnplaced = unplaced.filter(function(i) {
+            return i.claim.badge_state === 'disputed' || i.claim.badge_state === 'uncertain';
+        });
+        if (importantUnplaced.length > 0) {
+            var block = document.createElement('div');
+            block.className = 'cmv-unplaced-disputed mt-3 p-2 border border-danger rounded';
+            block.style.cssText = 'background:#fff5f5;';
+            block.innerHTML = '<strong class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Disputed / Uncertain Claims:</strong>';
+            var list = document.createElement('ul');
+            list.className = 'mb-0 mt-1 small';
+            importantUnplaced.forEach(function(i) {
+                var li = document.createElement('li');
+                li.className = i.claim.badge_state === 'disputed' ? 'text-danger' : 'text-warning';
+                li.textContent = i.claim.claim_text;
+                li.appendChild(document.createTextNode(' '));
+                li.appendChild(i.el);
+                list.appendChild(li);
             });
-            if (disputedUnplaced.length > 0) {
-                var block = document.createElement('div');
-                block.className = 'cmv-unplaced-disputed mt-3 p-2 border border-danger rounded';
-                block.style.cssText = 'background:#fff5f5;';
-                block.innerHTML = '<strong class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Disputed Claims:</strong>';
-                var list = document.createElement('ul');
-                list.className = 'mb-0 mt-1 small';
-                disputedUnplaced.forEach(function(i) {
-                    var li = document.createElement('li');
-                    li.className = 'text-danger';
-                    li.textContent = i.full;
-                    li.appendChild(document.createTextNode(' '));
-                    li.appendChild(i.el);
-                    list.appendChild(li);
-                });
-                block.appendChild(list);
-                containerEl.appendChild(block);
-            }
+            block.appendChild(list);
+            containerEl.appendChild(block);
         }
     }
 
