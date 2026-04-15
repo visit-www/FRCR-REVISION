@@ -3813,7 +3813,7 @@
         // Style ALL CAPS content:
         // 1. Safety words (NEVER, DO NOT...) → bold + red underline
         // 2. Lead-in phrases (DUAL BLOOD SUPPLY:, STEP 1 —) → grey background label
-        const _safetyWords = /\b(NEVER|ALWAYS|DO NOT|MUST NOT|CRITICAL|WARNING|CAUTION|IMPORTANT|MANDATORY|CONTRAINDICATED)\b/g;
+        const _safetyWords = /\b(NEVER|ALWAYS|DO NOT|MUST NOT|CRITICAL|WARNING|CAUTION|IMPORTANT|MANDATORY|CONTRAINDICATED|STEP \d+)\b/g;
         // Match ALL CAPS phrase (2+ words of 2+ caps letters each) followed by : or —
         const _leadIn = /^([A-Z][A-Z0-9 —–\-]{4,}(?::|—|–))/gm;
         const emphCaps = function(s) {
