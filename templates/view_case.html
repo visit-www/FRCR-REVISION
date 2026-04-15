@@ -3810,19 +3810,20 @@
         const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
         // Convert ALL CAPS safety phrases to subtle emphasis — skip medical abbreviations
         // Only match multi-word caps phrases (DO NOT, NEVER USE, ALWAYS CHECK) or known safety words
-        // Safety words: bold + red underline. Medical abbreviations: faint grey pill.
+        // Style ALL CAPS content:
+        // 1. Safety words (NEVER, DO NOT...) → bold + red underline
+        // 2. Lead-in phrases (DUAL BLOOD SUPPLY:, STEP 1 —) → grey background label
         const _safetyWords = /\b(NEVER|ALWAYS|DO NOT|MUST NOT|CRITICAL|WARNING|CAUTION|IMPORTANT|MANDATORY|CONTRAINDICATED)\b/g;
-        const _medAbbrev = /\b([A-Z]{2,}(?:-[A-Z]{2,})*)\b/g;
+        // Match ALL CAPS phrase (2+ words of 2+ caps letters each) followed by : or —
+        const _leadIn = /^([A-Z][A-Z0-9 —–\-]{4,}(?::|—|–))/gm;
         const emphCaps = function(s) {
             let out = esc(s);
-            // First: safety words → bold red underline
+            // Safety words → bold red underline
             out = out.replace(_safetyWords,
                 '<strong style="font-weight:700;text-decoration:underline;text-decoration-color:#e74c3c;text-underline-offset:2px;">$1</strong>');
-            // Second: remaining medical abbreviations (2+ caps letters) → grey pill
-            out = out.replace(_medAbbrev, function(match) {
-                // Skip if already wrapped in <strong> (safety word)
-                return `<span style="background:#f0f1f3;padding:0 4px;border-radius:3px;font-size:0.92em;letter-spacing:0.3px;">${match}</span>`;
-            });
+            // Lead-in caps phrases → grey background label
+            out = out.replace(_leadIn,
+                '<span style="background:#f0f1f3;padding:1px 6px;border-radius:3px;font-weight:600;font-size:0.88em;letter-spacing:0.3px;">$1</span>');
             return out;
         };
         const parts = [];
