@@ -3529,6 +3529,37 @@ def update_cmv_claim(claim_id):
     return jsonify({'success': True, 'claim': claim.to_dict()})
 
 
+@admin_bp.route('/peer-review/batch-admin-verify', methods=['POST'])
+@require_admin
+def batch_admin_verify_claims():
+    """Batch admin-verify multiple claims in a single transaction."""
+    from models import PeerReviewClaim
+
+    data = request.get_json() or {}
+    claim_ids = data.get('claim_ids', [])
+    override = data.get('admin_override', 'verified')
+    notes = data.get('admin_notes', 'Batch admin-verified (agreed by CMV)')
+
+    if not claim_ids:
+        return jsonify({'error': 'No claim_ids provided'}), 400
+
+    updated = 0
+    for cid in claim_ids:
+        claim = PeerReviewClaim.query.get(cid)
+        if not claim:
+            continue
+        claim.admin_override = override
+        claim.admin_notes = notes
+        claim.reviewed_by_admin_id = current_user.id
+        claim.reviewed_at = datetime.utcnow()
+        updated += 1
+
+    db.session.commit()
+    logger.info("Admin %s batch-verified %d claims (override=%s)", current_user.email, updated, override)
+
+    return jsonify({'success': True, 'updated': updated, 'total': len(claim_ids)})
+
+
 @admin_bp.route('/peer-review/claims/<int:claim_id>', methods=['DELETE'])
 @require_admin
 def delete_cmv_claim(claim_id):

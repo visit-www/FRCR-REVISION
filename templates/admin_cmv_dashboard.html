@@ -345,19 +345,21 @@ function batchAdminVerifyAgreed() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Verifying...';
 
-    // Batch PATCH each claim with admin_override = 'verified'
-    Promise.all(selected.map(claimId =>
-        fetch(`/api/admin/peer-review/claims/${claimId}`, {
-            method: 'PATCH',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ admin_override: 'verified', admin_notes: 'Batch admin-verified (agreed by CMV)' }),
-        }).then(r => r.json())
-    ))
-    .then(results => {
-        const ok = results.filter(r => r.success).length;
+    // Single request — all claims updated in one DB transaction
+    fetch('/api/admin/peer-review/batch-admin-verify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ claim_ids: selected, admin_override: 'verified', admin_notes: 'Batch admin-verified (agreed by CMV)' }),
+    })
+    .then(r => r.json())
+    .then(data => {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check-double me-1"></i>Admin Verify All Agreed';
-        alert(`${ok} of ${selected.length} claims admin-verified.`);
+        if (data.success) {
+            alert(`${data.updated} of ${data.total} claims admin-verified.`);
+        } else {
+            alert(data.error || 'Batch verify failed');
+        }
         loadClaims(currentPage);
     })
     .catch(err => {
