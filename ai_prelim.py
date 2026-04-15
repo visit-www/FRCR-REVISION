@@ -218,7 +218,6 @@ GUIDELINES:
   • Include specific measurements, thresholds, and criteria where they exist
   • Each section should be self-contained
   • Plain text only in all fields — NO HTML tags, NO markdown
-  • You may use ALL CAPS sparingly for critical safety warnings (e.g., "NEVER", "DO NOT")
   • Prioritise what changes management over encyclopaedic completeness"""
 
     # Section 3: Safety checklist
