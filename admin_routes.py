@@ -3448,6 +3448,7 @@ def list_cmv_claims():
     from models import PeerReviewClaim
 
     content_type = request.args.get('content_type', '')
+    content_id = request.args.get('content_id', '')
     verdict = request.args.get('verdict', '')
     override = request.args.get('override', '')
     page = request.args.get('page', 1, type=int)
@@ -3457,6 +3458,8 @@ def list_cmv_claims():
 
     if content_type:
         query = query.filter_by(content_type=content_type)
+    if content_id:
+        query = query.filter_by(content_id=str(content_id))
     if verdict:
         query = query.filter_by(gemini_verdict=verdict)
     if override == 'has_override':

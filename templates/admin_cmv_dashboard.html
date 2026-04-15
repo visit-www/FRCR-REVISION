@@ -76,9 +76,9 @@
                 <div class="col-md-2">
                     <label class="form-label small mb-1">Show</label>
                     <select class="form-select form-select-sm" id="verify-show" onchange="searchVerifyContent()">
-                        <option value="unverified">Unverified only</option>
+                        <option value="unverified">CMV Pending</option>
                         <option value="all">All</option>
-                        <option value="verified">Verified only</option>
+                        <option value="verified">CMV Done</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -90,12 +90,15 @@
                     <div id="verify-selected" class="form-control form-control-sm bg-light text-muted" style="min-height:31px;font-size:0.8rem;">None</div>
                     <input type="hidden" id="verify-id">
                 </div>
-                <div class="col-auto d-flex align-items-end gap-1">
-                    <button class="btn btn-sm btn-brand-primary" onclick="verifySingle()" id="verify-single-btn" title="Verify selected item">
-                        <i class="fas fa-shield-alt me-1"></i>Verify
+                <div class="col-auto d-flex align-items-end gap-1 flex-wrap">
+                    <button class="btn btn-sm btn-brand-primary" onclick="verifySingle()" id="verify-single-btn" title="Run CMV peer review on selected item">
+                        <i class="fas fa-shield-alt me-1"></i>Peer Review (Single)
                     </button>
-                    <button class="btn btn-sm btn-outline-warning" onclick="bulkVerifyType()" id="bulk-type-btn" title="Verify all unverified items of this content type">
-                        <i class="fas fa-robot me-1"></i>Verify All
+                    <button class="btn btn-sm btn-outline-info" onclick="verifySelectedMultiple()" id="verify-selected-btn" title="Run CMV peer review on checked items in the list (max 10)">
+                        <i class="fas fa-tasks me-1"></i>Peer Review Selected
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="bulkVerifyType()" id="bulk-type-btn" title="Run CMV peer review on all unverified items of this content type">
+                        <i class="fas fa-robot me-1"></i><span id="bulk-type-label">Peer Review All</span>
                     </button>
                 </div>
                 <div class="col-auto d-flex align-items-end" id="verify-single-result"></div>
@@ -121,6 +124,11 @@
                         <option value="no_override">Not Reviewed</option>
                     </select>
                 </div>
+                <div class="col-auto ms-auto">
+                    <button class="btn btn-sm btn-outline-success" onclick="batchAdminVerifyAgreed()" id="batch-verify-btn" title="Admin-verify all agreed claims for the selected content item">
+                        <i class="fas fa-check-double me-1"></i>Admin Verify All Agreed
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -136,21 +144,25 @@
                         overflow-wrap: break-word;
                     }
                     #cmv-claims-table { table-layout: fixed; width: 100%; }
+                    .claim-row-selectable { cursor: pointer; }
+                    .claim-row-selectable:hover td { background: #f0f7ff; }
+                    .claim-row-selected td { background: #d4edff !important; }
                 </style>
                 <table class="table table-hover mb-0" id="cmv-claims-table">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:4%">#</th>
+                            <th style="width:3%"><input type="checkbox" id="select-all-claims" onchange="toggleSelectAllClaims(this)" title="Select all agreed claims"></th>
+                            <th style="width:3%">#</th>
                             <th style="width:8%">Type</th>
                             <th style="width:25%">Claim</th>
                             <th style="width:8%">Verdict</th>
                             <th style="width:5%">Conf.</th>
-                            <th style="width:35%">Reasoning</th>
+                            <th style="width:33%">Reasoning</th>
                             <th style="width:15%">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="claims-body">
-                        <tr><td colspan="7" class="text-center text-muted py-4">Loading...</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -214,13 +226,20 @@ let editingClaimId = null;
 
 function loadClaims(page) {
     currentPage = page || 1;
+    const ctype = document.getElementById('verify-type').value;
+    const selectedId = document.getElementById('verify-id').value;
+
     const params = new URLSearchParams({
         page: currentPage,
         per_page: 50,
-        content_type: document.getElementById('verify-type').value,
+        content_type: ctype,
         verdict: document.getElementById('filter-verdict').value,
         override: document.getElementById('filter-override').value,
     });
+    // If a specific content item is selected, filter claims to just that item
+    if (selectedId) {
+        params.set('content_id', selectedId);
+    }
 
     fetch(`/api/admin/peer-review/claims?${params}`)
         .then(r => r.json())
@@ -234,7 +253,7 @@ function loadClaims(page) {
 
             const tbody = document.getElementById('claims-body');
             if (!data.claims || data.claims.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No claims found. Select a content type and click Verify to get started.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No claims found. Select a content type and click Peer Review to get started.</td></tr>';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
@@ -257,7 +276,14 @@ function loadClaims(page) {
 
                 const typeShort = (c.content_type || '').replace('report_action_', '').replace('_', ' ');
 
+                // Only agreed claims without admin override can be batch-verified
+                const canBatchVerify = c.gemini_verdict === 'agree' && !c.admin_override;
+                const checkbox = canBatchVerify
+                    ? `<input type="checkbox" class="claim-checkbox" value="${c.id}" data-verdict="${c.gemini_verdict}">`
+                    : `<span class="text-muted" title="${c.admin_override ? 'Already reviewed' : 'Only agreed claims can be batch verified'}">—</span>`;
+
                 return `<tr>
+                    <td>${checkbox}</td>
                     <td class="small">${c.id}</td>
                     <td><small class="text-muted">${typeShort}</small></td>
                     <td class="small">${escHtml(c.claim_text || '')}</td>
@@ -288,8 +314,49 @@ function loadClaims(page) {
             document.getElementById('pagination').innerHTML = pagHtml;
         })
         .catch(err => {
-            document.getElementById('claims-body').innerHTML = `<tr><td colspan="7" class="text-danger">${err.message}</td></tr>`;
+            document.getElementById('claims-body').innerHTML = `<tr><td colspan="8" class="text-danger">${err.message}</td></tr>`;
         });
+}
+
+function toggleSelectAllClaims(masterCheckbox) {
+    document.querySelectorAll('.claim-checkbox').forEach(cb => {
+        cb.checked = masterCheckbox.checked;
+    });
+}
+
+function batchAdminVerifyAgreed() {
+    // Collect selected claim IDs (only agreed ones)
+    const selected = [...document.querySelectorAll('.claim-checkbox:checked')].map(cb => parseInt(cb.value));
+    if (selected.length === 0) {
+        alert('No agreed claims selected. Check the boxes next to agreed claims you want to admin-verify.');
+        return;
+    }
+    if (!confirm(`Admin-verify ${selected.length} agreed claim(s) as correct?`)) return;
+
+    const btn = document.getElementById('batch-verify-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Verifying...';
+
+    // Batch PATCH each claim with admin_override = 'verified'
+    Promise.all(selected.map(claimId =>
+        fetch(`/api/admin/peer-review/claims/${claimId}`, {
+            method: 'PATCH',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ admin_override: 'verified', admin_notes: 'Batch admin-verified (agreed by CMV)' }),
+        }).then(r => r.json())
+    ))
+    .then(results => {
+        const ok = results.filter(r => r.success).length;
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-double me-1"></i>Admin Verify All Agreed';
+        alert(`${ok} of ${selected.length} claims admin-verified.`);
+        loadClaims(currentPage);
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check-double me-1"></i>Admin Verify All Agreed';
+        alert('Error: ' + err.message);
+    });
 }
 
 function editClaim(claimId) {
@@ -360,25 +427,33 @@ function searchVerifyContent() {
 
         listEl.innerHTML = '<div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading...</div>';
 
+        // Update bulk button label with content type name
+        const typeName = document.getElementById('verify-type').selectedOptions[0].text;
+        document.getElementById('bulk-type-label').textContent = `Peer Review All ${typeName}s`;
+
         fetch(`/api/admin/peer-review/search-content?content_type=${ctype}&q=${encodeURIComponent(q)}&show=${show}`)
             .then(r => r.json())
             .then(data => {
                 if (!data.results || data.results.length === 0) {
-                    listEl.innerHTML = '<div class="text-center text-muted py-3 small">No ' + show + ' content found for this type.</div>';
+                    const showLabel = show === 'verified' ? 'CMV Done' : show === 'unverified' ? 'CMV Pending' : '';
+                    listEl.innerHTML = `<div class="text-center text-muted py-3 small">No ${showLabel} content found for this type.</div>`;
                     return;
                 }
                 const selectedId = document.getElementById('verify-id').value;
                 listEl.innerHTML = '<table class="table table-sm table-hover mb-0"><tbody>' +
                     data.results.map(r => {
                         const badge = r.has_claims
-                            ? '<span class="badge bg-success" style="font-size:0.6rem;">verified</span>'
-                            : '<span class="badge bg-warning text-dark" style="font-size:0.6rem;">pending</span>';
+                            ? '<span class="badge bg-success" style="font-size:0.6rem;">CMV Done</span>'
+                            : '<span class="badge bg-warning text-dark" style="font-size:0.6rem;">CMV Pending</span>';
                         const section = r.body_section ? `<small class="text-muted">(${r.body_section})</small>` : '';
                         const isSelected = String(r.id) === String(selectedId);
                         const rowStyle = isSelected ? 'background:#e7f1ff;' : 'cursor:pointer;';
-                        return `<tr style="${rowStyle}" onclick="selectVerifyItem('${r.id}','${escHtml(r.title).replace(/'/g, "\\\\'")}')">
-                            <td class="small" style="width:50px"><strong>#${r.id}</strong></td>
-                            <td class="small">${escHtml(r.title).substring(0, 80)} ${section}</td>
+                        return `<tr style="${rowStyle}">
+                            <td style="width:30px"><input type="checkbox" class="content-checkbox" value="${r.id}" data-title="${escHtml(r.title).replace(/"/g, '&quot;')}"></td>
+                            <td class="small" style="width:40px;cursor:pointer;" onclick="selectVerifyItem('${r.id}','${escHtml(r.title).replace(/'/g, "\\\\'")}')"><strong>#${r.id}</strong></td>
+                            <td class="small" style="cursor:pointer;" onclick="selectVerifyItem('${r.id}','${escHtml(r.title).replace(/'/g, "\\\\'")}')">
+                                ${escHtml(r.title).substring(0, 80)} ${section}
+                            </td>
                             <td style="width:80px">${badge}</td>
                         </tr>`;
                     }).join('') +
@@ -394,6 +469,8 @@ function selectVerifyItem(id, title) {
     document.getElementById('verify-selected').classList.remove('text-muted');
     document.getElementById('verify-selected').classList.add('text-dark');
     searchVerifyContent();
+    // Reload claims filtered to this content item
+    loadClaims(1);
 }
 
 function verifySingle() {
@@ -415,7 +492,7 @@ function verifySingle() {
     .then(r => r.json())
     .then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Verify';
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Peer Review (Single)';
         if (data.success) {
             const s = data.summary || {};
             resultEl.innerHTML = `<span class="badge bg-success">${data.claims_count} claims</span> `
@@ -430,15 +507,56 @@ function verifySingle() {
     })
     .catch(err => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Verify';
+        btn.innerHTML = '<i class="fas fa-shield-alt me-1"></i>Peer Review (Single)';
         resultEl.innerHTML = `<span class="text-danger small">${err.message}</span>`;
     });
+}
+
+function verifySelectedMultiple() {
+    const ctype = document.getElementById('verify-type').value;
+    const checked = [...document.querySelectorAll('.content-checkbox:checked')];
+    if (checked.length === 0) { alert('Check one or more items in the content list first.'); return; }
+    if (checked.length > 10) { alert('Maximum 10 items at a time for batch peer review.'); return; }
+
+    const typeName = document.getElementById('verify-type').selectedOptions[0].text;
+    const names = checked.map(cb => `#${cb.value}`).join(', ');
+    if (!confirm(`Run CMV peer review on ${checked.length} selected ${typeName} item(s)?\n\n${names}\n\n(Rate-limited, may take a moment)`)) return;
+
+    const btn = document.getElementById('verify-selected-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+
+    let processed = 0, errors = 0;
+    const ids = checked.map(cb => cb.value);
+
+    // Sequential to respect rate limits
+    (async function runNext(i) {
+        if (i >= ids.length) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-tasks me-1"></i>Peer Review Selected';
+            alert(`Done: ${processed} processed, ${errors} errors out of ${ids.length} items.`);
+            loadClaims(currentPage);
+            searchVerifyContent();
+            return;
+        }
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>${i+1}/${ids.length}...`;
+        try {
+            const r = await fetch('/api/admin/peer-review/verify-content', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ content_type: ctype, content_id: ids[i] }),
+            });
+            const data = await r.json();
+            if (data.success) processed++; else errors++;
+        } catch(e) { errors++; }
+        runNext(i + 1);
+    })(0);
 }
 
 function bulkVerifyType() {
     const ctype = document.getElementById('verify-type').value;
     const typeName = document.getElementById('verify-type').selectedOptions[0].text;
-    if (!confirm(`Verify all unverified ${typeName} items? This will run CMV for each (rate-limited to ~13/min).`)) return;
+    if (!confirm(`Run CMV peer review on ALL unverified ${typeName} items?\n\nThis will process up to 10 items (rate-limited to ~13/min).`)) return;
 
     const btn = document.getElementById('bulk-type-btn');
     btn.disabled = true;
@@ -452,19 +570,21 @@ function bulkVerifyType() {
     .then(r => r.json())
     .then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Verify All';
+        const typeName2 = document.getElementById('verify-type').selectedOptions[0].text;
+        btn.innerHTML = `<i class="fas fa-robot me-1"></i><span id="bulk-type-label">Peer Review All ${typeName2}s</span>`;
         alert(`Processed: ${data.processed}, Errors: ${data.errors}`);
         loadClaims(currentPage);
         searchVerifyContent();
     })
     .catch(() => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Verify All';
+        const typeName2 = document.getElementById('verify-type').selectedOptions[0].text;
+        btn.innerHTML = `<i class="fas fa-robot me-1"></i><span id="bulk-type-label">Peer Review All ${typeName2}s</span>`;
     });
 }
 
 function reVerifyContent(contentType, contentId) {
-    if (!confirm('Re-run CMV verification on this content? Existing auto-verdicts will be replaced.')) return;
+    if (!confirm('Re-run CMV peer review on this content? Existing auto-verdicts will be replaced.')) return;
     fetch('/api/admin/peer-review/verify-content', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
