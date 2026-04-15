@@ -999,6 +999,8 @@ function applyFilters() {
 document.getElementById('bodySectionFilter').addEventListener('change', function() {
     filterState.bodySection = this.value || null;
     this.classList.toggle('active', !!this.value);
+    // If in detail view, switch back to browse
+    if (!document.getElementById('detailView').classList.contains('d-none')) backToBrowse();
     applyFilters();
 });
 
@@ -1044,6 +1046,7 @@ if (modalitySelect) {
     modalitySelect.addEventListener('change', function() {
         filterState.modality = this.value || null;
         this.classList.toggle('active', !!this.value);
+        if (!document.getElementById('detailView').classList.contains('d-none')) backToBrowse();
         applyFilters();
     });
 }
@@ -1071,6 +1074,7 @@ document.querySelectorAll('[data-content-type]').forEach(function(tab) {
         document.querySelectorAll('[data-content-type]').forEach(function(t) { t.classList.remove('active'); });
         this.classList.add('active');
         filterState.contentType = this.dataset.contentType;
+        if (!document.getElementById('detailView').classList.contains('d-none')) backToBrowse();
         applyFilters();
     });
 });
@@ -1082,6 +1086,11 @@ document.getElementById('knowledgeSearch').addEventListener('input', function() 
     var self = this;
     _searchTimeout = setTimeout(function() {
         filterState.searchQuery = self.value.trim().toLowerCase();
+        // If in detail view, switch back to browse to show results
+        var detailView = document.getElementById('detailView');
+        if (!detailView.classList.contains('d-none')) {
+            backToBrowse();
+        }
         applyFilters();
     }, 250);
 });
@@ -1153,8 +1162,6 @@ function clearAllFilters() {
 function backToBrowse() {
     document.getElementById('browseView').classList.remove('d-none');
     document.getElementById('detailView').classList.add('d-none');
-    // Restore filter bar visibility
-    document.querySelector('.kh-filter-bar').classList.remove('d-none');
     // Clear hash
     if (window.history.replaceState) {
         window.history.replaceState({}, '', window.location.pathname);
@@ -1265,7 +1272,6 @@ function selectItem(el) {
     // Switch to detail view
     document.getElementById('browseView').classList.add('d-none');
     document.getElementById('detailView').classList.remove('d-none');
-    document.querySelector('.kh-filter-bar').classList.add('d-none');
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     // Update hash for deep linking
