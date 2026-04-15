@@ -218,6 +218,8 @@ GUIDELINES:
   • Include specific measurements, thresholds, and criteria where they exist
   • Each section should be self-contained
   • Plain text only in all fields — NO HTML tags, NO markdown
+  • Do NOT use ALL CAPS for emphasis — the app renders visual emphasis via CSS styling
+  • Write in natural sentence case throughout (headings, list items, table cells)
   • Prioritise what changes management over encyclopaedic completeness"""
 
     # Section 3: Safety checklist
