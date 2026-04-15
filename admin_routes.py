@@ -3648,7 +3648,10 @@ def search_cmv_content():
             from models import Case
             query = Case.query
             if q:
-                query = query.filter(Case.title.ilike(f'%{q}%'))
+                query = query.filter(db.or_(
+                    Case.diagnosis.ilike(f'%{q}%'),
+                    Case.case_number.ilike(f'%{q}%'),
+                ))
             items = query.order_by(Case.id.desc()).limit(50).all()
             for item in items:
                 has_claims = str(item.id) in verified_ids
@@ -3658,8 +3661,8 @@ def search_cmv_content():
                     continue
                 results.append({
                     'id': item.id,
-                    'title': item.title or f'Case #{item.id}',
-                    'body_section': getattr(item, 'body_part', '') or '',
+                    'title': f'{item.case_number or ""} — {item.diagnosis or ""}',
+                    'body_section': item.body_part.value if item.body_part else '',
                     'has_claims': has_claims,
                 })
 
@@ -3667,7 +3670,10 @@ def search_cmv_content():
             from models import IncidentalFindingCalculator
             query = IncidentalFindingCalculator.query
             if q:
-                query = query.filter(IncidentalFindingCalculator.title.ilike(f'%{q}%'))
+                query = query.filter(db.or_(
+                    IncidentalFindingCalculator.finding_name.ilike(f'%{q}%'),
+                    IncidentalFindingCalculator.keywords.ilike(f'%{q}%'),
+                ))
             items = query.order_by(IncidentalFindingCalculator.id.desc()).limit(50).all()
             for item in items:
                 has_claims = str(item.id) in verified_ids
@@ -3677,8 +3683,8 @@ def search_cmv_content():
                     continue
                 results.append({
                     'id': item.id,
-                    'title': item.title or f'Tool #{item.id}',
-                    'body_section': getattr(item, 'body_section', '') or '',
+                    'title': item.finding_name or f'Tool #{item.id}',
+                    'body_section': item.body_section or '',
                     'has_claims': has_claims,
                 })
 
