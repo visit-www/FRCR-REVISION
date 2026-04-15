@@ -493,6 +493,8 @@
                     '<div class="d-flex gap-2"><button class="btn btn-brand-primary btn-sm" onclick="CmvBadges._saveReview(' + claimId + ')"><i class="fas fa-save me-1"></i>Save</button>' +
                     '<button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'cmvEditPanel\').remove()">Cancel</button></div></div>';
 
+                // Store original claim text for live DOM update after save
+                panel._originalClaimText = claim.claim_text;
                 document.body.appendChild(panel);
             });
     }
@@ -500,6 +502,10 @@
     function _saveReview(claimId) {
         var correctedEl = document.getElementById('cmvEditCorrectedText');
         var correctedText = correctedEl ? correctedEl.value.trim() : '';
+
+        // Capture original claim text for live DOM update
+        var originalClaimEl = document.getElementById('cmvEditPanel');
+        var originalText = originalClaimEl ? (originalClaimEl._originalClaimText || '') : '';
 
         fetch('/api/admin/peer-review/claims/' + claimId, {
             method: 'PATCH', headers: {'Content-Type': 'application/json'},
@@ -521,13 +527,63 @@
                     else if (bs === 'disputed') { badge.className = 'cmv-badge cmv-badge-disputed'; badge.querySelector('i').className = 'fas fa-times-circle'; }
                     else if (bs === 'dismissed') badge.style.display = 'none';
                 }
-                if (data.content_updated && typeof showToast === 'function') {
-                    showToast('Content updated — claim text replaced in source.', 'success');
+                if (data.content_updated && correctedText) {
+                    // Live DOM update: find and replace the original text in the page
+                    _liveReplaceContent(originalText, correctedText, badge);
+                    if (typeof showToast === 'function') {
+                        showToast('Content updated live.', 'success');
+                    }
                 }
             } else {
                 alert(data.error || 'Save failed');
             }
         });
+    }
+
+    function _liveReplaceContent(originalText, correctedText, badge) {
+        if (!originalText || !correctedText) return;
+
+        // Find the content container (closest element with data-cmv-loaded)
+        var container = badge ? badge.closest('[data-cmv-loaded]') : null;
+        if (!container) container = document.querySelector('[data-cmv-loaded]');
+        if (!container) return;
+
+        // Build search segments from pipe-delimited claim text (same logic as backend)
+        var segments = originalText.split('|').map(function(s) { return s.trim(); }).filter(Boolean);
+        var allParts = [];
+        segments.forEach(function(seg) {
+            allParts.push(seg);
+            seg.split(';').forEach(function(sub) {
+                sub = sub.trim();
+                if (sub && sub !== seg) allParts.push(sub);
+            });
+        });
+        allParts.sort(function(a, b) { return b.length - a.length; });
+
+        // Walk text nodes in the container to find and replace
+        var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+        var replaced = false;
+
+        while (walker.nextNode() && !replaced) {
+            var node = walker.currentNode;
+            var nodeText = node.textContent;
+            for (var i = 0; i < allParts.length; i++) {
+                var part = allParts[i];
+                if (part.length < 15) continue;
+                var idx = nodeText.indexOf(part);
+                if (idx !== -1) {
+                    node.textContent = nodeText.substring(0, idx) + correctedText + nodeText.substring(idx + part.length);
+                    // Flash highlight the parent element
+                    var parentEl = node.parentElement;
+                    if (parentEl) {
+                        parentEl.classList.add('cmv-text-highlight');
+                        setTimeout(function() { parentEl.classList.remove('cmv-text-highlight'); }, 3000);
+                    }
+                    replaced = true;
+                    break;
+                }
+            }
+        }
     }
 
     // ── Scroll-to-claim from URL ──
