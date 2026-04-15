@@ -154,15 +154,16 @@
                             <th style="width:3%"><input type="checkbox" id="select-all-claims" onchange="toggleSelectAllClaims(this)" title="Select all agreed claims"></th>
                             <th style="width:3%">#</th>
                             <th style="width:8%">Type</th>
-                            <th style="width:25%">Claim</th>
+                            <th style="width:22%">Claim</th>
                             <th style="width:8%">Verdict</th>
                             <th style="width:5%">Conf.</th>
-                            <th style="width:33%">Reasoning</th>
-                            <th style="width:15%">Actions</th>
+                            <th style="width:28%">Reasoning</th>
+                            <th style="width:5%"><i class="fas fa-external-link-alt" title="View in content"></i></th>
+                            <th style="width:13%">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="claims-body">
-                        <tr><td colspan="8" class="text-center text-muted py-4">Loading...</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-4">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -261,7 +262,7 @@ function loadClaims(page) {
 
             const tbody = document.getElementById('claims-body');
             if (!data.claims || data.claims.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No claims found. Select a content type and click Peer Review to get started.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">No claims found. Select a content type and click Peer Review to get started.</td></tr>';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
@@ -290,6 +291,11 @@ function loadClaims(page) {
                     ? `<input type="checkbox" class="claim-checkbox" value="${c.id}" data-verdict="${c.gemini_verdict}">`
                     : `<span class="text-muted" title="${c.admin_override ? 'Already reviewed' : 'Only agreed claims can be batch verified'}">—</span>`;
 
+                const viewUrl = buildContentUrl(c.content_type, c.content_id, c.id);
+                const viewLink = viewUrl
+                    ? `<a href="${viewUrl}" target="_blank" class="btn btn-sm btn-outline-info" title="View claim in content"><i class="fas fa-crosshairs"></i></a>`
+                    : '<span class="text-muted">—</span>';
+
                 return `<tr>
                     <td>${checkbox}</td>
                     <td class="small">${c.id}</td>
@@ -298,6 +304,7 @@ function loadClaims(page) {
                     <td>${verdictBadge}${overrideBadge}</td>
                     <td>${confBadge}</td>
                     <td class="small text-muted">${escHtml(c.gemini_reasoning || '')}</td>
+                    <td>${viewLink}</td>
                     <td>
                         <button class="btn btn-sm btn-outline-primary" onclick="editClaim(${c.id})" title="Edit">
                             <i class="fas fa-pen"></i>
@@ -322,7 +329,7 @@ function loadClaims(page) {
             document.getElementById('pagination').innerHTML = pagHtml;
         })
         .catch(err => {
-            document.getElementById('claims-body').innerHTML = `<tr><td colspan="8" class="text-danger">${err.message}</td></tr>`;
+            document.getElementById('claims-body').innerHTML = `<tr><td colspan="9" class="text-danger">${err.message}</td></tr>`;
         });
 }
 
@@ -638,6 +645,28 @@ function reVerifyContent(contentType, contentId) {
         }
     })
     .catch(err => alert('Error: ' + err.message));
+}
+
+function buildContentUrl(contentType, contentId, claimId) {
+    if (!contentType || !contentId) return null;
+    const q = claimId ? `?claim=${claimId}` : '';
+    switch (contentType) {
+        case 'anatomy_snippet':
+        case 'reporting_algorithm':
+            return `/knowledge-hub${q}#anatomy-${contentId}`;
+        case 'radiology_pearl':
+            return `/knowledge-hub${q}#pearl-${contentId}`;
+        case 'case':
+            return `/view-case/${contentId}${q}`;
+        case 'radiq_query':
+            return `/radiq${q}`;
+        case 'radiology_tool':
+            return `/incidental-findings/${contentId}${q}`;
+        case 'protocol':
+            return `/radiology-protocols/view/${contentId}${q}`;
+        default:
+            return null;
+    }
 }
 
 function escHtml(text) {

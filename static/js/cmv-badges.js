@@ -324,6 +324,35 @@
         });
     }
 
+    // ── Scroll-to-claim from URL ──
+
+    function _scrollToClaimFromUrl() {
+        var params = new URLSearchParams(window.location.search);
+        var claimId = params.get('claim');
+        if (!claimId) return;
+
+        // Small delay to ensure badges are in the DOM
+        setTimeout(function() {
+            var badge = document.querySelector('.cmv-badge[data-claim-id="' + claimId + '"]');
+            if (!badge) {
+                // Check unplaced block too
+                var unplacedBadge = document.querySelector('.cmv-unplaced-disputed .cmv-badge[data-claim-id="' + claimId + '"]');
+                badge = unplacedBadge;
+            }
+            if (badge) {
+                badge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Flash highlight
+                badge.style.transition = 'box-shadow 0.3s, transform 0.3s';
+                badge.style.boxShadow = '0 0 0 4px rgba(233, 99, 4, 0.5)';
+                badge.style.transform = 'scale(2)';
+                setTimeout(function() {
+                    badge.style.boxShadow = '';
+                    badge.style.transform = '';
+                }, 2500);
+            }
+        }, 500);
+    }
+
     // ── Public API ──
 
     window.CmvBadges = {
@@ -354,18 +383,25 @@
                     // Admin: event delegation for badge clicks
                     if (_checkAdmin() && !containerEl.dataset.cmvClickReady) {
                         containerEl.dataset.cmvClickReady = 'true';
-                        // console.log('[CMV] Admin click handler attached to container');
                         containerEl.addEventListener('click', function(e) {
                             var badge = e.target.closest('.cmv-badge[data-claim-id]');
-                            // console.log('[CMV] Container click, badge found:', !!badge, e.target.tagName);
                             if (!badge) return;
                             e.preventDefault();
                             e.stopPropagation();
                             _showPopup(badge, parseInt(badge.dataset.claimId));
                         });
                     }
+
+                    // Auto-scroll to claim if ?claim=<id> is in URL
+                    _scrollToClaimFromUrl();
                 });
         },
+
+        /**
+         * Scroll to and highlight a specific claim badge by ID.
+         * Called automatically after badge load if ?claim= param is present.
+         */
+        scrollToClaim: _scrollToClaimFromUrl,
 
         // Exposed for onclick handlers in popup HTML
         _quickUpdate: _quickUpdate,
