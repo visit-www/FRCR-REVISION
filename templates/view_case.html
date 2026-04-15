@@ -3810,9 +3810,21 @@
         const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
         // Convert ALL CAPS safety phrases to subtle emphasis — skip medical abbreviations
         // Only match multi-word caps phrases (DO NOT, NEVER USE, ALWAYS CHECK) or known safety words
+        // Safety words: bold + red underline. Medical abbreviations: faint grey pill.
         const _safetyWords = /\b(NEVER|ALWAYS|DO NOT|MUST NOT|CRITICAL|WARNING|CAUTION|IMPORTANT|MANDATORY|CONTRAINDICATED)\b/g;
-        const emphCaps = s => esc(s).replace(_safetyWords,
-            '<strong style="font-weight:700;text-decoration:underline;text-decoration-color:#e74c3c;text-underline-offset:2px;">$1</strong>');
+        const _medAbbrev = /\b([A-Z]{2,}(?:-[A-Z]{2,})*)\b/g;
+        const emphCaps = function(s) {
+            let out = esc(s);
+            // First: safety words → bold red underline
+            out = out.replace(_safetyWords,
+                '<strong style="font-weight:700;text-decoration:underline;text-decoration-color:#e74c3c;text-underline-offset:2px;">$1</strong>');
+            // Second: remaining medical abbreviations (2+ caps letters) → grey pill
+            out = out.replace(_medAbbrev, function(match) {
+                // Skip if already wrapped in <strong> (safety word)
+                return `<span style="background:#f0f1f3;padding:0 4px;border-radius:3px;font-size:0.92em;letter-spacing:0.3px;">${match}</span>`;
+            });
+            return out;
+        };
         const parts = [];
 
         // CSS class map per section type
