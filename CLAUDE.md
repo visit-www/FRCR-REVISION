@@ -89,10 +89,25 @@ When making code changes, **always check** whether the change requires updates t
 
 4. **Admin Docs** (`_DOC_MANIFEST`): If you add a new markdown doc in `docs/`, add manifest row
 
+## AI Content Storage: JSON in DB, HTML on Frontend
+**This is the current architecture for all AI-generated content. Follow it strictly.**
+
+- **DB stores structured JSON** (not rendered HTML) for AI-generated content
+- **Frontend renders JSON → HTML** client-side using JS renderers (e.g., `renderJsonDiscussion()` in view_case.html)
+- **Legacy HTML** in DB is supported for backward compat (frontend detects format by checking if content starts with `{`)
+- **Never pre-render JSON to HTML and store the HTML** — this bakes in presentation and breaks re-rendering, badge placement, and style updates
+- **When adding new AI content types**, follow this pattern:
+  1. AI returns structured JSON (flexible sections, not rigid fields)
+  2. Backend stores `json.dumps(structured_data)` in the DB text column
+  3. Frontend detects JSON, parses it, renders to HTML using CSS classes
+  4. CMV badges match against structured elements (not fuzzy text search)
+- **Default AI model**: `claude-sonnet-4-6` (Sonnet 4.0 `claude-sonnet-4-20250514` is retired June 2026)
+- **Case generation** (`ai_prelim.py`): flexible `sections` array — model decides which sections to include, no rigid schema
+
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex
 - Admin-only features: guard with `getattr(current_user, 'is_admin', False)`
-- AI cost tracking: use `ai_cost_tracker.track_ai_call()` for every AI endpoint
+- AI cost tracking: use `ai_cost_tracker.track_ai_call()` for every AI endpoint — pass both `input_tokens` and `output_tokens`
 - Peer review: wire `radinsight_peer_review.peer_review()` into AI outputs with verifiable claims
 - Rate limiting: single source of truth in `reporting_routes.py` `_check_ai_rate_limit()`
 - Model: `RadIQFeedback.query` is shadowed — always use `db.session.query(RadIQFeedback)`
