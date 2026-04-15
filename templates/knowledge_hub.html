@@ -112,106 +112,120 @@
         </div>
     </div>
 
-    <!-- Top Row: Two-Column Browser (20vh) -->
-    <div class="row g-2 mb-2">
-        <!-- LEFT: Radiology Pearls -->
-        <div class="col-md-6">
-            <div class="kh-browser-panel" style="background: linear-gradient(135deg, #fff8f0 0%, #fff3e6 100%); border: 1px solid #ffe0c2; border-radius: 8px; height: 20vh; min-height: 140px; display: flex; flex-direction: column;">
-                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom: 1px solid #ffe0c2;">
-                    <div>
-                        <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>
-                        <strong class="small">Radiology Pearls</strong>
-                        <span class="badge bg-warning text-dark ms-1" style="font-size: 0.6rem;">{{ pearl_count }}</span>
-                    </div>
-                    {% if tag_cloud %}
-                    <button class="btn btn-link btn-sm p-0 text-muted" data-bs-toggle="collapse" data-bs-target="#tagCloudPanel" style="font-size: 0.65rem;">
-                        <i class="fas fa-tags"></i>
-                    </button>
-                    {% endif %}
-                </div>
-                {% if tag_cloud %}
-                <div class="collapse px-2 py-1" id="tagCloudPanel" style="border-bottom: 1px solid #ffe0c2;">
-                    <div class="tag-cloud" style="font-size: 0.65rem;">
-                        {% for tag, count in tag_cloud %}
-                        <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
-                <div class="knowledge-hub-item-list flex-grow-1 overflow-auto px-1 py-1" id="pearlList">
-                    {% for p in pearls %}
-                    <div class="knowledge-item" data-id="pearl-{{ p.id }}" data-type="pearl"
-                         data-body-section="{{ p.body_section or '' }}" data-modality="{{ p.modality or '' }}"
-                         data-tags="{{ (p.tags or '')|lower }}" data-text="{{ p.pearl_text|striptags|lower }}"
-                         onclick="selectItem(this)">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="fas fa-gem mt-1 flex-shrink-0" style="color: #6b46c1; font-size: 0.6rem;"></i>
-                            <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(80) }}</div>
-                                <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                                    {% if p.modality %}<span class="modality-badge" data-modality="{{ p.modality }}" style="font-size:0.55rem;">{{ p.modality }}</span>{% endif %}
-                                    {% if p.body_section %}<span class="section-badge" style="font-size:0.55rem;">{{ p.body_section }}</span>{% endif %}
-                                    {% if not p.is_verified %}<span class="badge bg-warning text-dark" style="font-size: 0.45rem;">Pending</span>{% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- ==================== BROWSE VIEW ==================== -->
+    <div id="browseView">
+        <!-- Tag Cloud (collapsible) -->
+        {% if tag_cloud %}
+        <div class="kh-tag-cloud-bar mb-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="collapse" data-bs-target="#tagCloudPanel">
+                    <i class="fas fa-tags me-1"></i><small>Tags</small>
+                    <i class="fas fa-chevron-down ms-1" style="font-size: 0.55rem;"></i>
+                </button>
+            </div>
+            <div class="collapse" id="tagCloudPanel">
+                <div class="tag-cloud">
+                    {% for tag, count in tag_cloud %}
+                    <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
                     {% endfor %}
-                    {% if not pearls %}
-                    <div class="text-center py-3 text-muted small">No pearls yet</div>
-                    {% endif %}
                 </div>
             </div>
         </div>
+        {% endif %}
 
-        <!-- RIGHT: Anatomy Snippets -->
-        <div class="col-md-6">
-            <div class="kh-browser-panel" style="background: linear-gradient(135deg, #f0f9f4 0%, #e8f5ec 100%); border: 1px solid #a3cfbb; border-radius: 8px; height: 20vh; min-height: 140px; display: flex; flex-direction: column;">
-                <div class="d-flex align-items-center justify-content-between px-3 py-2" style="border-bottom: 1px solid #a3cfbb;">
-                    <div>
-                        <i class="fas fa-bone me-1" style="color: #6f42c1;"></i>
-                        <strong class="small">Anatomy Snippets</strong>
-                        <span class="badge bg-success ms-1" style="font-size: 0.6rem;">{{ snippet_count }}</span>
-                    </div>
+        <!-- No results message -->
+        <div id="noResultsMsg" class="text-center py-5 d-none">
+            <i class="fas fa-search" style="font-size: 2.5rem; opacity: 0.15; color: var(--brand-neutral);"></i>
+            <p class="mt-3 mb-1 fw-semibold text-muted">No items match your filters</p>
+            <button class="btn btn-sm btn-outline-secondary mt-2" onclick="clearAllFilters()">
+                <i class="fas fa-times me-1"></i>Clear filters
+            </button>
+        </div>
+
+        <!-- Radiology Pearls Section -->
+        <div id="pearlsSection" class="kh-content-section mb-4">
+            <div class="kh-section-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="kh-section-icon kh-section-icon--pearl">
+                        <i class="fas fa-gem"></i>
+                    </span>
+                    <h5 class="mb-0 fw-semibold">Radiology Pearls</h5>
+                    <span class="badge bg-light text-dark border" id="pearlSectionCount">{{ pearl_count }}</span>
                 </div>
-                <div class="knowledge-hub-item-list flex-grow-1 overflow-auto px-1 py-1" id="snippetList">
-                    {% for s in snippets %}
-                    <div class="knowledge-item" data-id="anatomy-{{ s.id }}" data-type="anatomy"
-                         data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality="{{ s.modality or '' }}"
-                         data-tags="{{ (s.keywords or '')|lower }}" data-text="{{ s.title|lower }} {{ (s.description or '')|lower }}"
-                         onclick="selectItem(this)">
-                        <div class="d-flex align-items-start gap-2">
-                            <i class="fas fa-bone mt-1 flex-shrink-0" style="color: #6f42c1; font-size: 0.6rem;"></i>
-                            <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="knowledge-item-title">{{ s.title }}</div>
-                                <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
-                                    {% if s.modality %}<span class="modality-badge" data-modality="{{ s.modality }}" style="font-size:0.55rem;">{{ s.modality }}</span>{% endif %}
-                                    {% if s.body_section %}<span class="section-badge" style="font-size:0.55rem;">{{ s.body_section }}</span>{% endif %}
-                                </div>
+            </div>
+            <div class="row g-3 mt-1" id="pearlGrid">
+                {% for p in pearls %}
+                <div class="col-sm-6 col-lg-4 col-xl-3 knowledge-item-wrapper"
+                     data-id="pearl-{{ p.id }}" data-type="pearl"
+                     data-body-section="{{ p.body_section or '' }}" data-modality="{{ p.modality or '' }}"
+                     data-tags="{{ (p.tags or '')|lower }}" data-text="{{ p.pearl_text|striptags|lower }}">
+                    <div class="kh-card kh-card--pearl" onclick="selectItem(this.parentElement)">
+                        <div class="kh-card-body">
+                            <div class="kh-card-title">{{ p.pearl_text|striptags|truncate(100) }}</div>
+                        </div>
+                        <div class="kh-card-footer">
+                            <div class="d-flex gap-1 flex-wrap align-items-center">
+                                {% if p.body_section %}<span class="section-badge">{{ p.body_section }}</span>{% endif %}
+                                {% if p.modality %}<span class="modality-badge" data-modality="{{ p.modality }}">{{ p.modality }}</span>{% endif %}
+                                {% if not p.is_verified %}<span class="badge bg-warning text-dark" style="font-size: 0.55rem;">Pending</span>{% endif %}
                             </div>
                         </div>
                     </div>
-                    {% endfor %}
-                    {% if not snippets %}
-                    <div class="text-center py-3 text-muted small">No snippets yet</div>
-                    {% endif %}
                 </div>
+                {% endfor %}
+                {% if not pearls %}
+                <div class="col-12 text-center py-3 text-muted small">No pearls yet</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Anatomy Snippets Section -->
+        <div id="snippetsSection" class="kh-content-section mb-4">
+            <div class="kh-section-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="kh-section-icon kh-section-icon--anatomy">
+                        <i class="fas fa-bone"></i>
+                    </span>
+                    <h5 class="mb-0 fw-semibold">Anatomy Snippets</h5>
+                    <span class="badge bg-light text-dark border" id="snippetSectionCount">{{ snippet_count }}</span>
+                </div>
+            </div>
+            <div class="row g-3 mt-1" id="snippetGrid">
+                {% for s in snippets %}
+                <div class="col-sm-6 col-lg-4 col-xl-3 knowledge-item-wrapper"
+                     data-id="anatomy-{{ s.id }}" data-type="anatomy"
+                     data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality="{{ s.modality or '' }}"
+                     data-tags="{{ (s.keywords or '')|lower }}" data-text="{{ s.title|lower }} {{ (s.description or '')|lower }}">
+                    <div class="kh-card kh-card--anatomy" onclick="selectItem(this.parentElement)">
+                        <div class="kh-card-body">
+                            <div class="kh-card-title">{{ s.title }}</div>
+                        </div>
+                        <div class="kh-card-footer">
+                            <div class="d-flex gap-1 flex-wrap align-items-center">
+                                {% if s.body_section %}<span class="section-badge">{{ s.body_section }}</span>{% endif %}
+                                {% if s.modality %}<span class="modality-badge" data-modality="{{ s.modality }}">{{ s.modality }}</span>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% if not snippets %}
+                <div class="col-12 text-center py-3 text-muted small">No snippets yet</div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- Bottom: Full-Width Content Detail -->
-    <div id="detailPanel" class="knowledge-hub-detail px-2 px-md-3" style="max-height: 75vh; overflow-y: auto;">
-        <!-- Placeholder -->
-        <div id="detailPlaceholder" class="text-center py-5 text-muted" style="padding-top: 10vh !important;">
-            <div class="mb-3">
-                <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.15; color: var(--brand-neutral);"></i>
-            </div>
-            <p class="mb-1 fw-semibold" style="color: var(--brand-text-secondary);">Select a pearl or anatomy snippet above</p>
-            <small>Use the search bar or filters to find content</small>
+    <!-- ==================== DETAIL VIEW (hidden by default) ==================== -->
+    <div id="detailView" class="d-none">
+        <div class="mb-3">
+            <button class="btn btn-sm btn-outline-secondary" onclick="backToBrowse()">
+                <i class="fas fa-arrow-left me-1"></i>Back to Knowledge Hub
+            </button>
         </div>
-        <!-- Detail content (populated by JS) -->
-        <div id="detailContent" class="d-none"></div>
+        <div id="detailPanel" class="knowledge-hub-detail">
+            <div id="detailContent"></div>
+        </div>
     </div>
 </div>
 
@@ -639,17 +653,23 @@
 }
 
 /* ==================== TAG CLOUD ==================== */
+.kh-tag-cloud-bar {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 8px 16px;
+}
 .tag-cloud { line-height: 2; }
 .tag-cloud-item {
     display: inline-block;
-    padding: 1px 8px;
-    margin: 1px;
-    border-radius: 10px;
+    padding: 2px 10px;
+    margin: 2px;
+    border-radius: 12px;
     background: #fff;
     color: var(--brand-text-secondary, #5a6270);
     cursor: pointer;
     transition: all 0.15s;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     border: 1px solid #e9ecef;
 }
 .tag-cloud-item:hover {
@@ -663,40 +683,76 @@
     border-color: var(--brand-primary, #e96304);
 }
 
-/* ==================== ITEM LIST ==================== */
-.knowledge-hub-item-list {
-    overflow-y: auto;
-    background: transparent;
+/* ==================== SECTION HEADERS ==================== */
+.kh-section-header {
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
 }
-.knowledge-item {
-    padding: 6px 10px;
-    border-bottom: 1px solid rgba(0,0,0,0.06);
-    cursor: pointer;
-    transition: background 0.15s, border-left-color 0.15s;
-    border-left: 3px solid transparent;
-    font-size: 0.82rem;
+.kh-section-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
 }
-.knowledge-item:last-child { border-bottom: none; }
-.knowledge-item:hover {
-    background: #fafbfc;
+.kh-section-icon--pearl {
+    background: #f3e8ff;
+    color: #6b46c1;
 }
-.knowledge-item.active {
-    background: rgba(94, 137, 158, 0.07);
-    border-left-color: var(--brand-primary, #e96304) !important;
-}
-.knowledge-item-title {
-    font-size: 0.83rem;
-    font-weight: 500;
-    color: var(--brand-text-primary, #2c3e50);
-    line-height: 1.45;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+.kh-section-icon--anatomy {
+    background: #e8f5ec;
+    color: #2e7d32;
 }
 
-/* ==================== DETAIL PANEL ==================== */
+/* ==================== BROWSE CARDS ==================== */
+.kh-card {
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #fff;
+}
+.kh-card:hover {
+    border-color: var(--brand-neutral, #5E899E);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    transform: translateY(-2px);
+}
+.kh-card--pearl {
+    border-top: 3px solid #6b46c1;
+    border-left: 3px solid transparent;
+}
+.kh-card--anatomy {
+    border-top: 3px solid #2e7d32;
+    border-left: 3px solid transparent;
+}
+.kh-card-body {
+    padding: 14px 16px 8px;
+    flex-grow: 1;
+}
+.kh-card-title {
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--brand-text-primary, #2c3e50);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.kh-card-footer {
+    padding: 8px 16px 12px;
+}
+
+/* Hidden section when content type filter active */
+.kh-content-section.d-none-filtered { display: none !important; }
+
+/* ==================== DETAIL VIEW ==================== */
 .knowledge-hub-detail {
     min-height: 400px;
 }
@@ -791,21 +847,14 @@
 .filter-pill:hover { opacity: 0.8; }
 
 /* ==================== RESPONSIVE ==================== */
-@media (min-width: 992px) {
-    .knowledge-hub-sidebar {
-        position: sticky;
-        top: 110px;
-        max-height: calc(100vh - 130px);
-        overflow-y: auto;
+@media (max-width: 767px) {
+    .kh-card-title {
+        font-size: 0.82rem;
+        -webkit-line-clamp: 2;
     }
-}
-@media (max-width: 991px) {
-    .knowledge-hub-item-list {
-        max-height: 50vh;
-    }
-    .kh-filter-bar {
-        padding: 8px 10px;
-    }
+    .kh-card-body { padding: 10px 12px 6px; }
+    .kh-card-footer { padding: 6px 12px 10px; }
+    .kh-filter-bar { padding: 8px 10px; }
     .kh-filter-select {
         min-width: 100px;
         max-width: 150px;
@@ -878,7 +927,7 @@ var filterState = {
 
 // ==================== APPLY FILTERS ====================
 function applyFilters() {
-    var items = document.querySelectorAll('.knowledge-item');
+    var items = document.querySelectorAll('.knowledge-item-wrapper');
     var visibleCount = 0, pearlCount = 0, anatomyCount = 0;
 
     items.forEach(function(item) {
@@ -886,7 +935,6 @@ function applyFilters() {
         if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
         if (visible && filterState.bodySection && item.dataset.bodySection !== filterState.bodySection) visible = false;
         if (visible && filterState.modality) {
-            // Match compound modalities: "CT/MRI" should match filter "CT" or "MRI"
             var itemMod = (item.dataset.modality || '');
             var itemParts = itemMod.split('/').map(function(p) { return p.trim(); });
             if (itemParts.indexOf(filterState.modality) === -1 && itemMod !== filterState.modality) visible = false;
@@ -914,19 +962,37 @@ function applyFilters() {
     document.getElementById('countAll').textContent = visibleCount;
     document.getElementById('countPearls').textContent = pearlCount;
     document.getElementById('countAnatomy').textContent = anatomyCount;
+
+    // Update section counts
+    var pearlSectionCount = document.getElementById('pearlSectionCount');
+    var snippetSectionCount = document.getElementById('snippetSectionCount');
+    if (pearlSectionCount) pearlSectionCount.textContent = pearlCount;
+    if (snippetSectionCount) snippetSectionCount.textContent = anatomyCount;
+
+    // Show/hide entire sections based on content type filter
+    var pearlsSection = document.getElementById('pearlsSection');
+    var snippetsSection = document.getElementById('snippetsSection');
+    if (filterState.contentType === 'anatomy') {
+        pearlsSection.classList.add('d-none-filtered');
+    } else {
+        pearlsSection.classList.remove('d-none-filtered');
+    }
+    if (filterState.contentType === 'pearl') {
+        snippetsSection.classList.add('d-none-filtered');
+    } else {
+        snippetsSection.classList.remove('d-none-filtered');
+    }
+
+    // Hide section if zero visible items in it
+    if (pearlCount === 0 && filterState.contentType !== 'anatomy') pearlsSection.classList.add('d-none-filtered');
+    if (anatomyCount === 0 && filterState.contentType !== 'pearl') snippetsSection.classList.add('d-none-filtered');
+
+    // Show "no results" if nothing visible
+    var noResults = document.getElementById('noResultsMsg');
+    noResults.classList.toggle('d-none', visibleCount > 0);
+
     renderActiveFilters();
     updateSectionCounts();
-
-    // Auto-select first visible if current selection is hidden
-    var activeItem = document.querySelector('.knowledge-item.active');
-    if (!activeItem || activeItem.style.display === 'none') {
-        var first = document.querySelector('.knowledge-item:not([style*="display: none"])');
-        if (first && window.innerWidth >= 992) selectItem(first);
-        else {
-            document.getElementById('detailPlaceholder').classList.remove('d-none');
-            document.getElementById('detailContent').classList.add('d-none');
-        }
-    }
 }
 
 // ==================== BODY SECTION DROPDOWN ====================
@@ -949,7 +1015,7 @@ function updateSectionCounts() {
     var sections = ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'];
     var counts = {};
     sections.forEach(function(s) { counts[s] = 0; });
-    document.querySelectorAll('.knowledge-item').forEach(function(item) {
+    document.querySelectorAll('.knowledge-item-wrapper').forEach(function(item) {
         var visible = true;
         if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
         if (visible && filterState.modality) {
@@ -1084,15 +1150,22 @@ function clearAllFilters() {
 }
 
 // ==================== ITEM SELECTION & DETAIL ====================
-function selectItem(el) {
-    document.querySelectorAll('.knowledge-item').forEach(function(i) { i.classList.remove('active'); });
-    el.classList.add('active');
-    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+function backToBrowse() {
+    document.getElementById('browseView').classList.remove('d-none');
+    document.getElementById('detailView').classList.add('d-none');
+    // Restore filter bar visibility
+    document.querySelector('.kh-filter-bar').classList.remove('d-none');
+    // Clear hash
+    if (window.history.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
+function selectItem(el) {
     var id = el.dataset.id;
     var type = el.dataset.type;
     var detailContent = document.getElementById('detailContent');
-    var placeholder = document.getElementById('detailPlaceholder');
 
     if (type === 'pearl') {
         var pearlId = id.replace('pearl-', '');
@@ -1189,10 +1262,16 @@ function selectItem(el) {
         loadLinkedContent('algorithm', snippetId);
     }
 
-    placeholder.classList.add('d-none');
-    detailContent.classList.remove('d-none');
-    document.getElementById('detailPanel').scrollTop = 0;
-    document.getElementById('detailPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Switch to detail view
+    document.getElementById('browseView').classList.add('d-none');
+    document.getElementById('detailView').classList.remove('d-none');
+    document.querySelector('.kh-filter-bar').classList.add('d-none');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Update hash for deep linking
+    if (window.history.replaceState) {
+        window.history.replaceState({}, '', window.location.pathname + '#' + id);
+    }
 
     // Load CMV badges from DB
     var contentEl = detailContent.querySelector('[data-content-type][data-content-id]');
@@ -1321,10 +1400,8 @@ function loadLinkedContent(sourceType, sourceId) {
 }
 
 function selectLinkedItem(dataId) {
-    // Find item in sidebar and select it
-    var el = document.querySelector('.knowledge-item[data-id="' + dataId + '"]');
+    var el = document.querySelector('.knowledge-item-wrapper[data-id="' + dataId + '"]');
     if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         selectItem(el);
     } else {
         showToast('Item not found in current list (may be filtered out).', 'info');
@@ -1419,14 +1496,15 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// ==================== BODY-SECTION-COLOURED LEFT BORDERS ====================
+// ==================== BODY-SECTION-COLOURED BORDERS ====================
 function applyItemBorders() {
-    // Sidebar item borders: colored by body section
-    document.querySelectorAll('.knowledge-item').forEach(function(item) {
-        var section = item.dataset.bodySection;
+    // Card left borders: colored by body section
+    document.querySelectorAll('.knowledge-item-wrapper').forEach(function(wrapper) {
+        var section = wrapper.dataset.bodySection;
         if (section) {
             var color = getSectionColor(section);
-            item.style.borderLeftColor = color.border;
+            var card = wrapper.querySelector('.kh-card');
+            if (card) card.style.borderLeftColor = color.border;
         }
     });
     // Modality badges: still use modality colors
@@ -2625,22 +2703,20 @@ document.addEventListener('DOMContentLoaded', function() {
     applyItemBorders();
     updateSectionCounts();
 
-    // Handle hash-based deep linking
+    // Handle hash-based deep linking — open detail view for the item
     var hash = window.location.hash;
     if (hash) {
-        var target = document.querySelector('.knowledge-item[data-id="' + hash.substring(1) + '"]');
+        var target = document.querySelector('.knowledge-item-wrapper[data-id="' + hash.substring(1) + '"]');
         if (target) { selectItem(target); }
     }
 
     // Handle ?edit= param — auto-open edit modal for the specified item
     var editParam = new URLSearchParams(window.location.search).get('edit');
     if (editParam) {
-        // Select the item first if not already selected via hash
         if (!hash) {
-            var editTarget = document.querySelector('.knowledge-item[data-id="' + editParam + '"]');
+            var editTarget = document.querySelector('.knowledge-item-wrapper[data-id="' + editParam + '"]');
             if (editTarget) selectItem(editTarget);
         }
-        // Open edit modal after a brief delay for DOM to settle
         setTimeout(function() {
             if (editParam.startsWith('pearl-')) {
                 var pearlId = editParam.replace('pearl-', '');
@@ -2649,7 +2725,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 var snippetId = editParam.replace('anatomy-', '');
                 if (typeof editSnippet === 'function') editSnippet(parseInt(snippetId));
             }
-            // Clean URL without reloading
             if (window.history.replaceState) {
                 window.history.replaceState({}, '', window.location.pathname + (hash || ''));
             }
@@ -2657,11 +2732,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Auto-select first item on desktop (only if no hash/edit param)
-    if (!hash && window.innerWidth >= 992) {
-        var first = document.querySelector('.knowledge-item');
-        if (first) selectItem(first);
-    }
+    // Browse view is the default landing — no auto-select
 });
 </script>
 {% endblock %}
