@@ -7213,19 +7213,22 @@ def _is_html_discussion(text):
 def _render_json_discussion(disc: dict) -> str:
     """Render structured JSON discussion to HTML using app CSS classes.
 
-    Each field maps to a specific CSS callout box:
-      diagnosis_summary → .diagnosis-box
-      key_findings      → .key-finding
-      dangerous_anatomy → .clinical-note
-      differentials     → .differential-dx
-      pitfalls          → .pitfall
-      teaching_points   → .teaching-pearl
-      staging           → .staging-info
-      key_image         → .image-finding
+    Supports two formats:
+    1. New flexible format: {"diagnosis_summary": "...", "sections": [...]}
+    2. Legacy fixed-field format: {"diagnosis_summary": "...", "key_findings": [...], ...}
+
+    Section type → CSS class mapping:
+      key_findings      → .key-finding      dangerous_anatomy → .clinical-note
+      differentials     → .differential-dx  pitfalls          → .pitfall
+      teaching_points   → .teaching-pearl   staging           → .staging-info
+      classification    → .staging-info     imaging_approach  → .clinical-note
+      complications     → .pitfall          management_impact → .key-finding
+      anatomy           → .clinical-note    key_image         → .image-finding
+      custom            → .teaching-pearl
     """
     parts = []
 
-    # Diagnosis summary
+    # Diagnosis summary (shared by both formats)
     summary = disc.get('diagnosis_summary', '')
     if summary:
         parts.append(
@@ -7235,126 +7238,188 @@ def _render_json_discussion(disc: dict) -> str:
             f'</div>'
         )
 
-    # Key findings
-    findings = disc.get('key_findings', [])
-    if findings:
+    # --- New flexible sections format ---
+    sections = disc.get('sections', [])
+    if sections and isinstance(sections, list):
+        for sec in sections:
+            if not isinstance(sec, dict):
+                continue
+            sec_type = sec.get('type', 'custom')
+            title = _escape_html(sec.get('title', sec_type.replace('_', ' ').title()))
+            content = sec.get('content', '')
+            if not content:
+                continue
+
+            # Map section type to CSS class
+            css_map = {
+                'key_findings': 'key-finding', 'dangerous_anatomy': 'clinical-note',
+                'differentials': 'differential-dx', 'pitfalls': 'pitfall',
+                'teaching_points': 'teaching-pearl', 'staging': 'staging-info',
+                'classification': 'staging-info', 'imaging_approach': 'clinical-note',
+                'complications': 'pitfall', 'management_impact': 'key-finding',
+                'anatomy': 'clinical-note', 'key_image': 'image-finding',
+                'custom': 'teaching-pearl',
+            }
+            css_cls = css_map.get(sec_type, 'teaching-pearl')
+
+            # Render content based on type and shape
+            if sec_type in ('staging', 'classification') and isinstance(content, dict):
+                parts.append(_render_staging_section(title, content, css_cls))
+            elif sec_type == 'key_image' and isinstance(content, dict):
+                mod = _escape_html(content.get('modality', ''))
+                app_text = _escape_html(content.get('appearance', ''))
+                search = content.get('search_term', '')
+                parts.append(
+                    f'<div class="{css_cls}" data-field="{sec_type}">'
+                    f'<strong>{title}</strong>'
+                    f'<p>On <span class="anatomy-label">{mod}</span>, look for {app_text}.'
+                    f'{" [" + _escape_html(search) + "]" if search else ""}</p>'
+                    f'</div>'
+                )
+            elif sec_type == 'key_findings' and isinstance(content, list):
+                items = []
+                for f in content:
+                    if isinstance(f, dict):
+                        name = _escape_html(f.get('finding', ''))
+                        desc = _escape_html(f.get('description', ''))
+                        meas = f.get('measurement')
+                        meas_html = f' <span class="measurement">{_escape_html(meas)}</span>' if meas else ''
+                        items.append(f'<li><span class="anatomy-label">{name}</span> &mdash; {desc}{meas_html}</li>')
+                    elif isinstance(f, str):
+                        items.append(f'<li>{_escape_html(f)}</li>')
+                if items:
+                    parts.append(
+                        f'<div class="{css_cls}" data-field="{sec_type}">'
+                        f'<strong>{title}</strong>'
+                        f'<ul>{"".join(items)}</ul></div>'
+                    )
+            elif sec_type == 'differentials' and isinstance(content, list):
+                items = []
+                for d in content:
+                    if isinstance(d, dict):
+                        name = _escape_html(d.get('name', ''))
+                        feat = _escape_html(d.get('distinguishing_feature', ''))
+                        items.append(f'<li><strong>{name}</strong> &mdash; {feat}</li>')
+                    elif isinstance(d, str):
+                        items.append(f'<li>{_escape_html(d)}</li>')
+                if items:
+                    parts.append(
+                        f'<div class="{css_cls}" data-field="{sec_type}">'
+                        f'<strong>{title}</strong>'
+                        f'<ul>{"".join(items)}</ul></div>'
+                    )
+            elif isinstance(content, list):
+                # Generic list rendering (strings or objects)
+                items = []
+                for item in content:
+                    if isinstance(item, str):
+                        items.append(f'<li>{_escape_html(item)}</li>')
+                    elif isinstance(item, dict):
+                        # Render dict items as key-value pairs
+                        line_parts = []
+                        for k, v in item.items():
+                            if v and v != 'null':
+                                line_parts.append(f'<strong>{_escape_html(k)}:</strong> {_escape_html(str(v))}')
+                        if line_parts:
+                            items.append(f'<li>{" &mdash; ".join(line_parts)}</li>')
+                if items:
+                    parts.append(
+                        f'<div class="{css_cls}" data-field="{sec_type}">'
+                        f'<strong>{title}</strong>'
+                        f'<ul>{"".join(items)}</ul></div>'
+                    )
+            elif isinstance(content, str):
+                parts.append(
+                    f'<div class="{css_cls}" data-field="{sec_type}">'
+                    f'<strong>{title}</strong>'
+                    f'<p>{_escape_html(content)}</p></div>'
+                )
+
+        return '\n'.join(parts)
+
+    # --- Legacy fixed-field format (backward compat) ---
+    for field, css_cls, default_title in [
+        ('key_findings', 'key-finding', 'Key Imaging Findings'),
+        ('dangerous_anatomy', 'clinical-note', 'Dangerous Anatomy'),
+        ('differentials', 'differential-dx', 'Key Differentials'),
+        ('pitfalls', 'pitfall', 'Pitfalls & Must-Not-Miss'),
+        ('teaching_points', 'teaching-pearl', 'Teaching Points'),
+    ]:
+        data = disc.get(field, [])
+        if not data or not isinstance(data, list):
+            continue
         items = []
-        for f in findings:
-            if isinstance(f, dict):
-                name = _escape_html(f.get('finding', ''))
-                desc = _escape_html(f.get('description', ''))
-                meas = f.get('measurement')
-                meas_html = f' <span class="measurement">{_escape_html(meas)}</span>' if meas else ''
-                items.append(f'<li><span class="anatomy-label">{name}</span> &mdash; {desc}{meas_html}</li>')
-            elif isinstance(f, str):
-                items.append(f'<li>{_escape_html(f)}</li>')
+        for item in data:
+            if isinstance(item, str):
+                items.append(f'<li>{_escape_html(item)}</li>')
+            elif isinstance(item, dict):
+                vals = [f'{_escape_html(str(v))}' for v in item.values() if v and str(v) != 'null']
+                if vals:
+                    items.append(f'<li>{" &mdash; ".join(vals)}</li>')
         if items:
             parts.append(
-                f'<div class="key-finding" data-field="key_findings">'
-                f'<strong>Key Imaging Findings</strong>'
-                f'<ul>{"".join(items)}</ul>'
-                f'</div>'
+                f'<div class="{css_cls}" data-field="{field}">'
+                f'<strong>{default_title}</strong>'
+                f'<ul>{"".join(items)}</ul></div>'
             )
 
-    # Two-column layout: dangerous anatomy + differentials
-    danger = disc.get('dangerous_anatomy', [])
-    diffs = disc.get('differentials', [])
-    if danger or diffs:
-        col1 = ''
-        col2 = ''
-        if danger:
-            d_items = ''.join(f'<li>{_escape_html(d)}</li>' for d in danger if isinstance(d, str))
-            col1 = (
-                f'<div class="clinical-note" data-field="dangerous_anatomy">'
-                f'<strong>Dangerous Anatomy</strong>'
-                f'<ul>{d_items}</ul></div>'
-            )
-        if diffs:
-            diff_items = []
-            for d in diffs:
-                if isinstance(d, dict):
-                    name = _escape_html(d.get('name', ''))
-                    feat = _escape_html(d.get('distinguishing_feature', ''))
-                    diff_items.append(f'<li><strong>{name}</strong> &mdash; {feat}</li>')
-                elif isinstance(d, str):
-                    diff_items.append(f'<li>{_escape_html(d)}</li>')
-            col2 = (
-                f'<div class="differential-dx" data-field="differentials">'
-                f'<strong>Key Differentials</strong>'
-                f'<ul>{"".join(diff_items)}</ul></div>'
-            )
-        if col1 and col2:
-            parts.append(f'<div class="two-column"><div>{col1}</div><div>{col2}</div></div>')
-        elif col1:
-            parts.append(col1)
-        elif col2:
-            parts.append(col2)
-
-    # Pitfalls
-    pitfalls = disc.get('pitfalls', [])
-    if pitfalls:
-        p_items = ''.join(f'<li>{_escape_html(p)}</li>' for p in pitfalls if isinstance(p, str))
-        if p_items:
-            parts.append(
-                f'<div class="pitfall" data-field="pitfalls">'
-                f'<strong>Pitfalls &amp; Must-Not-Miss</strong>'
-                f'<ul>{p_items}</ul></div>'
-            )
-
-    # Teaching points
-    teaching = disc.get('teaching_points', [])
-    if teaching:
-        t_items = ''.join(f'<li>{_escape_html(t)}</li>' for t in teaching if isinstance(t, str))
-        if t_items:
-            parts.append(
-                f'<div class="teaching-pearl" data-field="teaching_points">'
-                f'<strong>Teaching Points</strong>'
-                f'<ul>{t_items}</ul></div>'
-            )
-
-    # Staging (if present)
     staging = disc.get('staging')
     if staging and isinstance(staging, dict):
-        system = _escape_html(staging.get('system', ''))
-        stages = staging.get('stages') or staging.get('grades', [])
-        if stages:
-            rows = ''
-            for s in stages:
-                if isinstance(s, dict):
-                    label = _escape_html(s.get('stage') or s.get('grade', ''))
-                    desc = _escape_html(s.get('description', ''))
-                    mgmt = s.get('management', '')
-                    mgmt_html = f'<td>{_escape_html(mgmt)}</td>' if mgmt else ''
-                    rows += f'<tr><td><strong>{label}</strong></td><td>{desc}</td>{mgmt_html}</tr>'
-            if rows:
-                header = '<th>Stage</th><th>Description</th>'
-                if any(isinstance(s, dict) and s.get('management') for s in stages):
-                    header += '<th>Management</th>'
-                parts.append(
-                    f'<div class="staging-info" data-field="staging">'
-                    f'<strong>{system}</strong>'
-                    f'<table class="table table-sm table-bordered"><thead><tr>{header}</tr></thead>'
-                    f'<tbody>{rows}</tbody></table></div>'
-                )
-        key_stages = staging.get('key_stages', '')
-        if key_stages:
-            parts.append(f'<p class="subtle-text">{_escape_html(key_stages)}</p>')
+        parts.append(_render_staging_section('Staging', staging, 'staging-info'))
 
-    # Key image description
     key_image = disc.get('key_image')
     if key_image and isinstance(key_image, dict):
         mod = _escape_html(key_image.get('modality', ''))
-        app = _escape_html(key_image.get('appearance', ''))
+        app_text = _escape_html(key_image.get('appearance', ''))
         search = key_image.get('search_term', '')
         parts.append(
             f'<div class="image-finding" data-field="key_image">'
             f'<strong>Key Image</strong>'
-            f'<p>On <span class="anatomy-label">{mod}</span>, look for {app}.'
+            f'<p>On <span class="anatomy-label">{mod}</span>, look for {app_text}.'
             f'{" [" + _escape_html(search) + "]" if search else ""}</p>'
             f'</div>'
         )
 
     return '\n'.join(parts)
+
+
+def _render_staging_section(title: str, staging: dict, css_cls: str) -> str:
+    """Render a staging/classification/grading section as a table."""
+    system = _escape_html(staging.get('system', ''))
+    stages = staging.get('stages') or staging.get('grades', [])
+    heading = f'{title}: {system}' if system else title
+    if not stages:
+        desc = staging.get('description', '')
+        if desc:
+            return (
+                f'<div class="{css_cls}" data-field="staging">'
+                f'<strong>{_escape_html(heading)}</strong>'
+                f'<p>{_escape_html(desc)}</p></div>'
+            )
+        return ''
+    rows = ''
+    for s in stages:
+        if isinstance(s, dict):
+            label = _escape_html(s.get('stage') or s.get('grade', ''))
+            desc = _escape_html(s.get('description', ''))
+            mgmt = s.get('management', '')
+            mgmt_html = f'<td>{_escape_html(mgmt)}</td>' if mgmt else ''
+            rows += f'<tr><td><strong>{label}</strong></td><td>{desc}</td>{mgmt_html}</tr>'
+    if not rows:
+        return ''
+    header = '<th>Stage</th><th>Description</th>'
+    if any(isinstance(s, dict) and s.get('management') for s in stages):
+        header += '<th>Management</th>'
+    result = (
+        f'<div class="{css_cls}" data-field="staging">'
+        f'<strong>{_escape_html(heading)}</strong>'
+        f'<table class="table table-sm table-bordered"><thead><tr>{header}</tr></thead>'
+        f'<tbody>{rows}</tbody></table></div>'
+    )
+    key_stages = staging.get('key_stages', '')
+    if key_stages:
+        result += f'<p class="subtle-text">{_escape_html(key_stages)}</p>'
+    return result
 
 
 def _build_ai_discussion_html(output, provider, model_name):

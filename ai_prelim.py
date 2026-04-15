@@ -113,21 +113,13 @@ Return valid JSON with this exact structure:
   ],
   "discussion": {
     "diagnosis_summary": "Brief 1-2 sentence overview anchored to imaging.",
-    "key_findings": [
-      {"finding": "Structure or feature name", "description": "What you see on imaging", "measurement": "size/threshold if applicable or null"}
-    ],
-    "dangerous_anatomy": ["Anatomical danger point relevant to this diagnosis"],
-    "differentials": [
-      {"name": "Differential diagnosis", "distinguishing_feature": "How to tell it apart"}
-    ],
-    "pitfalls": ["Critical pitfall that changes management or must not be missed"],
-    "teaching_points": ["High-yield teaching point for FRCR"],
-    "staging": null,
-    "key_image": {
-      "modality": "e.g. axial unenhanced CT",
-      "appearance": "e.g. biconvex hyperdense extra-axial collection",
-      "search_term": "e.g. epidural haematoma CT axial"
-    }
+    "sections": [
+      {
+        "type": "key_findings|dangerous_anatomy|differentials|pitfalls|teaching_points|staging|classification|imaging_approach|complications|management_impact|anatomy|key_image|custom",
+        "title": "Section heading (use your own if type is custom)",
+        "content": "string OR array of strings OR array of objects — whatever fits the content best"
+      }
+    ]
   },
   "safety_checklist": ["..."],
   "sources": [
@@ -139,7 +131,8 @@ Return valid JSON with this exact structure:
   "warnings": ["..."]
 }
 
-IMPORTANT: The "discussion" field is a STRUCTURED OBJECT, not an HTML string.
+IMPORTANT: The "discussion" field is a STRUCTURED OBJECT with a required "diagnosis_summary" string and a "sections" array.
+Each section has a "type", "title", and "content" — you decide which sections are relevant.
 Do NOT include teaching_image or anatomy_image fields.
 The "image_captions" array should contain 1-3 brief descriptions of what key reference images for this diagnosis would show — these will be paired with automatically-fetched Radiopaedia images."""
 
@@ -166,54 +159,66 @@ Rules:
     # Section 2: Discussion
     discussion_section = """
 ───────────────────────────────────────────────────────────────────
-2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES (STRUCTURED JSON)
+2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES (FLEXIBLE STRUCTURED JSON)
 ───────────────────────────────────────────────────────────────────
 
-The discussion field is a STRUCTURED JSON OBJECT with these fields:
+The discussion field is a JSON object with two parts:
 
 "diagnosis_summary": (string, required)
-  Brief 1-2 sentence overview of the diagnosis anchored to imaging.
+  A punchy 1-3 sentence overview anchored to imaging. Set the scene — what is this,
+  why does it matter, and what should a radiologist know before reading further.
 
-"key_findings": (array of objects, required, 3-6 items)
-  Each object: {"finding": "structure/feature name", "description": "what you see on imaging", "measurement": "size or threshold if applicable, or null"}
-  Focus on: what makes the diagnosis, what changes management, what must be in the report.
+"sections": (array of objects)
+  YOU DECIDE which sections are relevant to this diagnosis. Each section is:
+  {
+    "type": "<one of the types below or 'custom'>",
+    "title": "<your own heading — be specific to the diagnosis, not generic>",
+    "content": <string, array of strings, or array of objects — whatever fits best>
+  }
 
-"dangerous_anatomy": (array of strings, required, 2-4 items)
-  Anatomical danger points relevant to this diagnosis.
-  Focus on: spread routes, adjacent critical structures, surgical landmarks.
+AVAILABLE SECTION TYPES (use what's relevant, skip what's not, add custom):
 
-"differentials": (array of objects, required, 2-5 items)
-  Each object: {"name": "differential diagnosis", "distinguishing_feature": "how to tell it apart from the primary diagnosis"}
+  "key_findings" — What you see on imaging. Content: array of objects
+    [{"finding": "...", "description": "...", "measurement": "size/threshold or null"}]
 
-"pitfalls": (array of strings, required, 2-4 items)
-  Must-not-miss findings, common mistakes, things that change management.
-  Focus on: what leads to harm if missed, what a junior radiologist gets wrong.
+  "dangerous_anatomy" — Critical structures at risk. Content: array of strings.
 
-"teaching_points": (array of strings, required, 2-4 items)
-  High-yield FRCR teaching points, memorable facts, clinical pearls.
+  "differentials" — How to tell this apart from mimics. Content: array of objects
+    [{"name": "...", "distinguishing_feature": "..."}]
 
-"staging": (object or null)
-  Only include if staging/grading/classification exists for this diagnosis.
-  For cancer: {"system": "AJCC 8th edition", "stages": [{"stage": "T1", "description": "..."}, ...], "key_stages": "focus on management-changing stages only"}
-  For non-cancer grading: {"system": "system name", "grades": [{"grade": "...", "description": "...", "management": "..."}]}
-  If no staging applies: null
+  "pitfalls" — What gets missed, what harms patients. Content: array of strings.
 
-"key_image": (object, required)
-  {"modality": "imaging modality and sequence/phase", "appearance": "specific visual appearance on imaging", "search_term": "terms to find a reference image"}
+  "teaching_points" — Memorable facts, FRCR pearls. Content: array of strings.
 
-CONTENT FOCUS:
-  • Dangerous anatomy relevant to this diagnosis
-  • Spread patterns and routes of involvement
-  • Complications and what to look for
-  • Key imaging signs and how they appear
-  • What differentiates mild vs severe / stable vs unstable
-  • What MUST be mentioned in a report
+  "staging" — Only for conditions with formal staging/grading. Content: object
+    {"system": "...", "stages": [{"stage": "T1", "description": "...", "management": "..."}], "key_stages": "..."}
 
-RULES:
-  • Output plain text in all fields — NO HTML tags, NO markdown
-  • Include specific measurements and thresholds where relevant
-  • Each field should be self-contained (don't reference other fields)
-  • Keep clinical content accurate and FRCR-relevant"""
+  "classification" — Named classification systems (e.g., Bosniak, LI-RADS, BI-RADS, Todani).
+    Content: object with "system" and "grades" or description.
+
+  "imaging_approach" — How to systematically read this study. Content: array of strings.
+
+  "complications" — What can go wrong, what to look for on follow-up. Content: array of strings.
+
+  "management_impact" — How imaging findings change clinical decisions. Content: array of strings.
+
+  "anatomy" — Relevant anatomy for reporting. Content: array of strings.
+
+  "key_image" — What the classic image looks like. Content: object
+    {"modality": "...", "appearance": "...", "search_term": "..."}
+
+  "custom" — Anything else that matters for this diagnosis. Use your own title.
+    Content: string or array of strings.
+
+GUIDELINES:
+  • Aim for 4-8 sections — enough depth, not padding
+  • Write titles specific to the diagnosis (e.g., "Bosniak Classification" not "Classification")
+  • Be creative — if this diagnosis has a unique feature (e.g., a named sign, a classic
+    triad, a measurement threshold), give it its own section
+  • Include specific measurements, thresholds, and criteria where they exist
+  • Each section should be self-contained
+  • Plain text only in all fields — NO HTML tags, NO markdown
+  • Prioritise what changes management over encyclopaedic completeness"""
 
     # Section 3: Safety checklist
     safety_section = """
