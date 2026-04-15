@@ -125,3 +125,14 @@ skills-lock.json
 scripts/iarc_figures/
 scripts/openstax_figures/
 .env.prod
+
+# Local utility scripts & test results (not production code)
+scripts/*.json
+scripts/*.html
+scripts/import_vetting_merge.py
+scripts/list_prod_ct_protocols.py
+scripts/nice_cache.py
+scripts/test_*.py
+
+# Local calculator builds
+static/calculators/
