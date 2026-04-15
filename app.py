@@ -7676,6 +7676,25 @@ def generate_preliminary_case_data(case_id):
     added_pairs = _apply_qa_pairs_from_output(case, output)
     discussion_html = _apply_discussion_from_output(case, output, result.get('provider', 'claude'), result.get('model', ''))
 
+    # Run Cross-Model Verification (Gemini peer review) on the discussion
+    peer_review_data = {}
+    try:
+        from radinsight_peer_review import peer_review
+        pr_input = discussion_html or output.get('discussion', '')
+        if pr_input:
+            peer_review_data = peer_review(
+                ai_output=pr_input,
+                topic=case.diagnosis or '',
+                context='teaching',
+                content_type='case',
+                content_id=str(case.id),
+                body_section=case.body_part.value if case.body_part else '',
+                modality=case.module.name if case.module else '',
+                is_admin=getattr(current_user, 'is_admin', False),
+            )
+    except Exception as pr_exc:
+        logger.warning("Peer review failed for case %s: %s", case.id, pr_exc)
+
     from models import AiPrelimCaseData
     audit = AiPrelimCaseData(
         case_id=case.id,
