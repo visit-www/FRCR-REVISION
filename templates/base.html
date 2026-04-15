@@ -867,6 +867,7 @@
     <!-- Global Flag Modal + Selection Verify (all authenticated users) -->
     {% if current_user.is_authenticated %}
     {% include 'partials/_flag_modal.html' %}
+    <script src="{{ url_for('static', filename='js/json-content-renderer.js') }}?v=1"></script>
     <script src="{{ url_for('static', filename='js/cmv-badges.js') }}?v=4"></script>
     <script src="{{ url_for('static', filename='js/selection-verify.js') }}?v=4"></script>
     <script>

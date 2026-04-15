@@ -4431,22 +4431,13 @@
 
         let renderedContent;
 
-        // Detect JSON discussion (stored as JSON string in DB)
-        if (rawDiscussion.trim().startsWith('{')) {
-            try {
-                const discData = JSON.parse(rawDiscussion);
-                if (discData.diagnosis_summary || discData.sections) {
-                    renderedContent = renderJsonDiscussion(discData);
-                    discussionDiv.classList.remove('plain-text-formatted');
-                    discussionDiv.innerHTML = renderedContent;
-                    // Store structured data for precise badge matching
-                    discussionDiv._jsonDiscussion = discData;
-                    if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
-                    return;  // skip legacy HTML path
-                }
-            } catch(e) {
-                // Not valid JSON — fall through to HTML path
-            }
+        // Detect JSON discussion (stored as JSON string in DB) → render via standalone renderer
+        if (typeof JsonContentRenderer !== 'undefined' && JsonContentRenderer.isJson(rawDiscussion)) {
+            const discData = JSON.parse(rawDiscussion);
+            JsonContentRenderer.renderInto(discussionDiv, discData);
+            discussionDiv.classList.remove('plain-text-formatted');
+            if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
+            return;
         }
 
         // Legacy: HTML or plain text discussion
