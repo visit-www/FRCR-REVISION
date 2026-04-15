@@ -117,6 +117,15 @@ When making code changes, **always check** whether the change requires updates t
 - **Case generation** (`ai_prelim.py`): flexible `sections` array — model decides which sections to include, no rigid schema
 - **JSON transition status**: Case discussions DONE. Next: anatomy snippets, algorithms, radiq, vetting — migrate when touching those generators
 
+## CMV Peer Review — Admin vs User Views
+- **Admin**: inline badges + popup actions + review panel with "Corrected Text" field
+- **Users**: summary trust bar + collapsible "Peer Review Log" table at bottom (no inline badges)
+- `cmv-badges.js` gates on `_checkAdmin()` (`body.is-admin` class)
+- Inline correction: `corrected_claim_text` column on `PeerReviewClaim`, backend `_apply_claim_correction()` does find-and-replace in source content
+- Disputed claims in Peer Review Log show version history: CMV flag → suggestion → corrected text → expert notes
+- Trust bar hidden if unresolved disputes exist
+- Dashboard crosshair link: `?claim=<id>` param → `cmv-badges.js` auto-scrolls to badge
+
 ## Case Deletion
 - `delete_case()` in `app.py` has 11 cleanup steps covering ALL FK references to `case.id`
 - If you add a new model with `ForeignKey('case.id')` without `ondelete='CASCADE'`, you MUST add explicit deletion in `delete_case()`
