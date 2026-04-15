@@ -3809,26 +3809,29 @@
     function renderJsonDiscussion(disc) {
         const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
         // Convert ALL CAPS safety phrases to subtle emphasis — skip medical abbreviations
-        // Style ALL CAPS content:
-        // 1. Safety words (NEVER, DO NOT...) → bold + red underline
+        // Universal ALL CAPS styling for any AI-generated content:
+        // 1. Safety words → bold + red underline
         // 2. STEP N → red bold
-        // 3. ALL CAPS phrases followed by : or — → grey pill label
+        // 3. Any ALL CAPS phrase (2+ consecutive caps words, 5+ chars total) → grey pill
+        //    Includes parenthesised caps like (THE KEY BRANCH POINT)
         const _safetyWords = /\b(NEVER|ALWAYS|DO NOT|MUST NOT|CRITICAL|WARNING|CAUTION|IMPORTANT|MANDATORY|CONTRAINDICATED)\b/g;
         const _stepNum = /\b(STEP \d+)\b/g;
-        // Match ALL CAPS phrase (2+ caps words) ending with : or — anywhere in text
-        const _capsLabel = /([A-Z][A-Z0-9]{1,}(?:[\s\-]+[A-Z0-9]{2,})*\s*(?::|—|–))/g;
+        // Match 2+ consecutive ALL CAPS words (allowing hyphens, parentheses, numbers)
+        // e.g., "ASSESS ENHANCEMENT PATTERN", "(THE KEY BRANCH POINT)", "DUAL BLOOD SUPPLY:"
+        const _capsPhrase = /(?:\()?[A-Z][A-Z0-9]{2,}(?:[\s\-]+[A-Z][A-Z0-9]{1,}){1,}(?:\))?(?:\s*[:—–])?/g;
         const emphCaps = function(s) {
             let out = esc(s);
-            // Safety words → bold red underline
+            // 1. Safety words → bold red underline
             out = out.replace(_safetyWords,
                 '<strong style="font-weight:700;text-decoration:underline;text-decoration-color:#e74c3c;text-underline-offset:2px;">$1</strong>');
-            // STEP N → red bold (separate from safety to avoid double-wrap)
+            // 2. STEP N → red bold
             out = out.replace(_stepNum,
                 '<strong style="color:#e74c3c;font-weight:700;">$1</strong>');
-            // ALL CAPS labels ending with : or — → grey pill
-            out = out.replace(_capsLabel, function(match) {
-                // Skip if already inside a <strong> tag (safety/step word)
-                if (match.length < 5) return match;
+            // 3. ALL CAPS phrases → grey pill (skip short matches and already-wrapped)
+            out = out.replace(_capsPhrase, function(match) {
+                // Skip single short words or if inside an HTML tag
+                var stripped = match.replace(/[^A-Z]/g, '');
+                if (stripped.length < 5) return match;
                 return '<span style="background:#f0f1f3;padding:1px 6px;border-radius:3px;font-weight:600;font-size:0.9em;">' + match + '</span>';
             });
             return out;
