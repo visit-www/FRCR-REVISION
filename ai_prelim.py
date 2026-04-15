@@ -349,7 +349,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
 
     payload = {
         "model": model,
-        "max_tokens": 6000,  # Keep ceiling high; JSON uses fewer tokens naturally
+        "max_tokens": 12000,  # Flexible sections format needs more room than rigid fields
         "temperature": 0.3,  # Slightly higher for more natural language
         "system": effective_system,
         "messages": [
