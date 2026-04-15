@@ -1173,7 +1173,7 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                     <!-- TNM Intelligence Button Group (conditionally shown for oncologic cases) -->
                     <div class="d-flex align-items-center m-2" id="tnmIntelContainer" style="display: none;">
                         <select id="tnmIntelModelSelect" class="form-select form-select-sm me-2" style="width: auto; font-size: 0.8rem;" title="Select AI model">
-                            <option value="claude-sonnet-4-20250514" selected>Sonnet (~$0.40)</option>
+                            <option value="claude-sonnet-4-6" selected>Sonnet (~$0.40)</option>
                             <option value="claude-opus-4-5-20251101">Opus (~$2.50)</option>
                         </select>
                         <div class="btn-group" id="tnmIntelBtnGroup">
@@ -1444,7 +1444,7 @@ function openAiGenerateModal() {
         '    <div class="mb-3">' +
         '      <label class="form-label fw-medium" style="color:#2c3e50;font-size:0.9rem;">AI Model</label>' +
         '      <select id="aiModelSelect" class="form-select form-select-sm">' +
-        '        <option value="claude-sonnet-4-20250514" selected>Claude Sonnet (~$0.40)</option>' +
+        '        <option value="claude-sonnet-4-6" selected>Claude Sonnet (~$0.40)</option>' +
         '        <option value="claude-opus-4-5-20251101">Claude Opus (~$2.50)</option>' +
         '      </select>' +
         '    </div>' +
@@ -1492,7 +1492,7 @@ function closeAiGenerateModal() {
 function submitAiGenerate() {
     // Collect all values BEFORE closing modal (removal destroys DOM elements)
     window._aiGenerateContext = {
-        model: (document.getElementById('aiModelSelect') || {}).value || 'claude-sonnet-4-20250514',
+        model: (document.getElementById('aiModelSelect') || {}).value || 'claude-sonnet-4-6',
         instructions: (document.getElementById('aiPrelimInstructions') || {}).value || '',
         refUrls: [],
         pdfFiles: [],
@@ -3066,7 +3066,7 @@ function loadCaseForEdit(caseId) {
 
         // Check for stored AI data to show/hide reload button
         if (caseData.id) {
-            const model = document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
+            const model = document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-6';
             fetch(`/api/case/${caseData.id}/ai-prelim/check-cache?model=${encodeURIComponent(model)}`)
                 .then(r => r.ok ? r.json() : null)
                 .then(data => {
@@ -4019,7 +4019,7 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
     }
     
     // Get selected model
-    const model = document.getElementById('tnmIntelModelSelect')?.value || 'claude-sonnet-4-20250514';
+    const model = document.getElementById('tnmIntelModelSelect')?.value || 'claude-sonnet-4-6';
     const isOpus = model.includes('opus');
 
     // Disable button and show loading
@@ -6046,8 +6046,6 @@ function onDiseaseChange() {
 
 // Model costs for display (approximate per generation)
 const MODEL_COSTS = {
-    'claude-sonnet-4-20250514': { name: 'Sonnet 4', cost: 0.40 },
-    'claude-sonnet-4-5-20250929': { name: 'Sonnet 4.5', cost: 0.40 },
     'claude-sonnet-4-6': { name: 'Sonnet 4.6', cost: 0.40 },
     'claude-opus-4-5-20251101': { name: 'Opus 4.5', cost: 2.50 },
     'claude-opus-4-6': { name: 'Opus 4.6', cost: 2.50 },
@@ -6170,7 +6168,7 @@ async function showTnmGeneratorModal() {
                         <i class="fas fa-robot me-1"></i> Model Selection
                     </label>
                     <select id="genModelSelect" class="tnm-gen-select" style="width: 100%;" onchange="updateModelCostDisplay('genModelSelect', 'genModelCost')">
-                        <option value="claude-sonnet-4-20250514" selected>Sonnet 4 (~$0.40) - Recommended</option>
+                        <option value="claude-sonnet-4-6" selected>Sonnet 4.6 (~$0.40) - Recommended</option>
                         <option value="claude-opus-4-5-20251101">Opus 4.5 (~$2.50) - Higher quality, slower</option>
                     </select>
                     <small id="genModelCost" style="display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.6); font-size: 0.75rem;">
@@ -6224,7 +6222,7 @@ async function generateTnmContent() {
     const specialNotes = document.getElementById('genSpecialNotes').value.trim();
     const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
     let overwrite = document.getElementById('genOverwrite').checked;
-    const model = document.getElementById('genModelSelect')?.value || 'claude-sonnet-4-20250514';
+    const model = document.getElementById('genModelSelect')?.value || 'claude-sonnet-4-6';
 
     if (!slug || !cancerName || !bodySection) {
         showFlash('Please select Body Section and Disease Site', 'warning');
@@ -6298,7 +6296,7 @@ function regenerateCalculator() {
 }
 
 // Actual generation logic - uses direct endpoint (with 60s maxDuration on Vercel)
-async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite, model = 'claude-sonnet-4-20250514') {
+async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite, model = 'claude-sonnet-4-6') {
     const statusDiv = document.getElementById('genStatus');
     const generateBtn = document.getElementById('genGenerateBtn');
 

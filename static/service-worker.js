@@ -4,7 +4,7 @@
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_VERSION = 'v14';
+const CACHE_VERSION = 'v15';
 const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
 const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;
@@ -120,14 +120,16 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request).catch((err) => {
         // Fetch failed: offline, timeout, or connection reset (e.g. large upload)
+        console.error(`[Service Worker] Network fetch failed for ${request.method} ${url.pathname}:`, err.message || err);
         const isUpload = request.method === 'POST' && url.pathname.includes('/stack/upload');
         const errorMsg = isUpload
           ? 'Upload failed—connection may have timed out. Try fewer files or one series at a time.'
-          : 'Internet connection required for this operation';
+          : `Network error: ${err.message || 'Internet connection required for this operation'}`;
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: errorMsg,
-            offline: true 
+            offline: true,
+            sw_error: err.message || String(err)
           }),
           {
             status: 503,

@@ -2229,7 +2229,7 @@ function createPrelimCaseData(forceRegenerate = false) {
     // Read context from stored global (set by submitAiGenerate before modal close)
     // or fall back to DOM elements if they still exist
     const ctx = window._aiGenerateContext || {};
-    const model = ctx.model || document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
+    const model = ctx.model || document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-6';
     const isOpus = model.includes('opus');
     const btn = document.getElementById('aiPrelimBtn');
     const cancelBtn = document.getElementById('aiCancelBtn');
