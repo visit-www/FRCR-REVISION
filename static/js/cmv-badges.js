@@ -282,22 +282,36 @@
                 statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>CMV Verified</span>';
                 detailHtml = '<small class="text-muted">Cross-model verified with high confidence</small>';
             } else if (c.badge_state === 'disputed' && c.admin_override === 'incorrect') {
-                // Resolved dispute — show version history
+                // Resolved dispute — show full version history
                 statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-history me-1"></i>Refined</span>';
                 var detail = '';
+                // What CMV found wrong
+                if (c.gemini_reasoning) {
+                    detail += '<div class="cmv-vlog-history-block cmv-vlog-flag">' +
+                        '<small class="fw-semibold text-danger"><i class="fas fa-flag me-1"></i>CMV flagged</small>' +
+                        '<small class="text-muted d-block">' + _escHtml(c.gemini_reasoning) + '</small></div>';
+                }
+                // What CMV suggested
                 if (c.gemini_correction) {
-                    detail += '<small class="text-muted d-block">CMV flagged: ' + _escHtml(c.gemini_correction) + '</small>';
+                    detail += '<div class="cmv-vlog-history-block cmv-vlog-suggestion">' +
+                        '<small class="fw-semibold" style="color:var(--brand-neutral)"><i class="fas fa-lightbulb me-1"></i>Suggested</small>' +
+                        '<small class="text-muted d-block">' + _escHtml(c.gemini_correction) + '</small></div>';
                 }
+                // How expert panel resolved it
                 if (c.admin_notes) {
-                    detail += '<small class="text-muted d-block mt-1">Resolution: ' + _escHtml(c.admin_notes) + '</small>';
+                    detail += '<div class="cmv-vlog-history-block cmv-vlog-resolution">' +
+                        '<small class="fw-semibold text-success"><i class="fas fa-check me-1"></i>Expert resolution</small>' +
+                        '<small class="text-muted d-block">' + _escHtml(c.admin_notes) + '</small></div>';
                 }
+                // Reference
                 if (c.admin_reference_title) {
                     detail += '<a href="' + (c.admin_reference_url || '#') + '" target="_blank" rel="noopener" class="small text-decoration-none d-block mt-1">' +
                         '<i class="fas fa-external-link-alt me-1"></i>' + _escHtml(c.admin_reference_title) + '</a>';
                 }
+                // Review date
                 if (c.reviewed_at) {
                     var d = new Date(c.reviewed_at);
-                    detail += '<small class="text-muted d-block mt-1">Reviewed: ' + d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) + '</small>';
+                    detail += '<small class="text-muted d-block mt-1"><i class="fas fa-calendar-check me-1"></i>' + d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) + '</small>';
                 }
                 detailHtml = detail || '<small class="text-muted">Corrected by expert panel</small>';
             }
