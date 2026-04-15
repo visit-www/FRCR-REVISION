@@ -7852,9 +7852,11 @@ def generate_preliminary_case_data(case_id):
     # Track AI usage
     try:
         from ai_cost_tracker import track_ai_call
+        _usage = result.get('usage', {})
         track_ai_call(current_user.id, 'generate_case_data',
                       model=result.get('model', ''),
-                      output_tokens=result.get('output', {}).get('token_count'),
+                      input_tokens=_usage.get('input_tokens', 0),
+                      output_tokens=_usage.get('output_tokens', 0),
                       input_summary=f"case: {case.diagnosis[:200]}")
     except Exception:
         pass
@@ -7932,6 +7934,9 @@ def generate_preliminary_case_data(case_id):
         db.session.rollback()
         return jsonify({'error': f'Failed to save AI data: {exc}'}), 500
 
+    _usage = result.get('usage', {})
+    _model = result.get('model', '')
+    _model_label = MODEL_COSTS.get(_model, {}).get('name', _model) if 'MODEL_COSTS' in dir() else _model
     return jsonify({
         'success': True,
         'added_pairs': added_pairs,
@@ -7940,7 +7945,11 @@ def generate_preliminary_case_data(case_id):
         'discussion_appended': bool(discussion_html),
         'warnings': output.get('warnings', []),
         'provider': result.get('provider', 'claude'),
-        'model': result.get('model', ''),
+        'model': _model,
+        'usage': {
+            'input_tokens': _usage.get('input_tokens', 0),
+            'output_tokens': _usage.get('output_tokens', 0),
+        },
     })
 
 

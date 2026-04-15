@@ -366,7 +366,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
                 "anthropic-version": "2023-06-01",
             },
             data=json.dumps(payload),
-            timeout=90,  # Increased timeout for longer responses
+            timeout=180,  # Generous timeout for flexible structured responses
         )
     except requests.exceptions.Timeout:
         raise AiPrelimError("RadInsights Intelligence request timed out. Please try again.")
@@ -380,6 +380,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
         )
 
     data = response.json()
+    usage = data.get("usage", {})
     content = data.get("content", [])
     if not content:
         raise AiPrelimError("RadInsights Intelligence response missing content block")
@@ -521,6 +522,10 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
         "generated_at": datetime.utcnow().isoformat(),
         "output": parsed,
         "raw_response": text,
+        "usage": {
+            "input_tokens": usage.get("input_tokens", 0),
+            "output_tokens": usage.get("output_tokens", 0),
+        },
     }
 
 

@@ -2352,11 +2352,21 @@ function createPrelimCaseData(forceRegenerate = false) {
         } else {
             message += ` No discussion content generated.`;
         }
-        
+
+        // Show model + token usage (admin only)
+        const isAdmin = document.body && document.body.classList.contains('is-admin');
+        if (isAdmin) {
+            const modelName = data.model || 'unknown';
+            const usage = data.usage || {};
+            if (usage.input_tokens || usage.output_tokens) {
+                message += `\n\nModel: ${modelName} | Tokens: ${(usage.input_tokens || 0).toLocaleString()} in / ${(usage.output_tokens || 0).toLocaleString()} out`;
+            }
+        }
+
         if (data.warnings && data.warnings.length) {
             message += `\n\n⚠️ Warnings: ${data.warnings.join('; ')}`;
         }
-        
+
         // Show Bootstrap alert/toast
         showAiGenerationFlash(message, pairsCount, discussionAppended);
     })
