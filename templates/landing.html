@@ -788,7 +788,7 @@
 
             <div class="row g-4 justify-content-center">
                 <!-- Free -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card">
                         <div class="pricing-badge" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
                             <i class="fas fa-compass me-1"></i>Free
@@ -800,7 +800,7 @@
                             <li><i class="fas fa-check"></i>All 72 TNM Calculators</li>
                             <li><i class="fas fa-check"></i>Clinical Guidelines & Radiology Tools</li>
                             <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 4 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month (~4 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
                         <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start Free Trial</a>
@@ -808,7 +808,7 @@
                 </div>
 
                 <!-- Standard -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card">
                         <div class="pricing-badge" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
                             <i class="fas fa-user-md me-1"></i>Standard
@@ -817,7 +817,7 @@
                         <div class="pricing-full-price">&pound;14/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Free</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 20 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 50 AI actions/month (~20 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
                             <li><i class="fas fa-check"></i>Email to Patient, SBA & Viva generation</li>
                             <li><i class="fas fa-check"></i>Save personal templates</li>
@@ -832,7 +832,7 @@
                 </div>
 
                 <!-- Elite -->
-                <div class="col-md-6 col-lg-4">
+                <div class="col-md-6 col-lg-3">
                     <div class="pricing-card pricing-card-featured">
                         <div class="pricing-popular">Most Popular</div>
                         <div class="pricing-badge" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
@@ -842,7 +842,7 @@
                         <div class="pricing-full-price">&pound;45/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Standard</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 64 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 160 AI actions/month (~64 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 50 queries/month</li>
                             <li><i class="fas fa-check"></i>MDT Suite & Notion integration</li>
                             <li><i class="fas fa-check"></i>Priority content requests</li>
@@ -852,6 +852,28 @@
                         <button onclick="startCheckout('elite')" class="btn-pricing" style="background: #6b46c1; color: #fff; border: none; cursor: pointer;">Choose Elite</button>
                         {% else %}
                         <a href="/auth/register?plan=elite" class="btn-pricing" style="background: #6b46c1; color: #fff;">Choose Elite</a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Elite Pro -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pricing-card" style="border: 2px solid #7c3aed; box-shadow: 0 4px 20px rgba(124,58,237,0.15);">
+                        <div class="pricing-badge" style="background: rgba(124,58,237,0.1); color: #7c3aed;">
+                            <i class="fas fa-gem me-1"></i>Elite Pro
+                        </div>
+                        <div class="pricing-price">&pound;99<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;120/month after launch</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i>Everything in Elite</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 550 AI actions/month (~220 reports)</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 80 queries/month</li>
+                            <li><i class="fas fa-check"></i>Dedicated support</li>
+                        </ul>
+                        {% if current_user.is_authenticated %}
+                        <button onclick="startCheckout('elite_pro')" class="btn-pricing" style="background: #7c3aed; color: #fff; border: none; cursor: pointer;">Choose Elite Pro</button>
+                        {% else %}
+                        <a href="/auth/register?plan=elite_pro" class="btn-pricing" style="background: #7c3aed; color: #fff;">Choose Elite Pro</a>
                         {% endif %}
                     </div>
                 </div>
@@ -949,7 +971,7 @@
         },
         {
             title: 'Choose Your Plan',
-            text: 'Start with a 7-day free trial of all AI features. Then choose Standard for 20 reports/month or Elite for 64 reports. Lock in launch pricing before it increases.',
+            text: 'Start with a 7-day free trial of all AI features. Then choose Standard (50 AI actions/month) or Elite (160 AI actions/month). Lock in launch pricing before it increases.',
             selector: '#pricing-section',
             position: 'top',
             icon: 'fas fa-tags'

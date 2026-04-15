@@ -2,6 +2,8 @@
 
 > Source of truth for finance team — cost structure, pricing rationale, unit economics, credit system.
 > Last updated: 15 April 2026
+>
+> **Billing unit: AI actions (not reports).** Each AI interaction = 1 action. Report estimates assume ~2.5 actions/report on average. Simple cases use fewer actions; complex cases with follow-up advisories, MDT, emails, SBA/Viva use more. Users are likely to get **more** than the estimated report count.
 
 ---
 
@@ -9,30 +11,31 @@
 
 ### Subscription Tiers (Monthly Recurring Revenue)
 
-| Tier | Launch Price | Post-Launch | Reports/mo | RadIQ/mo | Effective/Report | Target User |
-|------|-------------|-------------|------------|----------|------------------|-------------|
-| Free | £0 | £0 | 4 (trial: 7 days full access) | 5 | free | Students, evaluators |
-| Standard | £9/mo | £14/mo | 20 | 20 | 45p | Registrars |
-| Elite | £29/mo | £45/mo | 64 | 50 | 45p | Active consultants |
-| Elite Pro | £99/mo | £120/mo | 220 | 80 | 45p | High-volume / departments |
+| Tier | Launch Price | Post-Launch | AI Actions/mo | ~Reports | RadIQ/mo | Target User |
+|------|-------------|-------------|---------------|----------|----------|-------------|
+| Free | £0 | £0 | 10 (trial: 7 days full access) | ~4 | 5 | Students, evaluators |
+| Standard | £9/mo | £14/mo | 50 | ~20 | 20 | Registrars |
+| Elite | £29/mo | £45/mo | 160 | ~64 | 50 | Active consultants |
+| Elite Pro | £99/mo | £120/mo | 550 | ~220 | 80 | High-volume / departments |
 
 ### Credit Top-Up System
 
-| Pack | Price | Per Report | Margin |
-|------|-------|------------|--------|
-| 10 reports | £6 | 60p | 54% |
+| Pack | Price | AI Actions | ~Reports | Per Action | Margin |
+|------|-------|------------|----------|------------|--------|
+| 25 AI actions | £6 | 25 | ~10 | 24p | 54% |
 
 - Top-ups available to Standard, Elite, and Elite Pro subscribers only
 - Free users must upgrade to buy credits
-- Credits consumed within billing month (no rollover)
-- Price per top-up report (60p) is higher than subscription rate (45p) — incentivises subscription over pay-as-you-go
+- Credits never expire
+- Each AI interaction (finalise, SBA, email, MDT, etc.) consumes 1 action credit
+- Simple cases may use only 1–2 actions; complex cases with follow-ups use more
 
 ### Revenue Per User Per Month
 - Free: £0 (acquisition funnel — £1.04 cost to serve)
 - Standard: £9 (launch) / £14 (full)
 - Elite: £29 (launch) / £45 (full)
 - Elite Pro: £99 (launch) / £120 (full)
-- Top-up packs: £6 per 10 credits (supplemental revenue)
+- Top-up packs: £6 per 25 AI action credits (supplemental revenue)
 
 ---
 
@@ -42,7 +45,7 @@
 
 | Feature | Free | Standard | Elite | Elite Pro |
 |---------|------|----------|-------|-----------|
-| Smart Reporter (Opus AI) | 4 reports/mo | 20 reports/mo | 64 reports/mo | 220 reports/mo |
+| Smart Reporter (Opus AI) | 10 actions/mo (~4 reports) | 50 actions/mo (~20 reports) | 160 actions/mo (~64 reports) | 550 actions/mo (~220 reports) |
 | RadIQ queries | 5/mo | 20/mo | 50/mo | 80/mo |
 | AI Vetting & Protocol Matching | Yes | Yes | Yes | Yes |
 | MDT Summary generation | Yes | Yes | Yes | Yes |
@@ -140,7 +143,7 @@ All tiers including Free receive **Opus-grade AI finalization**. No quality degr
 |------|--------|-------------|
 | Revenue | £9.00 | £14.00 |
 | Stripe fees (2.9% + 30p) | -£0.56 | -£0.78 |
-| Max AI cost (20 reports + 20 RadIQ) | -£4.84 | -£4.84 |
+| Max AI cost (50 actions + 20 RadIQ) | -£4.84 | -£4.84 |
 | **Gross margin** | **£3.60 (40%)** | **£8.38 (60%)** |
 
 ### Elite Tier (£29/mo launch, £45/mo post-launch)
@@ -148,7 +151,7 @@ All tiers including Free receive **Opus-grade AI finalization**. No quality degr
 |------|--------|-------------|
 | Revenue | £29.00 | £45.00 |
 | Stripe fees | -£1.29 | -£1.84 |
-| Max AI cost (64 reports + 50 RadIQ) | -£15.92 | -£15.92 |
+| Max AI cost (160 actions + 50 RadIQ) | -£15.92 | -£15.92 |
 | **Gross margin** | **£11.79 (41%)** | **£27.24 (61%)** |
 
 ### Elite Pro Tier (£99/mo launch, £120/mo post-launch)
@@ -156,15 +159,15 @@ All tiers including Free receive **Opus-grade AI finalization**. No quality degr
 |------|--------|-------------|
 | Revenue | £99.00 | £120.00 |
 | Stripe fees | -£3.67 | -£4.38 |
-| Max AI cost (220 reports + 80 RadIQ) | -£51.80 | -£51.80 |
+| Max AI cost (550 actions + 80 RadIQ) | -£51.80 | -£51.80 |
 | **Gross margin** | **£43.53 (44%)** | **£63.82 (53%)** |
 
-### Top-Up Pack (£6 per 10 reports)
+### Top-Up Pack (£6 per 25 AI actions)
 | Item | Value |
 |------|-------|
 | Revenue | £6.00 |
 | Stripe fees | -£0.47 |
-| AI cost (10 reports) | -£2.30 |
+| AI cost (25 actions) | -£2.30 |
 | **Gross margin** | **£3.23 (54%)** |
 
 ### Key Insight
@@ -188,7 +191,7 @@ All tiers including Free receive **Opus-grade AI finalization**. No quality degr
 | Elite (post-launch) | £45 | £15.92 | £1.84 | +£27.24 | 61% |
 | Elite Pro (launch) | £99 | £51.80 | £3.67 | +£43.53 | 44% |
 | Elite Pro (post-launch) | £120 | £51.80 | £4.38 | +£63.82 | 53% |
-| Top-up 10 | £6 | £2.30 | £0.47 | +£3.23 | 54% |
+| Top-up 25 actions | £6 | £2.30 | £0.47 | +£3.23 | 54% |
 
 ### Realistic (60% usage)
 

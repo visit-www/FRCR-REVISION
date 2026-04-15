@@ -856,7 +856,7 @@
                             <li><i class="fas fa-check"></i>All 72 TNM Calculators</li>
                             <li><i class="fas fa-check"></i>Clinical Guidelines & Radiology Tools</li>
                             <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 4 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month (~4 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
                         {% if user_data %}
@@ -889,7 +889,7 @@
                         <div class="pricing-full-price">&pound;14/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Free</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 20 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 50 AI actions/month (~20 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
                             <li><i class="fas fa-check"></i>Email to Patient, SBA & Viva generation</li>
                             <li><i class="fas fa-check"></i>Save personal templates</li>
@@ -931,7 +931,7 @@
                         <div class="pricing-full-price">&pound;45/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Standard</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 64 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 160 AI actions/month (~64 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 50 queries/month</li>
                             <li><i class="fas fa-check"></i>MDT Suite (meetings, cases, outcomes)</li>
                             <li><i class="fas fa-check"></i>Notion integration</li>
@@ -972,7 +972,7 @@
                         <div class="pricing-full-price">&pound;120/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Elite</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 220 reports/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 550 AI actions/month (~220 reports)</li>
                             <li><i class="fas fa-check"></i>RadIQ: 80 queries/month</li>
                             <li><i class="fas fa-check"></i>Dedicated support</li>
                         </ul>
@@ -1047,11 +1047,11 @@
                             <td><i class="fas fa-check check"></i></td>
                         </tr>
                         <tr>
-                            <td>Smart Reporter (reports/month)</td>
-                            <td><span class="highlight-val">4</span></td>
-                            <td><span class="highlight-val">20</span></td>
-                            <td><span class="highlight-val">64</span></td>
-                            <td><span class="highlight-val">220</span></td>
+                            <td>Smart Reporter (AI actions/month)</td>
+                            <td><span class="highlight-val">10</span></td>
+                            <td><span class="highlight-val">50</span></td>
+                            <td><span class="highlight-val">160</span></td>
+                            <td><span class="highlight-val">550</span></td>
                         </tr>
                         <tr>
                             <td>RadIQ queries/month</td>
@@ -1147,8 +1147,40 @@
                     </tbody>
                 </table>
             </div>
+            <div class="text-center mt-3" style="max-width: 700px; margin: 0 auto;">
+                <p style="font-size: 0.82rem; color: var(--brand-text-secondary); line-height: 1.7;">
+                    <i class="fas fa-info-circle me-1" style="color: var(--brand-neutral);"></i>
+                    <strong>How AI actions work:</strong> Each AI interaction (finalise report, generate SBA, write email, etc.) uses 1 action.
+                    A simple report may use just 1&ndash;2 actions, while a complex case with follow-up advisories and multiple outputs may use more.
+                    The report estimates above assume ~2.5 actions per report on average &mdash; your actual number of reports is likely to be <strong>higher</strong> for straightforward cases.
+                </p>
+            </div>
         </div>
     </section>
+
+    <!-- Credit Top-Up (paid subscribers only) -->
+    {% if user_data and user_data.tier in ('standard', 'elite', 'elite_pro') %}
+    <section class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div style="border:2px solid var(--brand-success); border-radius:12px; padding:28px; background:linear-gradient(135deg, rgba(168,213,186,0.08), transparent); text-align:center;">
+                        <div style="font-size:1.5rem; margin-bottom:6px;"><i class="fas fa-coins" style="color:var(--brand-primary);"></i></div>
+                        <h3 style="font-weight:700; color:var(--brand-text-primary); margin-bottom:6px;">Need More Credits?</h3>
+                        <p style="color:var(--brand-text-secondary); font-size:0.92rem; margin-bottom:16px;">
+                            Top up with <strong>25 AI action credits</strong> for <strong>&pound;6</strong> (~10 reports worth).
+                            Credits are added instantly and work across Smart Reporter and RadIQ. No subscription change required.
+                        </p>
+                        <button onclick="buyCredits()" class="btn btn-brand-success" style="padding:10px 32px; font-size:1rem; font-weight:600; border-radius:8px;">
+                            <i class="fas fa-coins me-2"></i>Buy 25 AI Action Credits — &pound;6
+                        </button>
+                        <div style="font-size:0.75rem; color:var(--brand-text-secondary); margin-top:10px;">One-time purchase &middot; Credits never expire &middot; Simple cases use fewer actions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     <!-- FAQ -->
     <section class="section">
@@ -1329,7 +1361,7 @@
         btn.disabled = true;
 
         // If user is a paid subscriber wanting an upgrade, show preview modal
-        if (currentTier === 'standard' || currentTier === 'elite') {
+        if (currentTier === 'standard' || currentTier === 'elite' || currentTier === 'elite_pro') {
             btn.disabled = false;
             btn.innerHTML = orig;
             startPlanChange(plan);
@@ -1524,6 +1556,30 @@
         }
     })();
     {% endif %}
+
+    // ── Buy credit top-up ──
+    function buyCredits() {
+        const btn = event.target.closest('button');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...'; }
+        fetch('/stripe/buy-credits', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-coins me-2"></i>Buy 25 AI Action Credits — £6'; }
+                alert(data.error || 'Could not start credit purchase.');
+            }
+        })
+        .catch(() => {
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-coins me-2"></i>Buy 25 AI Action Credits — £6'; }
+            alert('Connection error. Please try again.');
+        });
+    }
 
     // ── Payment toast ──
     (function() {

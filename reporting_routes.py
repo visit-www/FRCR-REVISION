@@ -320,7 +320,7 @@ def _check_ai_rate_limit(usage_type='sr'):
         _report_count = limit / 2.5 if usage_type != 'radiq' else limit
         _unit = 'RadIQ queries' if usage_type == 'radiq' else 'reports'
         _count = int(_report_count)
-        can_buy_credits = tier not in ('free',) and usage_type != 'radiq'
+        can_buy_credits = tier not in ('free',)
         if trial_expired:
             msg = (f'You have used your {_count} free {_unit} '
                    f'this month. Upgrade for more.')

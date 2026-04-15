@@ -61,7 +61,11 @@
                                 <small class="text-muted">Subscription Plan</small>
                                 <div class="d-flex align-items-center gap-2 mt-1">
                                     {% set tier = current_user.subscription_tier or 'free' %}
-                                    {% if tier == 'elite' %}
+                                    {% if tier == 'elite_pro' %}
+                                    <span class="badge" style="background: rgba(124,58,237,0.12); color: #7c3aed; font-size: 0.85rem; padding: 5px 14px;">
+                                        <i class="fas fa-gem me-1"></i>Elite Pro
+                                    </span>
+                                    {% elif tier == 'elite' %}
                                     <span class="badge" style="background: rgba(168,213,186,0.15); color: #5a9e73; font-size: 0.85rem; padding: 5px 14px;">
                                         <i class="fas fa-crown me-1"></i>Elite
                                     </span>
@@ -77,6 +81,11 @@
                                     <a href="/pricing" style="font-size: 0.82rem; color: #5a9e73; font-weight: 600; text-decoration: none;">
                                         <i class="fas fa-exchange-alt me-1"></i>Change Plan
                                     </a>
+                                    {% if tier in ('standard', 'elite', 'elite_pro') %}
+                                    <a href="#" onclick="manageSubscription(event)" style="font-size: 0.82rem; color: var(--brand-neutral); font-weight: 600; text-decoration: none; margin-left: 12px;">
+                                        <i class="fas fa-credit-card me-1"></i>Manage Billing
+                                    </a>
+                                    {% endif %}
                                 </div>
                                 {% if current_user.subscription_end_date %}
                                 <small class="text-muted d-block mt-1">
@@ -88,6 +97,40 @@
                                     <i class="fas fa-clock me-1"></i>{{ trial_days_left }} trial day{{ 's' if trial_days_left != 1 else '' }} remaining
                                 </small>
                                 {% endif %}
+                            </div>
+
+                            <!-- Plan Features & Usage -->
+                            <div class="mb-3" id="planFeaturesBlock">
+                                <small class="text-muted">Your Plan Includes</small>
+                                <div class="mt-1" style="font-size:0.85rem; line-height:1.9;">
+                                    {% if tier == 'elite_pro' %}
+                                    <div><i class="fas fa-check me-1" style="color:#7c3aed;"></i>Smart Reporter: <strong>550</strong> AI actions/month (~220 reports)</div>
+                                    <div><i class="fas fa-check me-1" style="color:#7c3aed;"></i>RadIQ: <strong>80</strong> queries/month</div>
+                                    <div><i class="fas fa-check me-1" style="color:#7c3aed;"></i>MDT Suite, Notion, Priority support</div>
+                                    <div><i class="fas fa-check me-1" style="color:#7c3aed;"></i>Dedicated support</div>
+                                    <div><i class="fas fa-check me-1" style="color:#7c3aed;"></i>Buy top-up credits</div>
+                                    {% elif tier == 'elite' %}
+                                    <div><i class="fas fa-check me-1" style="color:#5a9e73;"></i>Smart Reporter: <strong>160</strong> AI actions/month (~64 reports)</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5a9e73;"></i>RadIQ: <strong>50</strong> queries/month</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5a9e73;"></i>MDT Suite & Notion integration</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5a9e73;"></i>Priority content requests & early access</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5a9e73;"></i>Buy top-up credits</div>
+                                    {% elif tier == 'standard' %}
+                                    <div><i class="fas fa-check me-1" style="color:#e96304;"></i>Smart Reporter: <strong>50</strong> AI actions/month (~20 reports)</div>
+                                    <div><i class="fas fa-check me-1" style="color:#e96304;"></i>RadIQ: <strong>20</strong> queries/month</div>
+                                    <div><i class="fas fa-check me-1" style="color:#e96304;"></i>Email to Patient, SBA & Viva generation</div>
+                                    <div><i class="fas fa-check me-1" style="color:#e96304;"></i>Buy top-up credits</div>
+                                    {% else %}
+                                    <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>Smart Reporter: <strong>10</strong> AI actions/month (~4 reports)</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>RadIQ: <strong>5</strong> queries/month</div>
+                                    <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>All cases, tools, calculators & protocols</div>
+                                    {% endif %}
+                                    <div class="mt-1" style="font-size:0.75rem; color:var(--brand-text-secondary);">
+                                        <i class="fas fa-info-circle me-1"></i>Report estimates are averages &mdash; simple cases use fewer actions, complex cases with follow-ups use more.
+                                    </div>
+                                </div>
+                                <!-- Dynamic usage counters -->
+                                <div id="profileUsageCounters" class="mt-2" style="font-size:0.82rem;"></div>
                             </div>
 
                             <div class="row">
@@ -705,6 +748,26 @@
 </style>
 
 <script>
+// Fetch and display usage counters
+(function() {
+    fetch('/api/smart-reporter/ai-usage', {credentials: 'include'})
+        .then(r => r.json())
+        .then(data => {
+            const el = document.getElementById('profileUsageCounters');
+            if (!el) return;
+            const srRem = data.sr_remaining || 0;
+            const srLim = data.sr_limit || 0;
+            const riqRem = data.radiq_remaining || 0;
+            const riqLim = data.radiq_limit || 0;
+            if (srLim >= 9999) { el.innerHTML = '<i class="fas fa-shield-alt me-1" style="color:var(--brand-neutral);"></i>Admin — Unlimited'; return; }
+            const srColor = srRem <= Math.ceil(srLim * 0.1) ? '#dc3545' : srRem <= Math.ceil(srLim * 0.3) ? '#ffc107' : '#28a745';
+            const riqColor = riqRem <= Math.ceil(riqLim * 0.1) ? '#dc3545' : riqRem <= Math.ceil(riqLim * 0.3) ? '#ffc107' : '#28a745';
+            el.innerHTML = '<div><i class="fas fa-bolt me-1" style="color:' + srColor + ';"></i>Smart Reporter: <strong style="color:' + srColor + ';">' + srRem + '/' + srLim + '</strong> actions remaining</div>'
+                + '<div><i class="fas fa-bolt me-1" style="color:' + riqColor + ';"></i>RadIQ: <strong style="color:' + riqColor + ';">' + riqRem + '/' + riqLim + '</strong> queries remaining</div>';
+        })
+        .catch(() => {});
+})();
+
 // GDPR Data Export
 function downloadMyData(btn) {
     var orig = btn.innerHTML;

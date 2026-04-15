@@ -29,14 +29,81 @@ stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
-PRICE_IDS = {
-    'standard':    os.environ.get('STRIPE_STANDARD_PRICE_ID', ''),
-    'elite':       os.environ.get('STRIPE_ELITE_PRICE_ID', ''),
-    'elite_pro':   os.environ.get('STRIPE_ELITE_PRO_PRICE_ID', ''),
-    'credit_pack': os.environ.get('STRIPE_CREDIT_PACK_PRICE_ID', ''),  # £6 for 10 report credits
+# ---------------------------------------------------------------------------
+# Pricing — lookup-key based (no price ID env vars needed)
+# Launch prices active until POST_LAUNCH_DATE, then auto-switch.
+# To override: set PRICING_PHASE=post_launch env var.
+# ---------------------------------------------------------------------------
+POST_LAUNCH_DATE = datetime(2026, 7, 17)  # 17 July 2026
+
+LOOKUP_KEYS = {
+    'launch': {
+        'standard':    'STRIPE_STANDARD_LAUNCH_PRICE_ID',
+        'elite':       'STRIPE_ELITE_LAUNCH_PRICE_ID',
+        'elite_pro':   'STRIPE_ELITE_PRO_LAUNCH_PRICE_ID',
+        'credit_pack': 'STRIPE_CREDIT_PACK_PRICE_ID',
+    },
+    'post_launch': {
+        'standard':    'STRIPE_STANDARD_POST_LAUNCH_PRICE_ID',
+        'elite':       'STRIPE_ELITE_POST_LAUNCH_PRICE_ID',
+        'elite_pro':   'STRIPE_ELITE_PRO_POST_LAUNCH_PRICE_ID',
+        'credit_pack': 'STRIPE_CREDIT_PACK_PRICE_ID',  # same for both phases
+    },
 }
 
-CREDITS_PER_PACK = 10  # Each credit = 1 report (~2.5 AI actions)
+# Cache resolved price IDs (lookup_key → price_id) so we don't call Stripe on every request
+_resolved_prices = {}
+
+
+def _get_pricing_phase():
+    """Determine current pricing phase: 'launch' or 'post_launch'."""
+    override = os.environ.get('PRICING_PHASE', '').strip().lower()
+    if override in ('launch', 'post_launch'):
+        return override
+    return 'post_launch' if datetime.utcnow() >= POST_LAUNCH_DATE else 'launch'
+
+
+def _resolve_price_id(plan):
+    """Resolve a plan name to a Stripe price ID via lookup key. Cached after first call."""
+    phase = _get_pricing_phase()
+    cache_key = f'{phase}:{plan}'
+
+    if cache_key in _resolved_prices:
+        return _resolved_prices[cache_key]
+
+    lookup_key = LOOKUP_KEYS.get(phase, {}).get(plan)
+    if not lookup_key:
+        logger.error(f"No lookup key for plan={plan}, phase={phase}")
+        return None
+
+    try:
+        prices = stripe.Price.list(lookup_keys=[lookup_key], limit=1)
+        prices_data = prices.get('data', []) if isinstance(prices, dict) else getattr(prices, 'data', [])
+        if prices_data:
+            price_id = prices_data[0].id
+            _resolved_prices[cache_key] = price_id
+            logger.info(f"Resolved {lookup_key} → {price_id} (phase={phase})")
+            return price_id
+        else:
+            logger.error(f"No Stripe price found for lookup_key={lookup_key}")
+            return None
+    except stripe.StripeError as e:
+        logger.error(f"Stripe lookup_key resolve error for {lookup_key}: {e}")
+        return None
+
+
+# Legacy compat — _tier_from_subscription needs reverse lookup
+def _build_reverse_price_map():
+    """Build reverse map: price_id → tier name. Called lazily."""
+    phase = _get_pricing_phase()
+    result = {}
+    for plan, lookup_key in LOOKUP_KEYS[phase].items():
+        price_id = _resolve_price_id(plan)
+        if price_id:
+            result[price_id] = plan
+    return result
+
+CREDITS_PER_PACK = 25  # 25 AI actions per pack (~10 reports at ~2.5 actions each)
 
 BASE_URL = os.environ.get('BASE_URL', 'https://www.radinsights.xyz')
 
@@ -100,11 +167,17 @@ def _tier_from_subscription(subscription_obj):
     first_item = items_data[0]
     price_obj = _get(first_item, 'price', {})
     price_id = _get(price_obj, 'id', '')
-    if price_id == PRICE_IDS.get('elite_pro'):
-        return 'elite_pro'
-    if price_id == PRICE_IDS.get('elite'):
-        return 'elite'
-    return 'standard'
+    # Check against both launch and post_launch price IDs
+    for phase in ('launch', 'post_launch'):
+        for plan, lookup_key in LOOKUP_KEYS[phase].items():
+            if plan == 'credit_pack':
+                continue
+            cached = _resolved_prices.get(f'{phase}:{plan}')
+            if cached and cached == price_id:
+                return plan
+    # Fallback: resolve current phase prices and check
+    reverse_map = _build_reverse_price_map()
+    return reverse_map.get(price_id, 'standard')
 
 
 def _get_active_subscription(customer_id):
@@ -136,9 +209,9 @@ def create_checkout_session():
 
     data = request.get_json(silent=True) or {}
     plan = data.get('plan', 'standard')
-    price_id = PRICE_IDS.get(plan)
+    price_id = _resolve_price_id(plan)
     if not price_id:
-        return jsonify({'error': f'Unknown plan: {plan}'}), 400
+        return jsonify({'error': f'Unknown plan or price not configured: {plan}'}), 400
 
     current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
     if current_tier == plan:
@@ -184,7 +257,7 @@ def buy_credits():
     if current_tier == 'free':
         return jsonify({'error': 'Top-up credits are available for subscribers only. Please upgrade first.'}), 403
 
-    price_id = PRICE_IDS.get('credit_pack')
+    price_id = _resolve_price_id('credit_pack')
     if not price_id:
         return jsonify({'error': 'Credit pack not configured'}), 503
 
@@ -266,7 +339,7 @@ def change_plan():
 
         # ── UPGRADE (Standard → Elite) ──
         if new_rank > current_rank:
-            new_price_id = PRICE_IDS.get(new_plan)
+            new_price_id = _resolve_price_id(new_plan)
             if not new_price_id:
                 return jsonify({'error': f'Price not configured for {new_plan}'}), 500
 
@@ -349,7 +422,7 @@ def preview_change():
 
         if new_rank > current_rank:
             # UPGRADE preview — get prorated invoice
-            new_price_id = PRICE_IDS.get(new_plan)
+            new_price_id = _resolve_price_id(new_plan)
             if not new_price_id:
                 return jsonify({'error': f'Price not configured for {new_plan}'}), 500
 
@@ -524,11 +597,9 @@ def _handle_checkout_completed(session_obj):
     # ── Credit pack purchase (one-time payment) ──
     if _get(metadata, 'type') == 'credit_pack':
         credits = int(_get(metadata, 'credits', CREDITS_PER_PACK))
-        # Convert report credits to AI actions (~2.5 per report)
-        action_credits = int(credits * 2.5)
-        user.report_credits = (user.report_credits or 0) + action_credits
+        user.report_credits = (user.report_credits or 0) + credits
         db.session.commit()
-        logger.info(f"User {user.id} purchased {credits} report credits ({action_credits} actions), total now: {user.report_credits}")
+        logger.info(f"User {user.id} purchased {credits} AI action credits, total now: {user.report_credits}")
         return
 
     # ── Subscription checkout ──
@@ -608,7 +679,7 @@ def _handle_subscription_deleted(sub_obj):
 
     # Downgrade to a lower paid tier: auto-create the new subscription
     if pending_tier in ('standard', 'elite'):
-        new_price_id = PRICE_IDS.get(pending_tier)
+        new_price_id = _resolve_price_id(pending_tier)
         if new_price_id:
             try:
                 new_sub = stripe.Subscription.create(

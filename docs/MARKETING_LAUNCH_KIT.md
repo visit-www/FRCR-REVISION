@@ -118,25 +118,27 @@
 
 ### Launch Pricing (Lock-In Offer)
 
-| Plan | Launch Price | Post-Launch Price | Reports/mo | RadIQ/mo | Savings |
-|------|-------------|-------------------|------------|----------|---------|
-| Free | Free (7-day trial) | Free | 4 | 5 | — |
-| Standard | **£9/month** | £14/month | 20 | 20 | 36% off |
-| Elite | **£29/month** | £45/month | 64 | 50 | 36% off |
-| Elite Pro | **£99/month** | £120/month | 220 | 80 | 18% off |
-| Top-up | **£6** (one-time) | £6 | +10 | — | — |
+| Plan | Launch Price | Post-Launch Price | AI Actions/mo | ~Reports | RadIQ/mo | Savings |
+|------|-------------|-------------------|---------------|----------|----------|---------|
+| Free | Free (7-day trial) | Free | 10 | ~4 | 5 | — |
+| Standard | **£9/month** | £14/month | 50 | ~20 | 20 | 36% off |
+| Elite | **£29/month** | £45/month | 160 | ~64 | 50 | 36% off |
+| Elite Pro | **£99/month** | £120/month | 550 | ~220 | 80 | 18% off |
+| Top-up | **£6** (one-time) | £6 | +25 | ~10 | — | — |
+
+> **Note:** Each AI interaction (finalise report, generate SBA, write email, etc.) = 1 action. Report estimates assume ~2.5 actions/report. Simple cases use fewer — most users will get more reports than the estimate.
 
 **Key Messaging:**
 - "Lock in launch pricing — prices will increase"
 - "Cancel anytime — no lock-in contract"
 - "7-day free trial of ALL features including AI — full Opus quality"
 - "All educational content free forever — AI features are what you pay for"
-- "Need more reports? Buy top-up credits anytime"
+- "Need more? Buy 25 AI action credits for £6 — instant top-up, no subscription change"
 
 ### Value Anchoring
 - "£29/month = less than one FRCR textbook per month"
 - "£9/month = cost of 2 coffees per week"
-- "Each AI report review saves you 5-10 minutes — 20 reports = 2-3 hours saved per month"
+- "Each AI report review saves you 5-10 minutes — 50 AI actions ≈ 20+ reports = 2-3 hours saved per month"
 - "Same premium AI quality on every plan — no feature degradation"
 
 ---
@@ -198,13 +200,13 @@ Free Trial (7 days, all features)
 Free Tier (limited AI, full educational content)
     |
     v
-Standard £9/mo (20 reports + SBA/Viva + top-ups)
+Standard £9/mo (50 AI actions ~20 reports + SBA/Viva + top-ups)
     |
     v
-Elite £29/mo (64 reports + MDT Suite + Notion)
+Elite £29/mo (160 AI actions ~64 reports + MDT Suite + Notion)
     |
     v
-Elite Pro £99/mo (220 reports + dedicated support)
+Elite Pro £99/mo (550 AI actions ~220 reports + dedicated support)
 ```
 
 ### Conversion Triggers

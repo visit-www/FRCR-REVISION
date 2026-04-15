@@ -947,12 +947,14 @@ function showUpgradeModal(reason, data) {
     if (!modal) return;
     const titleEl = modal.querySelector('.upgrade-modal-title');
     const msgEl = modal.querySelector('.upgrade-modal-message');
+    const creditBtn = document.getElementById('buyCreditsBtn');
 
     if (reason === 'trial_expired') {
         titleEl.textContent = 'Free Trial Ended';
         msgEl.innerHTML = 'Your <strong>7-day free trial</strong> has ended. '
             + 'All non-AI features (cases, tools, calculators, protocols) remain fully accessible. '
             + 'Upgrade to continue using Smart Reporter and RadIQ AI features.';
+        if (creditBtn) creditBtn.style.display = 'none';
     } else {
         const tier = (data && data.tier) || 'free';
         const limit = (data && data.limit) || '—';
@@ -960,6 +962,10 @@ function showUpgradeModal(reason, data) {
         msgEl.innerHTML = `You've used all <strong>${limit}</strong> RadIQ queries included in your `
             + `<strong>${tier.charAt(0).toUpperCase() + tier.slice(1)}</strong> plan this month. `
             + 'Upgrade for more monthly queries.'
+        // Show buy credits button for paid subscribers
+        if (creditBtn) {
+            creditBtn.style.display = (data && data.can_buy_credits) ? 'block' : 'none';
+        }
     }
 
     modal.style.display = 'flex';
@@ -1028,7 +1034,7 @@ if (window.PIIGuard && window.PIIGuard.protect) {
                             <div style="font-size:0.68rem; color:var(--brand-text-secondary); margin-bottom:8px;">&pound;14/mo after launch</div>
                         </div>
                         <ul style="list-style:none; padding:0; margin:0 0 10px; font-size:0.72rem; color:var(--brand-text-secondary); line-height:1.8;">
-                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>20 reports/month</li>
+                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>50 AI actions/month (~20 reports)</li>
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>20 RadIQ queries/month</li>
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>SBA, Viva &amp; Email generation</li>
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Buy top-up credits</li>
@@ -1044,7 +1050,7 @@ if (window.PIIGuard && window.PIIGuard.protect) {
                             <div style="font-size:0.68rem; color:var(--brand-text-secondary); margin-bottom:8px;">&pound;45/mo after launch</div>
                         </div>
                         <ul style="list-style:none; padding:0; margin:0 0 10px; font-size:0.72rem; color:var(--brand-text-secondary); line-height:1.8;">
-                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>64 reports/month</li>
+                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>160 AI actions/month (~64 reports)</li>
                             <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>50 RadIQ queries/month</li>
                             <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>MDT Suite &amp; Notion</li>
                             <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Priority &amp; early access</li>
@@ -1052,6 +1058,16 @@ if (window.PIIGuard && window.PIIGuard.protect) {
                         <button onclick="startCheckout('elite')" class="btn btn-sm w-100" style="background:#6b46c1; color:#fff;">Choose Elite</button>
                     </div>
                 </div>
+            </div>
+            <!-- Buy Credits button (shown only for paid subscribers who hit their cap) -->
+            <div id="buyCreditsBtn" style="display:none;" class="mb-3">
+                <button onclick="buyCredits()" class="btn btn-sm w-100" style="background:var(--brand-success); color:#fff; border:none; border-radius:8px; padding:10px;">
+                    <i class="fas fa-coins me-1"></i>Buy 25 AI Action Credits — &pound;6
+                </button>
+                <small class="text-muted d-block text-center mt-1" style="line-height:1.5;">
+                    Each AI interaction (finalise, SBA, email, etc.) = 1 action credit.<br>
+                    25 credits &asymp; 10 reports on average &mdash; simple cases may stretch further.
+                </small>
             </div>
             <div class="d-flex gap-2">
                 <a href="/pricing" class="btn btn-outline-secondary btn-sm flex-grow-1" style="border-radius:8px;">See All Plans</a>
@@ -1092,6 +1108,23 @@ function startCheckout(plan) {
         btn.textContent = orig;
         alert('Connection error. Please try again.');
     });
+}
+
+function buyCredits() {
+    fetch('/stripe/buy-credits', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.checkout_url) {
+            window.location.href = data.checkout_url;
+        } else {
+            alert(data.error || 'Could not start credit purchase.');
+        }
+    })
+    .catch(() => alert('Connection error. Please try again.'));
 }
 </script>
 

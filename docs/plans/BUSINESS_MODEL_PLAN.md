@@ -16,14 +16,16 @@ RadInsights uses a 3-tier freemium model (Free / Standard / Elite) with AI actio
 
 ### Tier Overview
 
-| Feature | Free | Standard | Elite |
-|---------|------|----------|-------|
-| **Launch Price** | £0 forever | **£9/month** | **£29/month** |
-| **Full Price** | £0 forever | £15/month | £45/month |
-| **Smart Reporter Actions** | 10/month | 75/month | 1,500/month |
-| **Estimated Reports** | ~4 reports | ~30 reports | ~600 reports |
-| **RadIQ Queries** | 5/month | 20/month | 60/month |
-| **Total AI Actions** | 15/month | 95/month | 1,560/month |
+| Feature | Free | Standard | Elite | Elite Pro |
+|---------|------|----------|-------|-----------|
+| **Launch Price** | £0 forever | **£9/month** | **£29/month** | **£99/month** |
+| **Post-Launch Price** | £0 forever | £14/month | £45/month | £120/month |
+| **Smart Reporter Actions** | 10/month | 50/month | 160/month | 550/month |
+| **~Estimated Reports** | ~4 reports | ~20 reports | ~64 reports | ~220 reports |
+| **RadIQ Queries** | 5/month | 20/month | 50/month | 80/month |
+| **Total AI Actions** | 15/month | 70/month | 210/month | 630/month |
+
+> **Billing unit: AI actions.** Each AI interaction = 1 action. Report estimates assume ~2.5 actions/report average. Simple cases use fewer; users are likely to get more than the estimated report count.
 | **Case Library** | Full access | Full access | Full access |
 | **TNM Calculators** | Full access | Full access | Full access |
 | **Radiology Tools** | Full access | Full access | Full access |
@@ -64,8 +66,9 @@ RadInsights uses a 3-tier freemium model (Free / Standard / Elite) with AI actio
 
 Based on real-world radiologist workflow data:
 - **Light user (Free):** Explores the platform, tries a few reports
-- **Standard user:** ~3-4 reports/day, 5 days/week = ~60-80 reports/month (needs ~150-200 SR actions; 75 covers ~30 reports)
-- **Elite user:** ~20-30 reports/day, 5 days/week = ~400-600 reports/month (needs ~1,000-1,500 SR actions)
+- **Standard user:** ~1-2 reports/day = ~20-40 reports/month (50 actions covers ~20 reports at 2.5 avg)
+- **Elite user:** ~3-5 reports/day = ~60-100 reports/month (160 actions covers ~64 reports)
+- **Elite Pro user:** ~10+ reports/day, high-volume departments (550 actions covers ~220 reports)
 - **RadIQ usage:** Power users ask ~1-2 queries/day = ~20-40/month
 
 ---
