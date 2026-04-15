@@ -86,7 +86,7 @@ from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Fe
 from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
 from models import ContentIntelligence, UserGeneratedIntelligence  # Intelligence layer
-from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, case_learning_links, content_links  # Knowledge linking
+from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, case_learning_links, case_reference_links, content_links, related_cases  # Knowledge linking + association tables
 from models import PiiOverrideLog  # PII guard audit trail
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -5206,13 +5206,23 @@ def delete_case(case_id):
                 except Exception as e:
                     logger.warning(f"Failed to delete Cloudinary image {msg.image_public_id}: {e}")
         
-        # 6. Delete PeerReviewClaim entries for this case
+        # 6. Delete CaseReference, CaseReferenceImage, CaseImageStack, CaseImageAnnotation, UserQAProgress
+        from models import CaseReference, CaseReferenceImage, CaseImageStack, CaseImageAnnotation, UserQAProgress, RevisionHistory
+        CaseImageAnnotation.query.filter_by(case_id=case_id).delete()
+        for stack in CaseImageStack.query.filter_by(case_id=case_id).all():
+            db.session.delete(stack)
+        CaseReferenceImage.query.filter_by(case_id=case_id).delete()
+        CaseReference.query.filter_by(case_id=case_id).delete()
+        UserQAProgress.query.filter_by(case_id=case_id).delete()
+        RevisionHistory.query.filter_by(case_id=case_id).delete()
+
+        # 7. Delete PeerReviewClaim entries for this case
         from models import PeerReviewClaim, ManualVerification, PeerReviewFlag
         PeerReviewClaim.query.filter_by(content_type='case', content_id=str(case_id)).delete()
         ManualVerification.query.filter_by(content_type='case', content_id=str(case_id)).delete()
         PeerReviewFlag.query.filter_by(content_type='case', content_id=str(case_id)).delete()
 
-        # 7. Delete generic content_links for this case
+        # 9. Delete generic content_links for this case
         db.session.execute(
             content_links.delete().where(
                 content_links.c.source_type == 'case',
@@ -5220,15 +5230,18 @@ def delete_case(case_id):
             )
         )
 
-        # 8. Delete association table links
+        # 10. Delete all association table links
         db.session.execute(case_algorithm_links.delete().where(case_algorithm_links.c.case_id == case_id))
         db.session.execute(case_template_links.delete().where(case_template_links.c.case_id == case_id))
         db.session.execute(case_pearl_links.delete().where(case_pearl_links.c.case_id == case_id))
         db.session.execute(case_learning_links.delete().where(case_learning_links.c.case_id == case_id))
         db.session.execute(case_calculator_links.delete().where(case_calculator_links.c.case_id == case_id))
         db.session.execute(case_reference_links.delete().where(case_reference_links.c.case_id == case_id))
+        db.session.execute(related_cases.delete().where(
+            db.or_(related_cases.c.case_id == case_id, related_cases.c.related_case_id == case_id)
+        ))
 
-        # 9. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
+        # 11. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
         db.session.delete(case)
         db.session.commit()
         
