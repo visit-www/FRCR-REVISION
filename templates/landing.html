@@ -800,7 +800,7 @@
                             <li><i class="fas fa-check"></i>All 72 TNM Calculators</li>
                             <li><i class="fas fa-check"></i>Clinical Guidelines & Radiology Tools</li>
                             <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 4 reports/month</li>
                             <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
                         <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start Free Trial</a>
@@ -814,15 +814,14 @@
                             <i class="fas fa-user-md me-1"></i>Standard
                         </div>
                         <div class="pricing-price">&pound;9<span>/month</span></div>
-                        <div class="pricing-full-price">&pound;15/month after launch</div>
+                        <div class="pricing-full-price">&pound;14/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Free</li>
-                            <li><i class="fas fa-check"></i>Unlimited cases & practice</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 75 AI actions/month (~30 reports)</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 20 reports/month</li>
                             <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
+                            <li><i class="fas fa-check"></i>Email to Patient, SBA & Viva generation</li>
                             <li><i class="fas fa-check"></i>Save personal templates</li>
-                            <li><i class="fas fa-check"></i>Full template & algorithm library</li>
-                            <li><i class="fas fa-check"></i>Notes & Highlights</li>
+                            <li><i class="fas fa-check"></i>Buy top-up credits</li>
                         </ul>
                         {% if current_user.is_authenticated %}
                         <button onclick="startCheckout('standard')" class="btn-pricing" style="background: var(--brand-primary); color: #fff; border: none; cursor: pointer;">Choose Standard</button>
@@ -843,8 +842,9 @@
                         <div class="pricing-full-price">&pound;45/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Standard</li>
-                            <li><i class="fas fa-check"></i>Smart Reporter: 1,500 AI actions/month (~600 reports)</li>
-                            <li><i class="fas fa-check"></i>RadIQ: 60 queries/month</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 64 reports/month</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 50 queries/month</li>
+                            <li><i class="fas fa-check"></i>MDT Suite & Notion integration</li>
                             <li><i class="fas fa-check"></i>Priority content requests</li>
                             <li><i class="fas fa-check"></i>Early access to new features</li>
                         </ul>
@@ -949,7 +949,7 @@
         },
         {
             title: 'Choose Your Plan',
-            text: 'Start with a 7-day free trial of all AI features. Then choose Standard for 95 actions/month or Elite for 1,500+ actions. Lock in launch pricing before it increases.',
+            text: 'Start with a 7-day free trial of all AI features. Then choose Standard for 20 reports/month or Elite for 64 reports. Lock in launch pricing before it increases.',
             selector: '#pricing-section',
             position: 'top',
             icon: 'fas fa-tags'

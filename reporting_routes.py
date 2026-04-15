@@ -244,13 +244,14 @@ def normalize_modality(raw):
 reporting_bp = Blueprint('reporting', __name__)
 
 TIER_LIMITS = {
-    # Trial: 10 SR + 5 RadIQ for 7 days (whichever runs out first)
-    # Post-trial: 2 SR + 1 RadIQ per month (perpetual free taste)
+    # Reports/mo × ~2.5 actions/report = sr_monthly AI actions
+    # Free trial: 4 reports (10 actions) + 5 RadIQ for 7 days
+    # Free post-trial: ~1 report (2 actions) + 1 RadIQ/month
     'free':           {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
     'free_post_trial': {'sr_monthly': 2,   'radiq_monthly': 1,   'trial_days': None},
-    'standard':       {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
-    'elite':          {'sr_monthly': 300,  'radiq_monthly': 40,  'trial_days': None},
-    'elite_pro':      {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
+    'standard':       {'sr_monthly': 50,   'radiq_monthly': 20,  'trial_days': None},   # ~20 reports
+    'elite':          {'sr_monthly': 160,  'radiq_monthly': 50,  'trial_days': None},   # ~64 reports
+    'elite_pro':      {'sr_monthly': 550,  'radiq_monthly': 80,  'trial_days': None},   # ~220 reports
 }
 
 
@@ -301,12 +302,16 @@ def _check_ai_rate_limit(usage_type='sr'):
         limit = limits['sr_monthly']
 
     if used >= limit:
+        # Show user-friendly report counts (actions ÷ 2.5)
+        _report_count = limit // 2.5 if usage_type != 'radiq' else limit
+        _unit = 'RadIQ queries' if usage_type == 'radiq' else 'reports'
+        _count = int(_report_count)
         if trial_expired:
-            msg = (f'You have used your {limit} free {"RadIQ query" if usage_type == "radiq" else "Smart Reporter action"}{"s" if limit > 1 else ""} '
-                   f'this month. Upgrade for unlimited access.')
+            msg = (f'You have used your {_count} free {_unit} '
+                   f'this month. Upgrade for more.')
         else:
-            msg = (f'You have used all {limit} {"RadIQ queries" if usage_type == "radiq" else "Smart Reporter actions"} '
-                   f'for this month. Upgrade for more.')
+            msg = (f'You have used all {_count} {_unit} '
+                   f'for this month. Upgrade or buy top-up credits for more.')
         return False, 0, (jsonify({
             'error': msg,
             'upgrade_required': True,

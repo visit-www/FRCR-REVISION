@@ -1901,21 +1901,16 @@ independent AI verification, radiology AI accuracy, LLM-as-judge medical, AI cla
                 logger.info('Patched ai-documentation doc: added CMV technical section')
 
             # Patch business model doc: add CMV as feature differentiator
+            # Re-seed business-finance-model from updated markdown (Apr 15, 2026 pricing overhaul)
             _biz_doc = _AD.query.filter_by(slug='business-finance-model').first()
-            if _biz_doc and 'Cross-Model Verification' not in (_biz_doc.content_html or ''):
-                _cmv_biz_block = """
-<h3>Cross-Model Verification — Competitive Advantage</h3>
-<p><strong>Cost:</strong> $0/month (Gemini free tier). <strong>Value:</strong> Major trust differentiator in the radiology AI market.</p>
-<p>No competitor in the radiology AI space currently offers independent cross-model fact-checking of AI outputs.
-This positions RadInsights as the most transparent and safety-conscious platform in the market.</p>
-<ul>
-<li><strong>Retention impact:</strong> Users who see verified content are more likely to trust and continue using AI features</li>
-<li><strong>Conversion impact:</strong> Trust badges on public content (anatomy, algorithms) serve as social proof for prospects</li>
-<li><strong>Regulatory readiness:</strong> Documented verification pipeline strengthens clinical governance positioning</li>
-</ul>
-"""
-                _biz_doc.content_html = (_biz_doc.content_html or '') + _cmv_biz_block
-                logger.info('Patched business-finance-model doc: added CMV competitive advantage')
+            if _biz_doc and '15 April 2026' not in (_biz_doc.content_html or ''):
+                try:
+                    import markdown
+                    with open('docs/BUSINESS_FINANCE_MODEL.md', 'r') as _bf:
+                        _biz_doc.content_html = markdown.markdown(_bf.read(), extensions=['tables', 'fenced_code'])
+                    logger.info('Re-seeded business-finance-model doc from updated markdown')
+                except Exception as _biz_err:
+                    logger.warning('Failed to re-seed business doc: %s', _biz_err)
 
             # Update peer-review-v2 doc to reflect CMV replacing PubMed
             _pr_doc = _AD.query.filter_by(slug='peer-review-v2').first()
