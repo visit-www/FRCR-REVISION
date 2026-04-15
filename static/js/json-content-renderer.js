@@ -185,6 +185,42 @@
                 return;
             }
 
+            // Management / recommendation sections → render as table if items have : or = splitting
+            if ((stype === 'management_impact' || stype === 'custom') && Array.isArray(content) && content.length >= 3) {
+                var strItems = content.filter(function(i) { return typeof i === 'string'; });
+                // Detect decision-matrix pattern: most items contain = or : with a clear split
+                var eqCount = strItems.filter(function(s) { return /\s=\s/.test(s); }).length;
+                var colonCount = strItems.filter(function(s) { var ci = s.indexOf(':'); return ci > 2 && ci < s.length - 5; }).length;
+
+                if (eqCount > strItems.length * 0.4) {
+                    // Decision matrix: split on = → Condition | Result table
+                    var mRows = strItems.map(function(s) {
+                        var parts2 = s.split(/\s=\s/);
+                        if (parts2.length >= 2) {
+                            return '<tr><td>' + emphCaps(parts2[0].trim()) + '</td><td><strong>' + emphCaps(parts2.slice(1).join(' = ').trim()) + '</strong></td></tr>';
+                        }
+                        return '<tr><td colspan="2">' + emphCaps(s) + '</td></tr>';
+                    }).join('');
+                    parts.push('<div class="' + cls + '" data-field="' + stype + '" data-section-title="' + esc(sec.title) + '"><strong>' + title + '</strong>' +
+                        '<table class="table table-sm table-bordered mt-2"><thead><tr><th>Condition</th><th>Category</th></tr></thead><tbody>' + mRows + '</tbody></table></div>');
+                    return;
+                }
+
+                if (colonCount > strItems.length * 0.4) {
+                    // Recommendation table: split on first : → Category | Recommendation
+                    var rRows = strItems.map(function(s) {
+                        var ci = s.indexOf(':');
+                        if (ci > 2 && ci < s.length - 5) {
+                            return '<tr><td><strong>' + emphCaps(s.substring(0, ci).trim()) + '</strong></td><td>' + emphCaps(s.substring(ci + 1).trim()) + '</td></tr>';
+                        }
+                        return '<tr><td colspan="2">' + emphCaps(s) + '</td></tr>';
+                    }).join('');
+                    parts.push('<div class="' + cls + '" data-field="' + stype + '" data-section-title="' + esc(sec.title) + '"><strong>' + title + '</strong>' +
+                        '<table class="table table-sm table-bordered mt-2"><tbody>' + rRows + '</tbody></table></div>');
+                    return;
+                }
+            }
+
             // Generic array
             if (Array.isArray(content)) {
                 var gItems = content.map(function(item) {
