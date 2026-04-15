@@ -5206,7 +5206,29 @@ def delete_case(case_id):
                 except Exception as e:
                     logger.warning(f"Failed to delete Cloudinary image {msg.image_public_id}: {e}")
         
-        # 6. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
+        # 6. Delete PeerReviewClaim entries for this case
+        from models import PeerReviewClaim, ManualVerification, PeerReviewFlag
+        PeerReviewClaim.query.filter_by(content_type='case', content_id=str(case_id)).delete()
+        ManualVerification.query.filter_by(content_type='case', content_id=str(case_id)).delete()
+        PeerReviewFlag.query.filter_by(content_type='case', content_id=str(case_id)).delete()
+
+        # 7. Delete generic content_links for this case
+        db.session.execute(
+            content_links.delete().where(
+                content_links.c.source_type == 'case',
+                content_links.c.source_id == case_id
+            )
+        )
+
+        # 8. Delete association table links
+        db.session.execute(case_algorithm_links.delete().where(case_algorithm_links.c.case_id == case_id))
+        db.session.execute(case_template_links.delete().where(case_template_links.c.case_id == case_id))
+        db.session.execute(case_pearl_links.delete().where(case_pearl_links.c.case_id == case_id))
+        db.session.execute(case_learning_links.delete().where(case_learning_links.c.case_id == case_id))
+        db.session.execute(case_calculator_links.delete().where(case_calculator_links.c.case_id == case_id))
+        db.session.execute(case_reference_links.delete().where(case_reference_links.c.case_id == case_id))
+
+        # 9. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
         db.session.delete(case)
         db.session.commit()
         
@@ -6745,6 +6767,8 @@ def search_cases_for_linking():
     Default type=all searches ALL content types globally and returns
     mixed results with link_type badges for the frontend.
     """
+    from models import ImagingProtocol
+
     query = request.args.get('q', '').strip()
     exclude_id = request.args.get('exclude', type=int)
     limit = request.args.get('limit', 20, type=int)
