@@ -286,6 +286,7 @@ class User(UserMixin, db.Model):
     sr_usage_month = db.Column(db.Integer, default=0)              # Smart Reporter actions this month
     radiq_usage_month = db.Column(db.Integer, default=0)           # RadIQ queries this month
     usage_reset_date = db.Column(db.Date, nullable=True)           # 1st of current billing month
+    report_credits = db.Column(db.Integer, default=0)              # Purchased top-up credits (reports)
 
     # === LOGIN RATE LIMITING (brute force protection) ===
     failed_login_count = db.Column(db.Integer, default=0)

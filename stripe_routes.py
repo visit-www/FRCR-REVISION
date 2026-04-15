@@ -30,10 +30,13 @@ STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET', '')
 
 PRICE_IDS = {
-    'standard':  os.environ.get('STRIPE_STANDARD_PRICE_ID', ''),
-    'elite':     os.environ.get('STRIPE_ELITE_PRICE_ID', ''),
-    'elite_pro': os.environ.get('STRIPE_ELITE_PRO_PRICE_ID', ''),
+    'standard':    os.environ.get('STRIPE_STANDARD_PRICE_ID', ''),
+    'elite':       os.environ.get('STRIPE_ELITE_PRICE_ID', ''),
+    'elite_pro':   os.environ.get('STRIPE_ELITE_PRO_PRICE_ID', ''),
+    'credit_pack': os.environ.get('STRIPE_CREDIT_PACK_PRICE_ID', ''),  # £6 for 10 report credits
 }
+
+CREDITS_PER_PACK = 10  # Each credit = 1 report (~2.5 AI actions)
 
 BASE_URL = os.environ.get('BASE_URL', 'https://www.radinsights.xyz')
 
@@ -167,6 +170,49 @@ def create_checkout_session():
         return jsonify({'checkout_url': session.url})
     except Exception as e:
         logger.error(f"Stripe checkout error: {e}", exc_info=True)
+        return jsonify({'error': f'Checkout error: {str(e)}'}), 500
+
+
+@stripe_bp.route('/buy-credits', methods=['POST'])
+@login_required
+def buy_credits():
+    """One-time purchase of report credit pack. Available to paid subscribers only."""
+    if not stripe.api_key:
+        return jsonify({'error': 'Payments not configured'}), 503
+
+    current_tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    if current_tier == 'free':
+        return jsonify({'error': 'Top-up credits are available for subscribers only. Please upgrade first.'}), 403
+
+    price_id = PRICE_IDS.get('credit_pack')
+    if not price_id:
+        return jsonify({'error': 'Credit pack not configured'}), 503
+
+    try:
+        customer_id = _ensure_stripe_customer(current_user)
+    except Exception as e:
+        logger.error(f"Stripe ensure_customer error: {e}", exc_info=True)
+        return jsonify({'error': f'Customer error: {str(e)}'}), 500
+
+    if not customer_id:
+        return jsonify({'error': 'Could not create payment profile'}), 500
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            mode='payment',  # One-time payment, not subscription
+            line_items=[{'price': price_id, 'quantity': 1}],
+            success_url=f'{BASE_URL}/stripe/success?session_id={{CHECKOUT_SESSION_ID}}&credits=1',
+            cancel_url=f'{BASE_URL}/stripe/cancel',
+            metadata={
+                'user_id': str(current_user.id),
+                'type': 'credit_pack',
+                'credits': str(CREDITS_PER_PACK),
+            },
+        )
+        return jsonify({'checkout_url': session.url})
+    except Exception as e:
+        logger.error(f"Stripe credit purchase error: {e}", exc_info=True)
         return jsonify({'error': f'Checkout error: {str(e)}'}), 500
 
 
@@ -454,7 +500,7 @@ def _find_user_by_customer_id(customer_id):
 
 
 def _handle_checkout_completed(session_obj):
-    """checkout.session.completed — first successful payment."""
+    """checkout.session.completed — subscription payment or credit pack purchase."""
     from access_control import upgrade_to_paid
 
     customer_id = _get(session_obj, 'customer')
@@ -473,6 +519,19 @@ def _handle_checkout_completed(session_obj):
         logger.error(f"checkout.session.completed: no user for customer {customer_id}")
         return
 
+    metadata = _get(session_obj, 'metadata', {})
+
+    # ── Credit pack purchase (one-time payment) ──
+    if _get(metadata, 'type') == 'credit_pack':
+        credits = int(_get(metadata, 'credits', CREDITS_PER_PACK))
+        # Convert report credits to AI actions (~2.5 per report)
+        action_credits = int(credits * 2.5)
+        user.report_credits = (user.report_credits or 0) + action_credits
+        db.session.commit()
+        logger.info(f"User {user.id} purchased {credits} report credits ({action_credits} actions), total now: {user.report_credits}")
+        return
+
+    # ── Subscription checkout ──
     sub_id = _get(session_obj, 'subscription')
     if sub_id:
         sub = stripe.Subscription.retrieve(sub_id)
@@ -480,7 +539,6 @@ def _handle_checkout_completed(session_obj):
         tier = _tier_from_subscription(sub)
     else:
         end_date = datetime.utcnow() + timedelta(days=30)
-        metadata = _get(session_obj, 'metadata', {})
         tier = _get(metadata, 'plan', 'standard')
 
     upgrade_to_paid(user, end_date, tier)

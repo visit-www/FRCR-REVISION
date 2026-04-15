@@ -2055,6 +2055,9 @@ match specific statistical claims to paper abstracts.</p>
         # -- peer_review_claim: corrected text for inline content editing --
         _add_col_if_missing('peer_review_claim', 'corrected_claim_text', 'corrected_claim_text TEXT')
 
+        # -- user: top-up report credits --
+        _add_col_if_missing('user', 'report_credits', 'report_credits INTEGER DEFAULT 0')
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
 

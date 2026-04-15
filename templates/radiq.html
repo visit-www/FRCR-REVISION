@@ -959,7 +959,7 @@ function showUpgradeModal(reason, data) {
         titleEl.textContent = 'Monthly Limit Reached';
         msgEl.innerHTML = `You've used all <strong>${limit}</strong> RadIQ queries included in your `
             + `<strong>${tier.charAt(0).toUpperCase() + tier.slice(1)}</strong> plan this month. `
-            + 'Upgrade for more monthly queries.';
+            + 'Upgrade for more monthly queries.'
     }
 
     modal.style.display = 'flex';
@@ -1019,19 +1019,19 @@ if (window.PIIGuard && window.PIIGuard.protect) {
         </div>
         <div style="padding:24px;">
             <p class="upgrade-modal-message mb-4" style="color:var(--brand-text-secondary); line-height:1.6;"></p>
-            <div class="row g-3 mb-4">
+            <div class="row g-3 mb-3">
                 <div class="col-6">
                     <div style="border:2px solid var(--brand-primary); border-radius:10px; padding:14px;">
                         <div class="text-center">
                             <div style="font-weight:700; color:var(--brand-primary); font-size:1.05rem;"><i class="fas fa-user-md me-1"></i>Standard</div>
                             <div style="font-size:1.4rem; font-weight:800; color:var(--brand-text-primary);">&pound;9<small style="font-size:0.7rem; color:var(--brand-text-secondary);">/mo</small></div>
-                            <div style="font-size:0.68rem; color:var(--brand-text-secondary); margin-bottom:8px;">&pound;15/mo after launch</div>
+                            <div style="font-size:0.68rem; color:var(--brand-text-secondary); margin-bottom:8px;">&pound;14/mo after launch</div>
                         </div>
                         <ul style="list-style:none; padding:0; margin:0 0 10px; font-size:0.72rem; color:var(--brand-text-secondary); line-height:1.8;">
-                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>75 AI actions (~30 reports)</li>
+                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>20 reports/month</li>
                             <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>20 RadIQ queries/month</li>
-                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Unlimited cases &amp; practice</li>
-                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Personal templates</li>
+                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>SBA, Viva &amp; Email generation</li>
+                            <li><i class="fas fa-check me-1" style="color:var(--brand-primary); font-size:0.65rem;"></i>Buy top-up credits</li>
                         </ul>
                         <button onclick="startCheckout('standard')" class="btn btn-brand-primary btn-sm w-100">Choose Standard</button>
                     </div>
@@ -1044,16 +1044,19 @@ if (window.PIIGuard && window.PIIGuard.protect) {
                             <div style="font-size:0.68rem; color:var(--brand-text-secondary); margin-bottom:8px;">&pound;45/mo after launch</div>
                         </div>
                         <ul style="list-style:none; padding:0; margin:0 0 10px; font-size:0.72rem; color:var(--brand-text-secondary); line-height:1.8;">
-                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>1,500 AI actions (~600 reports)</li>
-                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>60 RadIQ queries/month</li>
-                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Priority content requests</li>
-                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Early access to new features</li>
+                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>64 reports/month</li>
+                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>50 RadIQ queries/month</li>
+                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>MDT Suite &amp; Notion</li>
+                            <li><i class="fas fa-check me-1" style="color:#6b46c1; font-size:0.65rem;"></i>Priority &amp; early access</li>
                         </ul>
                         <button onclick="startCheckout('elite')" class="btn btn-sm w-100" style="background:#6b46c1; color:#fff;">Choose Elite</button>
                     </div>
                 </div>
             </div>
-            <button onclick="hideUpgradeModal();" class="btn btn-modal-secondary w-100" style="border-radius:8px;">Maybe Later</button>
+            <div class="d-flex gap-2">
+                <a href="/pricing" class="btn btn-outline-secondary btn-sm flex-grow-1" style="border-radius:8px;">See All Plans</a>
+                <button onclick="hideUpgradeModal();" class="btn btn-modal-secondary btn-sm flex-grow-1" style="border-radius:8px;">Maybe Later</button>
+            </div>
         </div>
     </div>
 </div>

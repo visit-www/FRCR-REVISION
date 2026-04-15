@@ -302,19 +302,38 @@ def _check_ai_rate_limit(usage_type='sr'):
         limit = limits['sr_monthly']
 
     if used >= limit:
-        # Show user-friendly report counts (actions ÷ 2.5)
-        _report_count = limit // 2.5 if usage_type != 'radiq' else limit
+        # Check if user has purchased credits (SR only, not RadIQ)
+        if usage_type != 'radiq' and tier != 'free':
+            credits = getattr(current_user, 'report_credits', 0) or 0
+            if credits > 0:
+                # Deduct from credits instead of blocking
+                current_user.report_credits = credits - 1
+                current_user.sr_usage_month = used + 1
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                remaining_credits = credits - 1
+                return True, remaining_credits, None
+
+        # No credits — show limit message
+        _report_count = limit / 2.5 if usage_type != 'radiq' else limit
         _unit = 'RadIQ queries' if usage_type == 'radiq' else 'reports'
         _count = int(_report_count)
+        can_buy_credits = tier not in ('free',) and usage_type != 'radiq'
         if trial_expired:
             msg = (f'You have used your {_count} free {_unit} '
                    f'this month. Upgrade for more.')
+        elif can_buy_credits:
+            msg = (f'You have used all {_count} {_unit} '
+                   f'for this month. Buy top-up credits or upgrade for more.')
         else:
             msg = (f'You have used all {_count} {_unit} '
-                   f'for this month. Upgrade or buy top-up credits for more.')
+                   f'for this month. Upgrade for more.')
         return False, 0, (jsonify({
             'error': msg,
             'upgrade_required': True,
+            'can_buy_credits': can_buy_credits,
             'trial_expired': trial_expired,
             'limit': limit,
             'tier': tier,
