@@ -286,7 +286,7 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                                     <i class="fas fa-link me-1" style="color: #5E899E;"></i>Linked Content
                                 </label>
                                 <small class="text-muted d-block mb-2">
-                                    Search across cases, pearls, anatomy snippets, templates, algorithms, and references
+                                    Search across cases, pearls, anatomy, templates, algorithms, tools, protocols, and references
                                 </small>
                             </div>
 
@@ -6519,6 +6519,8 @@ function _linkSearchResultHtml(item) {
         radiology_template:  { icon: 'fa-file-alt',     color: '#e96304', badge: 'Template',     badgeCls: '' },
         pearl:               { icon: 'fa-gem',          color: '#6b46c1', badge: 'Pearl',        badgeCls: '' },
         learning:            { icon: 'fa-graduation-cap',color: '#0d6efd', badge: 'SBA/Viva',     badgeCls: 'bg-primary' },
+        radiology_tool:      { icon: 'fa-tools',         color: '#dc3545', badge: 'Rad Tool',    badgeCls: 'bg-danger' },
+        imaging_protocol:    { icon: 'fa-x-ray',         color: '#20c997', badge: 'Protocol',    badgeCls: '' },
     }[lt] || { icon: 'fa-link', color: '#6c757d', badge: lt, badgeCls: 'bg-secondary' };
 
     const badgeStyle = cfg.badgeCls ? '' : `style="background:${cfg.color};color:#fff;"`;
@@ -6624,6 +6626,9 @@ async function addLink(linkType, linkedId, itemData) {
         body.pearl_id = linkedId;
     } else if (linkType === 'learning') {
         body.learning_id = linkedId;
+    } else if (linkType === 'radiology_tool' || linkType === 'imaging_protocol') {
+        body.target_type = linkType;
+        body.target_id = linkedId;
     } else {
         body.related_case_id = linkedId;
         body.relation_type = 'related';

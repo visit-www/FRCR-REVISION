@@ -5850,7 +5850,34 @@ def get_related_cases(case_id):
                 'is_verified': pearl.is_verified,
             })
 
-    # 7) Case-to-learning-question links
+    # 7) Generic content links (radiology tools, imaging protocols, etc.)
+    from models import content_links, IncidentalFindingCalculator, ImagingProtocol
+    cl_rows = db.session.execute(
+        db.select(content_links.c.target_type, content_links.c.target_id).where(
+            content_links.c.source_type == 'case',
+            content_links.c.source_id == case_id
+        )
+    ).all()
+    for clrow in cl_rows:
+        if clrow.target_type == 'radiology_tool':
+            tool = IncidentalFindingCalculator.query.get(clrow.target_id)
+            if tool:
+                items.append({
+                    'id': tool.id, 'link_type': 'radiology_tool',
+                    'title': tool.finding_name, 'slug': tool.slug,
+                    'body_section': tool.body_section,
+                    'url': f'/incidental-findings/{tool.slug}'
+                })
+        elif clrow.target_type == 'imaging_protocol':
+            proto = ImagingProtocol.query.get(clrow.target_id)
+            if proto:
+                items.append({
+                    'id': proto.id, 'link_type': 'imaging_protocol',
+                    'title': proto.title, 'slug': proto.slug,
+                    'modality': proto.modality, 'body_section': proto.body_section,
+                })
+
+    # 8) Case-to-learning-question links
     from models import LearningQuestion
     lq_rows = db.session.execute(
         db.select(case_learning_links.c.learning_question_id).where(
@@ -6395,11 +6422,13 @@ def search_content_universal():
 @login_required
 def add_related_case(case_id):
     """Add a linked item (case, calculator, or reference) to a case - all authenticated users can add"""
-    from models import related_cases, case_calculator_links, case_reference_links, TNMCalculatorContent, CaseReference
+    from models import (related_cases, case_calculator_links, case_reference_links,
+                        case_learning_links, content_links,
+                        TNMCalculatorContent, CaseReference, IncidentalFindingCalculator, ImagingProtocol)
 
     case = Case.query.get_or_404(case_id)
     data = request.get_json()
-    link_type = data.get('link_type', 'case')  # 'case', 'calculator', 'reference'
+    link_type = data.get('link_type', 'case')
 
     if link_type == 'calculator':
         calculator_id = data.get('calculator_id')
@@ -6554,6 +6583,44 @@ def add_related_case(case_id):
             'url': f'/learn/{route}/{lq.id}'
         }})
 
+    elif link_type in ('radiology_tool', 'imaging_protocol'):
+        # Generic content links via content_links table
+        target_id = data.get('target_id')
+        if not target_id:
+            return jsonify({'error': 'target_id required'}), 400
+        # Validate target exists
+        if link_type == 'radiology_tool':
+            target = IncidentalFindingCalculator.query.get(target_id)
+            if not target:
+                return jsonify({'error': 'Radiology tool not found'}), 404
+            item_data = {'id': target.id, 'link_type': link_type, 'title': target.finding_name,
+                         'slug': target.slug, 'body_section': target.body_section,
+                         'url': f'/incidental-findings/{target.slug}'}
+        else:
+            target = ImagingProtocol.query.get(target_id)
+            if not target:
+                return jsonify({'error': 'Protocol not found'}), 404
+            item_data = {'id': target.id, 'link_type': link_type, 'title': target.title,
+                         'slug': target.slug, 'modality': target.modality,
+                         'body_section': target.body_section}
+        existing = db.session.execute(
+            db.select(content_links).where(
+                content_links.c.source_type == 'case',
+                content_links.c.source_id == case_id,
+                content_links.c.target_type == link_type,
+                content_links.c.target_id == target_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Already linked'}), 400
+        db.session.execute(content_links.insert().values(
+            source_type='case', source_id=case_id,
+            target_type=link_type, target_id=target_id,
+            created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'{link_type} linked', 'item': item_data})
+
     else:
         # Default: case-to-case link
         related_case_id = data.get('related_case_id')
@@ -6636,6 +6703,16 @@ def remove_related_case(case_id, linked_id):
             case_learning_links.delete().where(
                 case_learning_links.c.case_id == case_id,
                 case_learning_links.c.learning_question_id == linked_id
+            )
+        )
+    elif link_type in ('radiology_tool', 'imaging_protocol'):
+        from models import content_links
+        db.session.execute(
+            content_links.delete().where(
+                content_links.c.source_type == 'case',
+                content_links.c.source_id == case_id,
+                content_links.c.target_type == link_type,
+                content_links.c.target_id == linked_id
             )
         )
     else:
@@ -6823,6 +6900,47 @@ def search_cases_for_linking():
                 'modality': p.modality,
                 'is_verified': p.is_verified,
                 'link_type': 'pearl',
+            })
+
+    # ── Radiology Tools (Incidental Finding Calculators) ──
+    if search_type in ('all', 'radiology_tool'):
+        for ifc in IncidentalFindingCalculator.query.filter(
+            IncidentalFindingCalculator.is_available == True,
+            db.or_(
+                IncidentalFindingCalculator.finding_name.ilike(f'%{query}%'),
+                IncidentalFindingCalculator.keywords.ilike(f'%{query}%'),
+                IncidentalFindingCalculator.body_section.ilike(f'%{query}%'),
+                IncidentalFindingCalculator.description.ilike(f'%{query}%'),
+            )
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': ifc.id,
+                'title': ifc.finding_name,
+                'slug': ifc.slug,
+                'category': ifc.category,
+                'body_section': ifc.body_section,
+                'url': f'/incidental-findings/{ifc.slug}',
+                'link_type': 'radiology_tool',
+            })
+
+    # ── Imaging Protocols ──
+    if search_type in ('all', 'imaging_protocol'):
+        for ip in ImagingProtocol.query.filter(
+            ImagingProtocol.is_published == True,
+            db.or_(
+                ImagingProtocol.title.ilike(f'%{query}%'),
+                ImagingProtocol.keywords.ilike(f'%{query}%'),
+                ImagingProtocol.body_section.ilike(f'%{query}%'),
+                ImagingProtocol.modality.ilike(f'%{query}%'),
+            )
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': ip.id,
+                'title': ip.title,
+                'slug': ip.slug,
+                'modality': ip.modality,
+                'body_section': ip.body_section,
+                'link_type': 'imaging_protocol',
             })
 
     # ── Learning Questions (SBA/Viva) ──

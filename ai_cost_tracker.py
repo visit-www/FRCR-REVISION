@@ -37,15 +37,17 @@ logger = logging.getLogger(__name__)
 # Anthropic pricing per million tokens (as of April 2026)
 # ---------------------------------------------------------------------------
 MODEL_COSTS = {
-    # Sonnet family
-    'claude-sonnet-4-6': {'input': 3.00, 'output': 15.00},
+    # Sonnet family (current + legacy for historical cost tracking)
     'claude-sonnet-4-6':          {'input': 3.00, 'output': 15.00},
+    'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
     # Opus family
     'claude-opus-4-6':            {'input': 15.00, 'output': 75.00},
     'claude-opus-4-5-20251101':   {'input': 15.00, 'output': 75.00},
     # Haiku family
     'claude-haiku-4-5-20251001':  {'input': 0.80, 'output': 4.00},
+    # Gemini (for CMV peer review cost tracking)
+    'gemini-2.5-flash':           {'input': 0.15, 'output': 0.60},
 }
 
 # Fallback for unknown/new models
