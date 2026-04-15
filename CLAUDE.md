@@ -93,15 +93,27 @@ When making code changes, **always check** whether the change requires updates t
 **This is the current architecture for all AI-generated content. Follow it strictly.**
 
 - **DB stores structured JSON** (not rendered HTML) for AI-generated content
-- **Frontend renders JSON → HTML** client-side using JS renderers (e.g., `renderJsonDiscussion()` in view_case.html)
+- **Frontend renders JSON → HTML** client-side using the standalone renderer
 - **Legacy HTML** in DB is supported for backward compat (frontend detects format by checking if content starts with `{`)
 - **Never pre-render JSON to HTML and store the HTML** — this bakes in presentation and breaks re-rendering, badge placement, and style updates
-- **When adding new AI content types**, follow this pattern:
-  1. AI returns structured JSON (flexible sections, not rigid fields)
-  2. Backend stores `json.dumps(structured_data)` in the DB text column
-  3. Frontend detects JSON, parses it, renders to HTML using CSS classes
-  4. CMV badges match against structured elements (not fuzzy text search)
-- **Default AI model**: `claude-sonnet-4-6` (Sonnet 4.0 `claude-sonnet-4-20250514` is retired June 2026)
+
+### Standalone JSON Content Renderer
+- **File**: `static/js/json-content-renderer.js` (loaded globally via `base.html`)
+- **API**:
+  - `JsonContentRenderer.render(jsonData)` → returns HTML string
+  - `JsonContentRenderer.renderInto(el, jsonData)` → renders into DOM element
+  - `JsonContentRenderer.isJson(rawString)` → detects if string is JSON discussion
+  - `JsonContentRenderer.emphCaps(text)` → styles ALL CAPS phrases
+- **Use this renderer everywhere AI JSON output is displayed** — do NOT write inline rendering logic
+- Handles: flexible sections, staging/classification tables (auto-detect columns), step-by-step cards, key findings, differentials, management recommendations (auto-table for `:` pattern), ALL CAPS styling (safety words → red, caps phrases → grey pill, medical abbreviations excluded)
+
+### When adding new AI content types
+1. AI returns structured JSON (flexible sections, not rigid fields)
+2. Backend stores `json.dumps(structured_data)` in the DB text column
+3. Frontend calls `JsonContentRenderer.isJson()` to detect, then `JsonContentRenderer.renderInto()` to render
+4. CMV badges match against structured elements via `data-section-title` and `data-claim-anchor` attributes
+
+- **Default AI model**: `claude-sonnet-4-6` (Sonnet 4.0 `claude-sonnet-4-20250514` retired June 2026)
 - **Case generation** (`ai_prelim.py`): flexible `sections` array — model decides which sections to include, no rigid schema
 
 ## Code Conventions
