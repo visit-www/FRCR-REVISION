@@ -7408,9 +7408,14 @@ def _render_json_discussion(disc: dict) -> str:
 
 
 def _render_staging_section(title: str, staging: dict, css_cls: str) -> str:
-    """Render a staging/classification/grading section as a table."""
+    """Render a staging/classification/grading section as a table.
+
+    Flexibly detects column structure from the data — the AI may use
+    stage/grade/category as the label key, and description/probability/
+    recommendation/management as value keys.
+    """
     system = _escape_html(staging.get('system', ''))
-    stages = staging.get('stages') or staging.get('grades', [])
+    stages = staging.get('stages') or staging.get('grades') or staging.get('categories', [])
     heading = f'{title}: {system}' if system else title
     if not stages:
         desc = staging.get('description', '')
@@ -7421,19 +7426,43 @@ def _render_staging_section(title: str, staging: dict, css_cls: str) -> str:
                 f'<p>{_escape_html(desc)}</p></div>'
             )
         return ''
+
+    # Auto-detect columns from first row
+    _label_keys = ['stage', 'grade', 'category', 'name', 'class', 'type', 'level']
+    _skip_keys = set()  # keys used as label
+    sample = stages[0] if stages and isinstance(stages[0], dict) else {}
+    label_key = None
+    for lk in _label_keys:
+        if lk in sample:
+            label_key = lk
+            _skip_keys.add(lk)
+            break
+    # Collect all other keys as value columns (ordered by first appearance)
+    value_keys = []
+    for s in stages:
+        if isinstance(s, dict):
+            for k in s:
+                if k not in _skip_keys and k not in value_keys:
+                    value_keys.append(k)
+
+    # Build header
+    label_header = _escape_html((label_key or 'Item').replace('_', ' ').title())
+    header = f'<th>{label_header}</th>'
+    for vk in value_keys:
+        header += f'<th>{_escape_html(vk.replace("_", " ").title())}</th>'
+
+    # Build rows
     rows = ''
     for s in stages:
         if isinstance(s, dict):
-            label = _escape_html(s.get('stage') or s.get('grade', ''))
-            desc = _escape_html(s.get('description', ''))
-            mgmt = s.get('management', '')
-            mgmt_html = f'<td>{_escape_html(mgmt)}</td>' if mgmt else ''
-            rows += f'<tr><td><strong>{label}</strong></td><td>{desc}</td>{mgmt_html}</tr>'
+            label = _escape_html(s.get(label_key, '') if label_key else '')
+            rows += f'<tr><td><strong>{label}</strong></td>'
+            for vk in value_keys:
+                val = s.get(vk, '')
+                rows += f'<td>{_escape_html(str(val))}</td>'
+            rows += '</tr>'
     if not rows:
         return ''
-    header = '<th>Stage</th><th>Description</th>'
-    if any(isinstance(s, dict) and s.get('management') for s in stages):
-        header += '<th>Management</th>'
     result = (
         f'<div class="{css_cls}" data-field="staging">'
         f'<strong>{_escape_html(heading)}</strong>'
