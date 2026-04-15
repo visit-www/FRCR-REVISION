@@ -89,12 +89,13 @@
 
         function tryPlace(searchText, item) {
             if (!searchText || searchText.length < 4) return false;
+            var searchLower = searchText.toLowerCase();
             var walker = document.createTreeWalker(containerEl, NodeFilter.SHOW_TEXT, null, false);
             var node;
             while (node = walker.nextNode()) {
                 if (badgedNodes.has(node)) continue;
                 var textNorm = node.textContent.replace(/\s+/g, ' ');
-                var pos = textNorm.indexOf(searchText);
+                var pos = textNorm.toLowerCase().indexOf(searchLower);
                 if (pos === -1) continue;
                 if (node.nextSibling && node.nextSibling.classList && node.nextSibling.classList.contains('cmv-badge')) continue;
                 var origPos = 0, normIdx = 0;
@@ -121,7 +122,30 @@
         unplaced = unplaced.filter(function(i) { return !tryPlace(i.w3, i); });
         unplaced = unplaced.filter(function(i) { return !tryPlace(i.wLast3, i); });
 
-        if (unplaced.length > 0) { /* unplaced badges */ }
+        // Show unplaced badges (especially disputed ones) in a summary block
+        if (unplaced.length > 0) {
+            var disputedUnplaced = unplaced.filter(function(i) {
+                return i.el.classList.contains('cmv-badge-disputed');
+            });
+            if (disputedUnplaced.length > 0) {
+                var block = document.createElement('div');
+                block.className = 'cmv-unplaced-disputed mt-3 p-2 border border-danger rounded';
+                block.style.cssText = 'background:#fff5f5;';
+                block.innerHTML = '<strong class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Disputed Claims:</strong>';
+                var list = document.createElement('ul');
+                list.className = 'mb-0 mt-1 small';
+                disputedUnplaced.forEach(function(i) {
+                    var li = document.createElement('li');
+                    li.className = 'text-danger';
+                    li.textContent = i.full;
+                    li.appendChild(document.createTextNode(' '));
+                    li.appendChild(i.el);
+                    list.appendChild(li);
+                });
+                block.appendChild(list);
+                containerEl.appendChild(block);
+            }
+        }
     }
 
     // ── Trust badge ──
