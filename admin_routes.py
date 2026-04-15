@@ -3538,7 +3538,7 @@ def batch_admin_verify_claims():
     data = request.get_json() or {}
     claim_ids = data.get('claim_ids', [])
     override = data.get('admin_override', 'verified')
-    notes = data.get('admin_notes', 'Batch admin-verified (agreed by CMV)')
+    notes = data.get('admin_notes') or None
 
     if not claim_ids:
         return jsonify({'error': 'No claim_ids provided'}), 400

@@ -7198,3 +7198,91 @@ body.is-admin .cmv-admin-edit {
     text-decoration: underline;
 }
 
+/* ── User-facing trust badge detail ── */
+.cmv-trust-detail {
+    font-size: 0.82rem;
+    color: var(--brand-text-secondary, #5a6270);
+    font-weight: 400;
+}
+
+/* ── Verification log table (collapsible) ── */
+.cmv-verification-log {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+}
+.cmv-vlog-toggle {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #f8fafb, #f0f4f6);
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--brand-text-primary, #2c3e50);
+    border-bottom: 1px solid #e2e8f0;
+    user-select: none;
+    transition: background 0.15s;
+}
+.cmv-vlog-toggle:hover {
+    background: linear-gradient(135deg, #f0f4f6, #e8ecf0);
+}
+.cmv-vlog-toggle .fa-shield-alt {
+    color: var(--brand-neutral, #5E899E);
+}
+.cmv-vlog-arrow {
+    font-size: 0.65rem;
+    transition: transform 0.2s;
+    color: var(--brand-text-secondary, #5a6270);
+}
+.cmv-vlog-body {
+    display: none;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.cmv-verification-log.cmv-vlog-expanded .cmv-vlog-body {
+    display: block;
+}
+.cmv-verification-log.cmv-vlog-expanded .cmv-vlog-arrow {
+    transform: rotate(180deg);
+}
+.cmv-vlog-body .table {
+    font-size: 0.82rem;
+    margin-bottom: 0;
+}
+.cmv-vlog-body .table th {
+    background: #f8f9fa;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--brand-text-secondary, #5a6270);
+    font-weight: 600;
+    border-bottom-width: 1px;
+}
+.cmv-vlog-body .table td {
+    vertical-align: top;
+    line-height: 1.5;
+}
+.cmv-vlog-row:hover td {
+    background: #f8fafb;
+}
+.cmv-highlight-btn {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+.cmv-highlight-btn:hover {
+    opacity: 1;
+}
+
+/* Click-to-highlight animation */
+@keyframes cmvHighlightPulse {
+    0%   { background-color: rgba(233, 99, 4, 0.25); }
+    50%  { background-color: rgba(233, 99, 4, 0.10); }
+    100% { background-color: transparent; }
+}
+.cmv-text-highlight {
+    animation: cmvHighlightPulse 3s ease-out;
+    border-radius: 3px;
+}
+

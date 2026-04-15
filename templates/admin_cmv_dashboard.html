@@ -356,7 +356,7 @@ function batchAdminVerifyAgreed() {
     fetch('/api/admin/peer-review/batch-admin-verify', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ claim_ids: selected, admin_override: 'verified', admin_notes: 'Batch admin-verified (agreed by CMV)' }),
+        body: JSON.stringify({ claim_ids: selected, admin_override: 'verified' }),
     })
     .then(r => r.json())
     .then(data => {
