@@ -111,7 +111,24 @@ Return valid JSON with this exact structure:
   "qa_pairs": [
     {"question": "...", "answer": "..."}
   ],
-  "discussion": "<div class=\\"diagnosis-box\\">...</div>...(HTML fragments using CSS classes)...",
+  "discussion": {
+    "diagnosis_summary": "Brief 1-2 sentence overview anchored to imaging.",
+    "key_findings": [
+      {"finding": "Structure or feature name", "description": "What you see on imaging", "measurement": "size/threshold if applicable or null"}
+    ],
+    "dangerous_anatomy": ["Anatomical danger point relevant to this diagnosis"],
+    "differentials": [
+      {"name": "Differential diagnosis", "distinguishing_feature": "How to tell it apart"}
+    ],
+    "pitfalls": ["Critical pitfall that changes management or must not be missed"],
+    "teaching_points": ["High-yield teaching point for FRCR"],
+    "staging": null,
+    "key_image": {
+      "modality": "e.g. axial unenhanced CT",
+      "appearance": "e.g. biconvex hyperdense extra-axial collection",
+      "search_term": "e.g. epidural haematoma CT axial"
+    }
+  },
   "safety_checklist": ["..."],
   "sources": [
     {"title": "...", "url": "...", "pmid": "..."}
@@ -122,7 +139,7 @@ Return valid JSON with this exact structure:
   "warnings": ["..."]
 }
 
-IMPORTANT: The "discussion" field must contain HTML using the CSS classes described in Section 2.
+IMPORTANT: The "discussion" field is a STRUCTURED OBJECT, not an HTML string.
 Do NOT include teaching_image or anatomy_image fields.
 The "image_captions" array should contain 1-3 brief descriptions of what key reference images for this diagnosis would show — these will be paired with automatically-fetched Radiopaedia images."""
 
@@ -149,127 +166,54 @@ Rules:
     # Section 2: Discussion
     discussion_section = """
 ───────────────────────────────────────────────────────────────────
-2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES (HTML OUTPUT)
+2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES (STRUCTURED JSON)
 ───────────────────────────────────────────────────────────────────
 
-Output STYLED HTML FRAGMENTS for the discussion field. Do NOT output plain text.
-Do NOT output a full HTML page (no <html>, <head>, <body> tags). The output is
-inserted directly into a TinyMCE rich-text editor.
+The discussion field is a STRUCTURED JSON OBJECT with these fields:
 
-USE THESE CSS CLASSES (all are pre-defined in the app stylesheet):
+"diagnosis_summary": (string, required)
+  Brief 1-2 sentence overview of the diagnosis anchored to imaging.
 
-CALLOUT BOXES (use as <div class="CLASS_NAME">):
-  .clinical-note    — teal left-border for clinical context / pearls
-  .key-finding      — green left-border for key imaging findings
-  .teaching-pearl   — amber left-border for teaching points
-  .pitfall          — red left-border for pitfalls / danger / must-not-miss
-  .differential-dx  — purple left-border for differentials
-  .normal-variant   — blue left-border for normal variants
+"key_findings": (array of objects, required, 3-6 items)
+  Each object: {"finding": "structure/feature name", "description": "what you see on imaging", "measurement": "size or threshold if applicable, or null"}
+  Focus on: what makes the diagnosis, what changes management, what must be in the report.
 
-DIAGNOSTIC BOXES:
-  .diagnosis-box    — warm-tint left-border box (use for the diagnosis name + summary)
-  .staging-info     — grey left-border for staging/grading info
-  .comparison-box   — grey left-border for side-by-side comparisons
+"dangerous_anatomy": (array of strings, required, 2-4 items)
+  Anatomical danger points relevant to this diagnosis.
+  Focus on: spread routes, adjacent critical structures, surgical landmarks.
 
-TEXT EMPHASIS (use as <span class="CLASS_NAME">):
-  .highlight-yellow, .highlight-green, .highlight-red — background highlight
-  .important-text   — bold red text for critical items
-  .subtle-text      — grey smaller text for supplementary info
+"differentials": (array of objects, required, 2-5 items)
+  Each object: {"name": "differential diagnosis", "distinguishing_feature": "how to tell it apart from the primary diagnosis"}
 
-LAYOUT:
-  .two-column       — responsive 2-column grid (collapses on mobile).
-                      Put two child <div> elements inside.
-  .indent-block     — indented content block
+"pitfalls": (array of strings, required, 2-4 items)
+  Must-not-miss findings, common mistakes, things that change management.
+  Focus on: what leads to harm if missed, what a junior radiologist gets wrong.
 
-RADIOLOGY-SPECIFIC:
-  .image-finding    — orange left-border for describing imaging findings
-  .measurement      — inline monospace box for measurements/dimensions
-  .anatomy-label    — teal pill badge for anatomical structure names
+"teaching_points": (array of strings, required, 2-4 items)
+  High-yield FRCR teaching points, memorable facts, clinical pearls.
 
-TABLES:
-  Use <table class="table table-sm table-bordered"> for staging/classification tables.
+"staging": (object or null)
+  Only include if staging/grading/classification exists for this diagnosis.
+  For cancer: {"system": "AJCC 8th edition", "stages": [{"stage": "T1", "description": "..."}, ...], "key_stages": "focus on management-changing stages only"}
+  For non-cancer grading: {"system": "system name", "grades": [{"grade": "...", "description": "...", "management": "..."}]}
+  If no staging applies: null
 
-STRUCTURE YOUR OUTPUT LIKE THIS EXAMPLE (adapt content to the actual diagnosis):
-
-<div class="diagnosis-box">
-  <strong>Diagnosis Summary</strong>
-  <p>Brief 1-2 sentence overview of the diagnosis anchored to imaging.</p>
-</div>
-
-<div class="key-finding">
-  <strong>Key Imaging Findings</strong>
-  <ul>
-    <li><span class="anatomy-label">Structure</span> — finding description with <span class="measurement">measurement</span></li>
-  </ul>
-</div>
-
-<div class="two-column">
-  <div>
-    <div class="clinical-note">
-      <strong>Dangerous Anatomy</strong>
-      <p>Anatomical danger points relevant to this diagnosis.</p>
-    </div>
-  </div>
-  <div>
-    <div class="differential-dx">
-      <strong>Key Differentials</strong>
-      <ul><li>Differential 1 — distinguishing feature</li></ul>
-    </div>
-  </div>
-</div>
-
-<div class="pitfall">
-  <strong>Pitfalls &amp; Must-Not-Miss</strong>
-  <ul><li>Critical pitfall that changes management</li></ul>
-</div>
-
-<div class="teaching-pearl">
-  <strong>Teaching Points</strong>
-  <ul><li>High-yield teaching point for FRCR</li></ul>
-</div>
+"key_image": (object, required)
+  {"modality": "imaging modality and sequence/phase", "appearance": "specific visual appearance on imaging", "search_term": "terms to find a reference image"}
 
 CONTENT FOCUS:
-• Dangerous anatomy relevant to this diagnosis
-• Spread patterns and routes of involvement
-• Complications and what to look for
-• Key imaging signs and how they appear
-• What differentiates mild vs severe / stable vs unstable
-• What MUST be mentioned in a report
-
-IMAGE GUIDANCE (add 1-2 of these in a .image-finding box at the end of the discussion):
-When describing the key diagnostic imaging finding, be specific enough that an admin
-could search for a matching reference image. Include:
-• The modality and sequence/phase (e.g. 'arterial phase CT', 'T2 FLAIR MRI')
-• The specific visual appearance (e.g. 'hyperdense crescent', 'ring-enhancing lesion
-  with surrounding oedema', 'target sign on axial CT')
-• A suggested search term in [brackets] that would find a good reference image
-  (e.g. [epidural haematoma CT axial biconvex])
-Example:
-<div class="image-finding">
-  <strong>Key Image</strong>
-  <p>On <span class="anatomy-label">axial unenhanced CT</span>, look for a
-  biconvex hyperdense extra-axial collection — the classic lens-shaped haematoma.
-  [epidural haematoma CT axial biconvex hyperdense]</p>
-</div>
-
-If staging/grading/classification exists (non-cancer):
-• Do NOT give full scoring tables — only the 2-4 features that change management
-• Present in a .staging-info box or table
-
-TNM CLASSIFICATION (CANCER ONLY):
-• If the diagnosis contains "cancer", include AJCC TNM classification
-• Use <table class="table table-sm table-bordered"> for T, N, M stages and stage groupings
-• Wrap the table section in <div class="staging-info">
-• Keep tables concise — focus on clinically relevant stages
+  • Dangerous anatomy relevant to this diagnosis
+  • Spread patterns and routes of involvement
+  • Complications and what to look for
+  • Key imaging signs and how they appear
+  • What differentiates mild vs severe / stable vs unstable
+  • What MUST be mentioned in a report
 
 RULES:
-• Every <div> must have a class from the list above
-• Use <strong> for headings inside boxes, NOT <h3>/<h4> (those are reserved for outer structure)
-• Use <ul>/<li> for lists, <p> for paragraphs
-• Do NOT use markdown — output HTML only
-• Do NOT wrap in <html>, <head>, or <body>
-• Do NOT use inline styles — only the CSS classes listed above
-• Keep clinical content accurate and FRCR-relevant"""
+  • Output plain text in all fields — NO HTML tags, NO markdown
+  • Include specific measurements and thresholds where relevant
+  • Each field should be self-contained (don't reference other fields)
+  • Keep clinical content accurate and FRCR-relevant"""
 
     # Section 3: Safety checklist
     safety_section = """
@@ -400,7 +344,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
 
     payload = {
         "model": model,
-        "max_tokens": 6000,  # HTML markup adds ~40-50% overhead vs plain text
+        "max_tokens": 6000,  # Keep ceiling high; JSON uses fewer tokens naturally
         "temperature": 0.3,  # Slightly higher for more natural language
         "system": effective_system,
         "messages": [

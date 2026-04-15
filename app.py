@@ -7092,6 +7092,153 @@ def _is_html_discussion(text):
     return '<div' in text or '<table' in text or 'class=' in text
 
 
+def _render_json_discussion(disc: dict) -> str:
+    """Render structured JSON discussion to HTML using app CSS classes.
+
+    Each field maps to a specific CSS callout box:
+      diagnosis_summary → .diagnosis-box
+      key_findings      → .key-finding
+      dangerous_anatomy → .clinical-note
+      differentials     → .differential-dx
+      pitfalls          → .pitfall
+      teaching_points   → .teaching-pearl
+      staging           → .staging-info
+      key_image         → .image-finding
+    """
+    parts = []
+
+    # Diagnosis summary
+    summary = disc.get('diagnosis_summary', '')
+    if summary:
+        parts.append(
+            f'<div class="diagnosis-box">'
+            f'<strong>Diagnosis Summary</strong>'
+            f'<p>{_escape_html(summary)}</p>'
+            f'</div>'
+        )
+
+    # Key findings
+    findings = disc.get('key_findings', [])
+    if findings:
+        items = []
+        for f in findings:
+            if isinstance(f, dict):
+                name = _escape_html(f.get('finding', ''))
+                desc = _escape_html(f.get('description', ''))
+                meas = f.get('measurement')
+                meas_html = f' <span class="measurement">{_escape_html(meas)}</span>' if meas else ''
+                items.append(f'<li><span class="anatomy-label">{name}</span> &mdash; {desc}{meas_html}</li>')
+            elif isinstance(f, str):
+                items.append(f'<li>{_escape_html(f)}</li>')
+        if items:
+            parts.append(
+                f'<div class="key-finding" data-field="key_findings">'
+                f'<strong>Key Imaging Findings</strong>'
+                f'<ul>{"".join(items)}</ul>'
+                f'</div>'
+            )
+
+    # Two-column layout: dangerous anatomy + differentials
+    danger = disc.get('dangerous_anatomy', [])
+    diffs = disc.get('differentials', [])
+    if danger or diffs:
+        col1 = ''
+        col2 = ''
+        if danger:
+            d_items = ''.join(f'<li>{_escape_html(d)}</li>' for d in danger if isinstance(d, str))
+            col1 = (
+                f'<div class="clinical-note" data-field="dangerous_anatomy">'
+                f'<strong>Dangerous Anatomy</strong>'
+                f'<ul>{d_items}</ul></div>'
+            )
+        if diffs:
+            diff_items = []
+            for d in diffs:
+                if isinstance(d, dict):
+                    name = _escape_html(d.get('name', ''))
+                    feat = _escape_html(d.get('distinguishing_feature', ''))
+                    diff_items.append(f'<li><strong>{name}</strong> &mdash; {feat}</li>')
+                elif isinstance(d, str):
+                    diff_items.append(f'<li>{_escape_html(d)}</li>')
+            col2 = (
+                f'<div class="differential-dx" data-field="differentials">'
+                f'<strong>Key Differentials</strong>'
+                f'<ul>{"".join(diff_items)}</ul></div>'
+            )
+        if col1 and col2:
+            parts.append(f'<div class="two-column"><div>{col1}</div><div>{col2}</div></div>')
+        elif col1:
+            parts.append(col1)
+        elif col2:
+            parts.append(col2)
+
+    # Pitfalls
+    pitfalls = disc.get('pitfalls', [])
+    if pitfalls:
+        p_items = ''.join(f'<li>{_escape_html(p)}</li>' for p in pitfalls if isinstance(p, str))
+        if p_items:
+            parts.append(
+                f'<div class="pitfall" data-field="pitfalls">'
+                f'<strong>Pitfalls &amp; Must-Not-Miss</strong>'
+                f'<ul>{p_items}</ul></div>'
+            )
+
+    # Teaching points
+    teaching = disc.get('teaching_points', [])
+    if teaching:
+        t_items = ''.join(f'<li>{_escape_html(t)}</li>' for t in teaching if isinstance(t, str))
+        if t_items:
+            parts.append(
+                f'<div class="teaching-pearl" data-field="teaching_points">'
+                f'<strong>Teaching Points</strong>'
+                f'<ul>{t_items}</ul></div>'
+            )
+
+    # Staging (if present)
+    staging = disc.get('staging')
+    if staging and isinstance(staging, dict):
+        system = _escape_html(staging.get('system', ''))
+        stages = staging.get('stages') or staging.get('grades', [])
+        if stages:
+            rows = ''
+            for s in stages:
+                if isinstance(s, dict):
+                    label = _escape_html(s.get('stage') or s.get('grade', ''))
+                    desc = _escape_html(s.get('description', ''))
+                    mgmt = s.get('management', '')
+                    mgmt_html = f'<td>{_escape_html(mgmt)}</td>' if mgmt else ''
+                    rows += f'<tr><td><strong>{label}</strong></td><td>{desc}</td>{mgmt_html}</tr>'
+            if rows:
+                header = '<th>Stage</th><th>Description</th>'
+                if any(isinstance(s, dict) and s.get('management') for s in stages):
+                    header += '<th>Management</th>'
+                parts.append(
+                    f'<div class="staging-info" data-field="staging">'
+                    f'<strong>{system}</strong>'
+                    f'<table class="table table-sm table-bordered"><thead><tr>{header}</tr></thead>'
+                    f'<tbody>{rows}</tbody></table></div>'
+                )
+        key_stages = staging.get('key_stages', '')
+        if key_stages:
+            parts.append(f'<p class="subtle-text">{_escape_html(key_stages)}</p>')
+
+    # Key image description
+    key_image = disc.get('key_image')
+    if key_image and isinstance(key_image, dict):
+        mod = _escape_html(key_image.get('modality', ''))
+        app = _escape_html(key_image.get('appearance', ''))
+        search = key_image.get('search_term', '')
+        parts.append(
+            f'<div class="image-finding" data-field="key_image">'
+            f'<strong>Key Image</strong>'
+            f'<p>On <span class="anatomy-label">{mod}</span>, look for {app}.'
+            f'{" [" + _escape_html(search) + "]" if search else ""}</p>'
+            f'</div>'
+        )
+
+    return '\n'.join(parts)
+
+
 def _build_ai_discussion_html(output, provider, model_name):
     """
     Build HTML for AI-generated discussion content.
@@ -7113,8 +7260,11 @@ def _build_ai_discussion_html(output, provider, model_name):
     discussion = (output or {}).get('discussion', '')
     if discussion:
         sections.append('<h4>Discussion</h4>')
-        if _is_html_discussion(discussion):
-            # New format: sanitize HTML, preserving our CSS classes
+        if isinstance(discussion, dict):
+            # New JSON format: render structured discussion to HTML
+            sections.append(_render_json_discussion(discussion))
+        elif _is_html_discussion(discussion):
+            # Legacy HTML format: sanitize HTML, preserving our CSS classes
             sections.append(_sanitize_ai_html(discussion))
         else:
             # Old cached plain text: escape and convert newlines
@@ -7182,6 +7332,11 @@ def _build_ai_discussion_html(output, provider, model_name):
             sections.append(
                 f'<div class="clinical-note"><strong>Warnings:</strong> {warning_text}</div>'
             )
+
+    # Appended images (from Radiopaedia fetch, stored separately for JSON discussions)
+    appended_images = (output or {}).get('_appended_images_html', '')
+    if appended_images:
+        sections.append(appended_images)
 
     # Close the wrapper div
     sections.append('</div>')
@@ -7509,7 +7664,12 @@ def generate_preliminary_case_data(case_id):
         if all_images:
             captions = output.get('image_captions', [])
             image_html = render_reference_images_html(all_images, captions)
-            output['discussion'] = output.get('discussion', '') + image_html
+            disc = output.get('discussion', '')
+            if isinstance(disc, dict):
+                # JSON discussion: store images separately, renderer will append
+                output['_appended_images_html'] = image_html
+            else:
+                output['discussion'] = disc + image_html
     except Exception as img_exc:
         logger.warning("Failed to add images to case discussion: %s", img_exc)
 
