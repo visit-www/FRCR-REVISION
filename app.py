@@ -7766,13 +7766,36 @@ def _apply_qa_pairs_from_output(case, output):
 
 
 def _apply_discussion_from_output(case, output, provider, model_name):
-    """Build AI discussion HTML and append to case.discussion. Returns discussion_html string."""
+    """Store AI discussion in case.discussion. JSON discussions stored as JSON string.
+    Returns discussion_html string for the API response (frontend preview)."""
+    discussion = (output or {}).get('discussion', '')
+
+    if isinstance(discussion, dict):
+        # NEW: Store structured JSON as a JSON string — frontend renders to HTML at view time
+        # Add metadata for rendering context
+        discussion['_meta'] = {
+            'provider': provider,
+            'model': model_name,
+            'generated_at': datetime.utcnow().isoformat(),
+        }
+        if case.created_by_user_id:
+            creator = User.query.get(case.created_by_user_id)
+            if creator and creator.full_name:
+                discussion['_meta']['contributor'] = creator.full_name
+        # Append images HTML if present
+        appended_images = (output or {}).get('_appended_images_html', '')
+        if appended_images:
+            discussion['_appended_images_html'] = appended_images
+        case.discussion = json.dumps(discussion)
+        # Return rendered HTML for API response (immediate preview)
+        return _build_ai_discussion_html(output, provider, model_name)
+
+    # Legacy: HTML or plain text discussion — store as before with wrapper + footer
     discussion_html = _build_ai_discussion_html(output, provider, model_name)
     if discussion_html:
         existing_discussion = case.discussion or ''
         separator = '\n' if existing_discussion else ''
 
-        # Build attribution line — contributor name if case was user-submitted
         timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
         contributor_line = ''
         if case.created_by_user_id:

@@ -3804,6 +3804,157 @@
      * Plain text is preserved as plain text (not converted to HTML) - formatting via CSS
      * HTML content is rendered as HTML
      */
+
+    // ── JSON Discussion Renderer (structured data → HTML) ──
+    function renderJsonDiscussion(disc) {
+        const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+        const parts = [];
+
+        // CSS class map per section type
+        const cssMap = {
+            key_findings: 'key-finding', dangerous_anatomy: 'clinical-note',
+            differentials: 'differential-dx', pitfalls: 'pitfall',
+            teaching_points: 'teaching-pearl', staging: 'staging-info',
+            classification: 'staging-info', imaging_approach: 'clinical-note',
+            complications: 'pitfall', management_impact: 'key-finding',
+            anatomy: 'clinical-note', key_image: 'image-finding',
+            custom: 'teaching-pearl',
+        };
+
+        // Wrapper
+        parts.push('<div data-ai-generated="true" class="ai-generated-wrapper">');
+        parts.push('<h4>Discussion</h4>');
+
+        // Diagnosis summary
+        if (disc.diagnosis_summary) {
+            parts.push(`<div class="diagnosis-box"><strong>Diagnosis Summary</strong><p>${esc(disc.diagnosis_summary)}</p></div>`);
+        }
+
+        // Sections array (new flexible format)
+        const sections = disc.sections || [];
+        sections.forEach(function(sec) {
+            const stype = sec.type || 'custom';
+            const title = esc(sec.title || stype.replace(/_/g, ' '));
+            const content = sec.content;
+            const cls = cssMap[stype] || 'teaching-pearl';
+            if (!content) return;
+
+            // Staging/classification with table
+            if ((stype === 'staging' || stype === 'classification') && typeof content === 'object' && !Array.isArray(content)) {
+                parts.push(renderStagingTable(title, content, cls));
+                return;
+            }
+
+            // Key image
+            if (stype === 'key_image' && typeof content === 'object' && !Array.isArray(content)) {
+                const mod = esc(content.modality || '');
+                const app = esc(content.appearance || '');
+                const search = content.search_term || '';
+                parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><p>On <span class="anatomy-label">${mod}</span>, look for ${app}.${search ? ' [' + esc(search) + ']' : ''}</p></div>`);
+                return;
+            }
+
+            // Key findings (objects with finding/description/measurement)
+            if (stype === 'key_findings' && Array.isArray(content)) {
+                const items = content.map(function(f) {
+                    if (typeof f === 'object') {
+                        const name = esc(f.finding || '');
+                        const desc = esc(f.description || '');
+                        const meas = f.measurement ? ` <span class="measurement">${esc(f.measurement)}</span>` : '';
+                        return `<li data-claim-anchor="${esc(f.finding)}"><span class="anatomy-label">${name}</span> &mdash; ${desc}${meas}</li>`;
+                    }
+                    return `<li>${esc(f)}</li>`;
+                }).join('');
+                if (items) parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><ul>${items}</ul></div>`);
+                return;
+            }
+
+            // Differentials (objects with name/distinguishing_feature)
+            if (stype === 'differentials' && Array.isArray(content)) {
+                const items = content.map(function(d) {
+                    if (typeof d === 'object') {
+                        return `<li data-claim-anchor="${esc(d.name)}"><strong>${esc(d.name || '')}</strong> &mdash; ${esc(d.distinguishing_feature || '')}</li>`;
+                    }
+                    return `<li>${esc(d)}</li>`;
+                }).join('');
+                if (items) parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><ul>${items}</ul></div>`);
+                return;
+            }
+
+            // Generic array (strings or objects)
+            if (Array.isArray(content)) {
+                const items = content.map(function(item) {
+                    if (typeof item === 'string') return `<li>${esc(item)}</li>`;
+                    if (typeof item === 'object') {
+                        const vals = Object.entries(item).map(function(kv) {
+                            return kv[1] && String(kv[1]) !== 'null' ? `<strong>${esc(kv[0])}:</strong> ${esc(String(kv[1]))}` : '';
+                        }).filter(Boolean).join(' &mdash; ');
+                        return vals ? `<li>${vals}</li>` : '';
+                    }
+                    return '';
+                }).filter(Boolean).join('');
+                if (items) parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><ul>${items}</ul></div>`);
+                return;
+            }
+
+            // String content
+            if (typeof content === 'string') {
+                parts.push(`<div class="${cls}" data-field="${stype}" data-section-title="${esc(sec.title)}"><strong>${title}</strong><p>${esc(content)}</p></div>`);
+            }
+        });
+
+        // Appended images
+        if (disc._appended_images_html) {
+            parts.push(disc._appended_images_html);
+        }
+
+        // Attribution footer
+        const meta = disc._meta || {};
+        const ts = meta.generated_at ? new Date(meta.generated_at).toLocaleString() : '';
+        const contributor = meta.contributor ? `with inputs from <strong>${esc(meta.contributor)}</strong> ` : '';
+        parts.push(`<div style="background:#f3f4f6;padding:12px 16px;border-top:1px solid #e5e7eb;margin-top:20px;border-radius:0 0 8px 8px;">` +
+            `<p style="font-size:0.82em;color:#8b94a3;font-style:italic;margin:4px 0 0 0;">Generated ${contributor}by RadInsights Intelligence${ts ? ' on ' + esc(ts) : ''}</p>` +
+            `<div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-top:6px;">` +
+            `<img style="width:30px;height:30px;object-fit:contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/f_auto,q_auto,w_300/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadiologyInsights Logo">` +
+            `<span style="font-size:0.85em;color:#6b7280;">&copy; All rights reserved RadiologyInsights</span></div></div>`);
+
+        parts.push('</div>');
+        return parts.join('\n');
+    }
+
+    function renderStagingTable(title, staging, cls) {
+        const esc = s => { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; };
+        const system = esc(staging.system || '');
+        const heading = system ? `${title}: ${system}` : title;
+        const stages = staging.stages || staging.grades || staging.categories || [];
+        if (!stages.length) {
+            if (staging.description) return `<div class="${cls}" data-field="staging"><strong>${esc(heading)}</strong><p>${esc(staging.description)}</p></div>`;
+            return '';
+        }
+        // Auto-detect label key and value columns from first row
+        const labelKeys = ['stage', 'grade', 'category', 'name', 'class', 'type', 'level'];
+        const sample = stages[0] || {};
+        let labelKey = null;
+        for (const lk of labelKeys) { if (sample[lk] !== undefined) { labelKey = lk; break; } }
+        const valKeys = [];
+        stages.forEach(function(s) {
+            if (typeof s !== 'object') return;
+            Object.keys(s).forEach(function(k) { if (k !== labelKey && valKeys.indexOf(k) === -1) valKeys.push(k); });
+        });
+        let header = `<th>${esc((labelKey || 'Item').replace(/_/g, ' '))}</th>`;
+        valKeys.forEach(function(vk) { header += `<th>${esc(vk.replace(/_/g, ' '))}</th>`; });
+        let rows = '';
+        stages.forEach(function(s) {
+            if (typeof s !== 'object') return;
+            const label = esc(labelKey ? (s[labelKey] || '') : '');
+            rows += `<tr><td><strong>${label}</strong></td>`;
+            valKeys.forEach(function(vk) { rows += `<td>${esc(String(s[vk] || ''))}</td>`; });
+            rows += '</tr>';
+        });
+        return `<div class="${cls}" data-field="staging"><strong>${esc(heading)}</strong>` +
+            `<table class="table table-sm table-bordered"><thead><tr>${header}</tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
     function renderSafeHTML(htmlContent) {
         if (!htmlContent) return '';
         
@@ -4212,42 +4363,48 @@
         const discussionDiv = document.getElementById('discussionText');
         if (!discussionDiv) return;
         
-        // Get raw discussion content from data attribute (server-side rendered, but we'll re-render client-side)
+        // Get raw discussion content from data attribute
         const rawDiscussion = discussionDiv.getAttribute('data-raw-discussion') || '';
-        
+
         if (!rawDiscussion || !rawDiscussion.trim()) {
             discussionDiv.innerHTML = '<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>';
             return;
         }
-        
-        // Use the same renderSafeHTML function used for Questions/Answers/Image descriptions
-        // Plain text is preserved as plain text (not converted to HTML) - formatting via CSS
-        let renderedContent = renderSafeHTML(rawDiscussion);
-        
-        // Convert markdown-style **text** to <h4> tags (before HTML escaping)
+
+        let renderedContent;
+
+        // Detect JSON discussion (stored as JSON string in DB)
+        if (rawDiscussion.trim().startsWith('{')) {
+            try {
+                const discData = JSON.parse(rawDiscussion);
+                if (discData.diagnosis_summary || discData.sections) {
+                    renderedContent = renderJsonDiscussion(discData);
+                    discussionDiv.classList.remove('plain-text-formatted');
+                    discussionDiv.innerHTML = renderedContent;
+                    // Store structured data for precise badge matching
+                    discussionDiv._jsonDiscussion = discData;
+                    if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
+                    return;  // skip legacy HTML path
+                }
+            } catch(e) {
+                // Not valid JSON — fall through to HTML path
+            }
+        }
+
+        // Legacy: HTML or plain text discussion
+        renderedContent = renderSafeHTML(rawDiscussion);
         renderedContent = convertMarkdownBoldToH4(renderedContent);
-        
-        // Check if content is plain text (no HTML tags)
         const isPlainTextContent = isPlainText(renderedContent);
-        
-        // If plain text, escape HTML and add CSS class for formatting
         if (isPlainTextContent) {
             renderedContent = renderPlainTextWithFormatting(renderedContent);
-            // Add CSS class to container for plain text formatting
             discussionDiv.classList.add('plain-text-formatted');
         } else {
-            // Remove class if it was previously added
             discussionDiv.classList.remove('plain-text-formatted');
         }
-        
-        // After rendering, safely linkify URLs (only plain text URLs, not those already in <a> tags)
         renderedContent = linkifyUrlsSafely(renderedContent);
-        
-        // INJECT MARKERS INTO HTML (before setting innerHTML)
         if (isStudent) {
             renderedContent = injectMarkersIntoHTML('discussion', renderedContent);
         }
-        
         discussionDiv.innerHTML = renderedContent;
         if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
 
