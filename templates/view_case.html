@@ -227,21 +227,13 @@
                         <!-- Search to Add Linked Content -->
                         <div class="related-cases-search-section">
                             <div class="input-group input-group-sm">
-                                <select id="relatedCaseTypeStudent" class="form-select" style="max-width: 160px; border-color: #5E899E;">
-                                    <option value="related">Related</option>
-                                    <option value="similar">Similar</option>
-                                    <option value="algorithm">Algorithm</option>
-                                    <option value="reference">Reference</option>
-                                    <option value="pearl">Pearl</option>
-                                    <option value="reporting_algorithm">Anatomy/Algorithm</option>
-                                </select>
                                 <span class="input-group-text bg-white" style="border-color: #5E899E;">
                                     <i class="fas fa-search text-muted"></i>
                                 </span>
                                 <input type="text"
                                        id="relatedCaseSearchStudent"
                                        class="form-control"
-                                       placeholder="Search to link content..."
+                                       placeholder="Search all content to link (cases, tools, protocols, pearls, algorithms...)"
                                        style="border-color: #5E899E;">
                             </div>
                             <div id="relatedCaseSearchResultsStudent" class="list-group mt-1 shadow-sm" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto; width: calc(100% - 2rem);"></div>
@@ -10382,64 +10374,64 @@
                 return;
             }
 
+            const _linkCfg = {
+                case:                { icon: 'fa-file-medical', color: '#5E899E', border: '#5E899E' },
+                calculator:          { icon: 'fa-calculator',   color: '#198754', border: '#198754' },
+                reference:           { icon: 'fa-bookmark',     color: '#6c757d', border: '#6c757d' },
+                reporting_algorithm: { icon: 'fa-sitemap',      color: '#6f42c1', border: '#6f42c1' },
+                radiology_template:  { icon: 'fa-file-alt',     color: '#e96304', border: '#e96304' },
+                pearl:               { icon: 'fa-gem',          color: '#6b46c1', border: '#6b46c1' },
+                learning:            { icon: 'fa-graduation-cap',color: '#0d6efd', border: '#0d6efd' },
+                radiology_tool:      { icon: 'fa-tools',        color: '#dc3545', border: '#dc3545' },
+                imaging_protocol:    { icon: 'fa-x-ray',        color: '#20c997', border: '#20c997' },
+            };
             container.innerHTML = items.map(item => {
-                if (item.link_type === 'calculator') {
-                    return `
-                        <a href="${item.url || '/tnm-calculator/' + item.slug}" target="_blank"
-                           class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 related-case-badge">
-                            <i class="fas fa-calculator"></i>
-                            <span>${item.cancer_name} <small class="opacity-75">(${item.body_section})</small></span>
-                        </a>
-                    `;
-                } else if (item.link_type === 'reference') {
-                    const journal = item.journal ? ` — ${item.journal}` : '';
-                    return `
-                        <a href="${item.ref_url || '#'}" target="_blank"
-                           class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 related-case-badge">
-                            <i class="fas fa-bookmark"></i>
-                            <span class="text-truncate" style="max-width:250px;">${item.title}${journal}</span>
-                        </a>
-                    `;
-                } else if (item.link_type === 'pearl') {
-                    return `
-                        <span class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
-                              style="border-color: #6b46c1; color: #6b46c1; cursor: default;">
-                            <i class="fas fa-gem"></i>
-                            <span class="text-truncate" style="max-width:200px;">${(item.title || 'Pearl').replace(/<[^>]*>/g, '')}</span>
-                        </span>
-                    `;
-                } else if (item.link_type === 'reporting_algorithm') {
-                    const algoUrl = item.url || (item.slug ? '/anatomy-snippets/' + item.slug : '#');
-                    return `
-                        <a href="${algoUrl}" target="_blank"
-                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
-                           style="border-color: #6f42c1; color: #6f42c1;">
-                            <i class="fas fa-bone"></i>
-                            <span class="text-truncate" style="max-width:200px;">${item.title || 'Algorithm'}</span>
-                        </a>
-                    `;
-                } else if (item.link_type === 'learning') {
-                    const lqUrl = item.url || '#';
+                const lt = item.link_type || 'case';
+                const c = _linkCfg[lt] || _linkCfg.case;
+
+                // Determine label and URL per type
+                let label, url;
+                if (lt === 'case') {
+                    label = (item.diagnosis || item.case_number || 'Case').substring(0, 50);
+                    url = `/view-case/${item.id}`;
+                } else if (lt === 'calculator') {
+                    label = `${item.cancer_name} <small class="opacity-75">(${item.body_section || ''})</small>`;
+                    url = item.url || `/tnm-calculator/${item.slug}`;
+                } else if (lt === 'reference') {
+                    label = `${item.title || 'Reference'}${item.journal ? ' — ' + item.journal : ''}`;
+                    url = item.ref_url || '#';
+                } else if (lt === 'learning') {
                     const qType = (item.question_type || 'SBA').toUpperCase();
-                    return `
-                        <a href="${lqUrl}" target="_blank"
-                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge">
-                            <i class="fas fa-graduation-cap"></i>
-                            <span class="text-truncate" style="max-width:200px;">${qType}: ${(item.title || 'Question').substring(0, 60)}</span>
-                        </a>
-                    `;
+                    label = `${qType}: ${(item.title || 'Question').substring(0, 60)}`;
+                    url = item.url || '#';
+                } else if (lt === 'reporting_algorithm') {
+                    label = item.title || 'Algorithm';
+                    url = item.url || `/reporting-template/${item.slug}`;
+                } else if (lt === 'radiology_template') {
+                    label = item.title || 'Template';
+                    url = `/radiology-template/view/${item.id}`;
+                } else if (lt === 'radiology_tool') {
+                    label = item.title || 'Radiology Tool';
+                    url = item.url || `/incidental-findings/${item.slug}`;
+                } else if (lt === 'imaging_protocol') {
+                    label = item.title || 'Protocol';
+                    url = `/radiology-protocols/view/${item.id}`;
+                } else if (lt === 'pearl') {
+                    label = (item.title || 'Pearl').replace(/<[^>]*>/g, '');
+                    url = '#';
                 } else {
-                    const relType = item.relation_type || 'related';
-                    const iconClass = relType === 'similar' ? 'fa-clone' : 'fa-file-medical';
-                    return `
-                        <a href="/view-case/${item.id}"
-                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
-                           style="border-color: #5E899E; color: #5E899E;">
-                            <i class="fas ${iconClass}"></i>
-                            <span>${(item.diagnosis || item.case_number || 'Case').substring(0, 50)}</span>
-                        </a>
-                    `;
+                    label = item.title || 'Item';
+                    url = '#';
                 }
+
+                return `
+                    <a href="${url}" ${url !== '#' ? 'target="_blank"' : ''}
+                       class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
+                       style="border-color: ${c.border}; color: ${c.color};">
+                        <i class="fas ${c.icon}"></i>
+                        <span class="text-truncate" style="max-width:250px;">${label}</span>
+                    </a>
+                `;
             }).join('');
         } catch (error) {
             console.error('Error loading linked content:', error);
@@ -10447,29 +10439,12 @@
         }
     }
 
-    // Initialize search for linking content
+    // Initialize search for linking content (global search, all content types)
     function initRelatedCasesSearchStudent() {
         const searchInput = document.getElementById('relatedCaseSearchStudent');
         const resultsContainer = document.getElementById('relatedCaseSearchResultsStudent');
-        const typeSelect = document.getElementById('relatedCaseTypeStudent');
 
         if (!searchInput || !resultsContainer) return;
-
-        const placeholders = {
-            related: 'Search by diagnosis or case number...',
-            similar: 'Search by diagnosis or case number...',
-            algorithm: 'Search by cancer type, body section...',
-            reference: 'Search by reference title or journal...',
-            pearl: 'Search pearls by text, tags, body section...',
-            reporting_algorithm: 'Search algorithms by title, keywords...',
-        };
-        if (typeSelect) {
-            typeSelect.addEventListener('change', function() {
-                searchInput.placeholder = placeholders[this.value] || placeholders.related;
-                searchInput.value = '';
-                resultsContainer.style.display = 'none';
-            });
-        }
 
         let debounceTimer;
         searchInput.addEventListener('input', function() {
@@ -10483,73 +10458,41 @@
 
             debounceTimer = setTimeout(async () => {
                 try {
-                    const searchType = typeSelect ? typeSelect.value : 'related';
-                    const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelatedStudent}&type=${encodeURIComponent(searchType)}`);
+                    const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelatedStudent}&type=all`);
                     const items = await response.json();
 
                     if (items.length === 0) {
                         resultsContainer.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
                     } else {
+                        const _cfg = {
+                            case:                { icon: 'fa-file-medical', color: '#5E899E', badge: 'Case' },
+                            calculator:          { icon: 'fa-calculator',   color: '#198754', badge: 'Staging' },
+                            reference:           { icon: 'fa-bookmark',     color: '#6c757d', badge: 'Reference' },
+                            reporting_algorithm: { icon: 'fa-sitemap',      color: '#5E899E', badge: 'Algorithm' },
+                            anatomy_snippet:     { icon: 'fa-bone',         color: '#0d6efd', badge: 'Anatomy' },
+                            radiology_template:  { icon: 'fa-file-alt',     color: '#e96304', badge: 'Template' },
+                            pearl:               { icon: 'fa-gem',          color: '#6b46c1', badge: 'Pearl' },
+                            learning:            { icon: 'fa-graduation-cap',color: '#0d6efd', badge: 'SBA/Viva' },
+                            radiology_tool:      { icon: 'fa-tools',        color: '#dc3545', badge: 'Rad Tool' },
+                            imaging_protocol:    { icon: 'fa-x-ray',        color: '#20c997', badge: 'Protocol' },
+                        };
                         resultsContainer.innerHTML = items.map(item => {
-                            if (item.link_type === 'calculator') {
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('calculator', ${item.id})">
-                                        <i class="fas fa-calculator text-success me-2"></i>
-                                        <strong>${item.cancer_name}</strong>
-                                        <small class="text-muted ms-1">${item.body_section}</small>
-                                    </button>
-                                `;
-                            } else if (item.link_type === 'reference') {
-                                const journal = item.journal ? ` — ${item.journal}` : '';
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('reference', ${item.id})">
-                                        <i class="fas fa-bookmark text-secondary me-2"></i>
-                                        <strong class="text-truncate" style="max-width:300px;">${item.title}</strong>
-                                        <small class="text-muted">${journal}</small>
-                                    </button>
-                                `;
-                            } else if (item.link_type === 'pearl') {
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('pearl', ${item.id})">
-                                        <i class="fas fa-gem me-2" style="color:#6b46c1;"></i>
-                                        <span class="text-truncate d-inline-block" style="max-width:350px;">${item.title}</span>
-                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
-                                    </button>
-                                `;
-                            } else if (item.link_type === 'reporting_algorithm') {
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('reporting_algorithm', ${item.id})">
-                                        <i class="fas fa-bone me-2" style="color:#6f42c1;"></i>
-                                        <strong>${item.title}</strong>
-                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
-                                    </button>
-                                `;
-                            } else if (item.link_type === 'learning') {
-                                const qType = (item.question_type || 'SBA').toUpperCase();
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('learning', ${item.id})">
-                                        <i class="fas fa-graduation-cap me-2" style="color:#0d6efd;"></i>
-                                        <span class="badge bg-primary me-1">${qType}</span>
-                                        <span class="text-truncate d-inline-block" style="max-width:300px;">${item.title}</span>
-                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
-                                    </button>
-                                `;
-                            } else {
-                                return `
-                                    <button type="button" class="list-group-item list-group-item-action"
-                                            onclick="addLinkStudent('case', ${item.id})">
-                                        <i class="fas fa-file-medical me-2" style="color:#5E899E;"></i>
-                                        <strong>${item.case_number || 'No number'}</strong>
-                                        <small class="text-muted ms-2">${item.body_part || ''}</small>
-                                        <small class="text-truncate d-block">${item.diagnosis || ''}</small>
-                                    </button>
-                                `;
-                            }
+                            const lt = item.link_type || 'case';
+                            const linkType = lt === 'anatomy_snippet' ? 'reporting_algorithm' : lt;
+                            const c = _cfg[lt] || { icon: 'fa-link', color: '#6c757d', badge: lt };
+                            const title = item.cancer_name || item.title || item.case_number || item.diagnosis || 'Item';
+                            const sub = [item.body_section, item.modality, item.category, item.journal, item.body_part].filter(Boolean).join(' · ');
+                            // For new generic types, pass target_type + target_id
+                            const onclickType = (lt === 'radiology_tool' || lt === 'imaging_protocol') ? lt : linkType;
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLinkStudent('${onclickType}', ${item.id})">
+                                    <span class="badge me-2" style="background:${c.color};color:#fff;font-size:0.65rem;">${c.badge}</span>
+                                    <i class="fas ${c.icon} me-1" style="color:${c.color};"></i>
+                                    <strong class="text-truncate" style="max-width:250px;">${title}</strong>
+                                    ${sub ? '<small class="text-muted ms-1">(' + sub + ')</small>' : ''}
+                                </button>
+                            `;
                         }).join('');
                     }
                     resultsContainer.style.display = 'block';
@@ -10569,7 +10512,6 @@
     }
 
     async function addLinkStudent(linkType, linkedId) {
-        const relationType = document.getElementById('relatedCaseTypeStudent')?.value || 'related';
         let body = { link_type: linkType };
 
         if (linkType === 'calculator') {
@@ -10580,11 +10522,16 @@
             body.pearl_id = linkedId;
         } else if (linkType === 'reporting_algorithm') {
             body.algorithm_id = linkedId;
+        } else if (linkType === 'radiology_template') {
+            body.template_id = linkedId;
         } else if (linkType === 'learning') {
             body.learning_id = linkedId;
+        } else if (linkType === 'radiology_tool' || linkType === 'imaging_protocol') {
+            body.target_type = linkType;
+            body.target_id = linkedId;
         } else {
             body.related_case_id = linkedId;
-            body.relation_type = relationType;
+            body.relation_type = 'related';
         }
 
         try {

@@ -6758,6 +6758,20 @@ function renderRelatedCases() {
             sublabel = [(c.question_type || '').toUpperCase(), c.body_section].filter(Boolean).join(' · ');
             clickUrl = c.url || '#';
             target = '_blank';
+        } else if (lt === 'radiology_tool') {
+            badge = '<span class="badge bg-danger">Rad Tool</span>';
+            icon = '<i class="fas fa-tools" style="color: #dc3545;"></i>';
+            label = c.title || 'Radiology Tool';
+            sublabel = [c.category, c.body_section].filter(Boolean).join(' · ');
+            clickUrl = c.url || `/incidental-findings/${c.slug}`;
+            target = '_blank';
+        } else if (lt === 'imaging_protocol') {
+            badge = '<span class="badge" style="background: #20c997;">Protocol</span>';
+            icon = '<i class="fas fa-x-ray" style="color: #20c997;"></i>';
+            label = c.title || 'Protocol';
+            sublabel = [c.modality, c.body_section].filter(Boolean).join(' · ');
+            clickUrl = `/radiology-protocols/view/${c.id}`;
+            target = '_blank';
         } else {
             const relType = c.relation_type || 'related';
             const colors = { 'related': 'primary', 'similar': 'info', 'algorithm': 'success', 'reference': 'secondary' };
