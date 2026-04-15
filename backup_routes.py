@@ -2,7 +2,7 @@
 Database Backup and Restore Routes for Web Deployment
 Handles manual backup downloads and restore from uploads
 """
-from flask import Blueprint, jsonify, send_file, request, session
+from flask import Blueprint, jsonify, send_file, request, session, render_template
 from flask_login import login_required, current_user
 from models import (
     db, User, Case, CaseImage, Question, Answer,
@@ -39,6 +39,28 @@ from models import (
     RadiologyPearl,
     # Knowledge linking tables
     case_algorithm_links, case_template_links, case_pearl_links,
+    # Imaging protocols and vetting
+    ImagingProtocol, VettingSession, VettingAlgorithm,
+    # Admin docs and memory sync
+    AdminDocument, ClaudeMemoryUpdate, TourCapture,
+    # Peer review / CMV
+    PeerReviewClaim, PeerReviewFlag, ManualVerification,
+    # RadIQ
+    RadIQQuery, RadIQFeedback,
+    # Smart Reporter sessions
+    ReportingSession, PublishedReport,
+    # Learning module
+    LearningQuestion, LearningQuestionProgress, LearningQuestionReference,
+    # Content intelligence
+    ContentIntelligence, UserGeneratedIntelligence,
+    # Snippet media
+    SnippetReference, SnippetDocument, SnippetImage,
+    # MDT module
+    MdtMeeting, MdtCase,
+    # Audit and compliance
+    PiiOverrideLog, RateLimitEntry, ErasureLog, AdminActionLog,
+    # Additional association tables
+    case_learning_links, content_links,
 )
 from datetime import datetime
 from sqlalchemy import inspect
@@ -48,6 +70,15 @@ import os
 import uuid
 
 backup_bp = Blueprint('backup', __name__, url_prefix='/api/backup')
+
+
+@backup_bp.route('/manager', methods=['GET'])
+@login_required
+def backup_manager_page():
+    """Serve the standalone backup manager page"""
+    if not check_admin():
+        return jsonify({'error': 'Admin access required'}), 403
+    return render_template('backup_manager.html')
 
 
 def _sanitize_backup_data(backup_data):
@@ -114,7 +145,7 @@ def _build_backup_data():
         'metadata': {
             'backup_date': datetime.utcnow().isoformat(),
             'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-            'version': '2.9',  # Bumped for clinical tools tables
+            'version': '3.0',  # Bumped for 27 new models (protocols, vetting, CMV, MDT, etc.)
             'app_name': 'RadInsights'
         },
         'users': [],
@@ -178,6 +209,46 @@ def _build_backup_data():
         'radiology_pearls': [],
         # Import staging
         'imported_case_staging': [],
+        # Imaging protocols and vetting
+        'imaging_protocols': [],
+        'vetting_sessions': [],
+        'vetting_algorithms': [],
+        # Admin docs and memory sync
+        'admin_documents': [],
+        'claude_memory_updates': [],
+        'tour_captures': [],
+        # Peer review / CMV
+        'peer_review_claims': [],
+        'peer_review_flags': [],
+        'manual_verifications': [],
+        # RadIQ
+        'radiq_queries': [],
+        'radiq_feedback': [],
+        # Smart Reporter sessions
+        'reporting_sessions': [],
+        'published_reports': [],
+        # Learning module
+        'learning_questions': [],
+        'learning_question_progress': [],
+        'learning_question_references': [],
+        # Content intelligence
+        'content_intelligence': [],
+        'user_generated_intelligence': [],
+        # Snippet media
+        'snippet_references': [],
+        'snippet_documents': [],
+        'snippet_images': [],
+        # MDT module
+        'mdt_meetings': [],
+        'mdt_cases': [],
+        # Audit and compliance
+        'pii_override_logs': [],
+        'rate_limit_entries': [],
+        'erasure_logs': [],
+        'admin_action_logs': [],
+        # Additional association tables
+        'case_learning_links': [],
+        'content_links': [],
     }
     
     # Export users (with password hashes for sync purposes)
@@ -880,6 +951,401 @@ def _build_backup_data():
             'import_timestamp': ics.import_timestamp.isoformat() if ics.import_timestamp else None,
             'created_at': ics.created_at.isoformat() if ics.created_at else None,
             'updated_at': ics.updated_at.isoformat() if ics.updated_at else None,
+        })
+
+    # ==================== IMAGING PROTOCOLS & VETTING ====================
+
+    for proto in ImagingProtocol.query.all():
+        backup_data['imaging_protocols'].append({
+            'id': proto.id, 'title': proto.title, 'slug': proto.slug,
+            'modality': proto.modality, 'body_section': proto.body_section,
+            'keywords': proto.keywords, 'shorthand_text': proto.shorthand_text,
+            'detailed_protocol_html': proto.detailed_protocol_html,
+            'special_notes': proto.special_notes,
+            'indication_json': proto.indication_json,
+            'validation_json': proto.validation_json,
+            'search_config_json': proto.search_config_json,
+            'origin': proto.origin,
+            'user_id': proto.user_id,
+            'copied_from_id': proto.copied_from_id,
+            'is_published': proto.is_published,
+            'is_verified': proto.is_verified,
+            'verified_by_user_id': proto.verified_by_user_id,
+            'verified_at': proto.verified_at.isoformat() if proto.verified_at else None,
+            'is_emergency': proto.is_emergency,
+            'is_paediatric': proto.is_paediatric,
+            'created_at': proto.created_at.isoformat() if proto.created_at else None,
+            'updated_at': proto.updated_at.isoformat() if proto.updated_at else None,
+        })
+
+    for vs in VettingSession.query.all():
+        backup_data['vetting_sessions'].append({
+            'id': vs.id, 'user_id': vs.user_id,
+            'raw_clinical_text': vs.raw_clinical_text,
+            'modality_hint': vs.modality_hint,
+            'cleaned_clinical_text': vs.cleaned_clinical_text,
+            'study_type': vs.study_type,
+            'safety_checks_json': vs.safety_checks_json,
+            'protocol_source': vs.protocol_source,
+            'protocol_id': vs.protocol_id,
+            'final_clinical_details': vs.final_clinical_details,
+            'final_shorthand': vs.final_shorthand,
+            'final_detailed_html': vs.final_detailed_html,
+            'final_special_notes': vs.final_special_notes,
+            'ai_model': vs.ai_model,
+            'ai_tokens_used': vs.ai_tokens_used,
+            'created_at': vs.created_at.isoformat() if vs.created_at else None,
+        })
+
+    for va in VettingAlgorithm.query.all():
+        backup_data['vetting_algorithms'].append({
+            'id': va.id, 'algorithm_key': va.algorithm_key,
+            'title': va.title, 'slug': va.slug,
+            'body_section': va.body_section,
+            'clinical_scenario': va.clinical_scenario,
+            'entry_criteria_json': va.entry_criteria_json,
+            'steps_json': va.steps_json,
+            'safety_json': va.safety_json,
+            'tags': va.tags, 'keywords': va.keywords,
+            'origin': va.origin,
+            'is_published': va.is_published,
+            'is_verified': va.is_verified,
+            'verified_by_user_id': va.verified_by_user_id,
+            'verified_at': va.verified_at.isoformat() if va.verified_at else None,
+            'created_at': va.created_at.isoformat() if va.created_at else None,
+            'updated_at': va.updated_at.isoformat() if va.updated_at else None,
+        })
+
+    # ==================== ADMIN DOCS & MEMORY SYNC ====================
+
+    for doc in AdminDocument.query.all():
+        backup_data['admin_documents'].append({
+            'id': doc.id, 'slug': doc.slug, 'title': doc.title,
+            'category': doc.category,
+            'content_html': doc.content_html,
+            'last_edited_by': doc.last_edited_by,
+            'created_at': doc.created_at.isoformat() if doc.created_at else None,
+            'updated_at': doc.updated_at.isoformat() if doc.updated_at else None,
+        })
+
+    for cmu in ClaudeMemoryUpdate.query.all():
+        backup_data['claude_memory_updates'].append({
+            'id': cmu.id, 'category': cmu.category,
+            'summary': cmu.summary, 'details': cmu.details,
+            'source_doc_slug': cmu.source_doc_slug,
+            'created_by': cmu.created_by,
+            'created_at': cmu.created_at.isoformat() if cmu.created_at else None,
+            'is_synced': cmu.is_synced,
+            'synced_at': cmu.synced_at.isoformat() if cmu.synced_at else None,
+        })
+
+    for tc in TourCapture.query.all():
+        backup_data['tour_captures'].append({
+            'id': tc.id, 'tour_name': tc.tour_name,
+            'step_number': tc.step_number,
+            'step_label': tc.step_label,
+            'user_input': tc.user_input,
+            'response_json': tc.response_json,
+            'notes': tc.notes,
+            'screenshot_url': tc.screenshot_url,
+            'created_at': tc.created_at.isoformat() if tc.created_at else None,
+        })
+
+    # ==================== PEER REVIEW / CMV ====================
+
+    for prc in PeerReviewClaim.query.all():
+        backup_data['peer_review_claims'].append({
+            'id': prc.id, 'content_type': prc.content_type,
+            'content_id': prc.content_id,
+            'claim_text': prc.claim_text, 'claim_type': prc.claim_type,
+            'gemini_verdict': prc.gemini_verdict,
+            'gemini_confidence': prc.gemini_confidence,
+            'gemini_reasoning': prc.gemini_reasoning,
+            'gemini_correction': prc.gemini_correction,
+            'gemini_model': prc.gemini_model,
+            'admin_override': prc.admin_override,
+            'admin_notes': prc.admin_notes,
+            'admin_reference_url': prc.admin_reference_url,
+            'admin_reference_title': prc.admin_reference_title,
+            'reviewed_by_admin_id': prc.reviewed_by_admin_id,
+            'reviewed_at': prc.reviewed_at.isoformat() if prc.reviewed_at else None,
+            'context_body_section': prc.context_body_section,
+            'context_modality': prc.context_modality,
+            'context_topic': prc.context_topic,
+            'created_at': prc.created_at.isoformat() if prc.created_at else None,
+        })
+
+    for prf in PeerReviewFlag.query.all():
+        backup_data['peer_review_flags'].append({
+            'id': prf.id, 'user_id': prf.user_id,
+            'content_type': prf.content_type, 'content_id': prf.content_id,
+            'section': prf.section, 'details': prf.details,
+            'claim_text': prf.claim_text, 'selected_text': prf.selected_text,
+            'error_type': prf.error_type, 'severity': prf.severity,
+            'page_url': prf.page_url,
+            'is_resolved': prf.is_resolved,
+            'resolved_by_user_id': prf.resolved_by_user_id,
+            'resolved_at': prf.resolved_at.isoformat() if prf.resolved_at else None,
+            'resolution_notes': prf.resolution_notes,
+            'created_at': prf.created_at.isoformat() if prf.created_at else None,
+        })
+
+    for mv in ManualVerification.query.all():
+        backup_data['manual_verifications'].append({
+            'id': mv.id, 'content_type': mv.content_type,
+            'content_id': mv.content_id,
+            'selected_text': mv.selected_text, 'custom_label': mv.custom_label,
+            'pubmed_doi': mv.pubmed_doi, 'pubmed_pmid': mv.pubmed_pmid,
+            'pubmed_title': mv.pubmed_title, 'pubmed_authors': mv.pubmed_authors,
+            'pubmed_journal': mv.pubmed_journal, 'pubmed_year': mv.pubmed_year,
+            'verified_by_user_id': mv.verified_by_user_id,
+            'created_at': mv.created_at.isoformat() if mv.created_at else None,
+        })
+
+    # ==================== RADIQ ====================
+
+    for rq in RadIQQuery.query.all():
+        backup_data['radiq_queries'].append({
+            'id': rq.id, 'user_id': rq.user_id,
+            'category': rq.category, 'question': rq.question,
+            'response_text': rq.response_text,
+            'created_at': rq.created_at.isoformat() if rq.created_at else None,
+        })
+
+    for rf in db.session.query(RadIQFeedback).all():
+        backup_data['radiq_feedback'].append({
+            'id': rf.id, 'query_id': rf.query_id,
+            'user_id': rf.user_id, 'reason': rf.reason,
+            'details': rf.details, 'is_resolved': rf.is_resolved,
+            'resolved_by_user_id': rf.resolved_by_user_id,
+            'resolved_at': rf.resolved_at.isoformat() if rf.resolved_at else None,
+            'resolution_notes': rf.resolution_notes,
+            'created_at': rf.created_at.isoformat() if rf.created_at else None,
+        })
+
+    # ==================== SMART REPORTER SESSIONS ====================
+
+    for rs in ReportingSession.query.all():
+        backup_data['reporting_sessions'].append({
+            'id': rs.id, 'user_id': rs.user_id,
+            'clinical_question': rs.clinical_question,
+            'modality': rs.modality, 'body_section': rs.body_section,
+            'algorithm_tree_json': rs.algorithm_tree_json,
+            'walkthrough_answers_json': rs.walkthrough_answers_json,
+            'report_text': rs.report_text,
+            'status': rs.status, 'provider': rs.provider,
+            'model_name': rs.model_name, 'tokens_used': rs.tokens_used,
+            'created_at': rs.created_at.isoformat() if rs.created_at else None,
+            'completed_at': rs.completed_at.isoformat() if rs.completed_at else None,
+        })
+
+    for pr in PublishedReport.query.all():
+        backup_data['published_reports'].append({
+            'id': pr.id, 'session_id': pr.session_id,
+            'user_id': pr.user_id,
+            'clinical_question': pr.clinical_question,
+            'modality': pr.modality, 'body_section': pr.body_section,
+            'report_text': pr.report_text,
+            'algorithm_tree_json': pr.algorithm_tree_json,
+            'contributor_name': pr.contributor_name,
+            'published_at': pr.published_at.isoformat() if pr.published_at else None,
+        })
+
+    # ==================== LEARNING MODULE ====================
+
+    for lq in LearningQuestion.query.all():
+        backup_data['learning_questions'].append({
+            'id': lq.id, 'question_type': lq.question_type,
+            'body_section': lq.body_section, 'modality': lq.modality,
+            'module': lq.module, 'title': lq.title,
+            'html_content': lq.html_content,
+            'source_report_context': lq.source_report_context,
+            'tags': lq.tags, 'search_tags': lq.search_tags,
+            'description': lq.description,
+            'content_hash': lq.content_hash,
+            'created_by_user_id': lq.created_by_user_id,
+            'created_at': lq.created_at.isoformat() if lq.created_at else None,
+        })
+
+    for lqp in LearningQuestionProgress.query.all():
+        backup_data['learning_question_progress'].append({
+            'id': lqp.id, 'user_id': lqp.user_id,
+            'learning_question_id': lqp.learning_question_id,
+            'score': lqp.score, 'best_score': lqp.best_score,
+            'times_attempted': lqp.times_attempted,
+            'last_attempted_at': lqp.last_attempted_at.isoformat() if lqp.last_attempted_at else None,
+            'created_at': lqp.created_at.isoformat() if lqp.created_at else None,
+        })
+
+    for lqr in LearningQuestionReference.query.all():
+        backup_data['learning_question_references'].append({
+            'id': lqr.id, 'learning_question_id': lqr.learning_question_id,
+            'ref_number': lqr.ref_number, 'title': lqr.title,
+            'url': lqr.url, 'journal': lqr.journal, 'year': lqr.year,
+            'created_at': lqr.created_at.isoformat() if lqr.created_at else None,
+        })
+
+    # ==================== CONTENT INTELLIGENCE ====================
+
+    for ci in ContentIntelligence.query.all():
+        backup_data['content_intelligence'].append({
+            'id': ci.id, 'content_type': ci.content_type,
+            'content_id': ci.content_id, 'summary': ci.summary,
+            'search_tags': ci.search_tags,
+            'cross_links_json': ci.cross_links_json,
+            'processing_model': ci.processing_model,
+            'processing_tokens': ci.processing_tokens,
+            'processed_at': ci.processed_at.isoformat() if ci.processed_at else None,
+            'is_verified': ci.is_verified,
+            'verified_by_user_id': ci.verified_by_user_id,
+            'verified_at': ci.verified_at.isoformat() if ci.verified_at else None,
+            'created_at': ci.created_at.isoformat() if ci.created_at else None,
+            'updated_at': ci.updated_at.isoformat() if ci.updated_at else None,
+        })
+
+    for ugi in UserGeneratedIntelligence.query.all():
+        backup_data['user_generated_intelligence'].append({
+            'id': ugi.id, 'content_hash': ugi.content_hash,
+            'modality': ugi.modality, 'exam_type': ugi.exam_type,
+            'body_section': ugi.body_section,
+            'clinical_question': ugi.clinical_question,
+            'raw_teaching_point': ugi.raw_teaching_point,
+            'raw_differentials': ugi.raw_differentials,
+            'diagnosis': ugi.diagnosis, 'notes': ugi.notes,
+            'pitfalls': ugi.pitfalls,
+            'enriched_differentials': ugi.enriched_differentials,
+            'search_tags': ugi.search_tags,
+            'processing_model': ugi.processing_model,
+            'processing_tokens': ugi.processing_tokens,
+            'processed_at': ugi.processed_at.isoformat() if ugi.processed_at else None,
+            'processing_status': ugi.processing_status,
+            'is_verified': ugi.is_verified,
+            'verified_by_user_id': ugi.verified_by_user_id,
+            'verified_at': ugi.verified_at.isoformat() if ugi.verified_at else None,
+            'created_by_user_id': ugi.created_by_user_id,
+            'created_at': ugi.created_at.isoformat() if ugi.created_at else None,
+            'updated_at': ugi.updated_at.isoformat() if ugi.updated_at else None,
+        })
+
+    # ==================== SNIPPET MEDIA ====================
+
+    for sr in SnippetReference.query.all():
+        backup_data['snippet_references'].append({
+            'id': sr.id, 'algorithm_id': sr.algorithm_id,
+            'ref_number': sr.ref_number, 'title': sr.title,
+            'url': sr.url, 'journal': sr.journal, 'year': sr.year,
+            'created_at': sr.created_at.isoformat() if sr.created_at else None,
+        })
+
+    for sd in SnippetDocument.query.all():
+        backup_data['snippet_documents'].append({
+            'id': sd.id, 'algorithm_id': sd.algorithm_id,
+            'title': sd.title,
+            'cloudinary_url': sd.cloudinary_url,
+            'cloudinary_public_id': sd.cloudinary_public_id,
+            'file_type': sd.file_type, 'file_size_kb': sd.file_size_kb,
+            'uploaded_by_user_id': sd.uploaded_by_user_id,
+            'created_at': sd.created_at.isoformat() if sd.created_at else None,
+        })
+
+    for si in SnippetImage.query.all():
+        backup_data['snippet_images'].append({
+            'id': si.id, 'algorithm_id': si.algorithm_id,
+            'source_url': si.source_url, 'source_domain': si.source_domain,
+            'thumbnail_url': si.thumbnail_url,
+            'image_type': si.image_type, 'modality': si.modality,
+            'description': si.description, 'display_order': si.display_order,
+            'license': si.license, 'attribution': si.attribution,
+            'added_by_user_id': si.added_by_user_id,
+            'created_at': si.created_at.isoformat() if si.created_at else None,
+        })
+
+    # ==================== MDT MODULE ====================
+
+    for mm in MdtMeeting.query.all():
+        backup_data['mdt_meetings'].append({
+            'id': mm.id, 'user_id': mm.user_id,
+            'name': mm.name, 'mdt_type': mm.mdt_type,
+            'date': mm.date.isoformat() if mm.date else None,
+            'is_recurring': mm.is_recurring,
+            'created_at': mm.created_at.isoformat() if mm.created_at else None,
+            'updated_at': mm.updated_at.isoformat() if mm.updated_at else None,
+        })
+
+    for mc in MdtCase.query.all():
+        backup_data['mdt_cases'].append({
+            'id': mc.id, 'user_id': mc.user_id,
+            'meeting_id': mc.meeting_id,
+            'case_reference': mc.case_reference,
+            'diagnosis': mc.diagnosis, 'status': mc.status,
+            'clinical_history': mc.clinical_history,
+            'imaging_findings': mc.imaging_findings,
+            'histology_biopsy': mc.histology_biopsy,
+            'lab_values': mc.lab_values,
+            'additional_notes': mc.additional_notes,
+            'pre_mdt_summary': mc.pre_mdt_summary,
+            'mdt_consensus': mc.mdt_consensus,
+            'action_plan': mc.action_plan,
+            'follow_up_date': mc.follow_up_date.isoformat() if mc.follow_up_date else None,
+            'linked_case_id': mc.linked_case_id,
+            'source_smart_reporter_session_id': mc.source_smart_reporter_session_id,
+            'created_at': mc.created_at.isoformat() if mc.created_at else None,
+            'updated_at': mc.updated_at.isoformat() if mc.updated_at else None,
+        })
+
+    # ==================== AUDIT & COMPLIANCE ====================
+
+    for pol in PiiOverrideLog.query.all():
+        backup_data['pii_override_logs'].append({
+            'id': pol.id, 'user_id': pol.user_id,
+            'action': pol.action, 'flagged_types': pol.flagged_types,
+            'flagged_count': pol.flagged_count,
+            'target_url': pol.target_url,
+            'created_at': pol.created_at.isoformat() if pol.created_at else None,
+        })
+
+    for rle in RateLimitEntry.query.all():
+        backup_data['rate_limit_entries'].append({
+            'id': rle.id, 'key': rle.key,
+            'endpoint': rle.endpoint,
+            'hit_at': rle.hit_at.isoformat() if rle.hit_at else None,
+        })
+
+    for el in ErasureLog.query.all():
+        backup_data['erasure_logs'].append({
+            'id': el.id, 'erasure_type': el.erasure_type,
+            'initiated_by_user_id': el.initiated_by_user_id,
+            'target_user_email_hash': el.target_user_email_hash,
+            'records_deleted': el.records_deleted,
+            'created_at': el.created_at.isoformat() if el.created_at else None,
+        })
+
+    for aal in AdminActionLog.query.all():
+        backup_data['admin_action_logs'].append({
+            'id': aal.id, 'user_id': aal.user_id,
+            'action': aal.action,
+            'target_type': aal.target_type, 'target_id': aal.target_id,
+            'details': aal.details, 'ip_address': aal.ip_address,
+            'created_at': aal.created_at.isoformat() if aal.created_at else None,
+        })
+
+    # ==================== ADDITIONAL ASSOCIATION TABLES ====================
+
+    for row in db.session.execute(case_learning_links.select()).fetchall():
+        backup_data['case_learning_links'].append({
+            'id': row.id, 'case_id': row.case_id,
+            'learning_question_id': row.learning_question_id,
+            'created_by_user_id': row.created_by_user_id,
+            'created_at': row.created_at.isoformat() if row.created_at else None,
+        })
+
+    for row in db.session.execute(content_links.select()).fetchall():
+        backup_data['content_links'].append({
+            'id': row.id,
+            'source_type': row.source_type, 'source_id': row.source_id,
+            'target_type': row.target_type, 'target_id': row.target_id,
+            'created_by_user_id': row.created_by_user_id,
+            'created_at': row.created_at.isoformat() if row.created_at else None,
         })
 
     return backup_data
@@ -3748,10 +4214,643 @@ def restore_backup():
             db.session.add(ics)
             stats['imported_case_staging']['added'] += 1
 
+        # ==================== IMAGING PROTOCOLS ====================
+        stats['imaging_protocols'] = {'added': 0, 'skipped': 0}
+        for ip_data in backup_data.get('imaging_protocols', []):
+            if not isinstance(ip_data, dict):
+                continue
+            slug = ip_data.get('slug', '')
+            if not slug:
+                stats['imaging_protocols']['skipped'] += 1
+                continue
+            existing = ImagingProtocol.query.filter_by(slug=slug).first()
+            if existing:
+                stats['imaging_protocols']['skipped'] += 1
+                continue
+            proto = ImagingProtocol(
+                title=ip_data.get('title', ''), slug=slug,
+                modality=ip_data.get('modality'), body_section=ip_data.get('body_section'),
+                keywords=ip_data.get('keywords'), shorthand_text=ip_data.get('shorthand_text'),
+                detailed_protocol_html=ip_data.get('detailed_protocol_html'),
+                special_notes=ip_data.get('special_notes'),
+                indication_json=ip_data.get('indication_json'),
+                validation_json=ip_data.get('validation_json'),
+                search_config_json=ip_data.get('search_config_json'),
+                origin=ip_data.get('origin', 'admin'),
+                user_id=user_id_map.get(ip_data.get('user_id')),
+                is_published=ip_data.get('is_published', True),
+                is_verified=ip_data.get('is_verified', False),
+                verified_by_user_id=user_id_map.get(ip_data.get('verified_by_user_id')),
+                is_emergency=ip_data.get('is_emergency', False),
+                is_paediatric=ip_data.get('is_paediatric', False),
+            )
+            if ip_data.get('verified_at'):
+                proto.verified_at = _parse_datetime_for_sqlite(ip_data['verified_at'])
+            if ip_data.get('created_at'):
+                proto.created_at = _parse_datetime_for_sqlite(ip_data['created_at']) or datetime.utcnow()
+            if ip_data.get('updated_at'):
+                proto.updated_at = _parse_datetime_for_sqlite(ip_data['updated_at'])
+            db.session.add(proto)
+            stats['imaging_protocols']['added'] += 1
+
+        # ==================== VETTING SESSIONS ====================
+        stats['vetting_sessions'] = {'added': 0, 'skipped': 0}
+        for vs_data in backup_data.get('vetting_sessions', []):
+            if not isinstance(vs_data, dict):
+                continue
+            vs = VettingSession(
+                user_id=user_id_map.get(vs_data.get('user_id')),
+                raw_clinical_text=vs_data.get('raw_clinical_text'),
+                modality_hint=vs_data.get('modality_hint'),
+                cleaned_clinical_text=vs_data.get('cleaned_clinical_text'),
+                study_type=vs_data.get('study_type'),
+                safety_checks_json=vs_data.get('safety_checks_json'),
+                protocol_source=vs_data.get('protocol_source'),
+                protocol_id=vs_data.get('protocol_id'),
+                final_clinical_details=vs_data.get('final_clinical_details'),
+                final_shorthand=vs_data.get('final_shorthand'),
+                final_detailed_html=vs_data.get('final_detailed_html'),
+                final_special_notes=vs_data.get('final_special_notes'),
+                ai_model=vs_data.get('ai_model'),
+                ai_tokens_used=vs_data.get('ai_tokens_used'),
+            )
+            if vs_data.get('created_at'):
+                vs.created_at = _parse_datetime_for_sqlite(vs_data['created_at']) or datetime.utcnow()
+            db.session.add(vs)
+            stats['vetting_sessions']['added'] += 1
+
+        # ==================== VETTING ALGORITHMS ====================
+        stats['vetting_algorithms'] = {'added': 0, 'skipped': 0}
+        for va_data in backup_data.get('vetting_algorithms', []):
+            if not isinstance(va_data, dict):
+                continue
+            slug = va_data.get('slug', '')
+            if not slug:
+                stats['vetting_algorithms']['skipped'] += 1
+                continue
+            existing = VettingAlgorithm.query.filter_by(slug=slug).first()
+            if existing:
+                stats['vetting_algorithms']['skipped'] += 1
+                continue
+            va = VettingAlgorithm(
+                algorithm_key=va_data.get('algorithm_key'),
+                title=va_data.get('title', ''), slug=slug,
+                body_section=va_data.get('body_section'),
+                clinical_scenario=va_data.get('clinical_scenario'),
+                entry_criteria_json=va_data.get('entry_criteria_json'),
+                steps_json=va_data.get('steps_json'),
+                safety_json=va_data.get('safety_json'),
+                tags=va_data.get('tags'), keywords=va_data.get('keywords'),
+                origin=va_data.get('origin', 'admin'),
+                is_published=va_data.get('is_published', True),
+                is_verified=va_data.get('is_verified', False),
+                verified_by_user_id=user_id_map.get(va_data.get('verified_by_user_id')),
+            )
+            if va_data.get('verified_at'):
+                va.verified_at = _parse_datetime_for_sqlite(va_data['verified_at'])
+            if va_data.get('created_at'):
+                va.created_at = _parse_datetime_for_sqlite(va_data['created_at']) or datetime.utcnow()
+            if va_data.get('updated_at'):
+                va.updated_at = _parse_datetime_for_sqlite(va_data['updated_at'])
+            db.session.add(va)
+            stats['vetting_algorithms']['added'] += 1
+
+        # ==================== ADMIN DOCUMENTS ====================
+        stats['admin_documents'] = {'added': 0, 'skipped': 0}
+        for doc_data in backup_data.get('admin_documents', []):
+            if not isinstance(doc_data, dict):
+                continue
+            slug = doc_data.get('slug', '')
+            if not slug:
+                stats['admin_documents']['skipped'] += 1
+                continue
+            existing = AdminDocument.query.filter_by(slug=slug).first()
+            if existing:
+                stats['admin_documents']['skipped'] += 1
+                continue
+            doc = AdminDocument(
+                slug=slug, title=doc_data.get('title', ''),
+                category=doc_data.get('category', 'general'),
+                content_html=doc_data.get('content_html'),
+                last_edited_by=user_id_map.get(doc_data.get('last_edited_by')),
+            )
+            if doc_data.get('created_at'):
+                doc.created_at = _parse_datetime_for_sqlite(doc_data['created_at']) or datetime.utcnow()
+            if doc_data.get('updated_at'):
+                doc.updated_at = _parse_datetime_for_sqlite(doc_data['updated_at'])
+            db.session.add(doc)
+            stats['admin_documents']['added'] += 1
+
+        # ==================== CLAUDE MEMORY UPDATES ====================
+        stats['claude_memory_updates'] = {'added': 0, 'skipped': 0}
+        for cmu_data in backup_data.get('claude_memory_updates', []):
+            if not isinstance(cmu_data, dict):
+                continue
+            cmu = ClaudeMemoryUpdate(
+                category=cmu_data.get('category'),
+                summary=cmu_data.get('summary', ''),
+                details=cmu_data.get('details'),
+                source_doc_slug=cmu_data.get('source_doc_slug'),
+                created_by=user_id_map.get(cmu_data.get('created_by')),
+                is_synced=cmu_data.get('is_synced', False),
+            )
+            if cmu_data.get('created_at'):
+                cmu.created_at = _parse_datetime_for_sqlite(cmu_data['created_at']) or datetime.utcnow()
+            if cmu_data.get('synced_at'):
+                cmu.synced_at = _parse_datetime_for_sqlite(cmu_data['synced_at'])
+            db.session.add(cmu)
+            stats['claude_memory_updates']['added'] += 1
+
+        # ==================== TOUR CAPTURES ====================
+        stats['tour_captures'] = {'added': 0, 'skipped': 0}
+        for tc_data in backup_data.get('tour_captures', []):
+            if not isinstance(tc_data, dict):
+                continue
+            tc = TourCapture(
+                tour_name=tc_data.get('tour_name', ''),
+                step_number=tc_data.get('step_number', 0),
+                step_label=tc_data.get('step_label'),
+                user_input=tc_data.get('user_input'),
+                response_json=tc_data.get('response_json'),
+                notes=tc_data.get('notes'),
+                screenshot_url=tc_data.get('screenshot_url'),
+            )
+            if tc_data.get('created_at'):
+                tc.created_at = _parse_datetime_for_sqlite(tc_data['created_at']) or datetime.utcnow()
+            db.session.add(tc)
+            stats['tour_captures']['added'] += 1
+
+        # ==================== PEER REVIEW CLAIMS ====================
+        stats['peer_review_claims'] = {'added': 0, 'skipped': 0}
+        for prc_data in backup_data.get('peer_review_claims', []):
+            if not isinstance(prc_data, dict):
+                continue
+            prc = PeerReviewClaim(
+                content_type=prc_data.get('content_type'),
+                content_id=prc_data.get('content_id'),
+                claim_text=prc_data.get('claim_text'),
+                claim_type=prc_data.get('claim_type'),
+                gemini_verdict=prc_data.get('gemini_verdict'),
+                gemini_confidence=prc_data.get('gemini_confidence'),
+                gemini_reasoning=prc_data.get('gemini_reasoning'),
+                gemini_correction=prc_data.get('gemini_correction'),
+                gemini_model=prc_data.get('gemini_model'),
+                admin_override=prc_data.get('admin_override'),
+                admin_notes=prc_data.get('admin_notes'),
+                admin_reference_url=prc_data.get('admin_reference_url'),
+                admin_reference_title=prc_data.get('admin_reference_title'),
+                reviewed_by_admin_id=user_id_map.get(prc_data.get('reviewed_by_admin_id')),
+                context_body_section=prc_data.get('context_body_section'),
+                context_modality=prc_data.get('context_modality'),
+                context_topic=prc_data.get('context_topic'),
+            )
+            if prc_data.get('reviewed_at'):
+                prc.reviewed_at = _parse_datetime_for_sqlite(prc_data['reviewed_at'])
+            if prc_data.get('created_at'):
+                prc.created_at = _parse_datetime_for_sqlite(prc_data['created_at']) or datetime.utcnow()
+            db.session.add(prc)
+            stats['peer_review_claims']['added'] += 1
+
+        # ==================== PEER REVIEW FLAGS ====================
+        stats['peer_review_flags'] = {'added': 0, 'skipped': 0}
+        for prf_data in backup_data.get('peer_review_flags', []):
+            if not isinstance(prf_data, dict):
+                continue
+            prf = PeerReviewFlag(
+                user_id=user_id_map.get(prf_data.get('user_id')),
+                content_type=prf_data.get('content_type'),
+                content_id=prf_data.get('content_id'),
+                section=prf_data.get('section'),
+                details=prf_data.get('details'),
+                claim_text=prf_data.get('claim_text'),
+                selected_text=prf_data.get('selected_text'),
+                error_type=prf_data.get('error_type'),
+                severity=prf_data.get('severity'),
+                page_url=prf_data.get('page_url'),
+                is_resolved=prf_data.get('is_resolved', False),
+                resolved_by_user_id=user_id_map.get(prf_data.get('resolved_by_user_id')),
+                resolution_notes=prf_data.get('resolution_notes'),
+            )
+            if prf_data.get('resolved_at'):
+                prf.resolved_at = _parse_datetime_for_sqlite(prf_data['resolved_at'])
+            if prf_data.get('created_at'):
+                prf.created_at = _parse_datetime_for_sqlite(prf_data['created_at']) or datetime.utcnow()
+            db.session.add(prf)
+            stats['peer_review_flags']['added'] += 1
+
+        # ==================== MANUAL VERIFICATIONS ====================
+        stats['manual_verifications'] = {'added': 0, 'skipped': 0}
+        for mv_data in backup_data.get('manual_verifications', []):
+            if not isinstance(mv_data, dict):
+                continue
+            mv = ManualVerification(
+                content_type=mv_data.get('content_type'),
+                content_id=mv_data.get('content_id'),
+                selected_text=mv_data.get('selected_text'),
+                custom_label=mv_data.get('custom_label'),
+                pubmed_doi=mv_data.get('pubmed_doi'),
+                pubmed_pmid=mv_data.get('pubmed_pmid'),
+                pubmed_title=mv_data.get('pubmed_title'),
+                pubmed_authors=mv_data.get('pubmed_authors'),
+                pubmed_journal=mv_data.get('pubmed_journal'),
+                pubmed_year=mv_data.get('pubmed_year'),
+                verified_by_user_id=user_id_map.get(mv_data.get('verified_by_user_id')),
+            )
+            if mv_data.get('created_at'):
+                mv.created_at = _parse_datetime_for_sqlite(mv_data['created_at']) or datetime.utcnow()
+            db.session.add(mv)
+            stats['manual_verifications']['added'] += 1
+
+        # ==================== RADIQ QUERIES ====================
+        stats['radiq_queries'] = {'added': 0, 'skipped': 0}
+        for rq_data in backup_data.get('radiq_queries', []):
+            if not isinstance(rq_data, dict):
+                continue
+            rq = RadIQQuery(
+                user_id=user_id_map.get(rq_data.get('user_id')),
+                category=rq_data.get('category'),
+                question=rq_data.get('question'),
+                response_text=rq_data.get('response_text'),
+            )
+            if rq_data.get('created_at'):
+                rq.created_at = _parse_datetime_for_sqlite(rq_data['created_at']) or datetime.utcnow()
+            db.session.add(rq)
+            stats['radiq_queries']['added'] += 1
+
+        # ==================== RADIQ FEEDBACK ====================
+        stats['radiq_feedback'] = {'added': 0, 'skipped': 0}
+        for rf_data in backup_data.get('radiq_feedback', []):
+            if not isinstance(rf_data, dict):
+                continue
+            rf = RadIQFeedback(
+                query_id=rf_data.get('query_id'),
+                user_id=user_id_map.get(rf_data.get('user_id')),
+                reason=rf_data.get('reason'),
+                details=rf_data.get('details'),
+                is_resolved=rf_data.get('is_resolved', False),
+                resolved_by_user_id=user_id_map.get(rf_data.get('resolved_by_user_id')),
+                resolution_notes=rf_data.get('resolution_notes'),
+            )
+            if rf_data.get('resolved_at'):
+                rf.resolved_at = _parse_datetime_for_sqlite(rf_data['resolved_at'])
+            if rf_data.get('created_at'):
+                rf.created_at = _parse_datetime_for_sqlite(rf_data['created_at']) or datetime.utcnow()
+            db.session.add(rf)
+            stats['radiq_feedback']['added'] += 1
+
+        # ==================== REPORTING SESSIONS ====================
+        stats['reporting_sessions'] = {'added': 0, 'skipped': 0}
+        for rs_data in backup_data.get('reporting_sessions', []):
+            if not isinstance(rs_data, dict):
+                continue
+            rs = ReportingSession(
+                user_id=user_id_map.get(rs_data.get('user_id')),
+                clinical_question=rs_data.get('clinical_question'),
+                modality=rs_data.get('modality'),
+                body_section=rs_data.get('body_section'),
+                algorithm_tree_json=rs_data.get('algorithm_tree_json'),
+                walkthrough_answers_json=rs_data.get('walkthrough_answers_json'),
+                report_text=rs_data.get('report_text'),
+                status=rs_data.get('status'),
+                provider=rs_data.get('provider'),
+                model_name=rs_data.get('model_name'),
+                tokens_used=rs_data.get('tokens_used'),
+            )
+            if rs_data.get('created_at'):
+                rs.created_at = _parse_datetime_for_sqlite(rs_data['created_at']) or datetime.utcnow()
+            if rs_data.get('completed_at'):
+                rs.completed_at = _parse_datetime_for_sqlite(rs_data['completed_at'])
+            db.session.add(rs)
+            stats['reporting_sessions']['added'] += 1
+
+        # ==================== PUBLISHED REPORTS ====================
+        stats['published_reports'] = {'added': 0, 'skipped': 0}
+        for pr_data in backup_data.get('published_reports', []):
+            if not isinstance(pr_data, dict):
+                continue
+            pr = PublishedReport(
+                session_id=pr_data.get('session_id'),
+                user_id=user_id_map.get(pr_data.get('user_id')),
+                clinical_question=pr_data.get('clinical_question'),
+                modality=pr_data.get('modality'),
+                body_section=pr_data.get('body_section'),
+                report_text=pr_data.get('report_text'),
+                algorithm_tree_json=pr_data.get('algorithm_tree_json'),
+                contributor_name=pr_data.get('contributor_name'),
+            )
+            if pr_data.get('published_at'):
+                pr.published_at = _parse_datetime_for_sqlite(pr_data['published_at']) or datetime.utcnow()
+            db.session.add(pr)
+            stats['published_reports']['added'] += 1
+
+        # ==================== LEARNING QUESTIONS ====================
+        stats['learning_questions'] = {'added': 0, 'skipped': 0}
+        for lq_data in backup_data.get('learning_questions', []):
+            if not isinstance(lq_data, dict):
+                continue
+            content_hash = lq_data.get('content_hash', '')
+            if content_hash:
+                existing = LearningQuestion.query.filter_by(content_hash=content_hash).first()
+                if existing:
+                    stats['learning_questions']['skipped'] += 1
+                    continue
+            lq = LearningQuestion(
+                question_type=lq_data.get('question_type'),
+                body_section=lq_data.get('body_section'),
+                modality=lq_data.get('modality'),
+                module=lq_data.get('module'),
+                title=lq_data.get('title', ''),
+                html_content=lq_data.get('html_content'),
+                source_report_context=lq_data.get('source_report_context'),
+                tags=lq_data.get('tags'),
+                search_tags=lq_data.get('search_tags'),
+                description=lq_data.get('description'),
+                content_hash=content_hash,
+                created_by_user_id=user_id_map.get(lq_data.get('created_by_user_id')),
+            )
+            if lq_data.get('created_at'):
+                lq.created_at = _parse_datetime_for_sqlite(lq_data['created_at']) or datetime.utcnow()
+            db.session.add(lq)
+            stats['learning_questions']['added'] += 1
+
+        # ==================== LEARNING QUESTION PROGRESS ====================
+        stats['learning_question_progress'] = {'added': 0, 'skipped': 0}
+        for lqp_data in backup_data.get('learning_question_progress', []):
+            if not isinstance(lqp_data, dict):
+                continue
+            lqp = LearningQuestionProgress(
+                user_id=user_id_map.get(lqp_data.get('user_id')),
+                learning_question_id=lqp_data.get('learning_question_id'),
+                score=lqp_data.get('score'),
+                best_score=lqp_data.get('best_score'),
+                times_attempted=lqp_data.get('times_attempted'),
+            )
+            if lqp_data.get('last_attempted_at'):
+                lqp.last_attempted_at = _parse_datetime_for_sqlite(lqp_data['last_attempted_at'])
+            if lqp_data.get('created_at'):
+                lqp.created_at = _parse_datetime_for_sqlite(lqp_data['created_at']) or datetime.utcnow()
+            db.session.add(lqp)
+            stats['learning_question_progress']['added'] += 1
+
+        # ==================== LEARNING QUESTION REFERENCES ====================
+        stats['learning_question_references'] = {'added': 0, 'skipped': 0}
+        for lqr_data in backup_data.get('learning_question_references', []):
+            if not isinstance(lqr_data, dict):
+                continue
+            lqr = LearningQuestionReference(
+                learning_question_id=lqr_data.get('learning_question_id'),
+                ref_number=lqr_data.get('ref_number'),
+                title=lqr_data.get('title'),
+                url=lqr_data.get('url'),
+                journal=lqr_data.get('journal'),
+                year=lqr_data.get('year'),
+            )
+            if lqr_data.get('created_at'):
+                lqr.created_at = _parse_datetime_for_sqlite(lqr_data['created_at']) or datetime.utcnow()
+            db.session.add(lqr)
+            stats['learning_question_references']['added'] += 1
+
+        # ==================== CONTENT INTELLIGENCE ====================
+        stats['content_intelligence'] = {'added': 0, 'skipped': 0}
+        for ci_data in backup_data.get('content_intelligence', []):
+            if not isinstance(ci_data, dict):
+                continue
+            ci = ContentIntelligence(
+                content_type=ci_data.get('content_type'),
+                content_id=ci_data.get('content_id'),
+                summary=ci_data.get('summary'),
+                search_tags=ci_data.get('search_tags'),
+                cross_links_json=ci_data.get('cross_links_json'),
+                processing_model=ci_data.get('processing_model'),
+                processing_tokens=ci_data.get('processing_tokens'),
+                is_verified=ci_data.get('is_verified', False),
+                verified_by_user_id=user_id_map.get(ci_data.get('verified_by_user_id')),
+            )
+            if ci_data.get('processed_at'):
+                ci.processed_at = _parse_datetime_for_sqlite(ci_data['processed_at'])
+            if ci_data.get('verified_at'):
+                ci.verified_at = _parse_datetime_for_sqlite(ci_data['verified_at'])
+            if ci_data.get('created_at'):
+                ci.created_at = _parse_datetime_for_sqlite(ci_data['created_at']) or datetime.utcnow()
+            if ci_data.get('updated_at'):
+                ci.updated_at = _parse_datetime_for_sqlite(ci_data['updated_at'])
+            db.session.add(ci)
+            stats['content_intelligence']['added'] += 1
+
+        # ==================== USER GENERATED INTELLIGENCE ====================
+        stats['user_generated_intelligence'] = {'added': 0, 'skipped': 0}
+        for ugi_data in backup_data.get('user_generated_intelligence', []):
+            if not isinstance(ugi_data, dict):
+                continue
+            content_hash = ugi_data.get('content_hash', '')
+            if content_hash:
+                existing = UserGeneratedIntelligence.query.filter_by(content_hash=content_hash).first()
+                if existing:
+                    stats['user_generated_intelligence']['skipped'] += 1
+                    continue
+            ugi = UserGeneratedIntelligence(
+                content_hash=content_hash,
+                modality=ugi_data.get('modality'),
+                exam_type=ugi_data.get('exam_type'),
+                body_section=ugi_data.get('body_section'),
+                clinical_question=ugi_data.get('clinical_question'),
+                raw_teaching_point=ugi_data.get('raw_teaching_point'),
+                raw_differentials=ugi_data.get('raw_differentials'),
+                diagnosis=ugi_data.get('diagnosis'),
+                notes=ugi_data.get('notes'),
+                pitfalls=ugi_data.get('pitfalls'),
+                enriched_differentials=ugi_data.get('enriched_differentials'),
+                search_tags=ugi_data.get('search_tags'),
+                processing_model=ugi_data.get('processing_model'),
+                processing_tokens=ugi_data.get('processing_tokens'),
+                processing_status=ugi_data.get('processing_status', 'pending'),
+                is_verified=ugi_data.get('is_verified', False),
+                verified_by_user_id=user_id_map.get(ugi_data.get('verified_by_user_id')),
+                created_by_user_id=user_id_map.get(ugi_data.get('created_by_user_id')),
+            )
+            if ugi_data.get('processed_at'):
+                ugi.processed_at = _parse_datetime_for_sqlite(ugi_data['processed_at'])
+            if ugi_data.get('verified_at'):
+                ugi.verified_at = _parse_datetime_for_sqlite(ugi_data['verified_at'])
+            if ugi_data.get('created_at'):
+                ugi.created_at = _parse_datetime_for_sqlite(ugi_data['created_at']) or datetime.utcnow()
+            if ugi_data.get('updated_at'):
+                ugi.updated_at = _parse_datetime_for_sqlite(ugi_data['updated_at'])
+            db.session.add(ugi)
+            stats['user_generated_intelligence']['added'] += 1
+
+        # ==================== SNIPPET REFERENCES ====================
+        stats['snippet_references'] = {'added': 0, 'skipped': 0}
+        for sr_data in backup_data.get('snippet_references', []):
+            if not isinstance(sr_data, dict):
+                continue
+            sr = SnippetReference(
+                algorithm_id=sr_data.get('algorithm_id'),
+                ref_number=sr_data.get('ref_number'),
+                title=sr_data.get('title'),
+                url=sr_data.get('url'),
+                journal=sr_data.get('journal'),
+                year=sr_data.get('year'),
+            )
+            if sr_data.get('created_at'):
+                sr.created_at = _parse_datetime_for_sqlite(sr_data['created_at']) or datetime.utcnow()
+            db.session.add(sr)
+            stats['snippet_references']['added'] += 1
+
+        # ==================== SNIPPET DOCUMENTS ====================
+        stats['snippet_documents'] = {'added': 0, 'skipped': 0}
+        for sd_data in backup_data.get('snippet_documents', []):
+            if not isinstance(sd_data, dict):
+                continue
+            sd = SnippetDocument(
+                algorithm_id=sd_data.get('algorithm_id'),
+                title=sd_data.get('title'),
+                cloudinary_url=sd_data.get('cloudinary_url'),
+                cloudinary_public_id=sd_data.get('cloudinary_public_id'),
+                file_type=sd_data.get('file_type'),
+                file_size_kb=sd_data.get('file_size_kb'),
+                uploaded_by_user_id=user_id_map.get(sd_data.get('uploaded_by_user_id')),
+            )
+            if sd_data.get('created_at'):
+                sd.created_at = _parse_datetime_for_sqlite(sd_data['created_at']) or datetime.utcnow()
+            db.session.add(sd)
+            stats['snippet_documents']['added'] += 1
+
+        # ==================== SNIPPET IMAGES ====================
+        stats['snippet_images'] = {'added': 0, 'skipped': 0}
+        for si_data in backup_data.get('snippet_images', []):
+            if not isinstance(si_data, dict):
+                continue
+            si = SnippetImage(
+                algorithm_id=si_data.get('algorithm_id'),
+                source_url=si_data.get('source_url'),
+                source_domain=si_data.get('source_domain'),
+                thumbnail_url=si_data.get('thumbnail_url'),
+                image_type=si_data.get('image_type'),
+                modality=si_data.get('modality'),
+                description=si_data.get('description'),
+                display_order=si_data.get('display_order', 0),
+                license=si_data.get('license'),
+                attribution=si_data.get('attribution'),
+                added_by_user_id=user_id_map.get(si_data.get('added_by_user_id')),
+            )
+            if si_data.get('created_at'):
+                si.created_at = _parse_datetime_for_sqlite(si_data['created_at']) or datetime.utcnow()
+            db.session.add(si)
+            stats['snippet_images']['added'] += 1
+
+        # ==================== MDT MEETINGS ====================
+        stats['mdt_meetings'] = {'added': 0, 'skipped': 0}
+        for mm_data in backup_data.get('mdt_meetings', []):
+            if not isinstance(mm_data, dict):
+                continue
+            mm = MdtMeeting(
+                user_id=user_id_map.get(mm_data.get('user_id')),
+                name=mm_data.get('name', ''),
+                mdt_type=mm_data.get('mdt_type'),
+                is_recurring=mm_data.get('is_recurring', False),
+            )
+            if mm_data.get('date'):
+                try:
+                    from datetime import date as date_type
+                    mm.date = date_type.fromisoformat(mm_data['date'])
+                except (ValueError, TypeError):
+                    pass
+            if mm_data.get('created_at'):
+                mm.created_at = _parse_datetime_for_sqlite(mm_data['created_at']) or datetime.utcnow()
+            if mm_data.get('updated_at'):
+                mm.updated_at = _parse_datetime_for_sqlite(mm_data['updated_at'])
+            db.session.add(mm)
+            stats['mdt_meetings']['added'] += 1
+
+        # ==================== MDT CASES ====================
+        stats['mdt_cases'] = {'added': 0, 'skipped': 0}
+        for mc_data in backup_data.get('mdt_cases', []):
+            if not isinstance(mc_data, dict):
+                continue
+            mc = MdtCase(
+                user_id=user_id_map.get(mc_data.get('user_id')),
+                meeting_id=mc_data.get('meeting_id'),
+                case_reference=mc_data.get('case_reference'),
+                diagnosis=mc_data.get('diagnosis'),
+                status=mc_data.get('status', 'pending'),
+                clinical_history=mc_data.get('clinical_history'),
+                imaging_findings=mc_data.get('imaging_findings'),
+                histology_biopsy=mc_data.get('histology_biopsy'),
+                lab_values=mc_data.get('lab_values'),
+                additional_notes=mc_data.get('additional_notes'),
+                pre_mdt_summary=mc_data.get('pre_mdt_summary'),
+                mdt_consensus=mc_data.get('mdt_consensus'),
+                action_plan=mc_data.get('action_plan'),
+                linked_case_id=mc_data.get('linked_case_id'),
+                source_smart_reporter_session_id=mc_data.get('source_smart_reporter_session_id'),
+            )
+            if mc_data.get('follow_up_date'):
+                try:
+                    from datetime import date as date_type
+                    mc.follow_up_date = date_type.fromisoformat(mc_data['follow_up_date'])
+                except (ValueError, TypeError):
+                    pass
+            if mc_data.get('created_at'):
+                mc.created_at = _parse_datetime_for_sqlite(mc_data['created_at']) or datetime.utcnow()
+            if mc_data.get('updated_at'):
+                mc.updated_at = _parse_datetime_for_sqlite(mc_data['updated_at'])
+            db.session.add(mc)
+            stats['mdt_cases']['added'] += 1
+
+        # ==================== AUDIT & COMPLIANCE ====================
+        stats['pii_override_logs'] = {'added': 0, 'skipped': 0}
+        for pol_data in backup_data.get('pii_override_logs', []):
+            if not isinstance(pol_data, dict):
+                continue
+            pol = PiiOverrideLog(
+                user_id=user_id_map.get(pol_data.get('user_id')),
+                action=pol_data.get('action'),
+                flagged_types=pol_data.get('flagged_types'),
+                flagged_count=pol_data.get('flagged_count'),
+                target_url=pol_data.get('target_url'),
+            )
+            if pol_data.get('created_at'):
+                pol.created_at = _parse_datetime_for_sqlite(pol_data['created_at']) or datetime.utcnow()
+            db.session.add(pol)
+            stats['pii_override_logs']['added'] += 1
+
+        stats['erasure_logs'] = {'added': 0, 'skipped': 0}
+        for el_data in backup_data.get('erasure_logs', []):
+            if not isinstance(el_data, dict):
+                continue
+            el = ErasureLog(
+                erasure_type=el_data.get('erasure_type'),
+                initiated_by_user_id=el_data.get('initiated_by_user_id'),
+                target_user_email_hash=el_data.get('target_user_email_hash'),
+                records_deleted=el_data.get('records_deleted'),
+            )
+            if el_data.get('created_at'):
+                el.created_at = _parse_datetime_for_sqlite(el_data['created_at']) or datetime.utcnow()
+            db.session.add(el)
+            stats['erasure_logs']['added'] += 1
+
+        stats['admin_action_logs'] = {'added': 0, 'skipped': 0}
+        for aal_data in backup_data.get('admin_action_logs', []):
+            if not isinstance(aal_data, dict):
+                continue
+            aal = AdminActionLog(
+                user_id=user_id_map.get(aal_data.get('user_id')),
+                action=aal_data.get('action'),
+                target_type=aal_data.get('target_type'),
+                target_id=aal_data.get('target_id'),
+                details=aal_data.get('details'),
+                ip_address=aal_data.get('ip_address'),
+            )
+            if aal_data.get('created_at'):
+                aal.created_at = _parse_datetime_for_sqlite(aal_data['created_at']) or datetime.utcnow()
+            db.session.add(aal)
+            stats['admin_action_logs']['added'] += 1
+
         # Final commit for new tables
         try:
             db.session.commit()
-            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators, {stats.get('content_requests', {}).get('added', 0)} content requests, {stats.get('imported_case_staging', {}).get('added', 0)} staging cases")
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators, {stats.get('content_requests', {}).get('added', 0)} content requests, {stats.get('imported_case_staging', {}).get('added', 0)} staging cases, {stats.get('imaging_protocols', {}).get('added', 0)} imaging protocols, {stats.get('peer_review_claims', {}).get('added', 0)} peer review claims, {stats.get('admin_documents', {}).get('added', 0)} admin docs, {stats.get('mdt_meetings', {}).get('added', 0)} MDT meetings")
         except Exception as new_tables_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
@@ -3873,6 +4972,14 @@ def backup_status():
         'radiology_templates': RadiologyTemplate.query.count(),
         'reporting_algorithms': ReportingAlgorithm.query.count(),
         'incidental_finding_calculators': IncidentalFindingCalculator.query.count(),
+        # New tables (v3.0)
+        'imaging_protocols': ImagingProtocol.query.count(),
+        'vetting_sessions': VettingSession.query.count(),
+        'peer_review_claims': PeerReviewClaim.query.count(),
+        'admin_documents': AdminDocument.query.count(),
+        'radiq_queries': RadIQQuery.query.count(),
+        'mdt_meetings': MdtMeeting.query.count(),
+        'learning_questions': LearningQuestion.query.count(),
     }
     
     return jsonify({
