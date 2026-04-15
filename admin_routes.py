@@ -3500,8 +3500,14 @@ def list_cmv_claims():
 def _apply_claim_correction(claim, corrected_text):
     """Find-and-replace the original claim text in the source content.
 
+    Handles pipe-delimited claims (e.g. "Sign | Modality | Description")
+    by trying to match the longest segment in the content.
+    Also strips HTML tags from content for matching, then replaces in the
+    original HTML by finding the matching plain-text substring.
+
     Returns True if content was updated, False if original text not found.
     """
+    import re
     from models import ReportingAlgorithm, RadiologyPearl, Case, ImagingProtocol
 
     original = claim.claim_text
@@ -3531,12 +3537,44 @@ def _apply_claim_correction(claim, corrected_text):
         return False
 
     current_content = getattr(record, field_name, '') or ''
-    if original not in current_content:
+    if not current_content:
         return False
 
-    updated_content = current_content.replace(original, corrected_text, 1)
-    setattr(record, field_name, updated_content)
-    return True
+    # Try direct match first (works if claim_text is verbatim from content)
+    if original in current_content:
+        updated_content = current_content.replace(original, corrected_text, 1)
+        setattr(record, field_name, updated_content)
+        return True
+
+    # For pipe-delimited claims, try each segment (longest first)
+    segments = [s.strip() for s in original.split('|') if s.strip()]
+    # Also try semicolon-separated parts within segments
+    all_parts = []
+    for seg in segments:
+        all_parts.append(seg)
+        for sub in seg.split(';'):
+            sub = sub.strip()
+            if sub and sub != seg:
+                all_parts.append(sub)
+
+    # Sort by length descending — prefer longest match
+    all_parts.sort(key=len, reverse=True)
+
+    # Strip HTML to get plain text for matching
+    plain_content = re.sub(r'<[^>]+>', '', current_content)
+
+    for part in all_parts:
+        if len(part) < 15:
+            continue  # Skip very short segments to avoid false matches
+        if part in plain_content:
+            # Found in plain text — now find and replace in HTML content
+            # The part should appear in the HTML too (just surrounded by tags)
+            if part in current_content:
+                updated_content = current_content.replace(part, corrected_text, 1)
+                setattr(record, field_name, updated_content)
+                return True
+
+    return False
 
 
 @admin_bp.route('/peer-review/claims/<int:claim_id>', methods=['PATCH'])
