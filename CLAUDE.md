@@ -65,6 +65,30 @@
 - For red/danger modals (PII Guard): use `pii-guard-modal` class instead
 - See `.app-content-modal` in `static/style.css` for the full styling
 
+## Change Impact Checklist
+When making code changes, **always check** whether the change requires updates to these systems:
+
+1. **Backup Manager** (`backup_routes.py`): If you add a new DB model or association table, add it to:
+   - Imports at top of file
+   - `_build_backup_data()` dict keys + export loop
+   - `restore_backup()` import loop
+   - `backup_status()` stats dict (for key models)
+   - Bump the version in metadata
+
+2. **SEO / Sitemap** (`app.py` → `sitemap_xml()`): If you add a new public-facing route or content type:
+   - Add URL to dynamic sitemap with `<lastmod>`
+   - Add OG + Twitter Card meta tags to the template
+   - Add Schema.org JSON-LD where appropriate
+   - Update `robots.txt` Allow directives if needed
+   - Reference: `docs/plans/SEO_MASTER_PLAN.md`
+
+3. **Marketing / Landing Page**: If you add a new user-facing feature:
+   - Update the marketing doc in admin Docs Hub (`/api/admin/marketing`)
+   - Consider adding to landing page feature showcase
+   - Update feature list in admin AI documentation
+
+4. **Admin Docs** (`_DOC_MANIFEST`): If you add a new markdown doc in `docs/`, add manifest row
+
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex
 - Admin-only features: guard with `getattr(current_user, 'is_admin', False)`
