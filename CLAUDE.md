@@ -115,6 +115,11 @@ When making code changes, **always check** whether the change requires updates t
 
 - **Default AI model**: `claude-sonnet-4-6` (Sonnet 4.0 `claude-sonnet-4-20250514` retired June 2026)
 - **Case generation** (`ai_prelim.py`): flexible `sections` array — model decides which sections to include, no rigid schema
+- **JSON transition status**: Case discussions DONE. Next: anatomy snippets, algorithms, radiq, vetting — migrate when touching those generators
+
+## Case Deletion
+- `delete_case()` in `app.py` has 11 cleanup steps covering ALL FK references to `case.id`
+- If you add a new model with `ForeignKey('case.id')` without `ondelete='CASCADE'`, you MUST add explicit deletion in `delete_case()`
 
 ## Code Conventions
 - Brand colors: use CSS custom properties (--brand-primary, --brand-neutral, etc.) — NEVER inline hex
