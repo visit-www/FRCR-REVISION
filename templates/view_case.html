@@ -3827,11 +3827,15 @@
             // 2. STEP N → red bold
             out = out.replace(_stepNum,
                 '<strong style="color:#e74c3c;font-weight:700;">$1</strong>');
-            // 3. ALL CAPS phrases → grey pill (skip short matches and already-wrapped)
+            // 3. ALL CAPS phrases → grey pill (skip medical abbreviations)
+            var _medTerms = /^(LI-RADS|LR-\w+|BI-RADS|HCC|MRI|CT|CEUS|DWI|APHE|OATP\w*|IVC|CCA|HBV|HBP|AFP|TACE|SIRT|BCLC|ACR|TNM|PET|ADC|T1|T2|RFA|FRCR|UK|NHS|USA|ARI)$/i;
             out = out.replace(_capsPhrase, function(match) {
-                // Skip single short words or if inside an HTML tag
                 var stripped = match.replace(/[^A-Z]/g, '');
                 if (stripped.length < 5) return match;
+                // Skip if the entire match is a known medical abbreviation/term
+                var trimmed = match.replace(/[\s:—–\(\)]/g, ' ').trim();
+                var words = trimmed.split(/\s+/);
+                if (words.length <= 2 && words.every(function(w) { return _medTerms.test(w); })) return match;
                 return '<span style="background:#f0f1f3;padding:1px 6px;border-radius:3px;font-weight:600;font-size:0.9em;">' + match + '</span>';
             });
             return out;
