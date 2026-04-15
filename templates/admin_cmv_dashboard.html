@@ -199,6 +199,11 @@
                     </select>
                 </div>
                 <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fas fa-pen-fancy me-1 text-success"></i>Corrected Text <small class="text-muted">(replaces original in content)</small></label>
+                    <textarea class="form-control form-control-sm" id="edit-corrected-text" rows="2" placeholder="Type corrected claim — will find-and-replace in source content"></textarea>
+                    <small class="text-muted" id="edit-correction-hint"></small>
+                </div>
+                <div class="mb-3">
                     <label class="form-label fw-bold">Reference URL <small class="text-muted">(PubMed / Radiopaedia)</small></label>
                     <input type="url" class="form-control form-control-sm" id="edit-ref-url" placeholder="https://pubmed.ncbi.nlm.nih.gov/...">
                 </div>
@@ -389,6 +394,16 @@ function editClaim(claimId) {
                 `${(claim.gemini_verdict||'').toUpperCase()} (${claim.gemini_confidence || 'n/a'}) — ${claim.gemini_reasoning || 'No reasoning'}` +
                 (claim.gemini_correction ? ` | Correction: ${claim.gemini_correction}` : '');
             document.getElementById('edit-override').value = claim.admin_override || '';
+            // Pre-fill corrected text: existing correction > gemini suggestion > empty
+            document.getElementById('edit-corrected-text').value = claim.corrected_claim_text || claim.gemini_correction || '';
+            const hint = document.getElementById('edit-correction-hint');
+            if (claim.gemini_correction && !claim.corrected_claim_text) {
+                hint.textContent = 'Pre-filled with CMV suggestion. Edit as needed.';
+            } else if (claim.corrected_claim_text) {
+                hint.textContent = 'Previously corrected. Content has been updated.';
+            } else {
+                hint.textContent = '';
+            }
             document.getElementById('edit-ref-url').value = claim.admin_reference_url || '';
             document.getElementById('edit-ref-title').value = claim.admin_reference_title || '';
             document.getElementById('edit-notes').value = claim.admin_notes || '';
@@ -401,6 +416,7 @@ function saveClaim() {
     if (!editingClaimId) return;
     const body = {
         admin_override: document.getElementById('edit-override').value || null,
+        corrected_claim_text: document.getElementById('edit-corrected-text').value.trim() || null,
         admin_reference_url: document.getElementById('edit-ref-url').value || null,
         admin_reference_title: document.getElementById('edit-ref-title').value || null,
         admin_notes: document.getElementById('edit-notes').value || null,
@@ -415,6 +431,9 @@ function saveClaim() {
     .then(data => {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('editClaimModal')).hide();
+            if (data.content_updated) {
+                alert('Saved — content has been updated with corrected text.');
+            }
             loadClaims(currentPage);
         } else {
             alert(data.error || 'Failed to save');

@@ -3497,6 +3497,48 @@ def list_cmv_claims():
     })
 
 
+def _apply_claim_correction(claim, corrected_text):
+    """Find-and-replace the original claim text in the source content.
+
+    Returns True if content was updated, False if original text not found.
+    """
+    from models import ReportingAlgorithm, RadiologyPearl, Case, ImagingProtocol
+
+    original = claim.claim_text
+    if not original or not corrected_text:
+        return False
+
+    # Map content_type → (model, text_field)
+    content_fields = {
+        'anatomy_snippet': (ReportingAlgorithm, 'template_html'),
+        'reporting_algorithm': (ReportingAlgorithm, 'template_html'),
+        'radiology_pearl': (RadiologyPearl, 'pearl_text'),
+        'case': (Case, 'discussion'),
+        'protocol': (ImagingProtocol, 'detailed_protocol_html'),
+    }
+
+    mapping = content_fields.get(claim.content_type)
+    if not mapping:
+        return False
+
+    model_cls, field_name = mapping
+    try:
+        record = model_cls.query.get(int(claim.content_id))
+    except (ValueError, TypeError):
+        return False
+
+    if not record:
+        return False
+
+    current_content = getattr(record, field_name, '') or ''
+    if original not in current_content:
+        return False
+
+    updated_content = current_content.replace(original, corrected_text, 1)
+    setattr(record, field_name, updated_content)
+    return True
+
+
 @admin_bp.route('/peer-review/claims/<int:claim_id>', methods=['PATCH'])
 @require_admin
 def update_cmv_claim(claim_id):
@@ -3520,13 +3562,23 @@ def update_cmv_claim(claim_id):
     if 'admin_reference_title' in data:
         claim.admin_reference_title = data['admin_reference_title']
 
+    # Inline content correction: find-and-replace claim text in the source content
+    corrected_text = data.get('corrected_claim_text', '').strip()
+    content_updated = False
+    if corrected_text and corrected_text != claim.claim_text:
+        claim.corrected_claim_text = corrected_text
+        content_updated = _apply_claim_correction(claim, corrected_text)
+
     claim.reviewed_by_admin_id = current_user.id
     claim.reviewed_at = datetime.utcnow()
 
     db.session.commit()
-    logger.info("Admin %s updated CMV claim #%d: override=%s", current_user.email, claim_id, claim.admin_override)
+    logger.info("Admin %s updated CMV claim #%d: override=%s content_updated=%s",
+                current_user.email, claim_id, claim.admin_override, content_updated)
 
-    return jsonify({'success': True, 'claim': claim.to_dict()})
+    result = claim.to_dict()
+    result['content_updated'] = content_updated
+    return jsonify({'success': True, 'claim': result})
 
 
 @admin_bp.route('/peer-review/batch-admin-verify', methods=['POST'])

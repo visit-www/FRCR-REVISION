@@ -4221,6 +4221,7 @@ class PeerReviewClaim(db.Model):
     # Admin override
     admin_override = db.Column(db.String(20), nullable=True)  # verified, incorrect, dismissed, null=no override
     admin_notes = db.Column(db.Text, nullable=True)
+    corrected_claim_text = db.Column(db.Text, nullable=True)  # What claim was changed to after admin correction
     admin_reference_url = db.Column(db.String(500), nullable=True)  # PubMed/Radiopaedia link
     admin_reference_title = db.Column(db.String(300), nullable=True)
     reviewed_by_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
@@ -4270,6 +4271,7 @@ class PeerReviewClaim(db.Model):
             'gemini_correction': self.gemini_correction,
             'admin_override': self.admin_override,
             'admin_notes': self.admin_notes,
+            'corrected_claim_text': self.corrected_claim_text,
             'admin_reference_url': self.admin_reference_url,
             'admin_reference_title': self.admin_reference_title,
             'effective_verdict': self.effective_verdict,

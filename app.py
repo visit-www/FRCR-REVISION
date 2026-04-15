@@ -2057,6 +2057,9 @@ match specific statistical claims to paper abstracts.</p>
         # -- user: autotext entries for Smart Reporter text expansion --
         _add_col_if_missing('user', 'autotext_entries', 'autotext_entries TEXT')
 
+        # -- peer_review_claim: corrected text for inline content editing --
+        _add_col_if_missing('peer_review_claim', 'corrected_claim_text', 'corrected_claim_text TEXT')
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
 

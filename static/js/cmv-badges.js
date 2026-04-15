@@ -297,10 +297,16 @@
                         '<small class="fw-semibold" style="color:var(--brand-neutral)"><i class="fas fa-lightbulb me-1"></i>Suggested</small>' +
                         '<small class="text-muted d-block">' + _escHtml(c.gemini_correction) + '</small></div>';
                 }
-                // How expert panel resolved it
-                if (c.admin_notes) {
+                // What it was changed to
+                if (c.corrected_claim_text) {
                     detail += '<div class="cmv-vlog-history-block cmv-vlog-resolution">' +
-                        '<small class="fw-semibold text-success"><i class="fas fa-check me-1"></i>Expert resolution</small>' +
+                        '<small class="fw-semibold text-success"><i class="fas fa-check me-1"></i>Changed to</small>' +
+                        '<small class="d-block" style="color:var(--brand-text-primary)">' + _escHtml(c.corrected_claim_text) + '</small></div>';
+                }
+                // Additional notes from expert
+                if (c.admin_notes) {
+                    detail += '<div class="cmv-vlog-history-block" style="background:#f8f9fa;border-left-color:#6c757d;">' +
+                        '<small class="fw-semibold text-muted"><i class="fas fa-comment me-1"></i>Expert notes</small>' +
                         '<small class="text-muted d-block">' + _escHtml(c.admin_notes) + '</small></div>';
                 }
                 // Reference
@@ -464,18 +470,23 @@
                 var info = (claim.gemini_verdict || '').toUpperCase() + ' (' + (claim.gemini_confidence || '') + ') — ' + (claim.gemini_reasoning || '');
                 if (claim.gemini_correction) info += ' | Correction: ' + claim.gemini_correction;
 
+                // Pre-fill corrected text with existing correction or gemini suggestion
+                var correctedPrefill = (claim.corrected_claim_text || claim.gemini_correction || '').replace(/"/g,'&quot;');
+
                 panel.innerHTML =
                     '<div style="background:linear-gradient(135deg,#5E899E,#4a7285);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">' +
                     '<strong><i class="fas fa-shield-alt me-2"></i>Review Claim</strong>' +
                     '<button onclick="document.getElementById(\'cmvEditPanel\').remove()" style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;">&times;</button></div>' +
                     '<div style="padding:16px;">' +
-                    '<div class="mb-3"><label class="form-label fw-bold small">Claim</label><p class="bg-light p-2 rounded small">' + _escHtml(claim.claim_text) + '</p></div>' +
+                    '<div class="mb-3"><label class="form-label fw-bold small">Original Claim</label><p class="bg-light p-2 rounded small" style="border-left:3px solid #dc3545;">' + _escHtml(claim.claim_text) + '</p></div>' +
                     '<div class="mb-3"><label class="form-label fw-bold small">CMV Peer Review</label><p class="small text-muted">' + _escHtml(info) + '</p></div>' +
                     '<div class="mb-3"><label class="form-label fw-bold small">Override</label><select class="form-select form-select-sm" id="cmvEditOverride">' +
                     '<option value=""' + (!claim.admin_override ? ' selected' : '') + '>No override</option>' +
                     '<option value="verified"' + (claim.admin_override === 'verified' ? ' selected' : '') + '>Verified</option>' +
                     '<option value="incorrect"' + (claim.admin_override === 'incorrect' ? ' selected' : '') + '>Incorrect</option>' +
                     '<option value="dismissed"' + (claim.admin_override === 'dismissed' ? ' selected' : '') + '>Dismissed</option></select></div>' +
+                    '<div class="mb-3" id="cmvCorrectedTextGroup"><label class="form-label fw-bold small"><i class="fas fa-pen-fancy me-1 text-success"></i>Corrected Text <small class="text-muted">(replaces original in content)</small></label>' +
+                    '<textarea class="form-control form-control-sm" id="cmvEditCorrectedText" rows="2" placeholder="Type the corrected claim text — will find-and-replace in content">' + _escHtml(correctedPrefill) + '</textarea></div>' +
                     '<div class="mb-3"><label class="form-label fw-bold small">Reference URL</label><input type="url" class="form-control form-control-sm" id="cmvEditRefUrl" value="' + (claim.admin_reference_url || '').replace(/"/g,'&quot;') + '"></div>' +
                     '<div class="mb-3"><label class="form-label fw-bold small">Reference Title</label><input type="text" class="form-control form-control-sm" id="cmvEditRefTitle" value="' + (claim.admin_reference_title || '').replace(/"/g,'&quot;') + '"></div>' +
                     '<div class="mb-3"><label class="form-label fw-bold small">Notes</label><textarea class="form-control form-control-sm" id="cmvEditNotes" rows="2">' + _escHtml(claim.admin_notes || '') + '</textarea></div>' +
@@ -487,10 +498,14 @@
     }
 
     function _saveReview(claimId) {
+        var correctedEl = document.getElementById('cmvEditCorrectedText');
+        var correctedText = correctedEl ? correctedEl.value.trim() : '';
+
         fetch('/api/admin/peer-review/claims/' + claimId, {
             method: 'PATCH', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 admin_override: document.getElementById('cmvEditOverride').value || null,
+                corrected_claim_text: correctedText || null,
                 admin_reference_url: document.getElementById('cmvEditRefUrl').value || null,
                 admin_reference_title: document.getElementById('cmvEditRefTitle').value || null,
                 admin_notes: document.getElementById('cmvEditNotes').value || null,
@@ -505,6 +520,9 @@
                     if (bs === 'admin_verified') { badge.className = 'cmv-badge cmv-badge-admin-verified'; badge.querySelector('i').className = 'fas fa-shield-alt'; }
                     else if (bs === 'disputed') { badge.className = 'cmv-badge cmv-badge-disputed'; badge.querySelector('i').className = 'fas fa-times-circle'; }
                     else if (bs === 'dismissed') badge.style.display = 'none';
+                }
+                if (data.content_updated && typeof showToast === 'function') {
+                    showToast('Content updated — claim text replaced in source.', 'success');
                 }
             } else {
                 alert(data.error || 'Save failed');
