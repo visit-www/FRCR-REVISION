@@ -157,44 +157,7 @@ ACR MANUAL ON CONTRAST MEDIA (2025 ed.) — AUTHORITATIVE REFERENCE FOR CONTRAST
    - In UK practice, Group II macrocyclic agents (Dotarem/Gadavist/ProHance) are standard; linear Group I agents are
      largely withdrawn (EMA 2017).
 
-5. EXTRAVASATION (peripheral IV contrast):
-   - Initial management: STOP injection, elevate affected limb above heart, apply cold OR warm compresses.
-     No medical intervention (hyaluronidase, steroids, anticoagulants) has been shown effective. Hyaluronidase is NOT recommended.
-   - Surgical consultation: based on CLINICAL SIGNS, not volume threshold. Obtain urgent surgical/plastics review if:
-     severe pain, progressive swelling, decreased capillary refill, altered sensation, worsening active/passive range
-     of motion, skin ulceration or blistering. Most common severe complication = compartment syndrome.
-   - Volume thresholds (e.g. 100-150 mL) should NOT be used as a sole trigger for surgical consult.
-   - Outpatients must be given written instructions to return for worsening pain, paraesthesia, reduced movement,
-     or skin changes (severe injuries may develop hours later).
-
-6. PAEDIATRIC IODINATED CONTRAST:
-   - Typical dose: 1.5-2 mL/kg IV iodinated contrast (neonates/infants lower end).
-   - 24G peripheral cannulae can be safely power-injected up to ~1.5 mL/s, <=150 psi.
-   - Extravasation rate ~0.3-0.7% (similar to adults); most resolve without sequelae.
-   - Contrast reaction treatment algorithms and drug doses (weight-based) are the same protocol as adults with
-     paediatric weight adjustments.
-
-7. ACUTE CONTRAST REACTIONS — key doses (ACR Tables 2025):
-   - Hives/urticaria (mild-moderate): Diphenhydramine 1 mg/kg PO/IM/IV (max 50 mg), IV slowly over 1-2 min.
-   - Bronchospasm (mild): Albuterol MDI 2 puffs x up to 3.
-   - Bronchospasm (moderate/severe) OR laryngeal oedema OR anaphylactic shock — EPINEPHRINE is first-line:
-     * IV: 0.1 mL/kg of 1:10,000 (0.1 mg/mL) = 0.01 mg/kg slow IV into running drip; max single 1.0 mL (0.1 mg);
-           repeat every 5-15 min; max total 1 mg.
-     * IM: 0.01 mL/kg of 1:1,000 (1.0 mg/mL) = 0.01 mg/kg; max single 0.30 mL (0.30 mg); repeat every 5-15 min;
-           max total 1 mL (1 mg).
-     * Auto-injector: EpiPen Jr 0.15 mg (<30 kg), EpiPen 0.30 mg (>=30 kg).
-   - Hypotension: 0.9% saline 10-20 mL/kg IV bolus (max 500-1000 mL initial), legs elevated; epinephrine if refractory.
-   - O2 6-10 L/min by mask in all moderate/severe reactions.
-   - Call emergency response team / 999 for all severe reactions.
-
-8. BREAST-FEEDING AFTER IODINATED OR GBCA CONTRAST:
-   - <0.01% of maternal IV iodinated contrast dose reaches breast milk; <1% of that is absorbed by the infant's gut.
-   - <0.04% of maternal GBCA dose reaches breast milk; systemic infant dose <0.0004% of maternal dose.
-   - Recommendation: BREAST-FEEDING CAN CONTINUE without interruption after maternal IV iodinated or GBCA contrast.
-   - A 12-24 h pause is OPTIONAL at maternal preference only; there is no medical benefit beyond 24 h.
-   - Routine neonatal thyroid function testing is NOT recommended after maternal iodinated contrast.
-
-9. THYROID DISEASE:
+5. THYROID DISEASE:
    - Hyperthyroidism alone is NOT a contraindication to iodinated contrast and does NOT require premedication.
    - In acute thyroid storm, AVOID iodinated contrast (can potentiate thyrotoxicosis); steroid premedication is
      unlikely to help.
@@ -203,15 +166,12 @@ ACR MANUAL ON CONTRAST MEDIA (2025 ed.) — AUTHORITATIVE REFERENCE FOR CONTRAST
    - A single maternal dose of iodinated contrast in pregnancy has NO effect on neonatal thyroid function.
    - Iodinated contrast does NOT affect thyroid function tests in patients with normal thyroid function.
 
-10. OBSOLETE / NON-RECOMMENDED PRACTICES (per ACR 2025):
+6. OBSOLETE / NON-RECOMMENDED PRACTICES (per ACR 2025):
     - N-acetylcysteine for CI-AKI prevention — NOT effective, NOT recommended.
     - Dose reduction of iodinated contrast in high-risk eGFR patients — NOT recommended (non-diagnostic scans).
     - Withholding metformin at eGFR >=30 — NOT required.
     - Prophylactic premedication for shellfish/seafood allergy — NOT indicated.
     - Topical iodine (povidone-iodine) allergy — NOT cross-reactive with iodinated contrast.
-    - Hyaluronidase for extravasation — NOT recommended.
-    - Routine breast-milk pumping/discard after contrast — NOT required.
-    - Volume thresholds (100-150 mL) as sole trigger for surgical extravasation review — NOT recommended.
 """
 
 
@@ -381,12 +341,14 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
         '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem (use Multisystem for e.g. CT CAP)",\n'
         '  "matched_protocol_slug": "slug of the BEST matching protocol from the AVAILABLE PROTOCOL LIBRARY above. Pick the most specific match for this clinical scenario. null if no library provided or no good match.",\n'
+        '  "contrast": "none or iv — whether this study requires IV contrast based on clinical indication and matched protocol",\n'
         '  "is_paediatric": true/false (true if patient age < 16 years, or described as child/infant/neonate/paediatric/toddler; false if adult, unknown age, or not stated),\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
         '    "egfr_threshold": 30 or 45 or null,\n'
         '    "pregnancy_check_required": true/false,\n'
-        '    "allergy_check_required": true/false\n'
+        '    "allergy_check_required": true/false,\n'
+        '    "metformin_check_required": true/false (true if IV contrast AND patient on metformin or diabetic)\n'
         '  },\n'
         '  "ai_flags": [\n'
         '    {"flag": "short description of missing/needed info", "reason": "why this matters"}\n'
@@ -405,11 +367,14 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
         "- The AVAILABLE PROTOCOL LIBRARY includes shorthand text showing contrast, "
         "coverage, and technique. Use this to pick the most clinically appropriate protocol "
         "for the referral scenario.\n\n"
-        "GUIDELINES FOR ai_flags (0-4 items only):\n"
-        "- Flag genuinely important missing clinical information for the specific study.\n"
-        "- Examples: Wells score for ?PE, GCS/onset time for stroke, tumour markers for staging.\n"
+        "GUIDELINES FOR ai_flags:\n"
+        "- Use your clinical judgement. If the referral is complete and provides all "
+        "necessary information, return an EMPTY array []. Do NOT invent flags.\n"
+        "- Only flag genuinely important missing clinical information that would change "
+        "the imaging study, protocol, or safety checks.\n"
         "- Do NOT flag generic items like 'clinical history' if already provided.\n"
-        "- Do NOT flag items that are administrative (e.g. patient weight unless contrast-relevant).\n"
+        "- Do NOT flag administrative items (e.g. patient weight unless paediatric contrast-relevant).\n"
+        "- Do NOT flag items that are already answered by the referral text.\n"
     )
 
     text, model_used, tokens = call_claude(

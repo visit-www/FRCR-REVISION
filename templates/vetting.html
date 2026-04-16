@@ -627,17 +627,8 @@ function populateScene2() {
     document.getElementById('studyNameDisplay').textContent = a.study_name_full || a.study_type;
     document.getElementById('modalityDisplay').textContent = a.modality;
 
-    // Set contrast toggle based on AI suggestion (from matched protocol or study type)
-    var _aiContrast = 'none';
-    var _studyLower = ((a.study_name_full || a.study_type) + ' ' + (a.study_type || '')).toLowerCase();
-    if (/\bwith\s+contrast\b|\biv\s+contrast\b|\bcect\b|\bpost.contrast\b|\bstaging\b|\btriphasic\b/.test(_studyLower)) {
-        _aiContrast = 'iv';
-    }
-    // Also check if baseline_checks suggest contrast (eGFR/allergy relevant = likely contrast)
-    if (a.baseline_checks && a.baseline_checks.requires_egfr && a.baseline_checks.allergy_check_required) {
-        _aiContrast = 'iv';
-    }
-    setContrastOverride(_aiContrast);
+    // Set contrast toggle from AI's explicit contrast decision
+    setContrastOverride(a.contrast === 'iv' ? 'iv' : 'none');
     // Render cleaned text — if AI returned a single blob, split on sentence boundaries
     // for readability. Newlines already present are preserved by white-space: pre-wrap.
     let cleanedText = a.cleaned_clinical_text || '';
