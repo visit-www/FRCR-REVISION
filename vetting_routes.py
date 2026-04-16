@@ -303,9 +303,28 @@ def vetting_analyse():
             ImagingProtocol.slug, ImagingProtocol.title,
             ImagingProtocol.modality, ImagingProtocol.shorthand_text,
         ).all()
+        # Derive contrast status from shorthand text for unambiguous AI matching
+        _CONTRAST_KEYWORDS = ('contrast', 'ml @', 'ml@', 'ml/s', 'bolus', 'delay', 'phase',
+                              'arterial', 'portal', 'venous', 'injection rate',
+                              'hand inject', 'inject')
+        _NON_CONTRAST_KEYWORDS = ('non-contrast', 'non contrast', 'plain', 'no contrast',
+                                  'none (plain', 'ncct', 'unenhanced')
+        def _contrast_label(shorthand):
+            s = (shorthand or '').lower()
+            if any(kw in s for kw in _NON_CONTRAST_KEYWORDS):
+                return 'NON-CONTRAST'
+            if any(kw in s for kw in _CONTRAST_KEYWORDS):
+                if 'if required' in s or 'if indicated' in s or 'if mass' in s:
+                    return 'NON-CONTRAST (contrast only if clinically indicated)'
+                return 'IV CONTRAST'
+            return ''
+
         for p in _all_protocols:
             short = (p.shorthand_text or '')[:80].replace('\n', ' | ')
+            contrast = _contrast_label(p.shorthand_text)
             desc = f"[{p.modality}] {p.title}"
+            if contrast:
+                desc += f" [{contrast}]"
             if short:
                 desc += f" — {short}"
             _protocol_titles.append((p.slug, desc))
