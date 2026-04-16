@@ -264,12 +264,6 @@
 
       </div>
 
-      <div class="text-center mt-3">
-        <button type="button" class="btn btn-brand-primary" id="crc-wizard-open">
-          <i class="fas fa-magic me-1"></i>Start Reaction Wizard
-        </button>
-        <div class="crc-wizard-help small text-muted mt-1">Symptom-led navigation to the right card</div>
-      </div>
     </div>
 
 
@@ -369,26 +363,68 @@
       <div class="crc-foot-note mt-1">Gadolinium at standard MRI dose (0.1–0.3 mmol/kg): <strong>no metformin interruption needed.</strong></div>
 
       <h6 class="crc-h6 mt-3"><i class="fas fa-magnet me-1"></i>Gadolinium-Based Contrast (GBCA) &amp; NSF Risk</h6>
+
+      <!-- GBCA Groups Explainer -->
+      <div class="crc-gbca-explainer mb-3">
+        <div class="crc-gbca-explainer-header">
+          <i class="fas fa-info-circle me-1"></i>
+          <strong>Understanding the GBCA Groups</strong>
+        </div>
+        <div class="crc-gbca-explainer-body">
+          <div class="crc-gbca-key-point">
+            <i class="fas fa-link me-2"></i>
+            <div>
+              <strong>NSF &amp; gadolinium:</strong> Nearly all unconfounded cases of nephrogenic systemic fibrosis (NSF)
+              have been linked to <strong>Group I linear agents</strong> only. The ACR divides GBCAs into three groups
+              based on NSF risk.
+            </div>
+          </div>
+
+          <div class="crc-gbca-key-point crc-gbca-safe-point">
+            <i class="fas fa-shield-alt me-2"></i>
+            <div>
+              <strong>Group II consensus:</strong> The risk of NSF or nephrotoxicity with a Group II agent is
+              <strong>extremely low</strong>. The potential harm of delayed diagnosis from withholding a Group II GBCA
+              in a patient with AKI or eGFR &lt;30 <strong>may outweigh</strong> the risk of NSF — regardless of dialysis status.
+            </div>
+          </div>
+
+          <div class="crc-gbca-key-point crc-gbca-chem-point">
+            <i class="fas fa-atom me-2"></i>
+            <div>
+              <strong>Macrocyclic vs linear:</strong> Macrocyclic agents (most Group II) have greater chemical stability
+              → <strong>lower NSF risk</strong> and lower gadolinium tissue deposition. However, cyclic agents carry
+              a slightly <strong>higher risk of allergic-like reactions</strong> than linear agents.
+            </div>
+          </div>
+
+          <div class="crc-foot-note mt-1">
+            <strong>Exam tip:</strong> Group I = linear = highest NSF risk (largely withdrawn in EU).
+            Group II = mostly macrocyclic = safe in renal failure. Know the trade names.
+          </div>
+        </div>
+      </div>
+
       <div class="crc-grid-3">
         <div class="crc-regimen-card crc-egfr-risk">
           <div class="crc-regimen-title">Group I — Greatest NSF risk</div>
           <div class="crc-foot-note">Contraindicated if eGFR &lt;30, AKI or dialysis.</div>
           <ul class="crc-list crc-list-tight">
-            <li>Gadodiamide (Omniscan)</li>
-            <li>Gadopentetate (Magnevist)</li>
-            <li>Gadoversetamide (OptiMARK)</li>
+            <li>Gadodiamide <span class="crc-gbca-trade">(Omniscan)</span></li>
+            <li>Gadopentetate dimeglumine <span class="crc-gbca-trade">(Magnevist)</span></li>
+            <li>Gadoversetamide <span class="crc-gbca-trade">(OptiMARK)</span></li>
           </ul>
         </div>
         <div class="crc-regimen-card crc-egfr-safe">
           <div class="crc-regimen-title">Group II — Few/no unconfounded NSF cases</div>
           <div class="crc-foot-note">Safe at standard dose in CKD/AKI/dialysis. eGFR screening optional.</div>
           <ul class="crc-list crc-list-tight">
-            <li>Gadobutrol (Gadavist/Gadovist)</li>
-            <li>Gadoteric acid (Dotarem/Clariscan)</li>
-            <li>Gadoteridol (ProHance)</li>
-            <li>Gadobenate (MultiHance)</li>
-            <li>Gadopiclenol (Elucirem/Vueway)</li>
-            <li>Gadoxetate (Eovist/Primovist)</li>
+            <li>Gadobenate dimeglumine <span class="crc-gbca-trade">(MultiHance)</span></li>
+            <li>Gadobutrol <span class="crc-gbca-trade">(Gadovist / Gadavist)</span></li>
+            <li>Gadoterate meglumine <span class="crc-gbca-trade">(Dotarem / Clariscan)</span></li>
+            <li>Gadoteridol <span class="crc-gbca-trade">(ProHance)</span></li>
+            <li>Gadopiclenol <span class="crc-gbca-trade">(Elucirem / Vueway)</span></li>
+            <li>Gadoxetate disodium <span class="crc-gbca-trade">(Eovist / Primovist)</span></li>
           </ul>
         </div>
         <div class="crc-regimen-card">
@@ -638,46 +674,6 @@
 
 
 <!-- ============================================================ -->
-<!-- REACTION WIZARD MODAL                                         -->
-<!-- ============================================================ -->
-<div class="modal fade" id="crcReactionWizardModal" tabindex="-1" aria-labelledby="crcReactionWizardLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content crc-wizard-modal">
-      <div class="modal-header">
-        <h5 class="modal-title" id="crcReactionWizardLabel">
-          <i class="fas fa-magic me-2"></i>Reaction Wizard
-        </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <p class="mb-3 small">What is the dominant symptom right now?</p>
-        <div class="d-grid gap-2">
-          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-hives">
-            <i class="fas fa-allergies me-2"></i>Hives / itching / urticaria
-          </button>
-          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-bronchospasm">
-            <i class="fas fa-lungs me-2"></i>Wheeze / cough / bronchospasm
-          </button>
-          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-laryngeal">
-            <i class="fas fa-lungs-virus me-2"></i>Stridor / hoarseness / throat tightness
-          </button>
-          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-vasovagal">
-            <i class="fas fa-heart me-2"></i>Hypotension + bradycardia (vasovagal)
-          </button>
-          <button type="button" class="btn btn-outline-secondary text-start crc-wizard-pick" data-target="crc-rxn-anaphylaxis">
-            <i class="fas fa-exclamation-triangle me-2"></i>Collapse / multi-system / anaphylaxis
-          </button>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<!-- ============================================================ -->
 <!-- SCOPED CSS                                                    -->
 <!-- ============================================================ -->
 <style>
@@ -903,14 +899,6 @@
     border-radius: 0.4rem;
     transition: box-shadow .2s;
 }
-.crc-reaction-card.crc-flash {
-    box-shadow: 0 0 0 3px rgba(233,99,4,0.55);
-    animation: crcFlash 0.6s ease-in-out 2;
-}
-@keyframes crcFlash {
-    0%,100% { box-shadow: 0 0 0 3px rgba(233,99,4,0.55); }
-    50%     { box-shadow: 0 0 0 6px rgba(233,99,4,0.25); }
-}
 .crc-reaction-head {
     background: #f0f7fa;
     padding: 0.5rem 0.75rem;
@@ -963,6 +951,56 @@
 .crc-dose[data-paed] { display: none; }
 .crc-root[data-crc-mode="paed"] .crc-dose[data-adult] { display: none; }
 .crc-root[data-crc-mode="paed"] .crc-dose[data-paed]  { display: block; }
+
+/* GBCA explainer (Tab 4) */
+.crc-gbca-explainer {
+    background: #f8f9fa;
+    border: 1px solid #e1e8ee;
+    border-left: 4px solid #5E899E;
+    border-radius: 0.4rem;
+    overflow: hidden;
+}
+.crc-gbca-explainer-header {
+    background: #eaf2f5;
+    padding: 0.5rem 0.85rem;
+    border-bottom: 1px solid #e1e8ee;
+    color: #5E899E;
+    font-size: 0.88rem;
+}
+.crc-gbca-explainer-body {
+    padding: 0.7rem 0.85rem;
+}
+.crc-gbca-key-point {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.3rem;
+    padding: 0.45rem 0.6rem;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 0.3rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.83rem;
+    line-height: 1.5;
+}
+.crc-gbca-key-point > i {
+    margin-top: 0.15rem;
+    color: #5E899E;
+    flex-shrink: 0;
+}
+.crc-gbca-safe-point {
+    background: #f4faf6;
+    border-color: #a8d5ba;
+}
+.crc-gbca-safe-point > i { color: #1f5132; }
+.crc-gbca-chem-point {
+    background: #fff8e1;
+    border-color: #ffc107;
+}
+.crc-gbca-chem-point > i { color: #7a5a00; }
+.crc-gbca-trade {
+    color: #6c757d;
+    font-size: 0.8em;
+}
 
 /* Tab 4 eGFR colour cards */
 .crc-egfr-safe       { border-left-color: #a8d5ba; background: #f4faf6; }
@@ -1028,15 +1066,11 @@
     border-top: 1px solid #e9ecef;
 }
 
-/* Wizard modal sits above offcanvas */
-.crc-wizard-modal { z-index: auto; }
-#crcReactionWizardModal { z-index: 1080 !important; }
-#crcReactionWizardModal + .modal-backdrop { z-index: 1075 !important; }
 </style>
 
 
 <!-- ============================================================ -->
-<!-- SCOPED JS — pediatric calculator + adult/paed toggle + wizard -->
+<!-- SCOPED JS — pediatric calculator + adult/paed toggle -->
 <!-- ============================================================ -->
 <script>
 (function() {
@@ -1064,35 +1098,6 @@
             });
         });
     });
-
-    // ────────── Reaction Wizard ──────────
-    function _initWizard() {
-        var wizardOpen = document.getElementById('crc-wizard-open');
-        var wizardModalEl = document.getElementById('crcReactionWizardModal');
-        if (!wizardOpen || !wizardModalEl || !window.bootstrap || !bootstrap.Modal) return;
-        var wizardModal = new bootstrap.Modal(wizardModalEl);
-        wizardOpen.addEventListener('click', function() { wizardModal.show(); });
-        var wizardPicks = document.querySelectorAll('.crc-wizard-pick');
-        wizardPicks.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var targetId = btn.dataset.target;
-                wizardModal.hide();
-                setTimeout(function() {
-                    var card = document.getElementById(targetId);
-                    if (!card) return;
-                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    card.classList.add('crc-flash');
-                    setTimeout(function() { card.classList.remove('crc-flash'); }, 1400);
-                }, 250);
-            });
-        });
-    }
-    // Bootstrap loads after content — defer wizard init
-    if (window.bootstrap && bootstrap.Modal) {
-        _initWizard();
-    } else {
-        document.addEventListener('DOMContentLoaded', _initWizard);
-    }
 
     // ────────── Paediatric calculator (Tab 6) ──────────
     var weightInput = document.getElementById('crc-paed-weight');
