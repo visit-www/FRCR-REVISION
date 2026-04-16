@@ -211,7 +211,54 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     scored = [(p, _score(p)) for p in results]
     scored = [(p, s) for p, s in scored if s > 0]
     scored.sort(key=lambda item: item[1], reverse=True)
-    return [p for p, _s in scored[:10]]
+    top = [p for p, _s in scored[:10]]
+
+    # Fallback: if text matching found nothing, search by modality + body_section
+    # This catches cases like "CT HEAD" where no text matches "Brain" title
+    if not top and norm_modality and body_section:
+        _BODY_SECTION_MAP = {
+            'brain': ['Brain', 'Head and Neck'],
+            'head and neck': ['Head and Neck', 'Brain'],
+            'thorax': ['Thorax', 'Cardiovascular'],
+            'cardiovascular': ['Cardiovascular', 'Thorax'],
+            'abdomen': ['Abdomen', 'Pelvis', 'Multisystem'],
+            'pelvis': ['Pelvis', 'Abdomen', 'Multisystem'],
+            'multisystem': ['Multisystem', 'Abdomen', 'Pelvis', 'Thorax'],
+            'spine': ['Spine'],
+            'msk': ['MSK'],
+            'breast': ['Breast'],
+        }
+        search_sections = _BODY_SECTION_MAP.get(body_section.lower(), [body_section])
+        section_filters = [ImagingProtocol.body_section.ilike(f'%{s}%') for s in search_sections]
+        fallback_q = (ImagingProtocol.query
+                      .filter_by(origin='admin', is_published=True)
+                      .filter(ImagingProtocol.modality.ilike(norm_modality))
+                      .filter(db.or_(*section_filters)))
+        if is_paediatric is True:
+            fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == True)
+        elif is_paediatric is False:
+            fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == False)
+        fallback_results = fallback_q.limit(10).all()
+        # Score fallback by clinical token overlap + title relevance
+        fb_scored = []
+        for p in fallback_results:
+            s = 2  # base score for body_section match
+            title_lower = (p.title or '').lower()
+            keywords_lower = (p.keywords or '').lower()
+            indication_lower = (p.indication_json or '').lower()
+            for tok in clinical_tokens:
+                tl = tok.lower()
+                if tl in keywords_lower or tl in indication_lower:
+                    s += 5
+                elif tl in title_lower:
+                    s += 3
+            if p.is_emergency:
+                s += 1
+            fb_scored.append((p, s))
+        fb_scored.sort(key=lambda x: -x[1])
+        top = [p for p, _s in fb_scored[:10]]
+
+    return top
 
 
 def _slugify(text):
