@@ -1066,28 +1066,33 @@
     });
 
     // ────────── Reaction Wizard ──────────
-    var wizardOpen = document.getElementById('crc-wizard-open');
-    var wizardModalEl = document.getElementById('crcReactionWizardModal');
-    var wizardModal = null;
-    if (wizardOpen && wizardModalEl && window.bootstrap && bootstrap.Modal) {
-        wizardModal = new bootstrap.Modal(wizardModalEl);
+    function _initWizard() {
+        var wizardOpen = document.getElementById('crc-wizard-open');
+        var wizardModalEl = document.getElementById('crcReactionWizardModal');
+        if (!wizardOpen || !wizardModalEl || !window.bootstrap || !bootstrap.Modal) return;
+        var wizardModal = new bootstrap.Modal(wizardModalEl);
         wizardOpen.addEventListener('click', function() { wizardModal.show(); });
-    }
-    var wizardPicks = document.querySelectorAll('.crc-wizard-pick');
-    wizardPicks.forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var targetId = btn.dataset.target;
-            if (wizardModal) wizardModal.hide();
-            // After modal closes, scroll the card into view + flash highlight
-            setTimeout(function() {
-                var card = document.getElementById(targetId);
-                if (!card) return;
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                card.classList.add('crc-flash');
-                setTimeout(function() { card.classList.remove('crc-flash'); }, 1400);
-            }, 250);
+        var wizardPicks = document.querySelectorAll('.crc-wizard-pick');
+        wizardPicks.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var targetId = btn.dataset.target;
+                wizardModal.hide();
+                setTimeout(function() {
+                    var card = document.getElementById(targetId);
+                    if (!card) return;
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add('crc-flash');
+                    setTimeout(function() { card.classList.remove('crc-flash'); }, 1400);
+                }, 250);
+            });
         });
-    });
+    }
+    // Bootstrap loads after content — defer wizard init
+    if (window.bootstrap && bootstrap.Modal) {
+        _initWizard();
+    } else {
+        document.addEventListener('DOMContentLoaded', _initWizard);
+    }
 
     // ────────── Paediatric calculator (Tab 6) ──────────
     var weightInput = document.getElementById('crc-paed-weight');
