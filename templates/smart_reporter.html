@@ -3811,7 +3811,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: isTier1(c.type) ? 'accepted' : 'pending' }));
-            state.aiAssistFillIns = (data.fill_ins || []).map(fi => ({ ...fi, status: 'pending' }));
+            // Only replace fill-ins when we get a new report (full_report) — preserve pending fill-ins on advisory follow-ups
+            if (data.response_type === 'full_report' || (data.fill_ins && data.fill_ins.length > 0)) {
+                state.aiAssistFillIns = (data.fill_ins || []).map(fi => ({ ...fi, status: 'pending' }));
+            }
 
             // Accumulate insights (new non-empty values enhance existing ones)
             const newIns = data.insights || {};
@@ -5016,7 +5019,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fillInsSection.classList.add('d-none'); // Never show separate panel
 
         var hasPendingCorrections = state.aiAssistCorrections.some(function(c) { return c.status === 'pending'; });
-        var hasPendingFillIns = state.aiAssistFillIns.length > 0 && isFullReport;
+        var hasPendingFillIns = (state.aiAssistFillIns || []).some(function(fi) { return fi.status === 'pending'; });
 
         if (hasPendingCorrections || hasPendingFillIns) {
             // Show diff overlay in PACS box
