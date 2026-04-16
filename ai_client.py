@@ -265,11 +265,34 @@ def parse_json_response(text, error_class=None):
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
-        match = re.search(r'\{[\s\S]*\}', cleaned)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                logger.warning("JSON fallback parse failed. Raw: %s", cleaned[:500])
-                raise exc("Failed to parse AI response as JSON.")
-        raise exc("AI response was not valid JSON.")
+        pass
+
+    # Fallback 1: extract outermost { ... }
+    match = re.search(r'\{[\s\S]*\}', cleaned)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    # Fallback 2: truncated JSON — try closing open braces/brackets
+    candidate = cleaned
+    if not candidate.startswith('{'):
+        m = re.search(r'\{', candidate)
+        if m:
+            candidate = candidate[m.start():]
+    if candidate.startswith('{') and not candidate.rstrip().endswith('}'):
+        # Count unclosed braces/brackets and close them
+        opens = candidate.count('{') - candidate.count('}')
+        open_brackets = candidate.count('[') - candidate.count(']')
+        candidate = candidate.rstrip().rstrip(',')
+        candidate += ']' * max(0, open_brackets) + '}' * max(0, opens)
+        try:
+            result = json.loads(candidate)
+            logger.warning("JSON repaired (truncated output — %d braces closed)", opens)
+            return result
+        except json.JSONDecodeError:
+            pass
+
+    logger.warning("JSON parse failed. Raw: %s", cleaned[:500])
+    raise exc("Failed to parse AI response as JSON.")
