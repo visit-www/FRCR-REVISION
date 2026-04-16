@@ -814,14 +814,19 @@ with app.app_context():
         # Add columns that db.create_all() won't add to existing tables
         from sqlalchemy import text, inspect as sa_inspect
         insp = sa_inspect(db.engine)
+        _table_names = set(insp.get_table_names())
+        _col_cache = {}  # table → set of column names (cached per table)
         def _add_col_if_missing(table, column, col_sql):
-            if table in insp.get_table_names():
-                existing = [c['name'] for c in insp.get_columns(table)]
-                if column not in existing:
-                    with db.engine.connect() as conn:
-                        conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
-                        conn.commit()
-                    logger.info(f'Added column {table}.{column}')
+            if table not in _table_names:
+                return
+            if table not in _col_cache:
+                _col_cache[table] = {c['name'] for c in insp.get_columns(table)}
+            if column not in _col_cache[table]:
+                with db.engine.connect() as conn:
+                    conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
+                    conn.commit()
+                _col_cache[table].add(column)
+                logger.info(f'Added column {table}.{column}')
 
         # -- reporting_template (legacy — keep columns for migration) --
         _add_col_if_missing('reporting_template', 'pacs_report_text', 'pacs_report_text TEXT')
@@ -862,6 +867,24 @@ with app.app_context():
         # -- imaging_protocol --
         _add_col_if_missing('imaging_protocol', 'is_paediatric', 'is_paediatric BOOLEAN DEFAULT false NOT NULL')
 
+        # -- One-time imaging_protocol migrations (rebrand, scrub, PR2/PR4 backfills) --
+        # Gate all of these behind a single sentinel check: if ANY admin protocol
+        # has the latest sentinel, all migrations have already completed.
+        _LATEST_MIGRATION_SENTINEL = '<!-- scrub:koc-ari-v1 -->'
+        _migrations_needed = True
+        if 'imaging_protocol' in _table_names:
+            from models import ImagingProtocol as _IPCheck
+            _sample = _IPCheck.query.filter(
+                _IPCheck.detailed_protocol_html.contains(_LATEST_MIGRATION_SENTINEL)
+            ).limit(1).first()
+            if _sample:
+                _migrations_needed = False
+        else:
+            _migrations_needed = False
+
+        if _migrations_needed:
+            logger.info('Running one-time imaging_protocol migrations...')
+
         # -- Rebrand all imaging_protocol source attributions to canonical RadInsights line --
         # Idempotent: the sentinel <!-- src:radinsight-v1 --> marks rows that have
         # already been rewritten so subsequent deploys skip them.
@@ -873,7 +896,7 @@ with app.app_context():
                 + "<strong>RadInsights Protocols</strong> &mdash; enriched by publicly "
                 + "available guidelines and resources. Verify against local policy.</em></p>"
             )
-            if 'imaging_protocol' in insp.get_table_names():
+            if _migrations_needed and 'imaging_protocol' in _table_names:
                 from models import ImagingProtocol as _IP
                 _updated = 0
                 _existing_source_re = _re.compile(
@@ -902,7 +925,7 @@ with app.app_context():
         # Block disabled to avoid slug-collision churn with the master sync.
         # Keeping the code in-place for historical reference / rollback.
         try:
-            if False and 'imaging_protocol' in insp.get_table_names():
+            if False and 'imaging_protocol' in _table_names:
                 import json as _json
                 from models import ImagingProtocol as _IP
 
@@ -1264,7 +1287,7 @@ with app.app_context():
         # -- PR2 / N1: add CT Pulmonary Angiography — Pregnancy imaging protocol --
         # SUPERSEDED by PR4 C3 master sync — now lives in ct_protocols.json.
         try:
-            if False and 'imaging_protocol' in insp.get_table_names():
+            if False and 'imaging_protocol' in _table_names:
                 import json as _json2
                 from models import ImagingProtocol as _IP2
                 _preg_slug = 'ct-pulmonary-angiography-pregnancy'
@@ -1353,7 +1376,7 @@ with app.app_context():
 
         # -- PR2 / N3: backfill AJR DOI citations on split-bolus urogram and CTPA --
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if _migrations_needed and 'imaging_protocol' in _table_names:
                 from models import ImagingProtocol as _IP3
                 _N3_DOI_MARKER = '10.2214/AJR'
                 _n3_updated = 0
@@ -1391,7 +1414,7 @@ with app.app_context():
 
         # -- PR2 / I3: add RCR Major Trauma reporting templates --
         try:
-            if 'radiology_template' in insp.get_table_names():
+            if _migrations_needed and 'radiology_template' in _table_names:
                 from models import RadiologyTemplate as _RT
                 _RCR_TRAUMA_SOURCE = (
                     'Structure aligned with the Royal College of Radiologists Major '
@@ -1600,7 +1623,7 @@ with app.app_context():
         #      with a single space (user requested blank replacement).
         # The sentinel is appended once so subsequent deploys skip the row.
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if _migrations_needed and 'imaging_protocol' in _table_names:
                 from models import ImagingProtocol as _IPScrub
                 _SCRUB_SENTINEL = "<!-- scrub:koc-ari-v1 -->"
                 _KOC_PHRASE_RE = _re.compile(
@@ -1657,7 +1680,7 @@ with app.app_context():
         # that legitimate MRI paediatric protocols (e.g. 'Paediatric Brain' in
         # the master JSON) survive.
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if _migrations_needed and 'imaging_protocol' in _table_names:
                 from models import ImagingProtocol as _IPPaed
                 _paed_rows = _IPPaed.query.filter(
                     _IPPaed.modality.ilike('CT'),
@@ -1684,7 +1707,7 @@ with app.app_context():
         # - Personal rows (origin='personal') are never touched
         # - To force re-sync: bump _SYNC_VERSION in protocol_master_sync.py
         try:
-            if 'imaging_protocol' in insp.get_table_names():
+            if 'imaging_protocol' in _table_names:
                 from protocol_master_sync import sync_master_protocols_to_db
                 from models import ImagingProtocol as _IPSync
                 _sync_result = sync_master_protocols_to_db(db, _IPSync, logger)
@@ -1703,10 +1726,10 @@ with app.app_context():
         # Idempotent — uses checkfirst=True so re-runs are no-ops.
         try:
             from models import MdtMeeting as _MM, MdtCase as _MC
-            if 'mdt_meeting' not in insp.get_table_names():
+            if 'mdt_meeting' not in _table_names:
                 _MM.__table__.create(db.engine, checkfirst=True)
                 logger.info('PR4 C4: created mdt_meeting table')
-            if 'mdt_case' not in insp.get_table_names():
+            if 'mdt_case' not in _table_names:
                 _MC.__table__.create(db.engine, checkfirst=True)
                 logger.info('PR4 C4: created mdt_case table')
             # PostgreSQL pg_trgm index for fuzzy diagnosis search
@@ -1730,23 +1753,23 @@ with app.app_context():
         # ── Editable Admin Documents + Claude Memory Sync tables ──
         try:
             from models import AdminDocument as _AD, ClaudeMemoryUpdate as _CMU
-            if 'admin_document' not in insp.get_table_names():
+            if 'admin_document' not in _table_names:
                 _AD.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created admin_document table')
-            if 'claude_memory_update' not in insp.get_table_names():
+            if 'claude_memory_update' not in _table_names:
                 _CMU.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created claude_memory_update table')
             from models import TourCapture as _TC
-            if 'tour_capture' not in insp.get_table_names():
+            if 'tour_capture' not in _table_names:
                 _TC.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created tour_capture table')
             from models import ManualVerification as _MV
-            if 'manual_verification' not in insp.get_table_names():
+            if 'manual_verification' not in _table_names:
                 _MV.__table__.create(db.engine, checkfirst=True)
                 logger.info('Created manual_verification table')
 
             # Add new columns to peer_review_flag if missing
-            if 'peer_review_flag' in insp.get_table_names():
+            if 'peer_review_flag' in _table_names:
                 _prf_cols = {c['name'] for c in insp.get_columns('peer_review_flag')}
                 _new_prf = {
                     'selected_text': 'TEXT',
@@ -1941,6 +1964,7 @@ match specific statistical claims to paper abstracts.</p>
             logger.warning('Admin document table creation skipped: %s', _adoc_err)
 
         # -- Migrate old protocol category slugs to new 12-category system --
+        # Only run if old categories still exist (one-time migration)
         _OLD_TO_NEW_CATEGORY = {
             'emergency': 'acute_emergency',
             'contrast': 'contrast_safety',
@@ -1956,16 +1980,26 @@ match specific statistical claims to paper abstracts.</p>
             'imaging_features': 'diagnostic_algorithms',
             'management_support': 'post_procedural',
         }
-        if 'clinical_protocol' in insp.get_table_names():
-            for _old_cat, _new_cat in _OLD_TO_NEW_CATEGORY.items():
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text(
-                            'UPDATE clinical_protocol SET category = :new_cat WHERE category = :old_cat'
-                        ), {'old_cat': _old_cat, 'new_cat': _new_cat})
-                        conn.commit()
-                except Exception:
-                    pass
+        if 'clinical_protocol' in _table_names:
+            # Quick check: do any old categories still exist?
+            _has_old_cats = False
+            try:
+                _old_count = db.session.execute(text(
+                    "SELECT COUNT(*) FROM clinical_protocol WHERE category IN ('emergency','contrast','routine','scoring','grading','criteria','staging','pathway','anatomy','imaging_features','management_support','trauma','safety','dose')"
+                )).scalar() or 0
+                _has_old_cats = _old_count > 0
+            except Exception:
+                pass
+            if _has_old_cats:
+                for _old_cat, _new_cat in _OLD_TO_NEW_CATEGORY.items():
+                    try:
+                        with db.engine.connect() as conn:
+                            conn.execute(text(
+                                'UPDATE clinical_protocol SET category = :new_cat WHERE category = :old_cat'
+                            ), {'old_cat': _old_cat, 'new_cat': _new_cat})
+                            conn.commit()
+                    except Exception:
+                        pass
 
         # -- incidental_finding_calculator --
         _add_col_if_missing('incidental_finding_calculator', 'body_section', 'body_section VARCHAR(100)')

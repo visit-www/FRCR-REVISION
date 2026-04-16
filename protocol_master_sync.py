@@ -428,6 +428,21 @@ def sync_master_protocols_to_db(db, ImagingProtocol, logger):
 
     logger.info('sync_master_protocols: loaded %d master protocols from JSON', len(master_map))
 
+    # ── Fast-path: skip upsert loop if all protocols already synced ──
+    try:
+        _synced_count = (ImagingProtocol.query
+                         .filter(ImagingProtocol.origin == 'admin',
+                                 ImagingProtocol.detailed_protocol_html.contains(_SENTINEL))
+                         .count())
+        if _synced_count >= len(master_map):
+            result['skipped'] = _synced_count
+            logger.info('sync_master_protocols: all %d protocols already synced, skipping upsert',
+                        _synced_count)
+            # Jump straight to orphan deletion
+            return _delete_orphans(db, ImagingProtocol, master_map, result, logger)
+    except Exception:
+        pass  # fall through to full sync
+
     # ── Upsert each master entry ──
     for slug, (modality, title, entry) in master_map.items():
         try:
@@ -526,7 +541,11 @@ def sync_master_protocols_to_db(db, ImagingProtocol, logger):
         db.session.rollback()
         return result
 
-    # ── Delete admin rows that are NOT in master JSON ──
+    return _delete_orphans(db, ImagingProtocol, master_map, result, logger)
+
+
+def _delete_orphans(db, ImagingProtocol, master_map, result, logger):
+    """Delete admin rows whose slug is NOT in master JSON. Returns result dict."""
     try:
         master_slugs = set(master_map.keys())
         orphans = (ImagingProtocol.query
