@@ -14,21 +14,21 @@
   "protocols": {
     "Brain": {
       "Prep": "None",
-      "Contrast": "50ml hand inject if required",
+      "Contrast": "None",
       "Parameters": "C1 to vertex",
       "Comments": "5mm Axial reformats",
       "_origin": "swansea"
     },
     "Sinuses": {
       "Prep": "None",
-      "Contrast": "50ml hand inject if required",
+      "Contrast": "None",
       "Parameters": "Frontal to maxillary sinuses",
       "Comments": "0.6 mm reformats Cor and Sag. Bone plus and Soft",
       "_origin": "swansea"
     },
     "Orbits": {
       "Prep": "None",
-      "Contrast": "50ml hand inject if required",
+      "Contrast": "None",
       "Parameters": "To cover orbits",
       "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
       "_origin": "swansea"
@@ -49,7 +49,7 @@
     },
     "IAMS": {
       "Prep": "None",
-      "Contrast": "50ml hand inject if required",
+      "Contrast": "None",
       "Parameters": "Helical Head pre Helical IAMs post",
       "Comments": "0.6mm reformats Cor and Sag. Bone plus and Soft",
       "_origin": "swansea"

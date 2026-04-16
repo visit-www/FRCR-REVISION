@@ -335,9 +335,11 @@ def _render_mri_html(title: str, entry: dict) -> str:
 def _build_ct_shorthand(title: str, entry: dict) -> str:
     """One-line vetting-box summary for CT."""
     params = (entry.get('Parameters') or '').split('.')[0][:140]
-    contrast = (entry.get('Contrast') or '').split('.')[0][:80]
+    contrast = (entry.get('Contrast') or '').split('.')[0][:80].strip()
     parts = []
-    if contrast and contrast.lower() not in ('none', ''):
+    if contrast.lower() in ('none', ''):
+        parts.append('Non-contrast')
+    else:
         parts.append(contrast)
     if params:
         parts.append(params)
