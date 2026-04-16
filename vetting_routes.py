@@ -293,14 +293,22 @@ def vetting_analyse():
     if not ok:
         return err
 
-    # Build protocol title catalogue for AI matching
+    # Build protocol title catalogue for AI matching — includes shorthand
+    # so the model can see contrast/non-contrast and coverage info
     _protocol_titles = []
     try:
         _all_protocols = ImagingProtocol.query.filter_by(
             origin='admin', is_published=True
-        ).with_entities(ImagingProtocol.slug, ImagingProtocol.title, ImagingProtocol.modality
+        ).with_entities(
+            ImagingProtocol.slug, ImagingProtocol.title,
+            ImagingProtocol.modality, ImagingProtocol.shorthand_text,
         ).all()
-        _protocol_titles = [(p.slug, f"[{p.modality}] {p.title}") for p in _all_protocols]
+        for p in _all_protocols:
+            short = (p.shorthand_text or '')[:80].replace('\n', ' | ')
+            desc = f"[{p.modality}] {p.title}"
+            if short:
+                desc += f" — {short}"
+            _protocol_titles.append((p.slug, desc))
     except Exception:
         pass  # non-fatal — AI will work without it
 
