@@ -57,8 +57,32 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     cleaned_query = re_sub(r'\s+', ' ', cleaned_query).strip()
     # STOP words that don't help narrow results
     _STOP = {'with', 'without', 'and', 'or', 'of', 'the', 'for', 'iv', 'oral', 'contrast'}
+    _KEEP_SHORT = {'ct', 'mr', 'us', 'xr', 'ap', 'pa'}  # short but clinically meaningful
     word_tokens = re_sub(r'[^a-zA-Z0-9 ]', ' ', cleaned_query).split()
-    words = [w for w in word_tokens if len(w) >= 3 and w.lower() not in _STOP]
+    words = [w for w in word_tokens if (len(w) >= 3 or w.lower() in _KEEP_SHORT) and w.lower() not in _STOP]
+
+    # Synonym expansion — AI study names often differ from protocol titles
+    _SYNONYMS = {
+        'head': ['brain', 'head'],
+        'brain': ['brain', 'head'],
+        'cap': ['chest', 'abdomen', 'pelvis'],
+        'ctpa': ['pulmonary', 'angiography'],
+        'kub': ['kidneys', 'ureter', 'bladder', 'renal'],
+        'abdomen': ['abdomen', 'abdominal'],
+        'neck': ['neck', 'cervical'],
+        'spine': ['spine', 'spinal'],
+        'chest': ['chest', 'thorax', 'thoracic'],
+        'pelvis': ['pelvis', 'pelvic'],
+    }
+    expanded = []
+    for w in words:
+        expanded.append(w)
+        syns = _SYNONYMS.get(w.lower(), [])
+        for s in syns:
+            if s.lower() != w.lower():
+                expanded.append(s)
+    words = expanded
+
     # Always enable word matching now — it's the more reliable path for multi-term queries
     use_word_matching = True
 
