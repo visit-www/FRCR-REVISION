@@ -60,30 +60,6 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     _KEEP_SHORT = {'ct', 'mr', 'us', 'xr', 'ap', 'pa'}  # short but clinically meaningful
     word_tokens = re_sub(r'[^a-zA-Z0-9 ]', ' ', cleaned_query).split()
     words = [w for w in word_tokens if (len(w) >= 3 or w.lower() in _KEEP_SHORT) and w.lower() not in _STOP]
-
-    # Synonym expansion — AI study names often differ from protocol titles
-    _SYNONYMS = {
-        'head': ['brain', 'head'],
-        'brain': ['brain', 'head'],
-        'cap': ['chest', 'abdomen', 'pelvis'],
-        'ctpa': ['pulmonary', 'angiography'],
-        'kub': ['kidneys', 'ureter', 'bladder', 'renal'],
-        'abdomen': ['abdomen', 'abdominal'],
-        'neck': ['neck', 'cervical'],
-        'spine': ['spine', 'spinal'],
-        'chest': ['chest', 'thorax', 'thoracic'],
-        'pelvis': ['pelvis', 'pelvic'],
-    }
-    expanded = []
-    for w in words:
-        expanded.append(w)
-        syns = _SYNONYMS.get(w.lower(), [])
-        for s in syns:
-            if s.lower() != w.lower():
-                expanded.append(s)
-    words = expanded
-
-    # Always enable word matching now — it's the more reliable path for multi-term queries
     use_word_matching = True
 
     # Normalise modality — map common synonyms to the canonical short code
@@ -211,81 +187,7 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     scored = [(p, _score(p)) for p in results]
     scored = [(p, s) for p, s in scored if s > 0]
     scored.sort(key=lambda item: item[1], reverse=True)
-    top = [p for p, _s in scored[:10]]
-
-    # Fallback: if text matching found nothing, search by modality + body_section
-    # then pick the BEST single match using title simplicity + clinical relevance.
-    # e.g. "CT HEAD non-contrast" → body_section=Brain → finds "Brain" (plain routine)
-    #       not "Brain tumours - primary" or "Brain — Dementia Assessment"
-    if not top and norm_modality and body_section:
-        _BODY_SECTION_MAP = {
-            'brain': ['Brain', 'Head and Neck'],
-            'head and neck': ['Head and Neck', 'Brain'],
-            'thorax': ['Thorax', 'Cardiovascular'],
-            'cardiovascular': ['Cardiovascular', 'Thorax'],
-            'abdomen': ['Abdomen', 'Pelvis', 'Multisystem'],
-            'pelvis': ['Pelvis', 'Abdomen', 'Multisystem'],
-            'multisystem': ['Multisystem', 'Abdomen', 'Pelvis', 'Thorax'],
-            'spine': ['Spine'],
-            'msk': ['MSK'],
-            'breast': ['Breast'],
-        }
-        search_sections = _BODY_SECTION_MAP.get(body_section.lower(), [body_section])
-        section_filters = [ImagingProtocol.body_section.ilike(f'%{s}%') for s in search_sections]
-        fallback_q = (ImagingProtocol.query
-                      .filter_by(origin='admin', is_published=True)
-                      .filter(ImagingProtocol.modality.ilike(norm_modality))
-                      .filter(db.or_(*section_filters)))
-        if is_paediatric is True:
-            fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == True)
-        elif is_paediatric is False:
-            fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == False)
-        fallback_results = fallback_q.all()
-
-        # Score: prefer short generic titles (routine protocols) unless clinical
-        # tokens specifically match a specialised protocol
-        fb_scored = []
-        query_lower = cleaned_query.lower()
-        for p in fallback_results:
-            s = 0
-            title_lower = (p.title or '').lower()
-            keywords_lower = (p.keywords or '').lower()
-            indication_lower = (p.indication_json or '').lower()
-
-            # Clinical token match = strong signal for specialised protocol
-            for tok in clinical_tokens:
-                tl = tok.lower()
-                if tl in title_lower:
-                    s += 8
-                elif tl in keywords_lower or tl in indication_lower:
-                    s += 5
-
-            # Penalise specialised protocols when no clinical tokens matched them
-            # (shorter title = more generic = better default match)
-            if s == 0:
-                title_word_count = len((p.title or '').split())
-                # Single-word titles like "Brain" = most generic → highest bonus
-                s += max(0, 6 - title_word_count)
-
-            # Bonus if query words appear in title/keywords
-            for w in words:
-                wl = w.lower()
-                if wl in title_lower:
-                    s += 3
-                elif wl in keywords_lower:
-                    s += 1
-
-            if p.is_emergency:
-                s += 1
-            fb_scored.append((p, s))
-
-        fb_scored.sort(key=lambda x: -x[1])
-        # Return only the best match (plus any close runners-up within 3 points)
-        if fb_scored:
-            best_score = fb_scored[0][1]
-            top = [p for p, s in fb_scored if s >= best_score - 3][:3]
-
-    return top
+    return [p for p, _s in scored[:10]]
 
 
 def _slugify(text):
@@ -391,8 +293,20 @@ def vetting_analyse():
     if not ok:
         return err
 
+    # Build protocol title catalogue for AI matching
+    _protocol_titles = []
     try:
-        result = generate_vetting_analysis(referral_text, modality_hint=modality_hint)
+        _all_protocols = ImagingProtocol.query.filter_by(
+            origin='admin', is_published=True
+        ).with_entities(ImagingProtocol.slug, ImagingProtocol.title, ImagingProtocol.modality
+        ).all()
+        _protocol_titles = [(p.slug, f"[{p.modality}] {p.title}") for p in _all_protocols]
+    except Exception:
+        pass  # non-fatal — AI will work without it
+
+    try:
+        result = generate_vetting_analysis(referral_text, modality_hint=modality_hint,
+                                           protocol_titles=_protocol_titles)
     except VettingAIError as e:
         logger.error("Vetting analysis failed: %s", e)
         log_ai_usage(current_user.id, 'vetting_analyse', provider='anthropic',
@@ -414,18 +328,26 @@ def vetting_analyse():
     matched_algorithms = []
 
     if not quick_clean:
-        # Search for matching protocols in library
+        # Search for matching protocols — AI slug match first, then text search fallback
         study_type = result.get('study_type', '')
         modality = result.get('modality', '')
         body_section = result.get('body_section') or None
-        # Only restrict to paediatric when AI is confident; otherwise leave None
-        # to return both (ensures backwards-compatible behaviour for adults).
         paed_flag = True if result.get('is_paediatric') is True else None
         cleaned_clinical = result.get('cleaned_clinical_text', '') or ''
-        matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
-                                              body_section=body_section,
-                                              is_paediatric=paed_flag,
-                                              clinical_text=cleaned_clinical)
+
+        # Primary: AI-picked protocol slug (most accurate — model sees full catalogue)
+        ai_slug = result.get('matched_protocol_slug')
+        if ai_slug:
+            _ai_match = ImagingProtocol.query.filter_by(slug=ai_slug, origin='admin').first()
+            if _ai_match:
+                matched_protocols = [_ai_match]
+
+        # Fallback: text search if AI didn't pick or slug not found
+        if not matched_protocols:
+            matched_protocols = _search_protocols(study_type, modality, user_id=current_user.id,
+                                                  body_section=body_section,
+                                                  is_paediatric=paed_flag,
+                                                  clinical_text=cleaned_clinical)
 
         # Search for matching clinical algorithms
         cleaned_text = result.get('cleaned_clinical_text', '')

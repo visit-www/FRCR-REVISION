@@ -334,7 +334,7 @@ SHORTHAND_SYSTEM_PROMPT = (
 )
 
 
-def generate_vetting_analysis(referral_text, modality_hint=None):
+def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles=None):
     """
     Analyse a clinical referral — clean text, identify study, flag missing info.
 
@@ -354,10 +354,20 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
 
     hint_line = f"\nModality hint from referrer: {modality_hint}" if modality_hint else ""
 
+    # Build protocol catalogue line if titles provided
+    protocol_line = ""
+    if protocol_titles:
+        protocol_line = (
+            "\nAVAILABLE PROTOCOL LIBRARY (slug → title):\n"
+            + "\n".join(f"  {slug}: {title}" for slug, title in protocol_titles)
+            + "\n"
+        )
+
     user_prompt = (
         "Analyse this clinical referral and return a JSON object.\n\n"
         f"REFERRAL TEXT:\n{referral_text.strip()}\n"
-        f"{hint_line}\n\n"
+        f"{hint_line}\n"
+        f"{protocol_line}\n"
         "Return ONLY valid JSON with these fields:\n"
         "{\n"
         '  "cleaned_clinical_text": "cleaned version of the referral (fix formatting, '
@@ -370,6 +380,7 @@ def generate_vetting_analysis(referral_text, modality_hint=None):
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
         '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem (use Multisystem for e.g. CT CAP)",\n'
+        '  "matched_protocol_slug": "slug of the BEST matching protocol from the AVAILABLE PROTOCOL LIBRARY above. Pick the most specific match for this clinical scenario. null if no library provided or no good match.",\n'
         '  "is_paediatric": true/false (true if patient age < 16 years, or described as child/infant/neonate/paediatric/toddler; false if adult, unknown age, or not stated),\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
