@@ -532,13 +532,23 @@ def sync_master_protocols_to_db(db, ImagingProtocol, logger):
         orphans = (ImagingProtocol.query
                    .filter(ImagingProtocol.origin == 'admin')
                    .all())
+        orphan_ids = []
         for row in orphans:
             if row.slug not in master_slugs:
-                # Double-check the row wasn't just inserted but had slug mangled
                 logger.info('sync_master_protocols: deleting orphan admin row id=%s slug=%s title=%s',
                             row.id, row.slug, row.title)
-                db.session.delete(row)
+                orphan_ids.append(row.id)
                 result['deleted'] += 1
+        if orphan_ids:
+            # Null out copied_from_id refs pointing to orphans (self-referential FK)
+            (ImagingProtocol.query
+             .filter(ImagingProtocol.copied_from_id.in_(orphan_ids))
+             .update({ImagingProtocol.copied_from_id: None},
+                     synchronize_session='fetch'))
+            for oid in orphan_ids:
+                row = db.session.get(ImagingProtocol, oid)
+                if row:
+                    db.session.delete(row)
         db.session.commit()
     except Exception as e:
         logger.error('sync_master_protocols: delete failed: %s', e)

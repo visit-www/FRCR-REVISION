@@ -550,7 +550,7 @@ function showResponse(html, remaining, dbLinks) {
         + '<a href="https://gravitas.acr.org/acportal" target="_blank" rel="noopener noreferrer">ACR AC Portal</a> '
         + 'before clinical use.</div>';
     document.getElementById('responseContent').innerHTML = disclaimer + html;
-    if (typeof CmvBadges !== 'undefined') CmvBadges.load(document.getElementById('responseContent'), 'radiq_query', data.query_id);
+    if (typeof CmvBadges !== 'undefined' && currentQueryId) CmvBadges.load(document.getElementById('responseContent'), 'radiq_query', currentQueryId);
 
     // Render DB resource links if any
     var linksEl = document.getElementById('dbLinksArea');
