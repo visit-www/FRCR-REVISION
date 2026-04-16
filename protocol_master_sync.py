@@ -25,7 +25,7 @@ import os
 import re
 from datetime import datetime
 
-_SYNC_VERSION = 'master-v1'
+_SYNC_VERSION = 'master-v2'  # bumped: fix body_section mistagging (tumour/haemorrhage in Brain)
 _SENTINEL = f'<!-- migrated:{_SYNC_VERSION} -->'
 # Include legacy sentinels used by older migration blocks (rebrand, scrub)
 # so those blocks leave sync-managed rows alone.
@@ -76,8 +76,8 @@ _BODY_KEYWORDS = [
     ('Brain', ['brain', 'stroke', 'dementia', 'sella', 'pituitary', 'iam', 'iac',
                'inner ear', 'orbit', 'skull base', 'trigeminal', 'sinuses',
                'epilepsy', 'avm', 'csf', 'meningitis', 'ms ', 'demyelinat',
-               'cerebral', 'hemorrhage', 'haemorrhage', 'tumour - primary',
-               'tumour - metastatic', 'tumor', 'tumour', 'petrous', 'paediatric brain']),
+               'cerebral', 'cerebral hemorrhage', 'cerebral haemorrhage',
+               'brain tumour', 'brain tumor', 'petrous', 'paediatric brain']),
     ('Head and Neck', ['neck', 'face', 'facial', 'temporal', 'parathyroid',
                         'thyroid', 'sialography', 'mastoiditis', 'cellulitis',
                         'oral cavity']),
