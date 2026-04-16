@@ -54,10 +54,13 @@ MODEL_COSTS = {
 DEFAULT_MODEL_COST = {'input': 3.00, 'output': 15.00}
 
 
-def calc_cost(model: str, input_tokens: int = 0, output_tokens: int = 0) -> float:
+def calc_cost(model: str, input_tokens: int = 0, output_tokens: int = 0,
+              cache_creation_input_tokens: int = 0,
+              cache_read_input_tokens: int = 0) -> float:
     """Calculate USD cost from model name and token counts.
 
     Uses substring matching so 'claude-opus-4-6-20250917' matches 'claude-opus-4-6'.
+    Cache pricing: cache_creation = 1.25x input, cache_read = 0.1x input.
     """
     rates = DEFAULT_MODEL_COST
     model_str = model or ''
@@ -67,7 +70,9 @@ def calc_cost(model: str, input_tokens: int = 0, output_tokens: int = 0) -> floa
             break
     inp = (input_tokens or 0) * rates['input'] / 1_000_000
     out = (output_tokens or 0) * rates['output'] / 1_000_000
-    return round(inp + out, 6)
+    cache_write = (cache_creation_input_tokens or 0) * rates['input'] * 1.25 / 1_000_000
+    cache_read = (cache_read_input_tokens or 0) * rates['input'] * 0.1 / 1_000_000
+    return round(inp + out + cache_write + cache_read, 6)
 
 
 def get_last_usage() -> dict:
@@ -119,15 +124,21 @@ def track_ai_call(
         float: Calculated USD cost for this call
     """
     # Auto-capture tokens from last API call if not explicitly provided
+    cache_creation = 0
+    cache_read = 0
     if auto_capture_tokens and (input_tokens is None or output_tokens is None):
         usage = get_last_usage()
         if input_tokens is None:
             input_tokens = usage.get('input_tokens', 0)
         if output_tokens is None:
             output_tokens = usage.get('output_tokens', 0)
+        cache_creation = usage.get('cache_creation_input_tokens', 0)
+        cache_read = usage.get('cache_read_input_tokens', 0)
 
-    # Calculate cost
-    cost = calc_cost(model, input_tokens, output_tokens)
+    # Calculate cost (including cache token pricing)
+    cost = calc_cost(model, input_tokens, output_tokens,
+                     cache_creation_input_tokens=cache_creation,
+                     cache_read_input_tokens=cache_read)
 
     # Log to database
     try:

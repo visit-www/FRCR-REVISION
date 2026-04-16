@@ -11,7 +11,8 @@ class BackupReminder {
     }
     
     async init() {
-        // Only check for admin users
+        // Only check for admin users — skip API call entirely for non-admins
+        if (!document.body.classList.contains('is-admin')) return;
         const isAdmin = await this.checkIfAdmin();
         if (!isAdmin) return;
         

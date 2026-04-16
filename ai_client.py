@@ -131,9 +131,12 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     usage = result.get("usage", {})
     token_count = usage.get("output_tokens", 0)
     # Store last usage info for cost tracking (avoids breaking 3-tuple return)
+    # Cache tokens: cache_read is 90% cheaper, cache_creation is 25% more expensive
     call_claude.last_usage = {
         'input_tokens': usage.get("input_tokens", 0),
         'output_tokens': token_count,
+        'cache_creation_input_tokens': usage.get("cache_creation_input_tokens", 0),
+        'cache_read_input_tokens': usage.get("cache_read_input_tokens", 0),
     }
     return text, effective_model, token_count
 
