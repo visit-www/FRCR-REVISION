@@ -620,15 +620,21 @@
             }
         }
         
-        // Global fetch interceptor — redirect to login on session expiry
+        // Global fetch interceptor — session expiry redirect + PII override
+        var _piiOverrideActive = false;
+        window._setPiiOverride = function() { _piiOverrideActive = true; };
         (function() {
             var _origFetch = window.fetch;
-            window.fetch = function() {
-                return _origFetch.apply(this, arguments).then(function(response) {
+            window.fetch = function(url, opts) {
+                // Add PII override header when user has dismissed PII warnings
+                if (_piiOverrideActive && opts && opts.method === 'POST') {
+                    opts = Object.assign({}, opts);
+                    opts.headers = Object.assign({}, opts.headers || {}, { 'X-PII-Override': '1' });
+                }
+                return _origFetch.call(this, url, opts).then(function(response) {
                     if (response.status === 401) {
                         var ct = response.headers.get('content-type') || '';
                         if (ct.indexOf('application/json') >= 0) {
-                            // Session expired — redirect to login
                             window.location.href = '/auth/login';
                             return new Response(JSON.stringify({error: 'Session expired'}), {status: 401});
                         }

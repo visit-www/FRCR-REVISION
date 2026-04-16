@@ -329,6 +329,10 @@
                     }
                 }
             }
+            // When all PII dismissed, set server-side override for subsequent requests
+            if (!hasActivePII && _allMatches.length > 0) {
+                if (typeof window._setPiiOverride === 'function') window._setPiiOverride();
+            }
         }
 
         // Store original titles on first run

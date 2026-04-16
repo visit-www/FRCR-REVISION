@@ -1276,6 +1276,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // PII override is handled globally in base.html via _setPiiOverride() + fetch interceptor
+
     // ── Off-topic pre-filter (saves AI credits) ──
     function isOffTopicQuery(text) {
         const lower = text.toLowerCase().trim();
