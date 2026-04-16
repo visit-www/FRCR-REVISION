@@ -55,11 +55,12 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     raw_query = study_type.replace('_', ' ').strip() if study_type else ''
     cleaned_query = re_sub(r'\([^)]*\)', ' ', raw_query)
     cleaned_query = re_sub(r'\s+', ' ', cleaned_query).strip()
-    # STOP words that don't help narrow results
-    _STOP = {'with', 'without', 'and', 'or', 'of', 'the', 'for', 'iv', 'oral', 'contrast'}
-    _KEEP_SHORT = {'ct', 'mr', 'us', 'xr', 'ap', 'pa'}  # short but clinically meaningful
+    # STOP words that don't help narrow results — includes modality terms
+    # (modality is already filtered as a hard column match, so "ct" in keywords matches everything)
+    _STOP = {'with', 'without', 'and', 'or', 'of', 'the', 'for', 'iv', 'oral', 'contrast',
+             'ct', 'mri', 'mr', 'us', 'xr', 'nm', 'pet', 'scan', 'study'}
     word_tokens = re_sub(r'[^a-zA-Z0-9 ]', ' ', cleaned_query).split()
-    words = [w for w in word_tokens if (len(w) >= 3 or w.lower() in _KEEP_SHORT) and w.lower() not in _STOP]
+    words = [w for w in word_tokens if len(w) >= 3 and w.lower() not in _STOP]
     use_word_matching = True
 
     # Normalise modality — map common synonyms to the canonical short code
