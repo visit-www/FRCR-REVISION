@@ -2639,6 +2639,10 @@ def data_retention_cleanup():
 @app.route('/')
 def index():
     """Smart dashboard - students see student dashboard, admins can access admin features"""
+    # Temporary: log User-Agent to identify 60-second pinger
+    _ua = request.headers.get('User-Agent', 'unknown')
+    if not current_user.is_authenticated:
+        logger.info('Landing page hit — UA: %s', _ua[:120])
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('landing.html')
