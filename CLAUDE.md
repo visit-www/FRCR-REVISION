@@ -4,7 +4,7 @@
 > This file is read at the start of every conversation.
 
 ## Project Context
-- Flask app deployed on Vercel (Pro plan), Neon PostgreSQL
+- Flask app deployed on Vercel (Hobby plan), Neon PostgreSQL
 - All AI calls via `requests.post` to Anthropic Messages API (not SDK)
 - See memory files for full architecture, feature inventory, and active plans
 
@@ -29,9 +29,11 @@
 **Note:** Every document save in the admin Docs Hub auto-creates a sync entry — no manual action needed from the admin side.
 
 ## Deployment Rules
-- Vercel auto-deploys on `git push` to main — NEVER run `vercel --prod` manually
+- Vercel Hobby plan (4h Fluid Active CPU/month) — auto-deploys on `git push` to main — NEVER run `vercel --prod` manually
 - Only commit production-necessary files — never commit utility scripts, data files, or test results from scripts/
 - Always syntax-check Python files before committing: `python3 -c "import py_compile; py_compile.compile('file.py', doraise=True)"`
+- **Sentry disabled** during development — re-add `SENTRY_DSN` env var via `vercel env add` when launching
+- **Bot blocking**: 15 aggressive crawlers + SentryUptimeBot blocked in `before_request` hook — edit `_BLOCKED_BOTS` in `app.py` to modify
 
 ## Key Documentation (Admin Frontend)
 - `/api/admin/docs-hub` — Documentation hub (editable docs stored in DB)
