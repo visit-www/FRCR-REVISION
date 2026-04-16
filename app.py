@@ -63,7 +63,7 @@ if _sentry_dsn:
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[FlaskIntegration(), SqlalchemyIntegration()],
-        traces_sample_rate=float(os.getenv('SENTRY_TRACES_RATE', '0.1')),
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_RATE', '0')),
         environment=os.getenv('VERCEL_ENV', 'development'),
         before_send=_sentry_before_send,
         send_default_pii=False,
