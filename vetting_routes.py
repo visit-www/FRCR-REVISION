@@ -214,7 +214,9 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     top = [p for p, _s in scored[:10]]
 
     # Fallback: if text matching found nothing, search by modality + body_section
-    # This catches cases like "CT HEAD" where no text matches "Brain" title
+    # then pick the BEST single match using title simplicity + clinical relevance.
+    # e.g. "CT HEAD non-contrast" → body_section=Brain → finds "Brain" (plain routine)
+    #       not "Brain tumours - primary" or "Brain — Dementia Assessment"
     if not top and norm_modality and body_section:
         _BODY_SECTION_MAP = {
             'brain': ['Brain', 'Head and Neck'],
@@ -238,25 +240,50 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
             fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == True)
         elif is_paediatric is False:
             fallback_q = fallback_q.filter(ImagingProtocol.is_paediatric == False)
-        fallback_results = fallback_q.limit(10).all()
-        # Score fallback by clinical token overlap + title relevance
+        fallback_results = fallback_q.all()
+
+        # Score: prefer short generic titles (routine protocols) unless clinical
+        # tokens specifically match a specialised protocol
         fb_scored = []
+        query_lower = cleaned_query.lower()
         for p in fallback_results:
-            s = 2  # base score for body_section match
+            s = 0
             title_lower = (p.title or '').lower()
             keywords_lower = (p.keywords or '').lower()
             indication_lower = (p.indication_json or '').lower()
+
+            # Clinical token match = strong signal for specialised protocol
             for tok in clinical_tokens:
                 tl = tok.lower()
-                if tl in keywords_lower or tl in indication_lower:
+                if tl in title_lower:
+                    s += 8
+                elif tl in keywords_lower or tl in indication_lower:
                     s += 5
-                elif tl in title_lower:
+
+            # Penalise specialised protocols when no clinical tokens matched them
+            # (shorter title = more generic = better default match)
+            if s == 0:
+                title_word_count = len((p.title or '').split())
+                # Single-word titles like "Brain" = most generic → highest bonus
+                s += max(0, 6 - title_word_count)
+
+            # Bonus if query words appear in title/keywords
+            for w in words:
+                wl = w.lower()
+                if wl in title_lower:
                     s += 3
+                elif wl in keywords_lower:
+                    s += 1
+
             if p.is_emergency:
                 s += 1
             fb_scored.append((p, s))
+
         fb_scored.sort(key=lambda x: -x[1])
-        top = [p for p, _s in fb_scored[:10]]
+        # Return only the best match (plus any close runners-up within 3 points)
+        if fb_scored:
+            best_score = fb_scored[0][1]
+            top = [p for p, s in fb_scored if s >= best_score - 3][:3]
 
     return top
 
