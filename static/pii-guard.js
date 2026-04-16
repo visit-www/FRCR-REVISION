@@ -280,7 +280,15 @@
         {
             type: 'Institution Name', tier: TIER_MEDIUM,
             regex: /\b(?:St\.?\s+)?[A-Z][a-zA-Z'-]+(?:'s)?\s+(?:Hospital|Infirmary|Medical\s+Cent(?:re|er)|Health\s+Cent(?:re|er)|Clinic|Surgery|General\s+Hospital|Royal\s+(?:Hospital|Infirmary)|University\s+Hospital|NHS\s+Trust|Foundation\s+Trust)\b/g,
-            description: 'Hospital or institution name detected'
+            description: 'Hospital or institution name detected',
+            validate: function(matchText, fullText, matchIndex) {
+                // Suppress if institution name appears in a classification/scoring context
+                var start = Math.max(0, matchIndex - 80);
+                var end = Math.min(fullText.length, matchIndex + matchText.length + 80);
+                var ctx = fullText.substring(start, end).toLowerCase();
+                if (/classif|grading|staging|score|criteria|system|scale|protocol|typolog/.test(ctx)) return false;
+                return true;
+            }
         },
 
         // --- LOW tier: soft-warn ---
@@ -344,8 +352,8 @@
                     tier: pattern.tier,
                     description: pattern.description
                 };
-                // Run optional validator (e.g. NHS checksum)
-                if (pattern.validate && !pattern.validate(match[0])) continue;
+                // Run optional validator (e.g. NHS checksum, context-aware institution check)
+                if (pattern.validate && !pattern.validate(match[0], text, match.index)) continue;
                 matches.push(m);
             }
         }

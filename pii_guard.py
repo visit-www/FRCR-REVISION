@@ -246,10 +246,21 @@ def check_pii(text):
     if not text or not isinstance(text, str) or len(text) < 5:
         return []
 
+    _CLASSIFICATION_CONTEXT_RE = re.compile(
+        r'classif|grading|staging|score|criteria|system|scale|protocol|typolog',
+        re.IGNORECASE,
+    )
     matches = []
     for pattern_type, regex in PII_PATTERNS:
         for match in regex.finditer(text):
             if not _is_medical_term(match.group()):
+                # Suppress Institution Name when classification context is nearby
+                if pattern_type == 'Institution Name':
+                    start = max(0, match.start() - 80)
+                    end = min(len(text), match.end() + 80)
+                    ctx = text[start:end]
+                    if _CLASSIFICATION_CONTEXT_RE.search(ctx):
+                        continue
                 matches.append((pattern_type, match.group()))
 
     # Filter out name matches containing imaging modality terms
