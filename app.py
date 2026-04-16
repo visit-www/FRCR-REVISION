@@ -2361,6 +2361,7 @@ _BLOCKED_BOTS = (
     'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot', 'BLEXBot',
     'PetalBot', 'YandexBot', 'Bytespider', 'GPTBot', 'ClaudeBot',
     'CCBot', 'DataForSeoBot', 'Sogou', 'Baiduspider',
+    'SentryUptimeBot',
 )
 
 @app.before_request
