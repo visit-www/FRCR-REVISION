@@ -620,6 +620,24 @@
             }
         }
         
+        // Global fetch interceptor — redirect to login on session expiry
+        (function() {
+            var _origFetch = window.fetch;
+            window.fetch = function() {
+                return _origFetch.apply(this, arguments).then(function(response) {
+                    if (response.status === 401) {
+                        var ct = response.headers.get('content-type') || '';
+                        if (ct.indexOf('application/json') >= 0) {
+                            // Session expired — redirect to login
+                            window.location.href = '/auth/login';
+                            return new Response(JSON.stringify({error: 'Session expired'}), {status: 401});
+                        }
+                    }
+                    return response;
+                });
+            };
+        })();
+
         function manageSubscription(event) {
             event.preventDefault();
             fetch('/stripe/create-portal-session', {
