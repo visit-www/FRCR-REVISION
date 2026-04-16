@@ -2353,8 +2353,22 @@ def add_security_headers(response):
 
 
 # ============================================================================
-# BEFORE-REQUEST HOOKS — 2FA enforcement + session fingerprint validation
+# BEFORE-REQUEST HOOKS — bot blocking, 2FA enforcement, session fingerprint
 # ============================================================================
+
+# Known aggressive bots that burn CPU — block before any processing
+_BLOCKED_BOTS = (
+    'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot', 'BLEXBot',
+    'PetalBot', 'YandexBot', 'Bytespider', 'GPTBot', 'ClaudeBot',
+    'CCBot', 'DataForSeoBot', 'Sogou', 'Baiduspider',
+)
+
+@app.before_request
+def block_aggressive_bots():
+    """Return 403 for known aggressive bots — saves CPU on every blocked request."""
+    ua = request.headers.get('User-Agent', '')
+    if any(bot in ua for bot in _BLOCKED_BOTS):
+        return 'Blocked', 403
 
 @app.before_request
 def enforce_admin_2fa():
@@ -8809,6 +8823,7 @@ def health_check():
 def robots_txt():
     """Serve robots.txt to prevent search engines crawling admin/API routes."""
     content = """User-agent: *
+Crawl-delay: 10
 Allow: /
 Allow: /case-library
 Allow: /case-library/
@@ -8848,9 +8863,42 @@ Disallow: /notion/
 Disallow: /smart-reporter
 
 User-agent: AhrefsBot
-Crawl-delay: 10
+Disallow: /
 
 User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
+
+User-agent: YandexBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Googlebot
+Crawl-delay: 10
+
+User-agent: Bingbot
 Crawl-delay: 10
 
 Sitemap: https://www.radinsights.xyz/sitemap.xml
