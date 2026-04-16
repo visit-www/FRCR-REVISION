@@ -104,13 +104,20 @@
                 <div class="card-body">
                     <h6 class="mb-2"><i class="fas fa-stethoscope me-2" style="color: #5E899E;"></i>Analysis Result <span id="vettingCostBadge"></span></h6>
                     <div class="row">
-                        <div class="col-sm-6">
+                        <div class="col-sm-4">
                             <small class="text-muted d-block">Study Identified</small>
                             <strong id="studyNameDisplay" class="d-block mb-2"></strong>
                         </div>
-                        <div class="col-sm-6">
+                        <div class="col-sm-4">
                             <small class="text-muted d-block">Modality</small>
                             <strong id="modalityDisplay" class="d-block mb-2"></strong>
+                        </div>
+                        <div class="col-sm-4">
+                            <small class="text-muted d-block">Contrast</small>
+                            <div class="btn-group btn-group-sm d-block mb-2" id="contrastToggle" role="group">
+                                <button type="button" class="btn btn-outline-secondary active" data-contrast="none" onclick="setContrastOverride('none')">Non-contrast</button>
+                                <button type="button" class="btn btn-outline-secondary" data-contrast="iv" onclick="setContrastOverride('iv')">IV Contrast</button>
+                            </div>
                         </div>
                     </div>
                     <small class="text-muted d-block">Cleaned Clinical Text</small>
@@ -619,6 +626,18 @@ function populateScene2() {
     // Display analysis results
     document.getElementById('studyNameDisplay').textContent = a.study_name_full || a.study_type;
     document.getElementById('modalityDisplay').textContent = a.modality;
+
+    // Set contrast toggle based on AI suggestion (from matched protocol or study type)
+    var _aiContrast = 'none';
+    var _studyLower = ((a.study_name_full || a.study_type) + ' ' + (a.study_type || '')).toLowerCase();
+    if (/\bwith\s+contrast\b|\biv\s+contrast\b|\bcect\b|\bpost.contrast\b|\bstaging\b|\btriphasic\b/.test(_studyLower)) {
+        _aiContrast = 'iv';
+    }
+    // Also check if baseline_checks suggest contrast (eGFR/allergy relevant = likely contrast)
+    if (a.baseline_checks && a.baseline_checks.requires_egfr && a.baseline_checks.allergy_check_required) {
+        _aiContrast = 'iv';
+    }
+    setContrastOverride(_aiContrast);
     // Render cleaned text — if AI returned a single blob, split on sentence boundaries
     // for readability. Newlines already present are preserved by white-space: pre-wrap.
     let cleanedText = a.cleaned_clinical_text || '';
@@ -735,6 +754,34 @@ function populateScene2() {
 
         // Algorithm matches
         populateAlgorithmMatches();
+    }
+}
+
+// ── Contrast override toggle ──
+var _contrastOverride = 'none';  // 'none' or 'iv'
+
+function setContrastOverride(val) {
+    _contrastOverride = val;
+    var btns = document.querySelectorAll('#contrastToggle [data-contrast]');
+    btns.forEach(function(b) {
+        if (b.dataset.contrast === val) {
+            b.classList.add('active', 'btn-brand-neutral');
+            b.classList.remove('btn-outline-secondary');
+        } else {
+            b.classList.remove('active', 'btn-brand-neutral');
+            b.classList.add('btn-outline-secondary');
+        }
+    });
+
+    // Show/hide eGFR and allergy rows based on contrast selection
+    var egfrRow = document.getElementById('egfrRow');
+    var allergyRow = document.getElementById('allergyRow');
+    if (val === 'none') {
+        if (egfrRow) egfrRow.classList.add('d-none');
+        if (allergyRow) allergyRow.classList.add('d-none');
+    } else {
+        if (egfrRow) egfrRow.classList.remove('d-none');
+        if (allergyRow) allergyRow.classList.remove('d-none');
     }
 }
 
@@ -1202,6 +1249,7 @@ async function continueToProtocol() {
             study_type: _analysisResult.study_type,
             modality: _analysisResult.modality,
             clinical_context: _buildEnrichedClinicalText(),
+            contrast: _contrastOverride,
         };
         if (_selectedAlgorithmContext) {
             payload.algorithm_context = _selectedAlgorithmContext;

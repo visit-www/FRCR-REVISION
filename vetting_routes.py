@@ -436,6 +436,13 @@ def vetting_generate_protocol():
     modality = (data.get('modality') or '').strip()
     clinical_context = (data.get('clinical_context') or '').strip() or None
     algorithm_context = (data.get('algorithm_context') or '').strip() or None
+    contrast = (data.get('contrast') or 'none').strip()
+
+    # Inject contrast override into clinical context so AI generates appropriate protocol
+    if contrast == 'none':
+        clinical_context = (clinical_context or '') + '\nCONTRAST: Non-contrast study (no IV contrast).'
+    elif contrast == 'iv':
+        clinical_context = (clinical_context or '') + '\nCONTRAST: IV contrast study.'
 
     if not study_type:
         return jsonify({'error': 'Study type is required.'}), 400
