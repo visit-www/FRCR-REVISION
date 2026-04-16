@@ -407,6 +407,7 @@ def vetting_generate_protocol():
                      input_summary=f"{study_type} ({modality})", status='error', error_message=str(e))
         return jsonify({'error': str(e)}), 500
 
+    from ai_cost_tracker import get_last_usage
     _usage2 = get_last_usage()
     log_ai_usage(current_user.id, 'vetting_protocol', provider='anthropic',
                  model=result.get('model', ''),
