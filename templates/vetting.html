@@ -297,6 +297,9 @@
                         <div class="card-header d-flex align-items-center justify-content-between" style="background: #f0f7fa;">
                             <strong><i class="fas fa-file-medical-alt me-2" style="color: #5E899E;"></i>Clinical Details</strong>
                             <div>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="toggleClinicalEdit()" title="Edit" id="clinicalEditBtn">
+                                    <i class="fas fa-pen"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="copySection('clinicalDetailsOutput')" title="Copy">
                                     <i class="fas fa-copy"></i>
                                 </button>
@@ -304,6 +307,11 @@
                         </div>
                         <div class="card-body">
                             <div id="clinicalDetailsOutput" class="vetting-output-section"></div>
+                            <textarea id="clinicalDetailsEdit" class="form-control form-control-sm d-none" rows="5" style="font-size: 0.875rem;"></textarea>
+                            <div id="clinicalEditActions" class="d-none mt-2 text-end">
+                                <button class="btn btn-sm btn-outline-secondary me-1" onclick="cancelClinicalEdit()">Cancel</button>
+                                <button class="btn btn-sm btn-brand-neutral" onclick="saveClinicalEdit()">Save</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1356,6 +1364,36 @@ function renderScene3(protocol) {
     }
 
     showScene(3);
+}
+
+// ── Edit Clinical Details (in Scene 3) ──
+function toggleClinicalEdit() {
+    const display = document.getElementById('clinicalDetailsOutput');
+    const edit = document.getElementById('clinicalDetailsEdit');
+    const actions = document.getElementById('clinicalEditActions');
+    const btn = document.getElementById('clinicalEditBtn');
+    // Extract plain text from the displayed HTML
+    edit.value = display.innerText || display.textContent;
+    display.classList.add('d-none');
+    edit.classList.remove('d-none');
+    actions.classList.remove('d-none');
+    btn.classList.add('d-none');
+    edit.focus();
+}
+
+function cancelClinicalEdit() {
+    document.getElementById('clinicalDetailsOutput').classList.remove('d-none');
+    document.getElementById('clinicalDetailsEdit').classList.add('d-none');
+    document.getElementById('clinicalEditActions').classList.add('d-none');
+    document.getElementById('clinicalEditBtn').classList.remove('d-none');
+}
+
+function saveClinicalEdit() {
+    const edit = document.getElementById('clinicalDetailsEdit');
+    const display = document.getElementById('clinicalDetailsOutput');
+    // Replace displayed content with edited text (preserve white-space: pre-wrap)
+    display.innerHTML = '<div class="mb-2" style="white-space: pre-wrap;">' + _escapeHtml(edit.value) + '</div>';
+    cancelClinicalEdit();
 }
 
 // ── Change Protocol (in Scene 3) ──
