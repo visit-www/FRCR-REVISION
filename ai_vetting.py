@@ -375,13 +375,15 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
         "coverage, and technique. Use this to pick the most clinically appropriate protocol "
         "for the referral scenario.\n\n"
         "GUIDELINES FOR ai_flags:\n"
-        "- Use your clinical judgement. If the referral is complete and provides all "
-        "necessary information, return an EMPTY array []. Do NOT invent flags.\n"
-        "- Only flag genuinely important missing clinical information that would change "
-        "the imaging study, protocol, or safety checks.\n"
-        "- Do NOT flag generic items like 'clinical history' if already provided.\n"
+        "- MAXIMUM 3 flags. Consolidate related concerns into one flag.\n"
+        "- If the referral is complete, return an EMPTY array []. Do NOT invent flags.\n"
+        "- Only flag missing information that would CHANGE the study, protocol, or coverage.\n"
+        "- Do NOT flag safety items (eGFR, pregnancy, allergy, contrast reactions, metformin) "
+        "— these are handled separately in baseline_checks.\n"
+        "- Do NOT flag generic clinical completeness (e.g. 'minimal clinical detail', "
+        "'no MDT documented', 'insufficient detail for IR(ME)R'). The referral is what it is.\n"
+        "- Do NOT flag items already answered by the referral text.\n"
         "- Do NOT flag administrative items (e.g. patient weight unless paediatric contrast-relevant).\n"
-        "- Do NOT flag items that are already answered by the referral text.\n"
     )
 
     text, model_used, tokens = call_claude(

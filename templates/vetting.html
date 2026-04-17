@@ -963,12 +963,7 @@ function selectProtocol(index) {
         document.getElementById('egfrThresholdLabel').textContent = `(threshold: ${checks.egfr_threshold || 30})`;
     }
 
-    // Auto-proceed if all safety checks are filled
-    if (_allSafetyChecksFilled()) {
-        continueToProtocol();
-    } else {
-        _highlightUnfilledSafety();
-    }
+    _highlightUnfilledSafety();
 }
 
 function _allSafetyChecksFilled() {
@@ -1068,10 +1063,6 @@ function handlePregnancyChange() {
         delete _safetyResponses.pregnancy;
     }
     updateQuickCleanOutput();
-    // Re-check whether all safety fields are filled so we can auto-advance
-    if (_allSafetyChecksFilled()) {
-        continueToProtocol();
-    }
 }
 
 // ── Flag interaction ──
