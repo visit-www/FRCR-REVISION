@@ -153,7 +153,17 @@
                                 </label>
                                 <button type="button" class="btn btn-sm btn-outline-secondary vetting-safety-skip" onclick="skipSafetyCheck('egfr')">N/A</button>
                             </div>
-                            <input type="number" id="egfrInput" class="form-control form-control-sm mb-3" placeholder="Enter eGFR value" min="0" max="200">
+                            <input type="number" id="egfrInput" class="form-control form-control-sm" placeholder="Enter eGFR value" min="0" max="200" oninput="handleEgfrChange()">
+                            <!-- Low eGFR warning + override rationale -->
+                            <div id="egfrWarningBox" class="d-none mt-2 mb-2">
+                                <div class="alert alert-danger py-2 px-3 small mb-2">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    <strong>Low eGFR</strong> — below threshold for IV contrast. Document rationale if proceeding.
+                                </div>
+                                <textarea id="egfrRationale" class="form-control form-control-sm"
+                                          rows="2" placeholder="Rationale for proceeding (e.g. urgent staging, discussed with renal team, hydration protocol)"
+                                          oninput="updateQuickCleanOutput()"></textarea>
+                            </div>
                         </div>
 
                         <!-- Pregnancy row -->
@@ -1061,6 +1071,25 @@ function skipSafetyCheck(checkName) {
     updateQuickCleanOutput();
 }
 
+// ── eGFR input handler — show warning when below threshold ──
+function handleEgfrChange() {
+    const val = parseFloat(document.getElementById('egfrInput').value);
+    const checks = _getValidationConfig();
+    const threshold = (checks && checks.egfr_threshold) || 30;
+    const box = document.getElementById('egfrWarningBox');
+    if (!box) return;
+    if (!isNaN(val) && val < threshold) {
+        box.classList.remove('d-none');
+    } else {
+        box.classList.add('d-none');
+    }
+    // Clear any N/A skip state if user types a value
+    if (!isNaN(val) && _safetyResponses.egfr === 'N/A') {
+        delete _safetyResponses.egfr;
+    }
+    updateQuickCleanOutput();
+}
+
 // ── Pregnancy selection handler — show/hide rationale box, "do not insert unless confirmed" ──
 function handlePregnancyChange() {
     const sel = document.getElementById('pregnancyInput');
@@ -1169,15 +1198,23 @@ function copyQuickClean() {
 }
 
 function _collectSafetyResponses() {
-    const checks = _getValidationConfig();
     const responses = { ..._safetyResponses };
 
-    if (checks.requires_egfr && !responses.egfr) {
-        const val = document.getElementById('egfrInput').value.trim();
+    // Always read from visible inputs — don't gate on validation config
+    // (library protocols may lack validation_json but user still filled in checks)
+    const egfrEl = document.getElementById('egfrInput');
+    if (egfrEl && !egfrEl.closest('.d-none') && !responses.egfr) {
+        const val = egfrEl.value.trim();
         responses.egfr = val ? parseFloat(val) : null;
+        // Capture low-eGFR rationale if provided
+        const egfrRatTa = document.getElementById('egfrRationale');
+        if (egfrRatTa && responses.egfr !== null) {
+            responses.egfr_rationale = (egfrRatTa.value || '').trim() || null;
+        }
     }
-    if (checks.pregnancy_check_required && responses.pregnancy !== 'N/A') {
-        responses.pregnancy = document.getElementById('pregnancyInput').value || null;
+    const pregEl = document.getElementById('pregnancyInput');
+    if (pregEl && !pregEl.closest('.d-none') && responses.pregnancy !== 'N/A') {
+        responses.pregnancy = pregEl.value || null;
         if (responses.pregnancy === 'pregnant') {
             const ta = document.getElementById('pregnancyRationale');
             responses.pregnancy_rationale = ta ? (ta.value || '').trim() : '';
@@ -1185,8 +1222,9 @@ function _collectSafetyResponses() {
             responses.pregnancy_rationale = null;
         }
     }
-    if (checks.allergy_check_required && !responses.allergy) {
-        responses.allergy = document.getElementById('allergyInput').value || null;
+    const allergyEl = document.getElementById('allergyInput');
+    if (allergyEl && !allergyEl.closest('.d-none') && !responses.allergy) {
+        responses.allergy = allergyEl.value || null;
     }
     return responses;
 }
@@ -1334,7 +1372,16 @@ function renderScene3(protocol) {
     let clinicalHtml = '<div class="mb-2" style="white-space: pre-wrap;">' + _clinicalEscaped + '</div>';
     const sr = _collectSafetyResponses();
     const safetyParts = [];
-    if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
+    if (sr.egfr !== undefined && sr.egfr !== null) {
+        const checks = _getValidationConfig();
+        const threshold = (checks && checks.egfr_threshold) || 30;
+        let egfrStr = `eGFR: ${sr.egfr}`;
+        if (sr.egfr < threshold) {
+            egfrStr += ` ⚠ BELOW THRESHOLD (${threshold})`;
+            if (sr.egfr_rationale) egfrStr += ` — ${sr.egfr_rationale}`;
+        }
+        safetyParts.push(egfrStr);
+    }
     const pregStrFinal = _formatPregnancyForOutput(sr);
     if (pregStrFinal) safetyParts.push(`Pregnancy: ${pregStrFinal}`);
     if (sr.allergy && sr.allergy !== 'N/A') safetyParts.push(`Allergy: ${_ALLERGY_LABELS[sr.allergy] || sr.allergy}`);
