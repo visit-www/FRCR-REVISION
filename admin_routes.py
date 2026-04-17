@@ -473,6 +473,43 @@ def toggle_user_active(user_id):
 
 
 # ============================================================================
+# RESET USER AI QUOTA
+# ============================================================================
+
+@admin_bp.route('/users/<int:user_id>/reset-quota', methods=['POST'])
+@require_admin
+def reset_user_quota(user_id):
+    """Reset a user's monthly AI usage counters (SR + RadIQ)."""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        old_sr = user.sr_usage_month or 0
+        old_radiq = user.radiq_usage_month or 0
+        user.sr_usage_month = 0
+        user.radiq_usage_month = 0
+        db.session.commit()
+
+        logger.info("Admin %s reset quota for %s (sr=%d→0, radiq=%d→0)",
+                     current_user.email, user.email, old_sr, old_radiq)
+        log_admin_action(current_user.id, 'reset_quota', 'user', user.id,
+                         {'old_sr': old_sr, 'old_radiq': old_radiq,
+                          'target_email': user.email},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
+        return jsonify({
+            'message': f'Quota reset for {user.email}',
+            'old_sr': old_sr, 'old_radiq': old_radiq,
+            'new_sr': 0, 'new_radiq': 0,
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error resetting quota: %s", e)
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
 # USER DELETION ENDPOINT
 # ============================================================================
 
