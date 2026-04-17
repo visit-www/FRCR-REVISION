@@ -25,7 +25,7 @@ import os
 import re
 from datetime import datetime
 
-_SYNC_VERSION = 'master-v2'  # bumped: fix body_section mistagging (tumour/haemorrhage in Brain)
+_SYNC_VERSION = 'master-v3'  # bumped: re-sync contrast field fix (v2 fast-path skipped it)
 _SENTINEL = f'<!-- migrated:{_SYNC_VERSION} -->'
 # Include legacy sentinels used by older migration blocks (rebrand, scrub)
 # so those blocks leave sync-managed rows alone.
