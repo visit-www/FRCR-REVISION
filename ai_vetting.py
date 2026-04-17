@@ -276,8 +276,8 @@ PROTOCOL_SYSTEM_PROMPT = (
     "Include any medications to be given (e.g. Buscopan in gynaecological imaging) and their "
     "required safety checks.\n"
     "The detailed protocol should be in the format a radiographer would want as imaging protocol text.\n"
-    "- Special notes: any important clinical considerations, e.g. timing, patient prep, "
-    "contrast precautions. Only include if genuinely relevant.\n"
+    "- Special notes: BRIEF (3 sentences max) — only patient prep, timing, or contrast precautions. "
+    "Do NOT restate the clinical indication, algorithm pathway, or referral details.\n"
     "- Validation config: specify which safety checks the protocol requires. "
     "If any safety checks are needed, include them in the validation config.\n"
     "- UK NHS context. British English.\n"
@@ -312,7 +312,14 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
     if not referral_text or not referral_text.strip():
         raise VettingAIError("Referral text cannot be empty.")
 
-    hint_line = f"\nModality hint from referrer: {modality_hint}" if modality_hint else ""
+    hint_line = ""
+    if modality_hint:
+        hint_line = (
+            f"\nModality SELECTED by referrer: {modality_hint}. "
+            "You MUST use this modality for study_type and matched_protocol_slug. "
+            "If a different modality would be more appropriate, note this in ai_flags "
+            "but still return the selected modality."
+        )
 
     # Build protocol catalogue line if titles provided
     protocol_line = ""
@@ -442,7 +449,8 @@ def generate_vetting_protocol(study_type, modality, clinical_context=None, algor
         '  "detailed_protocol_html": "<table class=\'table table-sm vetting-protocol-table\'>'
         '<thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>...</tbody></table>'
         '<p class=\'text-muted small mt-2\'><em>Verify parameters for your department.</em></p>",\n'
-        '  "special_notes": "Any important clinical notes (patient prep, timing, contrast precautions). '
+        '  "special_notes": "Brief clinical notes ONLY — patient prep, timing, contrast precautions. '
+        '3 sentences max. Do NOT repeat algorithm pathway text or restate the clinical indication. '
         'null if none relevant.",\n'
         '  "validation": {\n'
         '    "requires_egfr": true/false,\n'
