@@ -233,9 +233,14 @@
                         <div id="algorithmMatchList"></div>
                     </div>
 
-                    <button id="continueBtn" class="btn btn-brand-neutral w-100 mt-3" onclick="continueToProtocol()">
-                        <i class="fas fa-arrow-right me-2"></i>Continue with Protocol
-                    </button>
+                    <div id="protocolActionBtns" class="mt-3">
+                        <button id="continueBtn" class="btn btn-brand-neutral w-100 mb-2" onclick="continueToProtocol()">
+                            <i class="fas fa-arrow-right me-2"></i>Continue with Selected Protocol
+                        </button>
+                        <button id="generateBtn" class="btn btn-outline-secondary w-100" onclick="generateNewProtocol()">
+                            <i class="fas fa-robot me-2"></i>No suitable match? Generate via RadInsights Intelligence
+                        </button>
+                    </div>
 
                     <!-- Spinner -->
                     <div id="protocolSpinner" class="text-center mt-3 d-none">
@@ -816,12 +821,25 @@ function populateProtocolMatches() {
     const noMatch = document.getElementById('noProtocolMatch');
     list.innerHTML = '';
 
+    const generateBtn = document.getElementById('generateBtn');
+    const continueBtn = document.getElementById('continueBtn');
+
     if (_matchedProtocols.length === 0) {
         noMatch.classList.remove('d-none');
         _selectedProtocol = null;
+        // No matches — hide both, continue button text changes to generate
+        if (generateBtn) generateBtn.classList.add('d-none');
+        if (continueBtn) {
+            continueBtn.innerHTML = '<i class="fas fa-robot me-2"></i>Generate Protocol via RadInsights Intelligence';
+        }
         return;
     }
     noMatch.classList.add('d-none');
+    // Matches exist — show both buttons
+    if (generateBtn) generateBtn.classList.remove('d-none');
+    if (continueBtn) {
+        continueBtn.innerHTML = '<i class="fas fa-arrow-right me-2"></i>Continue with Selected Protocol';
+    }
 
     _matchedProtocols.forEach((p, i) => {
         const div = document.createElement('div');
@@ -853,19 +871,6 @@ function populateProtocolMatches() {
         div.addEventListener('click', () => selectProtocol(i));
         list.appendChild(div);
     });
-
-    // "Generate new protocol" option at the end
-    const genDiv = document.createElement('div');
-    genDiv.className = 'protocol-match-option protocol-generate text-center py-2';
-    genDiv.innerHTML = '<small class="text-muted"><i class="fas fa-robot me-1"></i>None of these fit? <strong>Generate a new protocol</strong></small>';
-    genDiv.addEventListener('click', () => {
-        _selectedProtocol = null;
-        _protocolSource = 'ai';
-        // Deselect all protocol options
-        list.querySelectorAll('.protocol-match-option').forEach(el => el.classList.remove('selected'));
-        genDiv.classList.add('selected');
-    });
-    list.appendChild(genDiv);
 
     // Auto-select first match
     _selectedProtocol = _matchedProtocols[0];
@@ -1268,6 +1273,13 @@ function _buildEnrichedClinicalText() {
         text = text.replace(/\.\s*$/, '') + '.\nAdditional information: ' + additions.join('. ') + '.';
     }
     return text;
+}
+
+// ── Generate new protocol (override library matches) ──
+function generateNewProtocol() {
+    _selectedProtocol = null;
+    _protocolSource = 'ai';
+    continueToProtocol();
 }
 
 // ── Scene 2 → Scene 3 transition ──
