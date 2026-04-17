@@ -1206,7 +1206,7 @@ function _buildEnrichedClinicalText() {
         }
     });
     if (additions.length) {
-        text = text.replace(/\.\s*$/, '') + '. Additional information: ' + additions.join('. ') + '.';
+        text = text.replace(/\.\s*$/, '') + '.\nAdditional information: ' + additions.join('. ') + '.';
     }
     return text;
 }
@@ -1320,7 +1320,10 @@ function renderScene3(protocol) {
     }
 
     // Build clinical details (enriched text + safety responses + confirmed findings)
-    let clinicalHtml = '<div class="mb-2">' + _escapeHtml(_buildEnrichedClinicalText()) + '</div>';
+    let _clinicalEscaped = _escapeHtml(_buildEnrichedClinicalText());
+    // Style "Additional information:" in italics
+    _clinicalEscaped = _clinicalEscaped.replace(/Additional information:/g, '<em>Additional information:</em>');
+    let clinicalHtml = '<div class="mb-2" style="white-space: pre-wrap;">' + _clinicalEscaped + '</div>';
     const sr = _collectSafetyResponses();
     const safetyParts = [];
     if (sr.egfr !== undefined && sr.egfr !== null) safetyParts.push(`eGFR: ${sr.egfr}`);
