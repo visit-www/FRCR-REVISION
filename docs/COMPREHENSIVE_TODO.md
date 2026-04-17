@@ -7,11 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **68** / 108 |
-| IN PROGRESS | 1 / 108 |
+| DONE | **69** / 108 |
 | WONTFIX | 2 / 108 |
 | TODO | **37** / 108 |
-| **Completion** | **64%** |
+| **Completion** | **66%** |
 
 ---
 
@@ -179,7 +178,7 @@
 | 72 | Protocol nav tab not active | TODO | Verify why the Protocols nav tab is not highlighted as active when working with protocols. Likely same Jinja2 `{% block %}` inside `{% if %}` issue fixed for anatomy snippets (commit e3d7973). Check protocol templates for correct `tool_active_protocols` block definition. |
 | 76 | RadInsight Intelligence — User Reporting Preferences | TODO | Track user editing patterns (placeholder rejections, correction rejections, fill-in defaults) and inject as preference rules into Smart Reporter prompts. JSONB column on User model, ~200 token preference section, 3-occurrence activation threshold. **Plan:** `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md`. **Note:** Low priority — future suggestion only. |
 | 77 | Vetting Tool — Core Workflow (Phases 1-3) | DONE | Fully deployed: 3 AI functions (analysis, protocol gen, shorthand extraction), 23 API routes, 4 templates, 3 DB models (ImagingProtocol, VettingSession, VettingAlgorithm), 50 protocols + 20 algorithms imported, Quick Clean mode, speech-to-text, algorithm-guided protocol generation. **Plan:** `docs/plans/VETTING_TOOL_PLAN.md` |
-| 104 | Vetting Tool — Apr 17, 2026 overhaul testing | IN PROGRESS | **Test plan:** `docs/tests/vetting_module_test.md`. Sections A-C tested, 14 bugs found and fixed during session. Resume from Section D. Key fixes: master-v4 re-sync, AI flags prompt overhaul (max 3, decision-gap focus), modality enforcement, rationale card, eGFR warning, clinical details edit, "Generate via RadIQ" button, safety check output fix. |
+| 104 | Vetting Tool — Apr 17, 2026 overhaul testing | DONE | **Test plan:** `docs/tests/vetting_module_test.md`. All sections A-H tested: 28/31 PASS, 1 FAIL (fixed), 1 SKIPPED, 1 NOT TESTED. 15 bugs found and fixed. Key fixes: master-v4 re-sync, AI flags prompt overhaul (max 3, decision-gap focus), modality enforcement, rationale card, eGFR warning, clinical details edit, "Generate via RadIQ" button, safety check output fix, abbreviation search expansion, ARI protocol field fallback. |
 | 78 | Vetting Tool — Session History Browser | TODO | Users cannot review past vetting sessions. Add `/vetting/history` route, list API, browse template. Data already saved in VettingSession model. |
 | 79 | Vetting Tool — TinyMCE Inline Editing on Output | TODO | Output sections (clinical details, shorthand, detailed protocol) are read-only with copy buttons. Add inline editing so users can tweak before copying. |
 | 80 | Vetting Tool — Publish Draft Protocols & Algorithms | TODO | 49 admin protocols in draft, 20 algorithms in draft. Need admin review, verification, and publishing to make them available in the protocol picker during vetting. |
