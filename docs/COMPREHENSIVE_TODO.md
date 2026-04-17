@@ -1,15 +1,16 @@
 # RadInsights — Comprehensive TODO & Roadmap
 
-**Generated:** 2026-03-13 | **Last updated:** 2026-04-08
+**Generated:** 2026-03-13 | **Last updated:** 2026-04-17
 **Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit, Vetting Gaps Closeout Audit (Apr 2026)
 
 ### Progress Summary
 
 | Status | Count |
 |--------|-------|
-| DONE | **68** / 107 |
-| WONTFIX | 2 / 107 |
-| TODO | **37** / 107 |
+| DONE | **68** / 108 |
+| IN PROGRESS | 1 / 108 |
+| WONTFIX | 2 / 108 |
+| TODO | **37** / 108 |
 | **Completion** | **64%** |
 
 ---
@@ -178,7 +179,7 @@
 | 72 | Protocol nav tab not active | TODO | Verify why the Protocols nav tab is not highlighted as active when working with protocols. Likely same Jinja2 `{% block %}` inside `{% if %}` issue fixed for anatomy snippets (commit e3d7973). Check protocol templates for correct `tool_active_protocols` block definition. |
 | 76 | RadInsight Intelligence — User Reporting Preferences | TODO | Track user editing patterns (placeholder rejections, correction rejections, fill-in defaults) and inject as preference rules into Smart Reporter prompts. JSONB column on User model, ~200 token preference section, 3-occurrence activation threshold. **Plan:** `docs/plans/RADINSIGHT_INTELLIGENCE_PLAN.md`. **Note:** Low priority — future suggestion only. |
 | 77 | Vetting Tool — Core Workflow (Phases 1-3) | DONE | Fully deployed: 3 AI functions (analysis, protocol gen, shorthand extraction), 23 API routes, 4 templates, 3 DB models (ImagingProtocol, VettingSession, VettingAlgorithm), 50 protocols + 20 algorithms imported, Quick Clean mode, speech-to-text, algorithm-guided protocol generation. **Plan:** `docs/plans/VETTING_TOOL_PLAN.md` |
-| 104 | Vetting Tool — Apr 17, 2026 overhaul testing | TODO | **Test plan:** `docs/tests/vetting_module_test.md`. AI-powered protocol matching (catalogue in prompt, slug matching), contrast toggle, ai_flags unconstrained, metformin check, 124 CT protocol Contrast fields fixed, 17 body_section mismatches fixed, protocol search stop-word fix. Run all sections A-H. |
+| 104 | Vetting Tool — Apr 17, 2026 overhaul testing | IN PROGRESS | **Test plan:** `docs/tests/vetting_module_test.md`. Sections A-C tested, 14 bugs found and fixed during session. Resume from Section D. Key fixes: master-v4 re-sync, AI flags prompt overhaul (max 3, decision-gap focus), modality enforcement, rationale card, eGFR warning, clinical details edit, "Generate via RadIQ" button, safety check output fix. |
 | 78 | Vetting Tool — Session History Browser | TODO | Users cannot review past vetting sessions. Add `/vetting/history` route, list API, browse template. Data already saved in VettingSession model. |
 | 79 | Vetting Tool — TinyMCE Inline Editing on Output | TODO | Output sections (clinical details, shorthand, detailed protocol) are read-only with copy buttons. Add inline editing so users can tweak before copying. |
 | 80 | Vetting Tool — Publish Draft Protocols & Algorithms | TODO | 49 admin protocols in draft, 20 algorithms in draft. Need admin review, verification, and publishing to make them available in the protocol picker during vetting. |
@@ -352,7 +353,7 @@ These items come from direct user testing on Apr 8. They are **the next priority
 
 ### Vetting — Protocol Matching Miss
 
-- **#100** Appendicitis test case returns "No library protocol matched" despite DB containing a CT Abdomen/Pelvis with IV contrast protocol. Test referral: *"65-year-old male presented with abdominal pain. Initially central but then progressed to right iliac fossa. One episode of vomiting. Low-grade fever. White blood cell count 14, C-reactive protein 34."* AI correctly cites **RCR iRefer CT abdomen pelvis with IV contrast for suspected appendicitis in adults with clinical features** but the library match fails and falls back to AI generation. Audit `vetting_routes.py::_search_protocols` + the AI protocol-matching step — likely the appendicitis protocol has a slug/title that doesn't match the indication keywords. May need to add "appendicitis" to `keywords` or `indication_json.symptoms` on the CT AP with IV contrast row.
+- **#100** Appendicitis test case — protocol matching now AI-powered (catalogue in prompt). Re-test needed as part of #104 Section D/E to confirm it matches correctly with the new slug-based approach.
 
 ### ImagingProtocol DB Cleanup — KOC Replacement + Aberdeen ARI Scrub
 
