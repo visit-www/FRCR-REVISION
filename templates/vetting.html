@@ -1206,7 +1206,7 @@ function _buildEnrichedClinicalText() {
         }
     });
     if (additions.length) {
-        text = text.replace(/\.\s*$/, '') + '. ' + additions.join('. ') + '.';
+        text = text.replace(/\.\s*$/, '') + '. Additional information: ' + additions.join('. ') + '.';
     }
     return text;
 }
@@ -1333,20 +1333,8 @@ function renderScene3(protocol) {
         clinicalHtml += '</div>';
     }
 
-    // Additional clinical information from resolved AI flags
-    const resolvedNotes = [];
-    const aiFlags = (_analysisResult && _analysisResult.ai_flags) || [];
-    Object.keys(_flagResponses).forEach(idx => {
-        const resp = _flagResponses[idx];
-        if (resp.status === 'resolved' && resp.note && aiFlags[idx]) {
-            resolvedNotes.push(resp.note);
-        }
-    });
-    if (resolvedNotes.length) {
-        clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Additional Clinical Information:</small><br>';
-        clinicalHtml += resolvedNotes.map(n => `<small class="d-block"><i class="fas fa-check-circle text-success me-1"></i>${_escapeHtml(n)}</small>`).join('');
-        clinicalHtml += '</div>';
-    }
+    // Additional clinical information is now integrated into the enriched
+    // clinical text above (with "Additional information:" label) — no separate section
     document.getElementById('clinicalDetailsOutput').innerHTML = clinicalHtml;
 
     // Shorthand
