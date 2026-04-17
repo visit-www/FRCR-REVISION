@@ -52,7 +52,21 @@ def _search_protocols(study_type, modality, user_id=None, body_section=None, is_
     # 1. Replace underscores with spaces
     # 2. Strip parenthesised segments (e.g. "(CT AP)") — they pollute full-phrase match
     # 3. Drop non-alphanumerics for word extraction
+    # Expand common radiology abbreviations before searching
+    _ABBREV = {
+        'ctpa': 'Pulmonary Angio',
+        'cta': 'Angio',
+        'mra': 'MR Angio',
+        'mrcp': 'MRCP',
+        'hrct': 'HR Thorax',
+        'ctb': 'Brain',
+        'ctkub': 'KUB',
+        'ct kub': 'KUB',
+    }
     raw_query = study_type.replace('_', ' ').strip() if study_type else ''
+    _abbrev_match = _ABBREV.get(raw_query.lower().replace(' ', ''))
+    if _abbrev_match:
+        raw_query = _abbrev_match
     cleaned_query = re_sub(r'\([^)]*\)', ' ', raw_query)
     cleaned_query = re_sub(r'\s+', ' ', cleaned_query).strip()
     # STOP words that don't help narrow results — includes modality terms
