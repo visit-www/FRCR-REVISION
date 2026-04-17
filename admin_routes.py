@@ -442,6 +442,42 @@ def update_user_subscription(user_id):
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/users/<int:user_id>/plan', methods=['PUT'])
+@require_admin
+def update_user_plan(user_id):
+    """Change a user's subscription tier (free, standard, elite, elite_pro)."""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+
+        data = request.get_json()
+        new_tier = data.get('subscription_tier', '').lower()
+        valid_tiers = ['free', 'standard', 'elite', 'elite_pro', 'canceled']
+        if new_tier not in valid_tiers:
+            return jsonify({'error': f'Invalid tier. Valid: {valid_tiers}'}), 400
+
+        old_tier = getattr(user, 'subscription_tier', 'free') or 'free'
+        user.subscription_tier = new_tier
+        db.session.commit()
+
+        logger.info("Admin %s changed %s plan from %s to %s",
+                     current_user.email, user.email, old_tier, new_tier)
+        log_admin_action(current_user.id, 'plan_change', 'user', user.id,
+                         {'old_tier': old_tier, 'new_tier': new_tier,
+                          'target_email': user.email},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
+        return jsonify({
+            'message': f'Plan updated from {old_tier} to {new_tier}',
+            'old_tier': old_tier, 'new_tier': new_tier,
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error updating plan: %s", e)
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/users/<int:user_id>/toggle-active', methods=['PUT'])
 @require_admin
 def toggle_user_active(user_id):

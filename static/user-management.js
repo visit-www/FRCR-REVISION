@@ -3,6 +3,26 @@
  * Handles user list, search, filter, and CRUD operations
  */
 
+// Plan tier config — mirrors TIER_LIMITS in reporting_routes.py
+const PLAN_CONFIG = {
+    free:          { label: 'Free Trial',   color: '#6c757d', sr: 10,  radiq: 5  },
+    free_post_trial: { label: 'Free',       color: '#6c757d', sr: 2,   radiq: 1  },
+    standard:      { label: 'Standard',     color: '#0d6efd', sr: 50,  radiq: 20 },
+    elite:         { label: 'Elite',        color: '#198754', sr: 160, radiq: 50 },
+    elite_pro:     { label: 'Elite Pro',    color: '#e96304', sr: 550, radiq: 80 },
+    canceled:      { label: 'Cancelled',    color: '#dc3545', sr: 0,   radiq: 0  },
+};
+
+function getPlanBadge(tier) {
+    const cfg = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
+    return `<span class="badge" style="background:${cfg.color};color:#fff;">${cfg.label}</span>`;
+}
+
+function getPlanUsageText(tier, srUsed, radiqUsed) {
+    const cfg = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
+    return `SR: ${srUsed}/${cfg.sr} · RadIQ: ${radiqUsed}/${cfg.radiq}`;
+}
+
 class UserManagement {
     constructor() {
         this.users = [];
@@ -181,8 +201,8 @@ class UserManagement {
                     </span>
                 </td>
                 <td>
-                    <span class="badge bg-info">${(user.subscription_tier || 'free').toUpperCase()}</span>
-                    <br><small class="text-muted">SR:${user.sr_usage_month || 0} · RQ:${user.radiq_usage_month || 0}</small>
+                    ${getPlanBadge(user.subscription_tier || 'free')}
+                    <br><small class="text-muted">${getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</small>
                 </td>
                 <td>
                     <span class="status-${user.is_active ? 'active' : 'inactive'}">
@@ -316,11 +336,19 @@ class UserManagement {
                     <!-- AI Quota -->
                     <div class="detail-row mt-3">
                         <label><i class="fas fa-robot"></i> Plan:</label>
-                        <span class="badge bg-info">${(user.subscription_tier || 'free').toUpperCase()}</span>
+                        ${isReadOnly ? `
+                            ${getPlanBadge(user.subscription_tier || 'free')}
+                        ` : `
+                            <select id="editPlan" class="form-select">
+                                ${Object.entries(PLAN_CONFIG).filter(([k]) => k !== 'free_post_trial').map(([k, v]) =>
+                                    `<option value="${k}" ${(user.subscription_tier || 'free') === k ? 'selected' : ''}>${v.label} (SR:${v.sr} / RQ:${v.radiq})</option>`
+                                ).join('')}
+                            </select>
+                        `}
                     </div>
                     <div class="detail-row mt-2">
-                        <label><i class="fas fa-chart-bar"></i> AI Usage (this month):</label>
-                        <span>SR: <strong>${user.sr_usage_month || 0}</strong> · RadIQ: <strong>${user.radiq_usage_month || 0}</strong></span>
+                        <label><i class="fas fa-chart-bar"></i> Usage:</label>
+                        <span>${getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</span>
                     </div>
                     ${!user.is_superadmin ? `
                         <div class="detail-row mt-2 d-flex gap-2 flex-wrap">
@@ -464,6 +492,20 @@ class UserManagement {
                 if (!subResponse.ok) {
                     const error = await subResponse.json();
                     errors.push(`Subscription update failed: ${error.error || 'Unknown error'}`);
+                }
+            }
+
+            // Update plan/tier if changed
+            const newPlan = document.getElementById('editPlan')?.value;
+            if (newPlan && newPlan !== (this.selectedUser.subscription_tier || 'free')) {
+                const planResponse = await fetch(`/api/admin/users/${this.selectedUser.id}/plan`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription_tier: newPlan })
+                });
+                if (!planResponse.ok) {
+                    const error = await planResponse.json();
+                    errors.push(`Plan update failed: ${error.error || 'Unknown error'}`);
                 }
             }
             
