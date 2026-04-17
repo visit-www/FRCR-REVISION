@@ -25,7 +25,7 @@ import os
 import re
 from datetime import datetime
 
-_SYNC_VERSION = 'master-v3'  # bumped: re-sync contrast field fix (v2 fast-path skipped it)
+_SYNC_VERSION = 'master-v4'  # bumped: ARI oncology 'protocol' field fallback + re-sync
 _SENTINEL = f'<!-- migrated:{_SYNC_VERSION} -->'
 # Include legacy sentinels used by older migration blocks (rebrand, scrub)
 # so those blocks leave sync-managed rows alone.
@@ -141,7 +141,8 @@ def _render_ct_html(title: str, entry: dict) -> str:
     Comments) as styled HTML matching the app brand."""
     prep = entry.get('Prep') or ''
     contrast = entry.get('Contrast') or ''
-    params = entry.get('Parameters') or ''
+    # ARI oncology protocols use 'protocol' field instead of 'Parameters'
+    params = entry.get('Parameters') or entry.get('protocol') or ''
     comments = entry.get('Comments') or ''
 
     status = entry.get('status', 'verified')
@@ -334,7 +335,7 @@ def _render_mri_html(title: str, entry: dict) -> str:
 
 def _build_ct_shorthand(title: str, entry: dict) -> str:
     """One-line vetting-box summary for CT."""
-    params = (entry.get('Parameters') or '').split('.')[0][:140]
+    params = (entry.get('Parameters') or entry.get('protocol') or '').split('.')[0][:140]
     contrast = (entry.get('Contrast') or '').split('.')[0][:80].strip()
     parts = []
     if contrast.lower() in ('none', ''):
