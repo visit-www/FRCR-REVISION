@@ -6,9 +6,9 @@
 - Subsequent deploys: `skipped=229`
 
 ## Test Progress
-- **Tested Apr 17, 2026**: Sections A1-A3, B1-B4, C1-C2 (partial)
-- **Resume from**: Section D (AI Flags quality)
-- **Fixes deployed during testing** — see commit log Apr 17
+- **Tested Apr 17, 2026**: All sections A-H complete
+- **Status**: 28/31 PASS, 1 FAIL (G2 ctpa search — fix deployed), 1 SKIPPED (H3), 1 NOT TESTED (C3)
+- **15 bugs found and fixed** during testing — see commit log Apr 17
 
 ### Issues Found & Fixed During Testing
 1. Protocol "50ml hand inject" stale data — `_SYNC_VERSION` not bumped after contrast fix → bumped to master-v3, then v4
@@ -75,38 +75,38 @@
 | 2 | Submit "CT perfusion brain for Moyamoya disease" | AI generates protocol, no 500 error | PASS |
 | 3 | Set contrast toggle to "Non-contrast" before generating | Generated protocol should be non-contrast | NOT TESTED |
 
-## D. AI Flags — RESUME HERE
+## D. AI Flags
 | # | Test | Expected | Result |
 |---|------|----------|--------|
-| 1 | Complete referral: "65M, fall, GCS 15, CT head please" | 0 flags | NOT TESTED |
-| 2 | Sparse referral: "CT chest" | Flags asking for clinical indication | NOT TESTED |
-| 3 | PE pathway: "SOB, chest pain" (no Wells/D-dimer) | Flags Wells score / D-dimer | NOT TESTED |
+| 1 | Complete referral: "65M, fall, GCS 15, CT head please" | 0 flags | PASS |
+| 2 | Sparse referral: "CT chest" | Flags asking for clinical indication | PASS |
+| 3 | PE pathway: "SOB, chest pain" (no Wells/D-dimer) | Flags Wells score / D-dimer | PASS |
 
 ## E. Safety Checks
 | # | Test | Expected | Result |
 |---|------|----------|--------|
-| 1 | Non-contrast study | eGFR/allergy rows hidden | NOT TESTED |
-| 2 | IV contrast study | eGFR/allergy rows visible | NOT TESTED |
-| 3 | Diabetic patient with contrast | metformin_check_required = true | NOT TESTED |
-| 4 | Skip eGFR via N/A button | Proceeds without eGFR | NOT TESTED |
+| 1 | Non-contrast study | eGFR/allergy rows hidden | PASS |
+| 2 | IV contrast study | eGFR/allergy rows visible | PASS |
+| 3 | Diabetic patient with contrast | metformin_check_required = true | PASS |
+| 4 | Skip eGFR via N/A button | Proceeds without eGFR | PASS |
 
 ## F. PII Guard
 | # | Test | Expected | Result |
 |---|------|----------|--------|
-| 1 | Include "St James classification" in question | NOT flagged (classification context) | NOT TESTED |
-| 2 | Include "admitted to St James Hospital" in referral | Flagged as Institution Name | NOT TESTED |
-| 3 | Dismiss PII warning → continue to protocol | PII override allows subsequent requests | NOT TESTED |
+| 1 | Include "St James classification" in question | NOT flagged (classification context) | PASS |
+| 2 | Include "admitted to St James Hospital" in referral | Flagged as Institution Name | PASS |
+| 3 | Dismiss PII warning → continue to protocol | PII override allows subsequent requests | PASS |
 
 ## G. Change Protocol Search
 | # | Test | Expected | Result |
 |---|------|----------|--------|
-| 1 | Search "ct brain" | Brain protocol at top, NOT CT GI Bleed | NOT TESTED |
-| 2 | Search "ctpa" | CT Pulmonary Angiography protocols | NOT TESTED |
-| 3 | Search "liver" | Liver-related protocols, not brain | NOT TESTED |
+| 1 | Search "ct brain" | Brain protocol at top, NOT CT GI Bleed | PASS |
+| 2 | Search "ctpa" | CT Pulmonary Angiography protocols | FAIL — "ctpa" returned no results. Fix: added abbreviation expansion map. Re-test after deploy. |
+| 3 | Search "liver" | Liver-related protocols, not brain | PASS |
 
 ## H. Error Handling
 | # | Test | Expected | Result |
 |---|------|----------|--------|
-| 1 | Empty referral text → submit | "Referral text cannot be empty" error | NOT TESTED |
-| 2 | Very long referral (>5000 chars) | Handled gracefully | NOT TESTED |
-| 3 | Network error during protocol generation | Toast message, not stuck UI | NOT TESTED |
+| 1 | Empty referral text → submit | "Referral text cannot be empty" error | PASS |
+| 2 | Very long referral (>5000 chars) | Handled gracefully | PASS — maxlength="5000" on textarea prevents overly long input |
+| 3 | Network error during protocol generation | Toast message, not stuck UI | SKIPPED (hard to simulate in production) |
