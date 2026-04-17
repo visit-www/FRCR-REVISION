@@ -1319,17 +1319,23 @@ function renderScene3(protocol) {
         clinicalHtml += '</div>';
     }
 
-    // Confirmed findings from resolved AI flags
+    // Additional clinical information from resolved AI flags
     const resolvedFlags = [];
     const aiFlags = (_analysisResult && _analysisResult.ai_flags) || [];
     Object.keys(_flagResponses).forEach(idx => {
         const resp = _flagResponses[idx];
         if (resp.status === 'resolved' && aiFlags[idx]) {
-            resolvedFlags.push(`${aiFlags[idx].flag}: ${resp.note}`);
+            // Extract a concise label from the flag text
+            // e.g. "Age not stated" → "Age", "Mechanism of fall not stated" → "Mechanism of fall"
+            let label = aiFlags[idx].flag || '';
+            label = label.replace(/\s*(not stated|not provided|not specified|not mentioned|unknown|missing)\s*/gi, '').trim();
+            label = label.replace(/[.:]+$/, '').trim();
+            if (!label) label = aiFlags[idx].flag;
+            resolvedFlags.push(`${label}: ${resp.note}`);
         }
     });
     if (resolvedFlags.length) {
-        clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Confirmed Findings:</small><br>';
+        clinicalHtml += '<div class="mt-2 pt-2 border-top"><small class="text-muted fw-semibold">Additional Clinical Information:</small><br>';
         clinicalHtml += resolvedFlags.map(f => `<small class="d-block"><i class="fas fa-check-circle text-success me-1"></i>${_escapeHtml(f)}</small>`).join('');
         clinicalHtml += '</div>';
     }
