@@ -13,7 +13,8 @@ const PLAN_CONFIG = {
     canceled:      { label: 'Cancelled',    color: '#dc3545', sr: 0,   radiq: 0  },
 };
 
-function getPlanBadge(tier) {
+function getPlanBadge(tier, isAdmin) {
+    if (isAdmin) return `<span class="badge" style="background:#5E899E;color:#fff;">Admin (Unlimited)</span>`;
     const cfg = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
     return `<span class="badge" style="background:${cfg.color};color:#fff;">${cfg.label}</span>`;
 }
@@ -196,8 +197,8 @@ class UserManagement {
                     </span>
                 </td>
                 <td>
-                    ${getPlanBadge(user.subscription_tier || 'free')}
-                    <br><small class="text-muted">${getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</small>
+                    ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin)}
+                    <br><small class="text-muted">${(user.role === 'admin' || user.is_superadmin) ? 'Unlimited' : getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</small>
                 </td>
                 <td>
                     <span class="status-${user.is_active ? 'active' : 'inactive'}">
@@ -316,7 +317,7 @@ class UserManagement {
                     <div class="detail-row mt-3">
                         <label><i class="fas fa-robot"></i> Plan:</label>
                         ${isReadOnly ? `
-                            ${getPlanBadge(user.subscription_tier || 'free')}
+                            ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin)}
                         ` : `
                             <select id="editPlan" class="form-select">
                                 ${Object.entries(PLAN_CONFIG).filter(([k]) => k !== 'free_post_trial').map(([k, v]) =>
