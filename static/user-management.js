@@ -182,7 +182,7 @@ class UserManagement {
         if (!tbody) return;
         
         if (this.users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No users found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">No users found</td></tr>';
             return;
         }
         
@@ -193,11 +193,6 @@ class UserManagement {
                 <td>
                     <span class="badge ${this.getRoleBadgeClass(user.role, user.is_superadmin)}">
                         ${this.getRoleDisplayLabel(user.role, user.is_superadmin)}
-                    </span>
-                </td>
-                <td>
-                    <span class="badge badge-${this.getSubscriptionBadgeClass(user.subscription_status)}">
-                        ${user.subscription_status.toUpperCase()}
                     </span>
                 </td>
                 <td>
@@ -283,22 +278,6 @@ class UserManagement {
                                 <option value="student" ${user.role === 'student' ? 'selected' : ''}>Student</option>
                                 <option value="content_manager" ${user.role === 'content_manager' ? 'selected' : ''}>Content Manager</option>
                                 <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
-                            </select>
-                        `}
-                    </div>
-                    
-                    <!-- Subscription Field -->
-                    <div class="detail-row mt-3">
-                        <label><i class="fas fa-credit-card"></i> Subscription:</label>
-                        ${isReadOnly ? `
-                            <span class="badge badge-${this.getSubscriptionBadgeClass(user.subscription_status)}">
-                                ${user.subscription_status.toUpperCase()}
-                            </span>
-                        ` : `
-                            <select id="editSubscription" class="form-select">
-                                <option value="free" ${user.subscription_status === 'free' ? 'selected' : ''}>Free</option>
-                                <option value="paid" ${user.subscription_status === 'paid' ? 'selected' : ''}>Paid</option>
-                                <option value="canceled" ${user.subscription_status === 'canceled' ? 'selected' : ''}>Canceled</option>
                             </select>
                         `}
                     </div>
@@ -435,10 +414,9 @@ class UserManagement {
         if (!this.selectedUser) return;
         
         const newRole = document.getElementById('editRole')?.value;
-        const newSubscription = document.getElementById('editSubscription')?.value;
-        
-        if (!newRole || !newSubscription) {
-            this.showError('Please select both role and subscription');
+
+        if (!newRole) {
+            this.showError('Please select a role');
             return;
         }
         
@@ -482,20 +460,7 @@ class UserManagement {
                 }
             }
             
-            // Update subscription if changed
-            if (newSubscription !== this.selectedUser.subscription_status) {
-                const subResponse = await fetch(`/api/admin/users/${this.selectedUser.id}/subscription`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subscription_status: newSubscription })
-                });
-                if (!subResponse.ok) {
-                    const error = await subResponse.json();
-                    errors.push(`Subscription update failed: ${error.error || 'Unknown error'}`);
-                }
-            }
-
-            // Update plan/tier if changed
+            // Update plan/tier if changed (also syncs subscription_status on backend)
             const newPlan = document.getElementById('editPlan')?.value;
             if (newPlan && newPlan !== (this.selectedUser.subscription_tier || 'free')) {
                 const planResponse = await fetch(`/api/admin/users/${this.selectedUser.id}/plan`, {

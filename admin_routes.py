@@ -459,6 +459,13 @@ def update_user_plan(user_id):
 
         old_tier = getattr(user, 'subscription_tier', 'free') or 'free'
         user.subscription_tier = new_tier
+        # Sync subscription_status with tier
+        if new_tier == 'canceled':
+            user.subscription_status = SubscriptionStatus.CANCELED
+        elif new_tier in ('standard', 'elite', 'elite_pro'):
+            user.subscription_status = SubscriptionStatus.PAID
+        else:
+            user.subscription_status = SubscriptionStatus.FREE
         db.session.commit()
 
         logger.info("Admin %s changed %s plan from %s to %s",
