@@ -296,10 +296,14 @@ def vetting_analyse():
 
     # Build protocol title catalogue for AI matching — includes shorthand
     # so the model can see contrast/non-contrast and coverage info
+    # Includes admin protocols + current user's personal protocols
     _protocol_titles = []
     try:
-        _all_protocols = ImagingProtocol.query.filter_by(
-            origin='admin', is_published=True
+        _all_protocols = ImagingProtocol.query.filter(
+            db.or_(
+                db.and_(ImagingProtocol.origin == 'admin', ImagingProtocol.is_published == True),
+                db.and_(ImagingProtocol.origin == 'personal', ImagingProtocol.user_id == current_user.id),
+            )
         ).with_entities(
             ImagingProtocol.slug, ImagingProtocol.title,
             ImagingProtocol.modality, ImagingProtocol.shorthand_text,
