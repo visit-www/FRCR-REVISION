@@ -162,7 +162,7 @@ class UserManagement {
         if (!tbody) return;
         
         if (this.users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">No users found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">No users found</td></tr>';
             return;
         }
         
@@ -179,6 +179,10 @@ class UserManagement {
                     <span class="badge badge-${this.getSubscriptionBadgeClass(user.subscription_status)}">
                         ${user.subscription_status.toUpperCase()}
                     </span>
+                </td>
+                <td>
+                    <span class="badge bg-info">${(user.subscription_tier || 'free').toUpperCase()}</span>
+                    <br><small class="text-muted">SR:${user.sr_usage_month || 0} · RQ:${user.radiq_usage_month || 0}</small>
                 </td>
                 <td>
                     <span class="status-${user.is_active ? 'active' : 'inactive'}">
@@ -302,14 +306,31 @@ class UserManagement {
                             <label><i class="fas fa-file-medical"></i> Cases Created:</label>
                             <span><strong>${user.stats.cases_created}</strong></span>
                         </div>
-                        
+
                         <div class="detail-row mt-2">
                             <label><i class="fas fa-eye"></i> Cases Viewed:</label>
                             <span><strong>${user.stats.cases_viewed}</strong></span>
                         </div>
                     ` : ''}
+
+                    <!-- AI Quota -->
+                    <div class="detail-row mt-3">
+                        <label><i class="fas fa-robot"></i> Plan:</label>
+                        <span class="badge bg-info">${(user.subscription_tier || 'free').toUpperCase()}</span>
+                    </div>
+                    <div class="detail-row mt-2">
+                        <label><i class="fas fa-chart-bar"></i> AI Usage (this month):</label>
+                        <span>SR: <strong>${user.sr_usage_month || 0}</strong> · RadIQ: <strong>${user.radiq_usage_month || 0}</strong></span>
+                    </div>
+                    ${!user.is_superadmin ? `
+                        <div class="detail-row mt-2">
+                            <button class="btn btn-sm btn-outline-warning" onclick="userMgmt.resetQuota(${user.id})">
+                                <i class="fas fa-redo me-1"></i>Reset AI Quota
+                            </button>
+                        </div>
+                    ` : ''}
                 </div>
-                
+
                 <!-- Action Buttons Section -->
                 <div class="modal-actions">
                     ${user.is_superadmin ? `
@@ -854,6 +875,27 @@ class UserManagement {
         await this.deleteUser(this.selectedUser.id);
     }
     
+    async resetQuota(userId) {
+        if (!confirm('Reset AI quota (SR + RadIQ) for this user?')) return;
+        try {
+            const resp = await fetch(`/api/admin/users/${userId}/reset-quota`, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert(`Quota reset: SR ${data.old_sr}→0, RadIQ ${data.old_radiq}→0`);
+                // Refresh modal
+                const detail = await fetch(`/api/admin/users/${userId}`);
+                if (detail.ok) {
+                    this.selectedUser = await detail.json();
+                    this.renderUserModal(this.selectedUser, this.modalMode);
+                }
+            } else {
+                alert('Error: ' + (data.error || 'Unknown'));
+            }
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    }
+
     async deleteUser(userId, confirmed = false) {
         try {
             const url = confirmed 

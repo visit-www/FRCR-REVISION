@@ -97,6 +97,9 @@ def list_users():
                 'payment_status': user.payment_status.value if user.payment_status else None,
                 'is_active': user.is_active,
                 'is_deleted': user.is_deleted,
+                'subscription_tier': getattr(user, 'subscription_tier', 'free') or 'free',
+                'sr_usage_month': user.sr_usage_month or 0,
+                'radiq_usage_month': user.radiq_usage_month or 0,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None
             })
@@ -151,6 +154,10 @@ def get_user_detail(user_id):
             'profile_picture': user.profile_picture,
             'recovery_token': user.recovery_token,
             'recovery_token_expires': user.recovery_token_expires.isoformat() if user.recovery_token_expires else None,
+            'subscription_tier': getattr(user, 'subscription_tier', 'free') or 'free',
+            'sr_usage_month': user.sr_usage_month or 0,
+            'radiq_usage_month': user.radiq_usage_month or 0,
+            'trial_started_at': user.trial_started_at.isoformat() if user.trial_started_at else None,
             'stats': {
                 'cases_created': cases_created,
                 'cases_viewed': cases_viewed
