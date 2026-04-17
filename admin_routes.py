@@ -517,6 +517,44 @@ def reset_user_quota(user_id):
 
 
 # ============================================================================
+# ADMIN PASSWORD RESET (send reset link to user)
+# ============================================================================
+
+@admin_bp.route('/users/<int:user_id>/send-password-reset', methods=['POST'])
+@require_admin
+def admin_send_password_reset(user_id):
+    """Send a password reset email to the user (admin-initiated)."""
+    try:
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        if not user.email:
+            return jsonify({'error': 'User has no email address'}), 400
+
+        # Generate token and send email (same flow as forgot-password)
+        token = user.generate_recovery_token()
+        db.session.commit()
+
+        from auth import send_recovery_email
+        email_sent = send_recovery_email(user.email, token)
+
+        logger.info("Admin %s sent password reset to %s (sent=%s)",
+                     current_user.email, user.email, email_sent)
+        log_admin_action(current_user.id, 'send_password_reset', 'user', user.id,
+                         {'target_email': user.email, 'email_sent': email_sent},
+                         request.headers.get('X-Forwarded-For', request.remote_addr))
+
+        if email_sent:
+            return jsonify({'message': f'Password reset email sent to {user.email}'}), 200
+        else:
+            return jsonify({'error': 'Failed to send email. Check email configuration.'}), 500
+    except Exception as e:
+        db.session.rollback()
+        logger.error("Error sending password reset: %s", e)
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
 # USER DELETION ENDPOINT
 # ============================================================================
 

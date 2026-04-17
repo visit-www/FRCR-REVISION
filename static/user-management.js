@@ -323,9 +323,12 @@ class UserManagement {
                         <span>SR: <strong>${user.sr_usage_month || 0}</strong> · RadIQ: <strong>${user.radiq_usage_month || 0}</strong></span>
                     </div>
                     ${!user.is_superadmin ? `
-                        <div class="detail-row mt-2">
+                        <div class="detail-row mt-2 d-flex gap-2 flex-wrap">
                             <button class="btn btn-sm btn-outline-warning" onclick="userMgmt.resetQuota(${user.id})">
                                 <i class="fas fa-redo me-1"></i>Reset AI Quota
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="userMgmt.sendPasswordReset(${user.id}, '${this.escapeHtml(user.email)}')">
+                                <i class="fas fa-key me-1"></i>Send Password Reset
                             </button>
                         </div>
                     ` : ''}
@@ -888,6 +891,21 @@ class UserManagement {
                     this.selectedUser = await detail.json();
                     this.renderUserModal(this.selectedUser, this.modalMode);
                 }
+            } else {
+                alert('Error: ' + (data.error || 'Unknown'));
+            }
+        } catch (e) {
+            alert('Network error: ' + e.message);
+        }
+    }
+
+    async sendPasswordReset(userId, email) {
+        if (!confirm(`Send password reset email to ${email}?`)) return;
+        try {
+            const resp = await fetch(`/api/admin/users/${userId}/send-password-reset`, { method: 'POST' });
+            const data = await resp.json();
+            if (resp.ok) {
+                alert(data.message || 'Password reset email sent.');
             } else {
                 alert('Error: ' + (data.error || 'Unknown'));
             }
