@@ -854,6 +854,19 @@ function populateProtocolMatches() {
         list.appendChild(div);
     });
 
+    // "Generate new protocol" option at the end
+    const genDiv = document.createElement('div');
+    genDiv.className = 'protocol-match-option protocol-generate text-center py-2';
+    genDiv.innerHTML = '<small class="text-muted"><i class="fas fa-robot me-1"></i>None of these fit? <strong>Generate a new protocol</strong></small>';
+    genDiv.addEventListener('click', () => {
+        _selectedProtocol = null;
+        _protocolSource = 'ai';
+        // Deselect all protocol options
+        list.querySelectorAll('.protocol-match-option').forEach(el => el.classList.remove('selected'));
+        genDiv.classList.add('selected');
+    });
+    list.appendChild(genDiv);
+
     // Auto-select first match
     _selectedProtocol = _matchedProtocols[0];
     _protocolSource = _selectedProtocol.origin;
