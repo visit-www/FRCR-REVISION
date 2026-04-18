@@ -683,22 +683,16 @@ def refresh_session():
     try:
         from flask import session as flask_session
         from datetime import datetime, timedelta
-        
-        # Update last activity time
-        flask_session['last_activity'] = datetime.utcnow().isoformat()
-        flask_session.permanent = True
-        
-        # Reload user from database to get latest role/permissions
-        db.session.refresh(current_user)
-        
-        # Check if session should expire (30 minutes of inactivity)
+
+        # Check expiry BEFORE updating last_activity — if the user was
+        # truly idle for >30 min the session should expire, not be silently
+        # extended.  (The old code set last_activity first, making the
+        # expiry check below dead code.)
         last_activity_str = flask_session.get('last_activity')
         if last_activity_str:
             try:
                 last_activity = datetime.fromisoformat(last_activity_str)
                 time_since_activity = datetime.utcnow() - last_activity
-                
-                # If more than 30 minutes of inactivity, expire session
                 if time_since_activity > timedelta(seconds=1800):
                     logout_user()
                     return jsonify({
@@ -707,9 +701,15 @@ def refresh_session():
                         'message': 'Session expired due to inactivity'
                     }), 401
             except (ValueError, TypeError):
-                # Invalid timestamp, reset it
-                flask_session['last_activity'] = datetime.utcnow().isoformat()
-        
+                pass  # Bad timestamp — will be reset below
+
+        # Session is still valid — refresh it
+        flask_session['last_activity'] = datetime.utcnow().isoformat()
+        flask_session.permanent = True
+
+        # Reload user from database to get latest role/permissions
+        db.session.refresh(current_user)
+
         return jsonify({
             'success': True,
             'user': {
@@ -720,7 +720,7 @@ def refresh_session():
             },
             'last_activity': flask_session.get('last_activity')
         }), 200
-        
+
     except Exception as e:
         pass  # Session refresh failed, non-critical
         return jsonify({'error': 'Failed to refresh session'}), 500

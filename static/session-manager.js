@@ -20,6 +20,7 @@ class SessionManager {
         this.lastActivity = Date.now();
         this.warningShown = false;
         this.expired = false; // Re-entry guard for handleSessionExpired
+        this.refreshing = false; // Guard against status-check race during refresh
         this.refreshTimer = null;
         this.activityTimer = null;
         this.warningTimer = null;
@@ -78,9 +79,26 @@ class SessionManager {
         // This prevents excessive API calls
         if (timeSinceLastActivity > 60000) {
             this.lastActivity = now;
+            this.cancelExpiryCountdown(); // Cancel any pending expiry timer
             this.refreshSession();
             this.warningShown = false; // Reset warning if user is active
         }
+    }
+
+    /**
+     * Cancel the pending expiry countdown and remove the warning toast.
+     * Called when user clicks "Stay In" or shows activity after a warning.
+     */
+    cancelExpiryCountdown() {
+        if (this.warningTimer) {
+            clearTimeout(this.warningTimer);
+            this.warningTimer = null;
+        }
+        const warningToast = document.getElementById('session-warning-toast');
+        if (warningToast) {
+            warningToast.remove();
+        }
+        this.warningShown = false;
     }
     
     startSessionRefresh() {
@@ -102,6 +120,7 @@ class SessionManager {
     async refreshSession() {
         if (this.expired) return; // Don't refresh after session expiry
 
+        this.refreshing = true; // Block status checks during refresh
         try {
             const response = await fetch('/auth/session/refresh', {
                 method: 'POST',
@@ -120,16 +139,19 @@ class SessionManager {
             if (response.ok) {
                 const data = await response.json().catch(() => ({}));
                 this.lastActivity = Date.now();
-                this.warningShown = false;
+                this.cancelExpiryCountdown(); // Server session refreshed — cancel any client-side expiry
                 return data;
             }
         } catch (error) {
             // Session refresh failed silently
+        } finally {
+            this.refreshing = false;
         }
     }
-    
+
     async checkSessionStatus() {
         if (this.expired) return; // Don't check after session expiry
+        if (this.refreshing) return; // Skip — refresh in flight will update the server timestamp
 
         try {
             const response = await fetch('/auth/session/status', {
@@ -172,9 +194,16 @@ class SessionManager {
                     }
                 }
                 
-                // Auto-logout if expired
+                // Auto-logout if server says expired — but only if the CLIENT
+                // also thinks the user has been idle.  A recent local activity
+                // (within 2 min) means a refreshSession() just ran or is about
+                // to run, so the server timestamp is stale.
                 if (timeRemaining <= 0) {
-                    this.handleSessionExpired();
+                    const localIdleMs = Date.now() - this.lastActivity;
+                    if (localIdleMs > 120000) { // >2 min idle locally — trust the server
+                        this.handleSessionExpired();
+                    }
+                    // else: user was recently active, refresh will fix the server
                 }
             }
         } catch (error) {
@@ -185,7 +214,6 @@ class SessionManager {
     showExpirationWarning(timeRemaining) {
         this.warningShown = true;
         const minutes = Math.ceil(timeRemaining / 60);
-        const seconds = Math.ceil(timeRemaining % 60);
         
         // Show toast notification with orange background and black text
         const message = `Your session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''}. Click to stay logged in.`;
@@ -231,15 +259,15 @@ class SessionManager {
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             <span>${message}</span>
                         </div>
-                        <button type="button" class="btn btn-sm btn-dark ms-3" onclick="sessionManager.refreshSession(); this.closest('.session-toast').remove();" style="font-size: 12px; padding: 4px 12px;">
+                        <button type="button" class="btn btn-sm btn-dark ms-3" onclick="sessionManager.cancelExpiryCountdown(); sessionManager.refreshSession();" style="font-size: 12px; padding: 4px 12px;">
                             Stay In
                         </button>
                     `;
                     
                     existingToast.addEventListener('click', (e) => {
                         if (e.target.tagName !== 'BUTTON') {
+                            this.cancelExpiryCountdown();
                             this.refreshSession();
-                            existingToast.remove();
                         }
                     });
                     
