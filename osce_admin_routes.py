@@ -125,6 +125,7 @@ def get_osce_case(case_id):
         'osce_data': case.osce_data,
         'content_html': case.content_html,
         'linked_case_id': case.linked_case_id,
+        'linked_case_ids': case.get_linked_case_ids(),
         'reference_links': case.get_reference_links(),
         'is_published': case.is_published,
         'sort_order': case.sort_order,

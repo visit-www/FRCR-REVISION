@@ -299,7 +299,9 @@
   var tinyInstance = null;
   var API = '/api/admin/osce';
 
-  // ── TinyMCE init ──
+  // ── TinyMCE init (deferred until modal visible) ──
+  var pendingTinyContent = '';
+
   function initTiny() {
     if (typeof tinymce === 'undefined') {
       console.warn('TinyMCE not loaded yet, retrying...');
@@ -314,9 +316,21 @@
       plugins: 'lists link code table',
       toolbar: 'undo redo | blocks | bold italic | bullist numlist | link table | code',
       content_style: 'body { font-family: -apple-system, system-ui, sans-serif; font-size: 14px; }',
-      setup: function(ed) { tinyInstance = ed; }
+      setup: function(ed) {
+        tinyInstance = ed;
+        ed.on('init', function() { ed.setContent(pendingTinyContent || ''); });
+      }
     });
   }
+
+  // Init TinyMCE only after modal is fully visible
+  document.getElementById('oaCaseModal').addEventListener('shown.bs.modal', function() {
+    initTiny();
+  });
+  // Clean up TinyMCE when modal hides to avoid stale instances
+  document.getElementById('oaCaseModal').addEventListener('hidden.bs.modal', function() {
+    if (tinyInstance) { tinymce.remove('#oaCaseContent'); tinyInstance = null; }
+  });
 
   // ── Static content ──
   function loadStatic() {
@@ -360,8 +374,7 @@
     document.getElementById('oaCaseRefLinks').value = '';
     document.getElementById('oaCaseModalTitle').textContent = 'New OSCE Case';
     document.getElementById('oaCaseCode').removeAttribute('readonly');
-    initTiny();
-    setTimeout(function() { if (tinyInstance) tinyInstance.setContent(''); }, 300);
+    pendingTinyContent = '';
     new bootstrap.Modal(document.getElementById('oaCaseModal')).show();
   };
 
@@ -388,8 +401,7 @@
       }).join('\n');
       document.getElementById('oaCaseRefLinks').value = links;
       document.getElementById('oaCaseModalTitle').textContent = 'Edit ' + data.code;
-      initTiny();
-      setTimeout(function() { if (tinyInstance) tinyInstance.setContent(data.content_html || ''); }, 300);
+      pendingTinyContent = data.content_html || '';
       new bootstrap.Modal(document.getElementById('oaCaseModal')).show();
     });
   };
