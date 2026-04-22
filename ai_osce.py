@@ -149,7 +149,7 @@ OUTPUT (strict JSON)
     "prompt": "",
 
     "expected_answer": {{
-      "approach": "Numbered list: walk through the systematic approach step by step. Each item: what you check and what you find (normal or abnormal), with measurements. This is the main study content.",
+      "approach": "Numbered list. ONE sentence per item — state what you check and what you find (normal or abnormal), with the measurement threshold. Do NOT include pitfalls here — those go in teaching_points. Keep each item to 1-2 lines max.",
       "key_finding": "What you SEE (not the diagnosis name). Then: this pattern suggests...",
       "diagnosis": "{diagnosis}",
       "urgency": "Clinical significance, emergency status, action needed."
@@ -162,7 +162,7 @@ OUTPUT (strict JSON)
     "mechanism": "Why the imaging looks like this. Set to null if approach already covers it."
   }},
 
-  "teaching_points": [""],
+  "teaching_points": ["Pitfalls, classic traps, differentials, examiner follow-ups — anything the student should WATCH OUT for. These must NOT duplicate the approach items."],
 
   "visual_hook": "One memorable sentence: the single visual pattern that makes this diagnosis click."
 }}
@@ -171,9 +171,10 @@ OUTPUT (strict JSON)
 QUALITY CHECK
 ====================================================================
 
-- Approach teaches recognition, not memorisation
-- Model script is concise and does not repeat approach
-- No redundancy across sections — every field earns its place"""
+- Approach = what you check + normal/abnormal + threshold (no pitfalls)
+- Teaching points = pitfalls + traps + exam tips (no overlap with approach)
+- Model script does not repeat approach
+- No redundancy across sections"""
 
 
 # ============================================================================
@@ -238,7 +239,7 @@ OUTPUT (strict JSON)
     "prompt": "",
 
     "expected_answer": {{
-      "approach": "Numbered list: walk through the systematic approach step by step. Each item: what you check, the normal value/threshold, and one pitfall that mimics pathology. This is the main study content.",
+      "approach": "Numbered list. ONE sentence per item — state what you check and the normal value/threshold. Do NOT include pitfalls here — those go in teaching_points. Keep each item to 1-2 lines max.",
       "key_finding": "No abnormality detected",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings"
@@ -248,10 +249,10 @@ OUTPUT (strict JSON)
   }},
 
   "explanation": {{
-    "common_pitfalls": "OSCE traps not already in approach. Set to null if approach covers them."
+    "common_pitfalls": "Set to null — pitfalls now go in teaching_points."
   }},
 
-  "teaching_points": [""],
+  "teaching_points": ["Pitfalls, normal variants that mimic pathology, OSCE traps, examiner follow-ups. These must NOT duplicate the approach items."],
 
   "visual_hook": "One memorable sentence about what makes a normal study convincingly normal."
 }}
@@ -260,9 +261,10 @@ OUTPUT (strict JSON)
 QUALITY CHECK
 ====================================================================
 
-- Approach teaches recognition, not memorisation
-- Model script is concise and does not repeat approach
-- No redundancy across sections — every field earns its place"""
+- Approach = what you check + normal value (no pitfalls, no essays)
+- Teaching points = pitfalls + traps + exam tips (no overlap with approach)
+- Model script does not repeat approach
+- No redundancy across sections"""
 
 
 # ============================================================================
@@ -326,7 +328,7 @@ def generate_osce_case(case_context):
 
     payload = {
         "model": model,
-        "max_tokens": 4000,
+        "max_tokens": 6000,
         "temperature": 0.3,
         "system": effective_system,
         "messages": [
