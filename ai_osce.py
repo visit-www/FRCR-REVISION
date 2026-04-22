@@ -7,7 +7,7 @@ Two prompt variants: pathological cases and normal studies.
 Output: structured JSON for the OSCE guide page — editable in TinyMCE
 when rendered to HTML.
 
-Prompt Version: v7
+Prompt Version: v9 (reset to v1 quality + selective improvements)
 Last Updated: April 2026
 """
 
@@ -39,7 +39,7 @@ _MODALITY_APPROACHES = {
     "CT Brain": "Blood (extra-axial collections — EDH biconvex, SDH crescent, SAH in sulci/cisterns; intraparenchymal), Brain (grey-white differentiation, mass effect, midline shift), CSF (ventricle size and symmetry, hydrocephalus), Bone (skull vault fractures, base of skull)",
 }
 
-# Standard views per modality
+# Standard views per modality — what students must identify and why
 _MODALITY_VIEWS = {
     "CXR": "PA erect (standard — accurate heart size, sharp costophrenic angles, trachea midline assessment). AP supine/erect (sick patients — magnified heart, poor mediastinal assessment, effusions layer posteriorly). Lateral (retrosternal space, posterior costophrenic angles, vertebral body density).",
     "AXR": "AP supine (standard — gas pattern, calcifications, soft tissue outlines). Erect (air-fluid levels in obstruction, free air under diaphragm on erect CXR).",
@@ -62,29 +62,41 @@ _MODALITY_MAP = {
 
 
 # ============================================================================
-# SYSTEM PROMPT
+# SYSTEM PROMPT (v1 base + teacher mindset + no-redundancy principle)
 # ============================================================================
 
-SYSTEM_PROMPT = """You are an expert radiology teacher sitting with a 3rd-year medical student at a lightbox.
+SYSTEM_PROMPT = """You are an expert clinical radiology educator designing OSCE training cases for 3rd-year medical students.
 
-Your job: teach them to READ images — pattern recognition, not memorisation. Explain what matters, skip what doesn't, never say the same thing twice.
+Think like a teacher sitting with a student at a lightbox — explain what matters, skip what doesn't, and never say the same thing twice.
 
-You are creating a TEACHING CASE, not reporting on an actual image. Write as a guide — "check X, look for Y, normal is Z" — not as a mock report.
+EDUCATIONAL GOALS:
+- Teach pattern recognition (what do I see?)
+- Teach mechanism (why does it look like this?)
+- Reinforce systematic approach (how to read the image)
+- Train OSCE-style verbal responses (concise, structured, examiner-ready)
+- Prioritise clinically important and exam-relevant diagnoses
 
-STUDENT LEVEL: basic anatomy, early clinical exposure, preparing for OSCE exams.
+STUDENT LEVEL:
+- 3rd-year medical student
+- Basic anatomy knowledge
+- Early clinical exposure
+- Preparing for OSCE exams
 
-PRINCIPLES:
-- Zero redundancy — if you said it in one section, do not repeat it in another
-- Drop empty sections — set to null if a field adds nothing for this case
-- Teach recognition — "when you see X, think Y" beats "the diagnosis is Y"
-- Measurements matter — include thresholds (e.g., <3cm, <0.5 ratio)
-- Plain text only — no HTML, no markdown
+CONSTRAINTS:
+- Do NOT include rare or specialist-only diagnoses
+- Do NOT include excessive detail beyond student level
+- Do NOT assume advanced radiology knowledge
+- Ensure findings are CLASSIC and recognisable
+- Use simple visual language for findings (describe what is SEEN, not the diagnosis)
+- Never repeat the same information across sections — if you said it once, do not say it again
+- If a section adds nothing for this specific case, set it to null
+- Plain text only — NO HTML, NO markdown formatting
 
-Output JSON only. No markdown fences."""
+Output JSON only. No markdown fences. No explanations outside the JSON structure."""
 
 
 # ============================================================================
-# PATHOLOGICAL CASE PROMPT
+# PATHOLOGICAL CASE PROMPT (v1 structure + visual_hook + views.notes)
 # ============================================================================
 
 def _build_pathological_prompt(case_context):
@@ -98,89 +110,108 @@ def _build_pathological_prompt(case_context):
     additional_context = case_context.get("additional_context", "").strip()
 
     modality_label = _MODALITY_MAP.get(modality, modality)
-    approach = _MODALITY_APPROACHES.get(modality, "Systematic review")
-    views = _MODALITY_VIEWS.get(modality, "Standard views")
+    approach = _MODALITY_APPROACHES.get(modality, "Systematic review of all visible structures")
+    views = _MODALITY_VIEWS.get(modality, "Standard views for this modality")
 
     context_block = ""
     if additional_context:
         context_block = f"""
-=== ADDITIONAL CONTEXT ===
+=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===
 {additional_context}
 === END CONTEXT ===
-Use the above to enrich your output. Also draw on broader medical knowledge.
+
+Use the above as preferred references to enrich and ground your output.
+Cite specific details from these sources where relevant, but also draw on
+your broader medical knowledge.
 """
 
-    return f"""Generate ONE radiology OSCE case.
+    return f"""Generate ONE high-quality radiology OSCE case.
 {context_block}
-====================================================================
+IMPORTANT -- VIEW IDENTIFICATION:
+The student MUST identify the radiographic view as the FIRST thing they say.
+Standard views for {modality_label}:
+{views}
+
 INPUT
 ====================================================================
 
 Diagnosis: {diagnosis}
 Modality: {modality_label}
-Category: {category}
+Category: {category} (Emergency = life-threatening, Spotter = classic recognisable finding, Common = frequently seen)
+Tags: {tags if tags else 'Not specified'}
 Notes: {notes if notes else 'None'}
 
-SYSTEMATIC APPROACH:
+SYSTEMATIC APPROACH FOR THIS MODALITY:
 {approach}
 
-STANDARD VIEWS:
-{views}
+====================================================================
+OUTPUT STRUCTURE (strict JSON)
+====================================================================
 
-====================================================================
-OUTPUT (strict JSON)
-====================================================================
+Return valid JSON with this exact structure:
 
 {{
   "diagnosis": "{diagnosis}",
   "modality": "{modality}",
   "category": "{category}",
-  "difficulty": "Easy or Moderate",
+  "difficulty": "Easy or Moderate (choose based on how recognisable the findings are)",
 
   "views": {{
-    "obtained": "",
-    "notes": ""
+    "obtained": "Which view(s) this case image would be (e.g., 'PA erect chest radiograph')",
+    "notes": "Why this is the appropriate view, and any supplementary views that would help confirm the diagnosis. One brief paragraph."
   }},
 
   "tags": {{
-    "pattern": "",
-    "tissue": ""
+    "pattern": "visual pattern category (e.g., air, fluid, blood, bone disruption, soft tissue, calcification)",
+    "tissue": "affected tissue/structure (e.g., pleural, parenchymal, cortical, intra-axial)"
   }},
 
   "osce": {{
-    "prompt": "",
+    "prompt": "The examiner's instruction (e.g., 'Please interpret this chest X-ray')",
 
     "expected_answer": {{
-      "approach": "Numbered list. ONE sentence per item — state what to check and the criteria for normal vs abnormal, with thresholds. This is a TEACHING GUIDE, not a report — you are not reading an image. Do NOT include pitfalls (those go in teaching_points).",
-      "key_finding": "Describe the expected abnormal appearance in simple visual language (not the diagnosis name). Then: this pattern suggests...",
-      "diagnosis": "{diagnosis}",
-      "urgency": "Clinical significance, emergency status, action needed."
+      "approach": "START by identifying the view: 'This is a [view] [modality].' Then demonstrate the systematic approach, walking through each step, noting normal AND abnormal findings. This should read like a student presenting at OSCE -- structured, methodical, not just jumping to the diagnosis. Use the {modality} approach: {approach}",
+      "key_finding": "Describe what is SEEN on the image in simple visual language. Do not name the diagnosis here -- describe the appearance (e.g., 'visible line in right hemithorax with absent lung markings beyond it', NOT 'pneumothorax')",
+      "diagnosis": "The diagnosis with laterality/specifics as appropriate",
+      "urgency": "Clinical urgency statement -- is this an emergency? What action is needed?"
     }},
 
-    "model_script": "2-4 sentence OSCE script: identify view, state finding, give diagnosis, state urgency. Do not repeat the approach."
+    "model_script": "A 2-4 sentence OSCE-ready verbal response. Must sound like a student speaking to an examiner. Structure: 1) identify the view, 2) state the key finding, 3) give the diagnosis, 4) state urgency/management if relevant."
   }},
 
   "explanation": {{
-    "mechanism": "Why the imaging looks like this. Set to null if approach already covers it."
+    "pattern_recognition": "Link the visual pattern to the diagnosis: 'If you see X -> think Y -> because Z'. Make this memorable and concise.",
+    "mechanism": "Explain WHY the imaging looks like this. Keep simple but conceptually correct. A 3rd-year student should understand this.",
+    "why_it_matters": "Clinical significance -- why must a student know this? Focus on patient safety and exam relevance. Set to null if urgency already covers this."
   }},
 
-  "teaching_points": ["Pitfalls, classic traps, differentials, examiner follow-ups — anything the student should WATCH OUT for. These must NOT duplicate the approach items."],
+  "teaching_points": [
+    "3-5 high-yield, memorable teaching points",
+    "Include classic signs, named signs, measurement thresholds where relevant",
+    "Include common examiner follow-up questions with brief answers",
+    "Include key differentials if relevant (1-2 main mimics)",
+    "Do NOT repeat information already covered in approach or explanation"
+  ],
 
-  "visual_hook": "One memorable sentence: the single visual pattern that makes this diagnosis click."
+  "visual_hook": "One memorable sentence: the single visual pattern that makes this diagnosis click. Something a student remembers at 2am on call."
 }}
 
 ====================================================================
-QUALITY CHECK
+QUALITY RULES
 ====================================================================
 
-- Approach = what you check + normal/abnormal + threshold (no pitfalls)
-- Teaching points = pitfalls + traps + exam tips (no overlap with approach)
-- Model script does not repeat approach
-- No redundancy across sections"""
+1. APPROACH must use the modality-specific systematic method listed above
+2. KEY FINDING must describe what is SEEN, not the diagnosis name
+3. MODEL SCRIPT must sound like a student speaking, not a textbook
+4. MECHANISM must be simple enough for a 3rd-year to understand
+5. TEACHING POINTS must be memorable and exam-focused
+6. No section should repeat information from another section
+7. All text must be plain text -- NO HTML, NO markdown
+8. Diagnosis must be the anchor -- do not rephrase or replace it"""
 
 
 # ============================================================================
-# NORMAL CASE PROMPT
+# NORMAL CASE PROMPT (v1 structure + visual_hook + views.notes)
 # ============================================================================
 
 def _build_normal_prompt(case_context):
@@ -190,36 +221,43 @@ def _build_normal_prompt(case_context):
     additional_context = case_context.get("additional_context", "").strip()
 
     modality_label = _MODALITY_MAP.get(modality, modality)
-    approach = _MODALITY_APPROACHES.get(modality, "Systematic review")
-    views = _MODALITY_VIEWS.get(modality, "Standard views")
+    approach = _MODALITY_APPROACHES.get(modality, "Systematic review of all visible structures")
+    views = _MODALITY_VIEWS.get(modality, "Standard views for this modality")
 
     context_block = ""
     if additional_context:
         context_block = f"""
-=== ADDITIONAL CONTEXT ===
+=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===
 {additional_context}
 === END CONTEXT ===
-Use the above to enrich your output.
+
+Use the above as preferred references to enrich and ground your output.
 """
 
-    return f"""Generate ONE NORMAL radiology OSCE case.
-{context_block}
-====================================================================
+    return f"""Generate ONE high-quality NORMAL radiology OSCE case for a 3rd-year medical student.
+
+The purpose of a normal case is to teach the systematic approach and help students recognise what NORMAL looks like -- so they can spot abnormal.
+
+IMPORTANT -- VIEW IDENTIFICATION:
+The student MUST identify the radiographic view as the FIRST thing they say.
+Standard views for {modality_label}:
+{views}
+
 INPUT
 ====================================================================
 
 Modality: {modality_label}
+Category: Normal
 Notes: {notes if notes else 'None'}
 
-SYSTEMATIC APPROACH:
+SYSTEMATIC APPROACH FOR THIS MODALITY:
 {approach}
 
-STANDARD VIEWS:
-{views}
+====================================================================
+OUTPUT STRUCTURE (strict JSON)
+====================================================================
 
-====================================================================
-OUTPUT (strict JSON)
-====================================================================
+Return valid JSON with this exact structure:
 
 {{
   "diagnosis": "Normal {modality_label}",
@@ -228,8 +266,8 @@ OUTPUT (strict JSON)
   "difficulty": "Easy",
 
   "views": {{
-    "obtained": "",
-    "notes": ""
+    "obtained": "Which standard view(s) are shown (e.g., 'PA erect chest radiograph')",
+    "notes": "What this view allows you to assess, and what other views exist for this modality and when they are requested. One brief paragraph."
   }},
 
   "tags": {{
@@ -238,35 +276,44 @@ OUTPUT (strict JSON)
   }},
 
   "osce": {{
-    "prompt": "",
+    "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "Numbered list. ONE sentence per item — state what to check and the normal value/threshold. This is a TEACHING GUIDE, not a report — you are not reading an image. Do NOT include pitfalls (those go in teaching_points).",
-      "key_finding": "No abnormality detected",
+      "approach": "START by identifying the view: 'This is a [view] [modality].' Then walk through the COMPLETE systematic approach, checking EVERY step and confirming each is normal. This is the most important part -- demonstrate thoroughness. Use: {approach}",
+      "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
-      "urgency": "No urgent findings"
+      "urgency": "No urgent findings. Correlate clinically."
     }},
 
-    "model_script": "3-5 sentence OSCE script: identify view, confirm normality concisely, conclude with summary. Do not repeat the approach."
+    "model_script": "A 3-5 sentence OSCE-ready presentation of a normal study. Walk through the systematic approach, confirming each element is normal. Conclude with 'In summary, this is a normal {modality_label.lower()} with no acute abnormality.' This should demonstrate to the examiner that you have a thorough, systematic method."
   }},
 
   "explanation": {{
-    "common_pitfalls": "Set to null — pitfalls now go in teaching_points."
+    "normal_landmarks": "List the key normal landmarks/measurements the student should check for this modality. Include normal values where relevant (e.g., cardiothoracic ratio <0.5, trachea midline). Be specific to {modality_label}.",
+    "common_pitfalls": "List 3-5 things that look abnormal on a normal {modality_label.lower()} but are actually normal variants or artefacts. Include: what it looks like, what it mimics, and how to tell it is normal. These are common OSCE traps."
   }},
 
-  "teaching_points": ["Pitfalls, normal variants that mimic pathology, OSCE traps, examiner follow-ups. These must NOT duplicate the approach items."],
+  "teaching_points": [
+    "3-5 teaching points about reading normal studies",
+    "Include 'always check' review areas that are commonly missed",
+    "Include normal variants that trap students in OSCEs",
+    "Include the examiner's likely follow-up: 'What would make you worried on this image?'",
+    "Do NOT repeat information already covered in approach or explanation"
+  ],
 
-  "visual_hook": "One memorable sentence about what makes a normal study convincingly normal."
+  "visual_hook": "One memorable sentence about what makes a normal study convincingly normal -- what pattern of normality should the student recognise."
 }}
 
 ====================================================================
-QUALITY CHECK
+QUALITY RULES
 ====================================================================
 
-- Approach = what you check + normal value (no pitfalls, no essays)
-- Teaching points = pitfalls + traps + exam tips (no overlap with approach)
-- Model script does not repeat approach
-- No redundancy across sections"""
+1. The systematic approach walkthrough is the CORE of this case
+2. Common pitfalls/normal variants must be specific to {modality_label}
+3. Model script must demonstrate a thorough, methodical approach
+4. No section should repeat information from another section
+5. All text must be plain text -- NO HTML, NO markdown
+6. Focus on what students commonly miss or mistake for pathology"""
 
 
 # ============================================================================
@@ -280,12 +327,12 @@ def generate_osce_case(case_context):
     Args:
         case_context: dict with keys:
             - diagnosis (required for pathological; ignored for normal)
-            - modality (required) — one of: CXR, AXR, Knee X-ray,
+            - modality (required) -- one of: CXR, AXR, Knee X-ray,
               Shoulder X-ray, Elbow X-ray, Foot X-ray, CT Brain
-            - category (required) — Emergency, Spotter, Common, or Normal
-            - tags (optional) — comma-separated tag string
-            - notes (optional) — additional context
-            - model (optional) — Claude model override
+            - category (required) -- Emergency, Spotter, Common, or Normal
+            - tags (optional) -- comma-separated tag string
+            - notes (optional) -- additional context
+            - model (optional) -- Claude model override
 
     Returns:
         dict with keys:
@@ -420,7 +467,7 @@ def generate_osce_case(case_context):
     return {
         "provider": "claude",
         "model": model,
-        "prompt_version": "osce-v7",
+        "prompt_version": "osce-v9",
         "generated_at": datetime.utcnow().isoformat(),
         "output": parsed,
         "raw_response": text,
@@ -432,7 +479,7 @@ def generate_osce_case(case_context):
 
 
 # ============================================================================
-# HTML RENDERER — converts OSCE JSON to TinyMCE-editable HTML
+# HTML RENDERER -- converts OSCE JSON to TinyMCE-editable HTML
 # ============================================================================
 
 def render_osce_html(osce_data):
@@ -444,10 +491,10 @@ def render_osce_html(osce_data):
     editable in TinyMCE for admin tweaks.
 
     Args:
-        osce_data: dict — the parsed OSCE case JSON (the "output" field)
+        osce_data: dict -- the parsed OSCE case JSON (the "output" field)
 
     Returns:
-        str — HTML string
+        str -- HTML string
     """
     if not osce_data or not isinstance(osce_data, dict):
         return ""
