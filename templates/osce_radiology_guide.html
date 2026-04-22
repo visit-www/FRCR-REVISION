@@ -676,17 +676,13 @@
 }
 .osce-focus-image-panel.osce-focus-img-hidden { width: 0; min-width: 0; overflow: hidden; padding: 0; }
 .osce-focus-image-area {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  padding: 0.75rem; overflow: hidden; cursor: pointer;
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0.5rem; overflow-y: auto;
 }
-.osce-focus-image-area img {
-  max-width: 100%; max-height: 100%; object-fit: contain;
+.osce-focus-image-area > img {
+  max-width: 100%; max-height: 60vh; object-fit: contain;
   border-radius: 0.5rem; border: 2px solid #333; transition: opacity 0.3s;
-}
-.osce-focus-img-wrap { position: relative; display: inline-block; max-width: 100%; max-height: 100%; }
-.osce-focus-img-annotated {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  object-fit: contain; border-radius: 0.5rem;
+  cursor: pointer;
 }
 /* Image nav bar (arrows, counter, hide/annotate buttons) */
 .osce-focus-image-nav {
@@ -736,11 +732,12 @@
 /* Fullscreen image viewer */
 .osce-img-fullscreen {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  z-index: 1100; background: rgba(0,0,0,0.95);
+  z-index: 1100; background: rgba(0,0,0,0.97);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 1rem;
 }
-.osce-img-fullscreen img { max-width: 95%; max-height: 85vh; object-fit: contain; border-radius: 0.5rem; }
-.osce-img-fullscreen-caption { color: #d1d5db; font-size: 0.85rem; margin-top: 0.75rem; text-align: center; max-width: 80%; }
+.osce-img-fullscreen img { max-width: 100%; max-height: 82vh; object-fit: contain; }
+.osce-img-fullscreen-caption { color: #d1d5db; font-size: 0.85rem; margin-top: 0.75rem; text-align: center; max-width: 90%; }
 .osce-img-fullscreen-close {
   position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.15);
   border: 1px solid rgba(255,255,255,0.3); color: #fff; width: 40px; height: 40px;
@@ -1690,18 +1687,30 @@ body.is-admin .osce-admin-edit-btn:hover {
     // Separate clean and annotated images
     var cleanImgs = caseImages.filter(function(i) { return !i.is_annotated; });
     var annotatedMap = {};
+    var unpairedAnnotated = [];
     caseImages.forEach(function(i) {
-      if (i.is_annotated && i.paired_image_id) annotatedMap[i.paired_image_id] = i;
+      if (i.is_annotated) {
+        if (i.paired_image_id) annotatedMap[i.paired_image_id] = i;
+        else unpairedAnnotated.push(i);
+      }
     });
-    var focusImgs = cleanImgs.length ? cleanImgs : caseImages.filter(function(i) { return !i.is_annotated; });
+    // Carousel: all clean images + any unpaired annotated images
+    var focusImgs = cleanImgs.concat(unpairedAnnotated);
     if (!focusImgs.length && caseImages.length) focusImgs = caseImages;
     var focusImgIdx = 0;
     var showingAnnotated = false;
 
+    // Sanitize attribution HTML — allow <a> tags, escape everything else
+    function safeAttr(html) {
+      if (!html) return '';
+      // Strip all tags except <a>
+      return html.replace(/<(?!\/?a[\s>])[^>]+>/gi, '').replace(/<a\s/gi, '<a rel="noopener" target="_blank" ');
+    }
+
     function renderFocusImage() {
       if (!focusImgs.length) {
         imgArea.innerHTML = '<div class="osce-focus-no-image"><i class="fas ' + esc(mod.icon || 'fa-image') + '" style="font-size:3rem;color:#d1d5db;"></i><p>Image coming soon</p></div>';
-        imgNav.innerHTML = '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide</button>';
+        imgNav.innerHTML = '';
         return;
       }
       var im = focusImgs[focusImgIdx];
@@ -1709,18 +1718,17 @@ body.is-admin .osce-admin-edit-btn:hover {
       var src = im.url || im.thumbnail;
       if (showingAnnotated && annot) src = annot.url || annot.thumbnail;
 
-      imgArea.innerHTML = '<div class="osce-focus-img-wrap">'
-        + '<img src="' + esc(src) + '" alt="' + esc(im.description || c.diagnosis) + '" id="osceFocusMainImg">'
-        + '</div>';
+      // Image fills the area, caption + attribution below
+      imgArea.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(im.description || c.diagnosis) + '" id="osceFocusMainImg" style="cursor:pointer;">';
 
-      // Caption + attribution below image
-      var captionHtml = '';
-      if (im.description) captionHtml += '<div class="osce-focus-img-caption">' + esc(im.description) + '</div>';
+      // Description + attribution below image
+      var belowHtml = '';
+      if (im.description) belowHtml += '<div class="osce-focus-img-caption">' + esc(im.description) + '</div>';
       var attrParts = [];
-      if (im.attribution) attrParts.push(esc(im.attribution));
+      if (im.attribution) attrParts.push(safeAttr(im.attribution));
       if (im.source_url) attrParts.push('<a href="' + esc(im.source_url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>Source</a>');
-      if (attrParts.length) captionHtml += '<div class="osce-focus-img-attribution">' + attrParts.join(' &middot; ') + '</div>';
-      imgArea.insertAdjacentHTML('beforeend', captionHtml);
+      if (attrParts.length) belowHtml += '<div class="osce-focus-img-attribution">' + attrParts.join(' &middot; ') + '</div>';
+      imgArea.insertAdjacentHTML('beforeend', belowHtml);
 
       // Nav bar: arrows + counter + annotate + hide
       var navHtml = '';
@@ -1734,7 +1742,7 @@ body.is-admin .osce-admin-edit-btn:hover {
         navHtml += '<button id="osceFocusAnnotBtn" class="' + (showingAnnotated ? 'osce-focus-annot-active' : '') + '">'
           + '<i class="fas fa-draw-polygon me-1"></i>' + (showingAnnotated ? 'Clean' : 'Annotated') + '</button>';
       }
-      navHtml += '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide</button>';
+      navHtml += '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide Image</button>';
       imgNav.innerHTML = navHtml;
 
       // Attach nav handlers
@@ -1753,9 +1761,10 @@ body.is-admin .osce-admin-edit-btn:hover {
         showingAnnotated = !showingAnnotated; renderFocusImage();
       });
       document.getElementById('osceFocusHideImg').addEventListener('click', function() {
-        imgPanel.classList.toggle('osce-focus-img-hidden');
-        this.innerHTML = imgPanel.classList.contains('osce-focus-img-hidden')
-          ? '<i class="fas fa-eye me-1"></i>Show' : '<i class="fas fa-eye-slash me-1"></i>Hide';
+        imgPanel.classList.add('osce-focus-img-hidden');
+        // Show the "Show Image" button in content area
+        var showBtn = document.getElementById('osceFocusShowImg');
+        if (showBtn) showBtn.style.display = '';
       });
       // Fullscreen on image click
       document.getElementById('osceFocusMainImg').addEventListener('click', function() {
@@ -1770,6 +1779,10 @@ body.is-admin .osce-admin-edit-btn:hover {
     // ── Content area ──
     var contentEl = document.getElementById('osceFocusContent');
     var html = '';
+
+    // "Show Image" button (hidden by default, shown when image panel is collapsed)
+    html += '<button class="btn btn-sm btn-outline-secondary mb-2" id="osceFocusShowImg" style="display:none;" onclick="document.getElementById(\'osceFocusImagePanel\').classList.remove(\'osce-focus-img-hidden\');this.style.display=\'none\';">'
+      + '<i class="fas fa-image me-1"></i>Show Image</button>';
 
     // Modality + category badges
     html += '<div class="d-flex align-items-center gap-2 mb-3">'
