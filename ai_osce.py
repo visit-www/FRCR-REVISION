@@ -176,7 +176,7 @@ Return valid JSON with this exact structure:
     "prompt": "The examiner's instruction (e.g., 'Please interpret this chest X-ray')",
 
     "expected_answer": {{
-      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] Walk through the {modality} systematic approach ({approach}), noting what is normal and what is abnormal at each step. This is the core learning content — be thorough. Do NOT start with view identification (that belongs in model_script).",
+      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] Walk through the {modality} systematic approach ({approach}), noting what is normal and what is abnormal at each step. Format as a NUMBERED LIST — one item per structure/step. Each item: what to check, what you find (normal or abnormal), and any relevant measurement. This is the core learning content. Do NOT start with view identification (that belongs in model_script).",
       "key_finding": "[DISPLAYED AS: the core observation + pattern link] Describe what is SEEN in simple visual language (not the diagnosis name). Then add: 'This pattern suggests...' to link the visual finding to the diagnosis. Combine observation and pattern recognition in one statement.",
       "diagnosis": "The diagnosis with laterality/specifics.",
       "urgency": "Clinical significance: is this an emergency? What action is needed? Why must a student know this? This single field covers urgency, clinical importance, and 'why it matters'."
@@ -279,7 +279,7 @@ Return valid JSON with this exact structure:
     "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] This is the CORE of the normal case. Walk through the COMPLETE {modality} systematic approach ({approach}). For each structure: state what to check, the normal value/threshold, and ONE common pitfall that mimics pathology. Include measurements. Be thorough but concise — this is everything the student needs to learn from this case. Format as a structured walkthrough, not a numbered checklist.",
+      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] This is the CORE of the normal case. Walk through the COMPLETE {modality} systematic approach ({approach}). Format as a NUMBERED LIST — one item per structure. Each item: what to check, the normal value/threshold, and ONE pitfall that mimics pathology. Be thorough but concise.",
       "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings. Correlate clinically."

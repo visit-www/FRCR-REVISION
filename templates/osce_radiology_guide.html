@@ -381,14 +381,16 @@
 
 /* ── Approach list (structured bullet points) ── */
 .osce-approach-list {
-  list-style: none; padding-left: 0; margin: 0;
+  list-style: none; padding-left: 0; margin: 0.3rem 0;
+  counter-reset: approach-step;
 }
 .osce-approach-list li {
-  padding: 0.3rem 0 0.3rem 0.5rem; margin-bottom: 0.15rem;
-  border-left: 2px solid var(--brand-neutral); font-size: 0.84rem;
-  line-height: 1.45; color: #1e293b;
+  padding: 0.5rem 0.6rem; margin-bottom: 0.4rem;
+  border-left: 3px solid var(--brand-neutral);
+  background: #f8fafc; border-radius: 0 0.3rem 0.3rem 0;
+  font-size: 0.84rem; line-height: 1.5; color: #1e293b;
 }
-.osce-approach-list li strong { color: var(--brand-neutral); }
+.osce-approach-list li strong { color: var(--brand-neutral); font-weight: 700; }
 
 /* ── Teaching points list ── */
 .osce-card-teaching-list {
@@ -713,8 +715,16 @@
   flex: 1; overflow-y: auto; padding: 1.5rem 2rem;
 }
 /* Explanation list styling */
-.osce-expl-list { padding-left: 1.2rem; margin: 0.3rem 0; }
-.osce-expl-list li { margin-bottom: 0.4rem; line-height: 1.5; }
+.osce-expl-list {
+  list-style: none; padding-left: 0; margin: 0.3rem 0;
+}
+.osce-expl-list li {
+  padding: 0.5rem 0.6rem; margin-bottom: 0.4rem;
+  border-left: 3px solid var(--brand-neutral);
+  background: #f8fafc; border-radius: 0 0.3rem 0.3rem 0;
+  font-size: 0.84rem; line-height: 1.5;
+}
+.osce-expl-list li strong { color: var(--brand-neutral); font-weight: 700; }
 
 /* Case nav footer */
 .osce-focus-footer {
@@ -846,6 +856,24 @@ body.is-admin .osce-admin-edit-btn:hover {
         html += '<li>' + escaped + '.</li>';
       });
       html += '</ul>';
+      return html;
+    }
+    // Try numbered list: "1. Structure — finding. 2. Structure — finding."
+    var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
+    numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
+    if (numberedItems.length > 2) {
+      var html = '<ol class="osce-approach-list">';
+      numberedItems.forEach(function(item) {
+        var cleaned = item.replace(/^\d+\.\s*/, '').replace(/\.\s*$/, '').trim();
+        if (!cleaned) return;
+        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*(.*)/);
+        if (labelMatch) {
+          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
+        } else {
+          html += '<li>' + esc(cleaned) + '</li>';
+        }
+      });
+      html += '</ol>';
       return html;
     }
     // Fallback: split on ". " followed by uppercase
