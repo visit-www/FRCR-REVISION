@@ -103,12 +103,28 @@ def _build_pathological_prompt(case_context):
     tags = case_context.get("tags", "").strip()
     notes = case_context.get("notes", "").strip()
 
+    additional_context = case_context.get("additional_context", "").strip()
+
     modality_label = _MODALITY_MAP.get(modality, modality)
     approach = _MODALITY_APPROACHES.get(modality, "Systematic review of all visible structures")
     views = _MODALITY_VIEWS.get(modality, "Standard views for this modality")
 
-    return f"""Generate ONE high-quality radiology OSCE case.
+    context_block = ""
+    if additional_context:
+        context_block = f"""
 
+=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===
+{additional_context}
+=== END CONTEXT ===
+
+Use the above as preferred references to enrich and ground your output.
+Cite specific details from these sources where relevant, but also draw on
+your broader medical knowledge — do not limit your response exclusively to
+these references.
+"""
+
+    return f"""Generate ONE high-quality radiology OSCE case.
+{context_block}
 IMPORTANT — VIEW IDENTIFICATION:
 The student MUST identify the radiographic view as the FIRST thing they say.
 Standard views for {modality_label}:
@@ -200,13 +216,25 @@ def _build_normal_prompt(case_context):
     """Build prompt for a normal study OSCE case."""
     modality = case_context.get("modality", "").strip()
     notes = case_context.get("notes", "").strip()
+    additional_context = case_context.get("additional_context", "").strip()
 
     modality_label = _MODALITY_MAP.get(modality, modality)
     approach = _MODALITY_APPROACHES.get(modality, "Systematic review of all visible structures")
     views = _MODALITY_VIEWS.get(modality, "Standard views for this modality")
 
-    return f"""Generate ONE high-quality NORMAL radiology OSCE case for a 3rd-year medical student.
+    context_block = ""
+    if additional_context:
+        context_block = f"""
 
+=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===
+{additional_context}
+=== END CONTEXT ===
+
+Use the above as preferred references to enrich and ground your output.
+"""
+
+    return f"""Generate ONE high-quality NORMAL radiology OSCE case for a 3rd-year medical student.
+{context_block}
 The purpose of a normal case is to teach the systematic approach and help students recognise what NORMAL looks like — so they can spot abnormal.
 
 IMPORTANT — VIEW IDENTIFICATION:

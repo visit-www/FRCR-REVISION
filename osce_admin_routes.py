@@ -190,9 +190,25 @@ def delete_osce_case(case_id):
 @osce_admin_bp.route('/cases/<int:case_id>/generate', methods=['POST'])
 @require_admin
 def generate_for_case(case_id):
-    """Generate AI content for an existing OSCE case."""
+    """Generate AI content for an existing OSCE case.
+    Supports multipart/form-data for PDF uploads + reference URLs + instructions."""
 
     case = OsceCase.query.get_or_404(case_id)
+
+    # Parse input (supports both JSON and multipart form data)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        instructions = (request.form.get('instructions') or '').strip()
+        reference_urls = request.form.getlist('reference_url')
+        pdf_files = request.files.getlist('pdf')
+    else:
+        data = request.get_json() or {}
+        instructions = (data.get('instructions') or '').strip()
+        reference_urls = data.get('reference_urls') or []
+        pdf_files = []
+
+    # Build additional context from references + PDFs + instructions
+    from reporting_routes import _build_generation_context
+    additional_context, _ = _build_generation_context(instructions, reference_urls, pdf_files)
 
     from ai_osce import AiOsceError, generate_osce_case, render_osce_html
 
@@ -200,6 +216,7 @@ def generate_for_case(case_id):
         'diagnosis': case.diagnosis,
         'modality': case.modality,
         'category': case.category,
+        'additional_context': additional_context,
     }
 
     try:

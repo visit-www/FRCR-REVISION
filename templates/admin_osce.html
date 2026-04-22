@@ -65,7 +65,7 @@
                 <div class="btn-group btn-group-sm">
                   <button class="btn btn-outline-primary" onclick="openEditModal({{ c.id }})" title="Edit"><i class="fas fa-edit"></i></button>
                   <button class="btn btn-outline-info" onclick="openImageModal({{ c.id }})" title="Images"><i class="fas fa-images"></i></button>
-                  <button class="btn btn-outline-warning" onclick="generateAI({{ c.id }})" title="Generate AI"><i class="fas fa-robot"></i></button>
+                  <button class="btn btn-outline-warning" onclick="openGenerateModal({{ c.id }}, '{{ c.code }}', '{{ c.diagnosis }}')" title="Generate AI"><i class="fas fa-robot"></i></button>
                   <button class="btn btn-outline-success" onclick="togglePublish({{ c.id }}, {{ 'true' if c.is_published else 'false' }})" title="Toggle publish"><i class="fas fa-eye"></i></button>
                   <button class="btn btn-outline-danger" onclick="deleteCase({{ c.id }}, '{{ c.code }}')" title="Delete"><i class="fas fa-trash"></i></button>
                 </div>
@@ -243,6 +243,45 @@
   </div>
 </div>
 
+<!-- ═══════════ GENERATE AI MODAL ═══════════ -->
+<div class="modal fade app-content-modal" id="oaGenModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="oaGenModalTitle">Generate AI Content</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="oaGenCaseId">
+        <p class="small text-muted mb-3">Provide references and instructions to produce a richer, more accurate OSCE case card. All fields are optional — the AI will generate content from the diagnosis and modality if left empty.</p>
+        <div class="row g-3">
+          <!-- Instructions -->
+          <div class="col-12">
+            <label class="form-label small fw-bold">Special Instructions</label>
+            <textarea class="form-control form-control-sm" id="oaGenInstructions" rows="3" placeholder="e.g. Focus on paediatric presentation, include Ottawa ankle rules, emphasise the lateral view findings..."></textarea>
+          </div>
+          <!-- Reference URLs -->
+          <div class="col-12">
+            <label class="form-label small fw-bold">Reference URLs <span class="text-muted fw-normal">(one per line — Radiopaedia, Radiology Key, guidelines)</span></label>
+            <textarea class="form-control form-control-sm" id="oaGenRefUrls" rows="3" placeholder="https://radiopaedia.org/articles/pneumothorax&#10;https://www.brit-thoracic.org.uk/guidelines/pneumothorax/"></textarea>
+          </div>
+          <!-- PDF uploads -->
+          <div class="col-12">
+            <label class="form-label small fw-bold">Reference PDFs <span class="text-muted fw-normal">(textbook pages, guidelines — text will be extracted)</span></label>
+            <input type="file" class="form-control form-control-sm" id="oaGenPdfs" accept=".pdf" multiple>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-brand-primary" id="oaGenSubmitBtn" onclick="submitGenerate()">
+          <i class="fas fa-robot me-1"></i>Generate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
 (function() {
@@ -375,25 +414,61 @@
   };
 
   // ── Generate AI ──
-  window.generateAI = function(id) {
-    if (!confirm('Generate AI content for this case? This will overwrite existing content.')) return;
-    var btn = event.target.closest('button');
+  // ── Generate AI: open modal ──
+  window.openGenerateModal = function(id, code, diagnosis) {
+    document.getElementById('oaGenCaseId').value = id;
+    document.getElementById('oaGenModalTitle').textContent = 'Generate AI — ' + code + ': ' + diagnosis;
+    document.getElementById('oaGenInstructions').value = '';
+    document.getElementById('oaGenRefUrls').value = '';
+    document.getElementById('oaGenPdfs').value = '';
+    new bootstrap.Modal(document.getElementById('oaGenModal')).show();
+  };
+
+  window.submitGenerate = function() {
+    var caseId = document.getElementById('oaGenCaseId').value;
+    var btn = document.getElementById('oaGenSubmitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    fetch(API + '/cases/' + id + '/generate', { method: 'POST' })
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+
+    var fd = new FormData();
+
+    // Instructions
+    var instructions = document.getElementById('oaGenInstructions').value.trim();
+    if (instructions) fd.append('instructions', instructions);
+
+    // Reference URLs (one per line)
+    var urls = document.getElementById('oaGenRefUrls').value.trim();
+    if (urls) {
+      urls.split('\n').forEach(function(u) {
+        u = u.trim();
+        if (u) fd.append('reference_url', u);
+      });
+    }
+
+    // PDFs
+    var pdfInput = document.getElementById('oaGenPdfs');
+    if (pdfInput.files.length) {
+      for (var i = 0; i < pdfInput.files.length; i++) {
+        fd.append('pdf', pdfInput.files[i]);
+      }
+    }
+
+    fetch(API + '/cases/' + caseId + '/generate', { method: 'POST', body: fd })
       .then(r => r.json()).then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-robot"></i>';
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Generate';
         if (data.success) {
-          alert('Generated! Tokens: ' + (data.usage.input_tokens + data.usage.output_tokens));
+          var tokens = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+          alert('Generated successfully! (' + tokens + ' tokens)');
+          bootstrap.Modal.getInstance(document.getElementById('oaGenModal')).hide();
           location.reload();
         } else {
           alert('Error: ' + (data.error || 'Unknown'));
         }
-      }).catch(function() {
+      }).catch(function(err) {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-robot"></i>';
-        alert('Generation failed');
+        btn.innerHTML = '<i class="fas fa-robot me-1"></i>Generate';
+        alert('Generation failed: ' + err.message);
       });
   };
 
