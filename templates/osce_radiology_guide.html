@@ -836,24 +836,38 @@ body.is-admin .osce-admin-edit-btn:hover {
    */
   function formatApproach(text) {
     if (!text) return '';
-    // Try to split on step patterns: ". A — " or ". B — " (period + space + letter + dash)
-    // First, try splitting on the ABCDE / ABCS pattern
-    var stepRegex = /([A-Z])\s*[—–-]\s*([^.]+(?:\.[^A-Z])*)/g;
+
+    // 1. Try numbered list FIRST: "1. Something 2. Something"
+    var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
+    numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
+    if (numberedItems.length > 2) {
+      var html = '<ol class="osce-approach-list">';
+      numberedItems.forEach(function(item) {
+        var cleaned = item.replace(/^\d+\.\s*/, '').trim();
+        if (!cleaned) return;
+        // Bold the label before first dash/colon
+        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
+        if (labelMatch) {
+          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
+        } else {
+          html += '<li>' + esc(cleaned) + '</li>';
+        }
+      });
+      html += '</ol>';
+      return html;
+    }
+
+    // 2. Try ABCDE letter pattern (only if text clearly uses "A — ..., B — ..." structure)
+    // Require at least 3 sequential letters to avoid false positives
+    var stepRegex = /(?:^|(?:\.\s+))([A-Z])\s*[—–]\s*([^.]+(?:\.[^A-Z])*)/g;
     var matches = [];
     var m;
     while ((m = stepRegex.exec(text)) !== null) {
       matches.push({ letter: m[1], content: m[2].replace(/\.\s*$/, '').trim() });
     }
-    if (matches.length > 1) {
-      // Extract any preamble before the first step
-      var firstIdx = text.indexOf(matches[0].letter + ' ');
-      if (firstIdx < 0) firstIdx = text.indexOf(matches[0].letter + String.fromCharCode(8212));
-      var preamble = firstIdx > 0 ? text.substring(0, firstIdx).replace(/\.\s*$/, '').trim() : '';
-      var html = '';
-      if (preamble) html += '<p style="margin-bottom:0.4rem;">' + esc(preamble) + '.</p>';
-      html += '<ul class="osce-approach-list">';
+    if (matches.length >= 3) {
+      var html = '<ul class="osce-approach-list">';
       matches.forEach(function(step) {
-        // Bold the letter and label (up to first colon)
         var escaped = esc(step.content);
         var colonIdx = escaped.indexOf(':');
         if (colonIdx > 0 && colonIdx < 40) {
@@ -866,25 +880,8 @@ body.is-admin .osce-admin-edit-btn:hover {
       html += '</ul>';
       return html;
     }
-    // Try numbered list: "1. Structure — finding. 2. Structure — finding."
-    var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
-    numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
-    if (numberedItems.length > 2) {
-      var html = '<ol class="osce-approach-list">';
-      numberedItems.forEach(function(item) {
-        var cleaned = item.replace(/^\d+\.\s*/, '').replace(/\.\s*$/, '').trim();
-        if (!cleaned) return;
-        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*(.*)/);
-        if (labelMatch) {
-          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
-        } else {
-          html += '<li>' + esc(cleaned) + '</li>';
-        }
-      });
-      html += '</ol>';
-      return html;
-    }
-    // Fallback: split on ". " followed by uppercase
+
+    // 3. Fallback: split on ". " followed by uppercase (sentence-per-bullet)
     var sentences = text.split(/\.\s+(?=[A-Z])/);
     if (sentences.length > 2) {
       var html = '<ul class="osce-approach-list">';
