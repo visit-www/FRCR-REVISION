@@ -55,6 +55,15 @@ def edit_osce_case_page(case_id):
         ' | '.join(filter(None, [r.get('url', ''), r.get('label', ''), r.get('source', '')]))
         for r in refs
     ) if refs else ''
+    # If content_html is empty but osce_data has JSON, render it now
+    if not case.content_html and case.osce_data:
+        try:
+            from ai_osce import render_osce_html
+            osce_json = case.get_osce_data()
+            case.content_html = render_osce_html(osce_json)
+            db.session.commit()
+        except Exception:
+            pass
     return render_template('admin_osce_edit.html',
                            osce_case=case,
                            linkable_cases=linkable_cases,
