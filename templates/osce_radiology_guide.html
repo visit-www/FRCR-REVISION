@@ -1751,12 +1751,21 @@ body.is-admin .osce-admin-edit-btn:hover {
         navHtml += '<span style="margin:0 0.25rem;">|</span>';
       }
       if (annots.length) {
-        var annotLabel = showingAnnotated ? 'Clean' : 'Annotated';
-        if (showingAnnotated && annots.length > 1) annotLabel = 'Annotated ' + ((annotIdx % annots.length) + 1) + '/' + annots.length;
-        navHtml += '<button id="osceFocusAnnotBtn" class="' + (showingAnnotated ? 'osce-focus-annot-active' : '') + '">'
-          + '<i class="fas fa-draw-polygon me-1"></i>' + annotLabel + '</button>';
-        if (showingAnnotated && annots.length > 1) {
-          navHtml += '<button id="osceFocusAnnotNext"><i class="fas fa-chevron-right"></i></button>';
+        if (showingAnnotated) {
+          // Show "Clean" button to go back
+          navHtml += '<button id="osceFocusCleanBtn"><i class="fas fa-image me-1"></i>Clean</button>';
+          // Show which annotated version + next arrow if multiple
+          var annotLabel = annots.length > 1
+            ? 'Annotated ' + ((annotIdx % annots.length) + 1) + '/' + annots.length
+            : 'Annotated';
+          navHtml += '<button id="osceFocusAnnotBtn" class="osce-focus-annot-active">'
+            + '<i class="fas fa-draw-polygon me-1"></i>' + annotLabel + '</button>';
+          if (annots.length > 1) {
+            navHtml += '<button id="osceFocusAnnotNext" title="Next annotation"><i class="fas fa-chevron-right"></i></button>';
+          }
+        } else {
+          navHtml += '<button id="osceFocusAnnotBtn">'
+            + '<i class="fas fa-draw-polygon me-1"></i>Annotated' + (annots.length > 1 ? ' (' + annots.length + ')' : '') + '</button>';
         }
       }
       navHtml += '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide Image</button>';
@@ -1773,10 +1782,13 @@ body.is-admin .osce-admin-edit-btn:hover {
         focusImgIdx = (focusImgIdx + 1) % focusImgs.length;
         showingAnnotated = false; annotIdx = 0; renderFocusImage();
       });
+      var cleanBtn = document.getElementById('osceFocusCleanBtn');
+      if (cleanBtn) cleanBtn.addEventListener('click', function() {
+        showingAnnotated = false; annotIdx = 0; renderFocusImage();
+      });
       var annotBtn = document.getElementById('osceFocusAnnotBtn');
       if (annotBtn) annotBtn.addEventListener('click', function() {
         if (!showingAnnotated) { showingAnnotated = true; annotIdx = 0; }
-        else if (annots.length > 1) { annotIdx++; } // cycle through annotated versions
         else { showingAnnotated = false; annotIdx = 0; } // toggle back to clean
         renderFocusImage();
       });
