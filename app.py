@@ -2037,6 +2037,14 @@ match specific statistical claims to paper abstracts.</p>
         _add_col_if_missing('user', 'radiq_usage_month', 'radiq_usage_month INTEGER DEFAULT 0')
         _add_col_if_missing('user', 'usage_reset_date', 'usage_reset_date DATE')
 
+        # -- Generic content columns for notes/highlights/forum (OSCE guide, etc.) --
+        _add_col_if_missing('candidate_note', 'content_type', 'content_type VARCHAR(30)')
+        _add_col_if_missing('candidate_note', 'content_key', 'content_key VARCHAR(100)')
+        _add_col_if_missing('text_highlight', 'content_type', 'content_type VARCHAR(30)')
+        _add_col_if_missing('text_highlight', 'content_key', 'content_key VARCHAR(100)')
+        _add_col_if_missing('forum_message', 'content_type', 'content_type VARCHAR(30)')
+        _add_col_if_missing('forum_message', 'content_key', 'content_key VARCHAR(100)')
+
         # -- user: Login rate limiting (brute force protection) --
         _add_col_if_missing('user', 'failed_login_count', 'failed_login_count INTEGER DEFAULT 0')
         _add_col_if_missing('user', 'failed_login_last', 'failed_login_last TIMESTAMP')
@@ -2307,8 +2315,10 @@ app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (
 
 from public_routes import public_bp
 from osce_admin_routes import osce_admin_bp
+from content_interact_routes import content_bp
 app.register_blueprint(public_bp)  # Public preview pages for SEO (case library, etc.)
 app.register_blueprint(osce_admin_bp)  # OSCE guide admin CRUD
+app.register_blueprint(content_bp)  # Generic notes/highlights/forum for any content
 
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant

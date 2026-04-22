@@ -173,6 +173,27 @@
     </div>
 
   </div><!-- /tab-content -->
+
+  <!-- ═══════════ STUDY TOOLS (Notes + Highlights + Forum) ═══════════ -->
+  {% if current_user.is_authenticated %}
+  <div class="mt-4">
+    <button class="btn btn-sm btn-brand-neutral w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#osceStudyTools" aria-expanded="false">
+      <i class="fas fa-tools me-1"></i>Study Tools — Notes, Highlights &amp; Discussion
+    </button>
+    <div class="collapse" id="osceStudyTools">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div id="osceNotesPanel"></div>
+        </div>
+        <div class="col-md-6">
+          <div id="osceForumPanel"></div>
+        </div>
+      </div>
+      <p class="text-muted small mt-2"><i class="fas fa-highlighter me-1"></i>Select any text in the guide content above to highlight it. Your highlights are saved automatically.</p>
+    </div>
+  </div>
+  {% endif %}
+
 </div><!-- /container -->
 
 {% include 'partials/_public_cta.html' %}
@@ -1376,4 +1397,54 @@ body.is-admin .osce-admin-edit-btn:hover {
 
 })();
 </script>
+
+{% if current_user.is_authenticated %}
+<!-- Content Interact: notes, highlights, discussion -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">
+<script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Determine content key from active tab (default to 'guide')
+  var activeTab = 'guide';
+  var tabBtns = document.querySelectorAll('.osce-tabs .nav-link');
+  tabBtns.forEach(function(btn) {
+    btn.addEventListener('shown.bs.tab', function() {
+      var target = this.dataset.bsTarget || '';
+      if (target.includes('cases')) activeTab = 'cases';
+      else if (target.includes('ref')) activeTab = 'reference';
+      else if (target.includes('patterns')) activeTab = 'patterns';
+      else if (target.includes('technique')) activeTab = 'technique';
+      // Re-init with new content key when tab changes
+      ContentInteract.init({
+        contentType: 'osce_guide',
+        contentKey: activeTab,
+        notesContainer: '#osceNotesPanel',
+        highlightContainers: [
+          '#osce-tab-cases .osce-case-body',
+          '#osce-tab-ref .osce-ref-card-body',
+          '#osce-tab-patterns',
+          '#osce-tab-technique .osce-tech-body',
+          '.osce-bys-content'
+        ],
+        forumContainer: '#osceForumPanel',
+      });
+    });
+  });
+
+  // Init for default tab
+  ContentInteract.init({
+    contentType: 'osce_guide',
+    contentKey: 'guide',
+    notesContainer: '#osceNotesPanel',
+    highlightContainers: [
+      '.osce-case-body',
+      '.osce-ref-card-body',
+      '.osce-tech-body',
+      '.osce-bys-content'
+    ],
+    forumContainer: '#osceForumPanel',
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

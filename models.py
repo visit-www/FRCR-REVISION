@@ -783,26 +783,31 @@ class CaseImageAnnotation(db.Model):
 
 
 class CandidateNote(db.Model):
-    """Store student/candidate notes for cases and TNM disease sites"""
+    """Store student/candidate notes for cases, TNM disease sites, and any content type."""
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM notes
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM/generic notes
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     note_text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Optional: TNM disease site association (for TNM view notes)
     tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
-    
+
+    # Generic content association (for OSCE guide, learning modules, etc.)
+    content_type = db.Column(db.String(30), nullable=True, index=True)   # e.g. 'osce_case', 'osce_ref', 'osce_technique'
+    content_key = db.Column(db.String(100), nullable=True)               # e.g. 'cxr', 'timing', case code
+
     # Relationships
     tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('student_notes', lazy=True))
-    
+
     # Composite index for efficient lookups
     __table_args__ = (
         db.Index('idx_case_user', 'case_id', 'user_id'),
         db.Index('idx_tnm_user', 'tnm_disease_id', 'user_id'),
+        db.Index('idx_content_user_note', 'content_type', 'content_key', 'user_id'),
     )
-    
+
     def __repr__(self):
         return f'<CandidateNote Case:{self.case_id} User:{self.user_id}>'
 
@@ -810,7 +815,7 @@ class CandidateNote(db.Model):
 class TextHighlight(db.Model):
     """Store text highlights for search and personalization"""
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM highlights
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM/generic
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     text_content = db.Column(db.Text, nullable=False)  # The highlighted text
     highlight_color = db.Column(db.String(20), nullable=False, default='yellow')  # yellow, green, pink, blue
@@ -819,20 +824,25 @@ class TextHighlight(db.Model):
     context_before = db.Column(db.String(100), nullable=True)  # 50 chars before the highlight
     context_after = db.Column(db.String(100), nullable=True)  # 50 chars after the highlight
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     # Optional: TNM disease site association (for TNM view highlights)
     tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
-    
+
+    # Generic content association (for OSCE guide, learning modules, etc.)
+    content_type = db.Column(db.String(30), nullable=True, index=True)
+    content_key = db.Column(db.String(100), nullable=True)
+
     # Relationships
     tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('student_highlights', lazy=True))
-    
+
     # Composite index for efficient lookups
     __table_args__ = (
         db.Index('idx_case_user_highlight', 'case_id', 'user_id'),
         db.Index('idx_text_search', 'text_content'),  # For keyword search
         db.Index('idx_tnm_user_highlight', 'tnm_disease_id', 'user_id'),
+        db.Index('idx_content_user_highlight', 'content_type', 'content_key', 'user_id'),
     )
-    
+
     def __repr__(self):
         return f'<TextHighlight Case:{self.case_id} User:{self.user_id} Color:{self.highlight_color}>'
 
@@ -1290,7 +1300,11 @@ class ForumMessage(db.Model):
     
     # Optional: TNM disease site association (for TNM view forum)
     tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
-    
+
+    # Generic content association (for OSCE guide, learning modules, etc.)
+    content_type = db.Column(db.String(30), nullable=True, index=True)
+    content_key = db.Column(db.String(100), nullable=True)
+
     # Message content (HTML supported)
     content = db.Column(db.Text, nullable=False)
     
@@ -1327,8 +1341,9 @@ class ForumMessage(db.Model):
         db.Index('idx_forum_case_pinned', 'case_id', 'is_pinned'),
         db.Index('idx_forum_tnm_disease', 'tnm_disease_id'),
         db.Index('idx_forum_flagged', 'flag_count'),
+        db.Index('idx_forum_content', 'content_type', 'content_key'),
     )
-    
+
     def __repr__(self):
         return f'<ForumMessage {self.id} Case:{self.case_id} User:{self.user_id} Score:{self.vote_score}>'
 
