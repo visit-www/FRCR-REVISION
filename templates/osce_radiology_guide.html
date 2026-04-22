@@ -1686,18 +1686,24 @@ body.is-admin .osce-admin-edit-btn:hover {
 
     // Separate clean and annotated images
     var cleanImgs = caseImages.filter(function(i) { return !i.is_annotated; });
+    // Map: clean image id → array of annotated versions
     var annotatedMap = {};
     var unpairedAnnotated = [];
     caseImages.forEach(function(i) {
       if (i.is_annotated) {
-        if (i.paired_image_id) annotatedMap[i.paired_image_id] = i;
-        else unpairedAnnotated.push(i);
+        if (i.paired_image_id) {
+          if (!annotatedMap[i.paired_image_id]) annotatedMap[i.paired_image_id] = [];
+          annotatedMap[i.paired_image_id].push(i);
+        } else {
+          unpairedAnnotated.push(i);
+        }
       }
     });
     // Carousel: all clean images + any unpaired annotated images
     var focusImgs = cleanImgs.concat(unpairedAnnotated);
     if (!focusImgs.length && caseImages.length) focusImgs = caseImages;
     var focusImgIdx = 0;
+    var annotIdx = 0; // which annotated version we're showing
     var showingAnnotated = false;
 
     // Sanitize attribution HTML — allow <a> tags, escape everything else
@@ -1714,19 +1720,24 @@ body.is-admin .osce-admin-edit-btn:hover {
         return;
       }
       var im = focusImgs[focusImgIdx];
-      var annot = annotatedMap[im.id] || null;
+      var annots = annotatedMap[im.id] || []; // array of annotated versions
       var src = im.url || im.thumbnail;
-      if (showingAnnotated && annot) src = annot.url || annot.thumbnail;
+      var displayIm = im; // track which image metadata to show
+      if (showingAnnotated && annots.length) {
+        var ai = annots[annotIdx % annots.length];
+        src = ai.url || ai.thumbnail;
+        displayIm = ai;
+      }
 
       // Image fills the area, caption + attribution below
-      imgArea.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(im.description || c.diagnosis) + '" id="osceFocusMainImg" style="cursor:pointer;">';
+      imgArea.innerHTML = '<img src="' + esc(src) + '" alt="' + esc(displayIm.description || c.diagnosis) + '" id="osceFocusMainImg" style="cursor:pointer;">';
 
       // Description + attribution below image
       var belowHtml = '';
-      if (im.description) belowHtml += '<div class="osce-focus-img-caption">' + esc(im.description) + '</div>';
+      if (displayIm.description) belowHtml += '<div class="osce-focus-img-caption">' + esc(displayIm.description) + '</div>';
       var attrParts = [];
-      if (im.attribution) attrParts.push(safeAttr(im.attribution));
-      if (im.source_url) attrParts.push('<a href="' + esc(im.source_url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>Source</a>');
+      if (displayIm.attribution) attrParts.push(safeAttr(displayIm.attribution));
+      if (displayIm.source_url) attrParts.push('<a href="' + esc(displayIm.source_url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>Source</a>');
       if (attrParts.length) belowHtml += '<div class="osce-focus-img-attribution">' + attrParts.join(' &middot; ') + '</div>';
       imgArea.insertAdjacentHTML('beforeend', belowHtml);
 
@@ -1738,9 +1749,14 @@ body.is-admin .osce-admin-edit-btn:hover {
         navHtml += '<button id="osceFocusImgNext"><i class="fas fa-chevron-right"></i></button>';
         navHtml += '<span style="margin:0 0.25rem;">|</span>';
       }
-      if (annot) {
+      if (annots.length) {
+        var annotLabel = showingAnnotated ? 'Clean' : 'Annotated';
+        if (showingAnnotated && annots.length > 1) annotLabel = 'Annotated ' + ((annotIdx % annots.length) + 1) + '/' + annots.length;
         navHtml += '<button id="osceFocusAnnotBtn" class="' + (showingAnnotated ? 'osce-focus-annot-active' : '') + '">'
-          + '<i class="fas fa-draw-polygon me-1"></i>' + (showingAnnotated ? 'Clean' : 'Annotated') + '</button>';
+          + '<i class="fas fa-draw-polygon me-1"></i>' + annotLabel + '</button>';
+        if (showingAnnotated && annots.length > 1) {
+          navHtml += '<button id="osceFocusAnnotNext"><i class="fas fa-chevron-right"></i></button>';
+        }
       }
       navHtml += '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide Image</button>';
       imgNav.innerHTML = navHtml;
@@ -1750,15 +1766,22 @@ body.is-admin .osce-admin-edit-btn:hover {
       var nextBtn = document.getElementById('osceFocusImgNext');
       if (prevBtn) prevBtn.addEventListener('click', function() {
         focusImgIdx = (focusImgIdx - 1 + focusImgs.length) % focusImgs.length;
-        showingAnnotated = false; renderFocusImage();
+        showingAnnotated = false; annotIdx = 0; renderFocusImage();
       });
       if (nextBtn) nextBtn.addEventListener('click', function() {
         focusImgIdx = (focusImgIdx + 1) % focusImgs.length;
-        showingAnnotated = false; renderFocusImage();
+        showingAnnotated = false; annotIdx = 0; renderFocusImage();
       });
       var annotBtn = document.getElementById('osceFocusAnnotBtn');
       if (annotBtn) annotBtn.addEventListener('click', function() {
-        showingAnnotated = !showingAnnotated; renderFocusImage();
+        if (!showingAnnotated) { showingAnnotated = true; annotIdx = 0; }
+        else if (annots.length > 1) { annotIdx++; } // cycle through annotated versions
+        else { showingAnnotated = false; annotIdx = 0; } // toggle back to clean
+        renderFocusImage();
+      });
+      var annotNextBtn = document.getElementById('osceFocusAnnotNext');
+      if (annotNextBtn) annotNextBtn.addEventListener('click', function() {
+        annotIdx = (annotIdx + 1) % annots.length; renderFocusImage();
       });
       document.getElementById('osceFocusHideImg').addEventListener('click', function() {
         imgPanel.classList.add('osce-focus-img-hidden');
@@ -1781,7 +1804,7 @@ body.is-admin .osce-admin-edit-btn:hover {
     var html = '';
 
     // "Show Image" button (hidden by default, shown when image panel is collapsed)
-    html += '<button class="btn btn-sm btn-outline-secondary mb-2" id="osceFocusShowImg" style="display:none;" onclick="document.getElementById(\'osceFocusImagePanel\').classList.remove(\'osce-focus-img-hidden\');this.style.display=\'none\';">'
+    html += '<button class="btn btn-sm btn-brand-success mb-2" id="osceFocusShowImg" style="display:none;" onclick="document.getElementById(\'osceFocusImagePanel\').classList.remove(\'osce-focus-img-hidden\');this.style.display=\'none\';">'
       + '<i class="fas fa-image me-1"></i>Show Image</button>';
 
     // Modality + category badges
