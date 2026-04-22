@@ -51,11 +51,6 @@
     <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">OSCE Radiology Guide</h1>
     <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
     <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="osceModBadges"></div>
-    {% if current_user.is_authenticated %}
-    <button class="btn btn-sm btn-outline-secondary" id="osceNotesToggle" title="Toggle notes panel">
-      <i class="fas fa-sticky-note me-1"></i>Notes &amp; Discussion
-    </button>
-    {% endif %}
   </div>
 
   <!-- ═══════════ STUDY / EXAM MODE TOGGLE ═══════════ -->
@@ -182,6 +177,12 @@
   <!-- Notes/highlights/forum handled by side panel via content-interact.js -->
 
 </div><!-- /container -->
+
+{% if current_user.is_authenticated %}
+<button class="osce-notes-fab" id="osceNotesToggle" title="Notes & Discussion">
+  <i class="fas fa-sticky-note"></i>
+</button>
+{% endif %}
 
 {% include 'partials/_public_cta.html' %}
 
@@ -568,6 +569,25 @@
 .osce-mistake-fix {
   padding: 0.4rem 0.6rem; background: #f0fdf4; color: #166534;
   font-size: 0.8rem;
+}
+
+/* ── Notes & Discussion FAB (fixed top-right) ── */
+.osce-notes-fab {
+  position: fixed; top: 80px; right: 16px; z-index: 1035;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, #e96304 0%, #d45a03 100%);
+  color: #fff; border: none; box-shadow: 0 3px 12px rgba(233,99,4,0.35);
+  font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s ease;
+}
+.osce-notes-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(233,99,4,0.5);
+}
+.osce-notes-fab.ci-toggle-active {
+  background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);
+  box-shadow: 0 3px 12px rgba(94,137,158,0.4);
 }
 
 /* ── Admin-only edit controls (hidden from students/public) ── */
