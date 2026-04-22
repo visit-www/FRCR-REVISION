@@ -178,26 +178,26 @@ Return valid JSON with this exact structure:
     "prompt": "The examiner's instruction (e.g., 'Please interpret this chest X-ray')",
 
     "expected_answer": {{
-      "approach": "START by identifying the view: 'This is a [view] [modality].' Then demonstrate the systematic approach, walking through each step, noting normal AND abnormal findings. This should read like a student presenting at OSCE — structured, methodical, not just jumping to the diagnosis. Use the {modality} approach: {approach}",
-      "key_finding": "Describe what is SEEN on the image in simple visual language. Do not name the diagnosis here — describe the appearance (e.g., 'visible line in right hemithorax with absent lung markings beyond it', NOT 'pneumothorax')",
-      "diagnosis": "The diagnosis with laterality/specifics as appropriate",
-      "urgency": "Clinical urgency statement — is this an emergency? What action is needed?"
+      "approach": "[DISPLAYED AS: study notes the student reads to learn the method] Walk through the {modality} systematic approach ({approach}), noting what is normal and what is abnormal at each step. Do NOT start with view identification here — that belongs in model_script. Focus on the analytical process: what to check, in what order, what you find.",
+      "key_finding": "[DISPLAYED AS: the core observation] Describe what is SEEN in simple visual language. Do not name the diagnosis — describe the appearance only (e.g., 'visible line in right hemithorax with absent lung markings beyond it').",
+      "diagnosis": "The diagnosis with laterality/specifics.",
+      "urgency": "Is this an emergency? What immediate action is needed? Include clinical significance here — this field replaces any need for a separate 'why it matters' section."
     }},
 
-    "model_script": "A 2-4 sentence OSCE-ready verbal response. Must sound like a student speaking to an examiner. Structure: 1) FIRST identify the view and modality (e.g., 'This is a PA erect chest radiograph'), 2) state the key finding, 3) give the diagnosis, 4) state urgency/management if relevant. Example tone: 'This is a PA erect chest radiograph. There is a visible pleural line in the right hemithorax with absent lung markings beyond it. This is consistent with a right-sided pneumothorax. This is an emergency requiring urgent needle decompression or chest drain insertion.'"
+    "model_script": "[DISPLAYED AS: the script the student rehearses aloud] A 2-4 sentence OSCE verbal response that a student would speak to an examiner. This is the PERFORMANCE — start with view identification, state the key finding, give diagnosis, state urgency. Do NOT repeat the detailed systematic walkthrough from approach — this is the concise summary version."
   }},
 
   "explanation": {{
-    "pattern_recognition": "If you see X → think Y → because Z. One memorable sentence. Set to null if the pattern is already obvious from key_finding.",
-    "mechanism": "WHY the imaging looks like this. Keep simple. Omit if it would just restate approach or key_finding.",
-    "why_it_matters": "Clinical significance and what action is needed. Omit if urgency already covers this."
+    "pattern_recognition": "[DISPLAYED AS: a memorable one-liner] If you see X → think Y → because Z. Set to null if the pattern is already obvious from key_finding.",
+    "mechanism": "[DISPLAYED AS: understanding WHY] Explain why the imaging looks like this. Set to null if approach already explains the mechanism as part of the walkthrough.",
+    "why_it_matters": "Set to null — urgency field now covers clinical significance. Only populate if there is important context BEYOND what urgency states (e.g., epidemiology, screening implications)."
   }},
 
   "teaching_points": [
-    "High-yield teaching points that ADD something not already covered above",
-    "Include classic signs, measurement thresholds, key differentials, examiner follow-ups — whatever is most useful for THIS case",
-    "Typically 2-4 points, but use fewer if the case is straightforward or more if genuinely needed",
-    "Each point should be brief. Do NOT restate information from approach, explanation, or model_script"
+    "[DISPLAYED AS: bonus exam tips below the main content]",
+    "Only include points that add NEW information not covered in approach, key_finding, model_script, or explanation",
+    "Classic signs, measurement thresholds, key differentials, examiner follow-ups — whatever is genuinely useful for THIS case",
+    "Typically 2-4 points. If the case is well-covered above, fewer is better than padding"
   ]
 }}
 
@@ -205,13 +205,13 @@ Return valid JSON with this exact structure:
 QUALITY RULES
 ════════════════════════════════��══════════════════════════════════
 
-1. APPROACH must use the modality-specific systematic method listed above
-2. KEY FINDING must describe what is SEEN, not the diagnosis name
-3. MODEL SCRIPT must sound like a student speaking, not a textbook
-4. MECHANISM must be simple enough for a 3rd-year to understand
-5. TEACHING POINTS must be memorable and exam-focused
-6. All text must be plain text — NO HTML, NO markdown
-7. Diagnosis must be the anchor — do not rephrase or replace it"""
+Before outputting, verify:
+1. Does approach repeat model_script content? Trim — approach is the analytical walkthrough, model_script is the concise spoken version.
+2. Does any explanation field restate approach or key_finding? Set to null.
+3. Does any teaching point duplicate info from above? Drop it.
+4. Is every field earning its place? Drop padding.
+5. KEY FINDING describes what is SEEN — never the diagnosis name.
+6. All text is plain text — no HTML, no markdown."""
 
 
 # ============================================================================
@@ -286,24 +286,24 @@ Return valid JSON with this exact structure:
     "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "START by identifying the view: 'This is a [view] [modality].' Then walk through the COMPLETE systematic approach, checking EVERY step and confirming each is normal. This is the most important part — demonstrate thoroughness. Use: {approach}",
+      "approach": "[DISPLAYED AS: study notes] Walk through the {modality} systematic approach ({approach}), confirming each structure is normal. Do NOT start with view identification — that belongs in model_script. Focus on demonstrating thoroughness: what you check, in what order, what you confirm.",
       "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings. Correlate clinically."
     }},
 
-    "model_script": "A 3-5 sentence OSCE-ready presentation of a normal study. Walk through the systematic approach, confirming each element is normal. Conclude with 'In summary, this is a normal {modality_label.lower()} with no acute abnormality.' This should demonstrate to the examiner that you have a thorough, systematic method."
+    "model_script": "[DISPLAYED AS: rehearsal script] A 3-5 sentence OSCE verbal response. Start with view identification, then a CONCISE confirmation of normality (not a full repeat of approach), conclude with summary. This is performance, not study notes."
   }},
 
   "explanation": {{
-    "systematic_check": "Numbered checklist combining landmarks, normal values, AND pitfalls in one pass. Format: 'N. Structure — normal finding (value). Pitfall: what mimics pathology.' Keep to 5-8 items, specific to {modality_label}. This is the core teaching content — make it thorough.",
-    "common_pitfalls": "OSCE traps: normal variants or artefacts that look abnormal. Only include pitfalls NOT already mentioned in systematic_check. If systematic_check already covers all major pitfalls, set this to null."
+    "systematic_check": "[DISPLAYED AS: reference checklist with measurements] Numbered list of structures to verify, with normal values/thresholds AND one pitfall per item. Format: 'N. Structure — normal (value). Pitfall: what mimics pathology.' 5-8 items for {modality_label}. This is DIFFERENT from approach — approach is the narrative walkthrough, this is the quick-reference lookup table.",
+    "common_pitfalls": "Additional OSCE traps NOT already in systematic_check. Set to null if systematic_check covers all major pitfalls."
   }},
 
   "teaching_points": [
-    "Teaching points that ADD something not already in the systematic_check or approach",
-    "Typically 2-3 points: review areas, examiner follow-ups, key concepts",
-    "Do NOT restate landmarks or pitfalls already covered above"
+    "[DISPLAYED AS: bonus tips] Only include points that add NEW information",
+    "Review areas commonly missed, examiner follow-ups ('What would worry you?'), key concepts",
+    "Do NOT restate landmarks, pitfalls, or approach content"
   ]
 }}
 
@@ -311,11 +311,12 @@ Return valid JSON with this exact structure:
 QUALITY RULES
 ═══════════════════════════════════════════════════════════════════
 
-1. The systematic approach walkthrough is the CORE of this case
-2. Common pitfalls/normal variants must be specific to {modality_label}
-3. Model script must demonstrate a thorough, methodical approach
-4. All text must be plain text — NO HTML, NO markdown
-5. Focus on what students commonly miss or mistake for pathology"""
+Before outputting, verify:
+1. Does approach repeat model_script? Approach is the detailed study walkthrough, model_script is the concise spoken performance.
+2. Does systematic_check overlap with approach? systematic_check is a reference table (values + pitfalls), approach is the narrative.
+3. Are common_pitfalls already covered in systematic_check? If so, set to null.
+4. Do teaching points repeat anything from above? Drop duplicates.
+5. All text is plain text — no HTML, no markdown."""
 
 
 # ============================================================================
