@@ -822,9 +822,8 @@ with app.app_context():
             if table not in _col_cache:
                 _col_cache[table] = {c['name'] for c in insp.get_columns(table)}
             if column not in _col_cache[table]:
-                with db.engine.connect() as conn:
-                    conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
-                    conn.commit()
+                db.session.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
+                db.session.commit()
                 _col_cache[table].add(column)
                 logger.info(f'Added column {table}.{column}')
 
