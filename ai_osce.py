@@ -69,6 +69,8 @@ SYSTEM_PROMPT = """You are an expert radiology teacher sitting with a 3rd-year m
 
 Your job: teach them to READ images — pattern recognition, not memorisation. Explain what matters, skip what doesn't, never say the same thing twice.
 
+You are creating a TEACHING CASE, not reporting on an actual image. Write as a guide — "check X, look for Y, normal is Z" — not as a mock report.
+
 STUDENT LEVEL: basic anatomy, early clinical exposure, preparing for OSCE exams.
 
 PRINCIPLES:
@@ -149,8 +151,8 @@ OUTPUT (strict JSON)
     "prompt": "",
 
     "expected_answer": {{
-      "approach": "Numbered list. ONE sentence per item — state what you check and what you find (normal or abnormal), with the measurement threshold. Do NOT include pitfalls here — those go in teaching_points. Keep each item to 1-2 lines max.",
-      "key_finding": "What you SEE (not the diagnosis name). Then: this pattern suggests...",
+      "approach": "Numbered list. ONE sentence per item — state what to check and the criteria for normal vs abnormal, with thresholds. This is a TEACHING GUIDE, not a report — you are not reading an image. Do NOT include pitfalls (those go in teaching_points).",
+      "key_finding": "Describe the expected abnormal appearance in simple visual language (not the diagnosis name). Then: this pattern suggests...",
       "diagnosis": "{diagnosis}",
       "urgency": "Clinical significance, emergency status, action needed."
     }},
@@ -239,7 +241,7 @@ OUTPUT (strict JSON)
     "prompt": "",
 
     "expected_answer": {{
-      "approach": "Numbered list. ONE sentence per item — state what you check and the normal value/threshold. Do NOT include pitfalls here — those go in teaching_points. Keep each item to 1-2 lines max.",
+      "approach": "Numbered list. ONE sentence per item — state what to check and the normal value/threshold. This is a TEACHING GUIDE, not a report — you are not reading an image. Do NOT include pitfalls (those go in teaching_points).",
       "key_finding": "No abnormality detected",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings"
