@@ -1,152 +1,229 @@
 /*
- * Content Interact — Shared styles for notes, highlights, and forum.
- * Loaded alongside content-interact.js on any page that uses the module.
+ * Content Interact v2 — Side panel, highlights, linked notes, forum.
  */
 
-/* ── Notes Panel ── */
-.ci-notes-panel {
-  border: 1px solid #e5e7eb; border-radius: 0.5rem;
-  background: #fff; overflow: hidden;
+/* ══════════════ SIDE PANEL ══════════════ */
+.ci-side-panel {
+  position: fixed; top: 0; right: 0; width: 0; height: 100vh;
+  background: #FFFEF8; border-left: 3px solid #F2CC8F;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+  z-index: 1040; overflow-y: auto;
+  transition: width 0.3s ease;
+  display: flex; flex-direction: column;
 }
-.ci-notes-header {
+.ci-side-panel-open { width: 22%; min-width: 280px; }
+@media (max-width: 768px) { .ci-side-panel-open { width: 85%; min-width: 0; } }
+
+/* Content shifts when panel opens */
+.ci-content-shifted { margin-right: 22% !important; transition: margin-right 0.3s ease; }
+@media (max-width: 768px) { .ci-content-shifted { margin-right: 0 !important; } }
+
+/* ── Notes section (yellow paper style — matches view_case) ── */
+.ci-side-panel-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0.5rem 0.75rem; background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%);
+  border-bottom: 2px solid #F2CC8F;
+  flex-shrink: 0;
 }
-.ci-notes-title { font-weight: 700; font-size: 0.85rem; color: #374151; }
-.ci-notes-status { font-size: 0.72rem; color: #6b7280; }
-.ci-notes-textarea {
-  width: 100%; border: none; padding: 0.75rem;
-  font-size: 0.85rem; resize: vertical; min-height: 80px;
-  font-family: inherit; outline: none;
+.ci-side-panel-title {
+  font-weight: 700; font-size: 0.85rem; color: #8B6914;
 }
-.ci-notes-textarea:focus { background: #fefce8; }
-.ci-notes-actions {
-  padding: 0.35rem 0.75rem; border-top: 1px solid #f3f4f6;
+.ci-side-panel-title i { color: #D4A843; }
+.ci-side-panel-close {
+  background: none; border: none; color: #C4A35A;
+  font-size: 1rem; cursor: pointer; padding: 0.2rem;
+}
+.ci-side-panel-close:hover { color: #8B6914; }
+
+.ci-side-panel-status {
+  padding: 0.25rem 0.75rem; font-size: 0.72rem; color: #8B7355;
+  background: #FFFEF8; border-bottom: 1px solid #F2E6C9; flex-shrink: 0;
+}
+
+.ci-side-panel-textarea {
+  flex: 1; min-height: 120px; border: none;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.84rem; resize: none; outline: none;
+  background-color: #FFFEF8;
+  border-left: 5px solid #F2CC8F;
+  font-family: 'Courier New', Courier, monospace;
+  line-height: 1.6; color: #2c3e50;
+  /* Lined paper effect */
+  background-image: repeating-linear-gradient(
+    transparent, transparent 1.55em, #F2E6C9 1.55em, #F2E6C9 1.6em
+  );
+}
+.ci-side-panel-textarea:focus { background-color: #FFFCF0; }
+
+.ci-side-panel-footer {
+  padding: 0.35rem 0.75rem; border-top: 1px solid #F2E6C9;
+  background: #FFFEF8; text-align: right; flex-shrink: 0;
+}
+
+/* ── Divider between notes and forum ── */
+.ci-side-panel-divider {
+  height: 3px;
+  background: linear-gradient(90deg, #F2CC8F 0%, #5E899E 100%);
+  margin: 0;
+}
+
+/* ── Forum section (blue/teal style — matches view_case) ── */
+.ci-side-panel-forum {
+  flex-shrink: 0; padding: 0;
+  background: linear-gradient(135deg, #f0f5f8 0%, #f5f9fb 100%);
+  border-left: 4px solid #5E899E;
+}
+
+/* ── Toggle button active state ── */
+.ci-toggle-active {
+  background: var(--brand-primary, #e96304) !important;
+  color: #fff !important;
+  border-color: var(--brand-primary, #e96304) !important;
+}
+
+/* ══════════════ SELECTION POPUP ══════════════ */
+.ci-selection-popup {
+  position: fixed; z-index: 10000;
+  background: #fff; border: 2px solid var(--brand-neutral, #5E899E);
+  border-radius: 8px; padding: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  display: flex; gap: 6px;
+  animation: ciFadeIn 0.15s ease;
+}
+.ci-sel-btn {
+  border: none; border-radius: 6px; padding: 5px 10px;
+  font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s;
+}
+.ci-sel-highlight { background: #fef3c7; color: #92400e; }
+.ci-sel-highlight:hover { background: #fcd34d; }
+.ci-sel-note { background: var(--brand-neutral, #5E899E); color: #fff; }
+.ci-sel-note:hover { background: #4a7285; }
+
+/* ══════════════ NOTE POPUP ══════════════ */
+.ci-note-popup {
+  position: fixed; z-index: 10001;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: #fff; border: 1px solid #d1d5db; border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  width: 400px; max-width: 90vw;
+  animation: ciFadeIn 0.2s ease;
+}
+.ci-note-popup-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0.8rem; background: var(--brand-neutral, #5E899E);
+  color: #fff; border-radius: 12px 12px 0 0;
+  font-weight: 700; font-size: 0.85rem;
+}
+.ci-note-popup-close {
+  background: none; border: none; color: rgba(255,255,255,0.8);
+  font-size: 1rem; cursor: pointer;
+}
+.ci-note-popup-close:hover { color: #fff; }
+.ci-note-popup-ref {
+  padding: 0.5rem 0.8rem; background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb; font-size: 0.78rem;
+  color: #374151; font-style: italic; line-height: 1.4;
+}
+.ci-note-popup-ref-text { color: #6b7280; }
+.ci-note-popup-input {
+  width: 100%; border: none; padding: 0.6rem 0.8rem;
+  font-size: 0.85rem; font-family: inherit; resize: none; outline: none;
+  min-height: 80px;
+}
+.ci-note-popup-input:focus { background: #fefce8; }
+.ci-note-popup-actions {
+  padding: 0.4rem 0.8rem; border-top: 1px solid #f3f4f6;
   text-align: right;
 }
 
-/* ── Highlight Popup ── */
-.ci-highlight-popup {
-  position: absolute; z-index: 1050;
-  background: #fff; border: 1px solid #d1d5db; border-radius: 0.5rem;
-  padding: 0.3rem 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  display: flex; align-items: center; gap: 0.3rem;
-  animation: ciFadeIn 0.15s ease;
+/* ══════════════ NOTE MARKERS (superscript) ══════════════ */
+.ci-note-marker {
+  color: var(--brand-primary, #e96304); cursor: pointer;
+  font-size: 0.7em; margin-left: 2px; vertical-align: super;
+  transition: color 0.15s;
 }
-.ci-highlight-popup-label { font-size: 0.72rem; color: #6b7280; font-weight: 600; }
-.ci-highlight-color-btn {
-  width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff;
-  cursor: pointer; box-shadow: 0 0 0 1px #d1d5db;
-  transition: transform 0.1s;
-}
-.ci-highlight-color-btn:hover { transform: scale(1.2); box-shadow: 0 0 0 2px #374151; }
+.ci-note-marker:hover { color: #b45309; }
+
+/* ══════════════ HIGHLIGHTS ══════════════ */
 .ci-user-highlight { border-radius: 2px; padding: 0 1px; transition: background 0.2s; }
 
-/* ── Forum Panel ── */
-.ci-forum-panel {
-  border: 1px solid #e5e7eb; border-radius: 0.5rem;
-  background: #fff; overflow: hidden;
-}
+/* ══════════════ FORUM (in side panel — teal/blue style) ══════════════ */
 .ci-forum-header {
   display: flex; align-items: center; gap: 0.5rem;
-  padding: 0.5rem 0.75rem; background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  background: linear-gradient(135deg, #e8f0f4 0%, #f0f5f8 100%);
+  border-bottom: 1px solid #c8dce6;
 }
-.ci-forum-title { font-weight: 700; font-size: 0.85rem; color: #374151; }
-.ci-forum-count { font-size: 0.72rem; color: #6b7280; }
-.ci-forum-messages {
-  max-height: 400px; overflow-y: auto; padding: 0.5rem;
-}
-.ci-forum-empty {
-  text-align: center; color: #9ca3af; font-size: 0.82rem;
-  padding: 1.5rem; font-style: italic;
-}
+.ci-forum-title { font-weight: 700; font-size: 0.82rem; color: #3a6b7e; }
+.ci-forum-title i { color: #5E899E; }
+.ci-forum-count { font-size: 0.72rem; color: #6b8fa0; }
+.ci-forum-messages { max-height: 300px; overflow-y: auto; padding: 0.4rem; background: #f8fbfc; }
+.ci-forum-empty { text-align: center; color: #7ba3b3; font-size: 0.8rem; padding: 1rem; font-style: italic; }
 
-/* Forum message */
 .ci-forum-msg {
-  padding: 0.5rem 0.6rem; margin-bottom: 0.4rem;
-  border-radius: 0.4rem; background: #f9fafb;
-  border: 1px solid #f3f4f6;
+  padding: 0.4rem 0.5rem; margin-bottom: 0.3rem;
+  border-radius: 0.3rem; background: #fff; border: 1px solid #d8e8ef;
 }
-.ci-forum-msg-pinned { border-left: 3px solid #f59e0b; background: #fffbeb; }
-.ci-forum-msg-header {
-  display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.3rem;
-}
-.ci-forum-avatar {
-  width: 24px; height: 24px; border-radius: 50%; object-fit: cover;
-}
-.ci-forum-avatar-icon { font-size: 1.2rem; color: #9ca3af; }
-.ci-forum-msg-author { font-weight: 600; font-size: 0.78rem; color: #374151; }
-.ci-forum-msg-time { font-size: 0.68rem; color: #9ca3af; margin-left: auto; }
-.ci-forum-msg-body { font-size: 0.84rem; color: #1f2937; line-height: 1.45; white-space: pre-wrap; }
-.ci-forum-msg-img { max-width: 200px; border-radius: 0.3rem; margin-top: 0.3rem; }
-.ci-forum-msg-actions {
-  display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem;
-}
+.ci-forum-msg-pinned { border-left: 3px solid #5E899E; background: #eaf3f7; }
+.ci-forum-msg-header { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.2rem; }
+.ci-forum-msg-author { font-weight: 600; font-size: 0.75rem; color: #374151; }
+.ci-forum-msg-time { font-size: 0.65rem; color: #9ca3af; margin-left: auto; }
+.ci-forum-msg-body { font-size: 0.8rem; color: #1f2937; line-height: 1.4; white-space: pre-wrap; }
+.ci-forum-msg-actions { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.2rem; }
 
-/* Badges */
 .ci-badge-admin {
-  font-size: 0.6rem; background: var(--brand-neutral, #5E899E); color: #fff;
-  padding: 0.1rem 0.3rem; border-radius: 0.2rem; font-weight: 600;
-}
-.ci-badge-pinned {
-  font-size: 0.65rem; color: #f59e0b;
+  font-size: 0.58rem; background: var(--brand-neutral, #5E899E); color: #fff;
+  padding: 0.08rem 0.25rem; border-radius: 0.15rem; font-weight: 600;
 }
 
-/* Voting */
 .ci-vote-btn {
   background: none; border: 1px solid #e5e7eb; border-radius: 0.2rem;
-  padding: 0.1rem 0.3rem; cursor: pointer; font-size: 0.7rem; color: #6b7280;
-  transition: all 0.15s;
+  padding: 0.08rem 0.25rem; cursor: pointer; font-size: 0.65rem; color: #6b7280;
 }
 .ci-vote-btn:hover { background: #f3f4f6; color: #374151; }
-.ci-vote-btn.ci-vote-active { background: var(--brand-primary, #e96304); color: #fff; border-color: var(--brand-primary, #e96304); }
-.ci-vote-score { font-size: 0.75rem; font-weight: 700; color: #374151; min-width: 20px; text-align: center; }
+.ci-vote-btn.ci-vote-active { background: var(--brand-primary, #e96304); color: #fff; border-color: var(--brand-primary); }
+.ci-vote-score { font-size: 0.7rem; font-weight: 700; color: #374151; min-width: 16px; text-align: center; }
 .ci-delete-btn {
   background: none; border: none; color: #d1d5db; cursor: pointer;
-  font-size: 0.7rem; margin-left: auto; padding: 0.1rem 0.3rem;
+  font-size: 0.65rem; margin-left: auto; padding: 0.08rem 0.25rem;
 }
 .ci-delete-btn:hover { color: #ef4444; }
 
-/* Compose */
-.ci-forum-compose {
-  padding: 0.5rem 0.6rem; border-top: 1px solid #e5e7eb;
-}
+.ci-forum-compose { padding: 0.4rem 0.5rem; border-top: 1px solid #c8dce6; background: #f0f5f8; }
 .ci-forum-input {
-  width: 100%; border: 1px solid #e5e7eb; border-radius: 0.3rem;
-  padding: 0.4rem 0.6rem; font-size: 0.84rem; resize: none;
-  font-family: inherit; outline: none;
+  width: 100%; border: 1px solid #b8d4e0; border-radius: 0.3rem;
+  padding: 0.3rem 0.5rem; font-size: 0.8rem; resize: none; font-family: inherit;
+  outline: none; background: #fff;
 }
-.ci-forum-input:focus { border-color: var(--brand-neutral, #5E899E); box-shadow: 0 0 0 2px rgba(94,137,158,0.15); }
-.ci-forum-compose-actions {
-  text-align: right; margin-top: 0.3rem;
-}
+.ci-forum-input:focus { border-color: #5E899E; box-shadow: 0 0 0 2px rgba(94,137,158,0.15); }
+.ci-forum-compose-actions { text-align: right; margin-top: 0.2rem; }
 
-/* Shared buttons */
+/* ══════════════ SHARED ══════════════ */
 .ci-btn {
   border: none; border-radius: 0.3rem; cursor: pointer;
-  font-size: 0.8rem; font-weight: 600; padding: 0.35rem 0.7rem;
+  font-size: 0.78rem; font-weight: 600; padding: 0.3rem 0.6rem;
   transition: all 0.15s;
 }
-.ci-btn-sm { font-size: 0.72rem; padding: 0.25rem 0.5rem; }
+.ci-btn-sm { font-size: 0.72rem; padding: 0.2rem 0.45rem; }
 .ci-btn-primary { background: var(--brand-neutral, #5E899E); color: #fff; }
 .ci-btn-primary:hover { background: #4a7285; }
 .ci-btn-danger { background: #fee2e2; color: #991b1b; }
 .ci-btn-danger:hover { background: #fecaca; }
 
-/* Toast notification */
+/* Toast */
 .ci-toast {
   position: fixed; bottom: 20px; right: 20px; z-index: 9999;
-  background: #1f2937; color: #fff; padding: 0.5rem 1rem;
-  border-radius: 0.4rem; font-size: 0.82rem; font-weight: 500;
+  background: #1f2937; color: #fff; padding: 0.45rem 0.8rem;
+  border-radius: 0.35rem; font-size: 0.78rem; font-weight: 500;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-  transform: translateY(20px); opacity: 0;
-  transition: all 0.3s ease;
+  transform: translateY(20px); opacity: 0; transition: all 0.3s ease;
 }
 .ci-toast-show { transform: translateY(0); opacity: 1; }
 .ci-toast-success { border-left: 3px solid #22c55e; }
 .ci-toast-error { border-left: 3px solid #ef4444; }
 .ci-toast-warning { border-left: 3px solid #f59e0b; }
+.ci-toast-info { border-left: 3px solid #3b82f6; }
 
-@keyframes ciFadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ciFadeIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }

@@ -51,10 +51,15 @@
     <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">OSCE Radiology Guide</h1>
     <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
     <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="osceModBadges"></div>
+    {% if current_user.is_authenticated %}
+    <button class="btn btn-sm btn-outline-secondary" id="osceNotesToggle" title="Toggle notes panel">
+      <i class="fas fa-sticky-note me-1"></i>Notes &amp; Discussion
+    </button>
+    {% endif %}
   </div>
 
   <!-- ═══════════ STUDY / EXAM MODE TOGGLE ═══════════ -->
-  <div class="card-brand mb-3">
+  <div class="card-brand mb-3" id="osceExamBar">
     <div class="card-brand-body py-2 px-3">
       <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
         <div class="d-flex align-items-center gap-3">
@@ -174,25 +179,7 @@
 
   </div><!-- /tab-content -->
 
-  <!-- ═══════════ STUDY TOOLS (Notes + Highlights + Forum) ═══════════ -->
-  {% if current_user.is_authenticated %}
-  <div class="mt-4">
-    <button class="btn btn-sm btn-brand-neutral w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#osceStudyTools" aria-expanded="false">
-      <i class="fas fa-tools me-1"></i>Study Tools — Notes, Highlights &amp; Discussion
-    </button>
-    <div class="collapse" id="osceStudyTools">
-      <div class="row g-3">
-        <div class="col-md-6">
-          <div id="osceNotesPanel"></div>
-        </div>
-        <div class="col-md-6">
-          <div id="osceForumPanel"></div>
-        </div>
-      </div>
-      <p class="text-muted small mt-2"><i class="fas fa-highlighter me-1"></i>Select any text in the guide content above to highlight it. Your highlights are saved automatically.</p>
-    </div>
-  </div>
-  {% endif %}
+  <!-- Notes/highlights/forum handled by side panel via content-interact.js -->
 
 </div><!-- /container -->
 
@@ -1395,6 +1382,17 @@ body.is-admin .osce-admin-edit-btn:hover {
   renderPatternIndex();
   renderTechnique();
 
+  // ── Show exam bar only on Cases tab ──
+  var examBar = $('#osceExamBar');
+  if (examBar) {
+    $$('.osce-tabs .nav-link').forEach(function(btn) {
+      btn.addEventListener('shown.bs.tab', function() {
+        var target = this.dataset.bsTarget || '';
+        examBar.style.display = target.includes('cases') ? '' : 'none';
+      });
+    });
+  }
+
 })();
 </script>
 
@@ -1404,45 +1402,20 @@ body.is-admin .osce-admin-edit-btn:hover {
 <script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Determine content key from active tab (default to 'guide')
-  var activeTab = 'guide';
-  var tabBtns = document.querySelectorAll('.osce-tabs .nav-link');
-  tabBtns.forEach(function(btn) {
-    btn.addEventListener('shown.bs.tab', function() {
-      var target = this.dataset.bsTarget || '';
-      if (target.includes('cases')) activeTab = 'cases';
-      else if (target.includes('ref')) activeTab = 'reference';
-      else if (target.includes('patterns')) activeTab = 'patterns';
-      else if (target.includes('technique')) activeTab = 'technique';
-      // Re-init with new content key when tab changes
-      ContentInteract.init({
-        contentType: 'osce_guide',
-        contentKey: activeTab,
-        notesContainer: '#osceNotesPanel',
-        highlightContainers: [
-          '#osce-tab-cases .osce-case-body',
-          '#osce-tab-ref .osce-ref-card-body',
-          '#osce-tab-patterns',
-          '#osce-tab-technique .osce-tech-body',
-          '.osce-bys-content'
-        ],
-        forumContainer: '#osceForumPanel',
-      });
-    });
-  });
-
-  // Init for default tab
   ContentInteract.init({
     contentType: 'osce_guide',
     contentKey: 'guide',
-    notesContainer: '#osceNotesPanel',
+    contentArea: '#osceGuideRoot',
+    notesToggleBtn: '#osceNotesToggle',
     highlightContainers: [
       '.osce-case-body',
       '.osce-ref-card-body',
+      '.osce-ref-step-items',
       '.osce-tech-body',
-      '.osce-bys-content'
+      '.osce-bys-content',
+      '.osce-card-section-body',
+      '.osce-card-expl-text'
     ],
-    forumContainer: '#osceForumPanel',
   });
 });
 </script>

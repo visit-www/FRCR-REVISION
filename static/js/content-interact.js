@@ -1,18 +1,21 @@
 /**
- * Content Interact — Reusable notes, highlights, and discussion forum.
+ * Content Interact v2 — Notes side panel, highlights, linked notes, discussion forum.
  *
- * Works with ANY content type via /api/content/<type>/<key>/ endpoints.
- * Drop into any page with:
- *
+ * Usage:
  *   ContentInteract.init({
  *     contentType: 'osce_ref',
  *     contentKey: 'cxr',
- *     notesContainer: '#myNotesDiv',        // optional
- *     highlightContainers: ['.my-content'],  // optional — CSS selectors of highlightable areas
- *     forumContainer: '#myForumDiv',         // optional
+ *     contentArea: '#mainContent',             // main content container (will resize to 80%)
+ *     notesToggleBtn: '#notesToggleBtn',        // toggle button for notes panel
+ *     highlightContainers: ['.my-content'],     // CSS selectors of highlightable areas
+ *     forumContainer: '#myForumDiv',            // optional
  *   });
  *
- * Extracted from view_case.html (battle-tested notes/highlights/forum).
+ * Features:
+ *   - Side panel (20% width) with notes, toggled via button
+ *   - Text selection → popup with Highlight + Add Note buttons
+ *   - Linked notes: selected text is captured as reference, superscript markers in content
+ *   - Discussion forum with voting
  */
 var ContentInteract = (function() {
   'use strict';
@@ -20,6 +23,8 @@ var ContentInteract = (function() {
   var API_BASE = '/api/content';
   var _cfg = {};
   var _noteSaveTimer = null;
+  var _noteCounter = 0;
+  var _panelOpen = false;
 
   // ── Helpers ──
   function _esc(s) {
@@ -42,7 +47,6 @@ var ContentInteract = (function() {
   }
 
   function _flash(msg, type) {
-    // Create a brief toast notification
     var toast = document.createElement('div');
     toast.className = 'ci-toast ci-toast-' + (type || 'info');
     toast.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + ' me-1"></i>' + _esc(msg);
@@ -66,64 +70,339 @@ var ContentInteract = (function() {
     return '/' + _cfg.contentType + '/' + _cfg.contentKey;
   }
 
+  function _generateNoteId() {
+    _noteCounter++;
+    return 'n' + Date.now().toString(36) + _noteCounter;
+  }
+
 
   // =========================================================================
-  // NOTES
+  // SIDE PANEL
   // =========================================================================
 
-  function _initNotes() {
-    var container = document.querySelector(_cfg.notesContainer);
-    if (!container) return;
+  var _panel = null;
+  var _contentArea = null;
 
-    container.innerHTML =
-      '<div class="ci-notes-panel">'
-      + '<div class="ci-notes-header">'
-      +   '<span class="ci-notes-title"><i class="fas fa-sticky-note me-1"></i>My Notes</span>'
-      +   '<span class="ci-notes-status" id="ciNoteStatus"></span>'
+  function _createSidePanel() {
+    // Create the panel element
+    _panel = document.getElementById('ciSidePanel');
+    if (_panel) return; // already created
+
+    _panel = document.createElement('div');
+    _panel.id = 'ciSidePanel';
+    _panel.className = 'ci-side-panel';
+    _panel.innerHTML =
+      '<div class="ci-side-panel-header">'
+      + '<span class="ci-side-panel-title"><i class="fas fa-sticky-note me-1"></i>My Notes</span>'
+      + '<button class="ci-side-panel-close" id="ciPanelClose" title="Close notes"><i class="fas fa-times"></i></button>'
       + '</div>'
-      + '<textarea class="ci-notes-textarea" id="ciNoteText" placeholder="Type your notes here... (auto-saves)"></textarea>'
-      + '<div class="ci-notes-actions">'
-      +   '<button class="ci-btn ci-btn-sm ci-btn-danger" id="ciNoteClear" title="Clear notes"><i class="fas fa-trash me-1"></i>Clear</button>'
+      + '<div class="ci-side-panel-status" id="ciPanelStatus"></div>'
+      + '<textarea class="ci-side-panel-textarea" id="ciPanelNotes" placeholder="Type your notes here...\n\nTip: Select text in the content and click \'Add Note\' to link it here."></textarea>'
+      + '<div class="ci-side-panel-footer">'
+      +   '<button class="ci-btn ci-btn-sm ci-btn-danger" id="ciPanelClear"><i class="fas fa-trash me-1"></i>Clear</button>'
       + '</div>'
-      + '</div>';
+      // Discussion forum below notes
+      + '<div class="ci-side-panel-divider"></div>'
+      + '<div class="ci-side-panel-forum" id="ciPanelForum"></div>';
 
-    var textarea = document.getElementById('ciNoteText');
-    var status = document.getElementById('ciNoteStatus');
-    var clearBtn = document.getElementById('ciNoteClear');
+    document.body.appendChild(_panel);
 
-    // Load existing note
-    _api('GET', _contentPath() + '/note').then(function(data) {
-      if (data.note_text) {
-        textarea.value = data.note_text;
-        if (data.updated_at) {
-          status.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved';
-        }
-      }
-    });
-
-    // Auto-save on typing (debounced 1.5s)
-    textarea.addEventListener('input', function() {
-      status.innerHTML = '<i class="fas fa-circle text-warning me-1" style="font-size:0.5rem;"></i>Unsaved';
-      clearTimeout(_noteSaveTimer);
-      _noteSaveTimer = setTimeout(function() {
-        var text = textarea.value.trim();
-        if (!text) return;
-        _api('POST', _contentPath() + '/note', { note_text: text }).then(function(data) {
-          if (data.success) {
-            var now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            status.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved at ' + now;
-          }
-        });
-      }, 1500);
+    // Close button
+    document.getElementById('ciPanelClose').addEventListener('click', function() {
+      _togglePanel(false);
     });
 
     // Clear button
-    clearBtn.addEventListener('click', function() {
-      if (!confirm('Clear your notes for this section?')) return;
+    document.getElementById('ciPanelClear').addEventListener('click', function() {
+      if (!confirm('Clear all your notes for this section?')) return;
+      var textarea = document.getElementById('ciPanelNotes');
       textarea.value = '';
+      textarea.dataset.rawNotes = '';
       _api('DELETE', _contentPath() + '/note').then(function() {
-        status.innerHTML = '<i class="fas fa-check-circle text-muted me-1"></i>Cleared';
+        document.getElementById('ciPanelStatus').innerHTML = '<i class="fas fa-check-circle text-muted me-1"></i>Cleared';
       });
+    });
+
+    // Auto-save on typing
+    var textarea = document.getElementById('ciPanelNotes');
+    textarea.addEventListener('input', function() {
+      document.getElementById('ciPanelStatus').innerHTML = '<i class="fas fa-circle text-warning me-1" style="font-size:0.5rem;"></i>Unsaved';
+      clearTimeout(_noteSaveTimer);
+      _noteSaveTimer = setTimeout(function() {
+        _saveNotes();
+      }, 1500);
+    });
+  }
+
+  function _togglePanel(forceState) {
+    _panelOpen = (forceState !== undefined) ? forceState : !_panelOpen;
+
+    _contentArea = document.querySelector(_cfg.contentArea);
+    if (!_contentArea) return;
+
+    if (_panelOpen) {
+      _panel.classList.add('ci-side-panel-open');
+      _contentArea.classList.add('ci-content-shifted');
+      // Load notes + forum
+      _loadNotes();
+      _initForum();
+    } else {
+      _panel.classList.remove('ci-side-panel-open');
+      _contentArea.classList.remove('ci-content-shifted');
+    }
+
+    // Update toggle button state
+    var btn = document.querySelector(_cfg.notesToggleBtn);
+    if (btn) {
+      btn.classList.toggle('ci-toggle-active', _panelOpen);
+    }
+  }
+
+
+  // =========================================================================
+  // NOTES (in side panel)
+  // =========================================================================
+
+  function _loadNotes() {
+    _api('GET', _contentPath() + '/note').then(function(data) {
+      var textarea = document.getElementById('ciPanelNotes');
+      var status = document.getElementById('ciPanelStatus');
+      if (data.note_text) {
+        // Store raw notes (with tags) and display formatted
+        textarea.dataset.rawNotes = data.note_text;
+        textarea.value = _formatNotesForDisplay(data.note_text);
+        if (data.updated_at) {
+          status.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved';
+        }
+        // Render markers in content
+        setTimeout(function() { _renderNoteMarkers(data.note_text); }, 500);
+      }
+    });
+  }
+
+  function _saveNotes() {
+    var textarea = document.getElementById('ciPanelNotes');
+    var raw = textarea.dataset.rawNotes || textarea.value;
+    if (!raw.trim()) return;
+    _api('POST', _contentPath() + '/note', { note_text: raw }).then(function(data) {
+      if (data.success) {
+        var now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        document.getElementById('ciPanelStatus').innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved at ' + now;
+      }
+    });
+  }
+
+  function _formatNotesForDisplay(rawNotes) {
+    // Convert [note:ID][from CTX][text:SEL] content [/note:ID] → bullet points
+    return rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, function(match, ctx, content) {
+      return '\n\u2022 ' + content.trim();
+    }).trim();
+  }
+
+  function _addLinkedNote(selectedText, fieldName, userNote) {
+    var noteId = _generateNoteId();
+    var ctx = fieldName || 'content';
+    var escapedText = selectedText.replace(/\]/g, '\\]').substring(0, 100);
+    var fragment = '\n\n[note:' + noteId + '][from ' + ctx + '][text:' + escapedText + '] ' + userNote + '[/note:' + noteId + ']';
+
+    var textarea = document.getElementById('ciPanelNotes');
+    if (!textarea) return;
+
+    var raw = (textarea.dataset.rawNotes || textarea.value || '') + fragment;
+    textarea.dataset.rawNotes = raw;
+    textarea.value = _formatNotesForDisplay(raw);
+    _saveNotes();
+
+    // Add marker in content
+    _addSingleMarker(selectedText, noteId);
+    _flash('Note added!', 'success');
+  }
+
+
+  // =========================================================================
+  // NOTE MARKERS (superscript in content)
+  // =========================================================================
+
+  function _renderNoteMarkers(rawNotes) {
+    if (!rawNotes) return;
+    var pattern = /\[note:([^\]]+)\]\[from ([^\]]+)\](?:\[text:([^\]]*)\])?\s*(.*?)\[\/note:\1\]/gs;
+    var match;
+    while ((match = pattern.exec(rawNotes)) !== null) {
+      var noteId = match[1];
+      var selectedText = match[3] ? match[3].replace(/\\\]/g, ']') : null;
+      if (!selectedText || document.querySelector('[data-note-id="' + noteId + '"]')) continue;
+      _addSingleMarker(selectedText, noteId);
+    }
+  }
+
+  function _addSingleMarker(text, noteId) {
+    var containers = [];
+    (_cfg.highlightContainers || []).forEach(function(sel) {
+      document.querySelectorAll(sel).forEach(function(el) { containers.push(el); });
+    });
+    for (var i = 0; i < containers.length; i++) {
+      if (_insertMarkerInElement(containers[i], text, noteId)) break;
+    }
+  }
+
+  function _insertMarkerInElement(container, text, noteId) {
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+    while ((node = walker.nextNode())) {
+      var idx = node.textContent.indexOf(text);
+      if (idx === -1) continue;
+      try {
+        var range = document.createRange();
+        range.setStart(node, idx + text.length);
+        range.setEnd(node, idx + text.length);
+        var marker = document.createElement('sup');
+        marker.className = 'ci-note-marker';
+        marker.dataset.noteId = noteId;
+        marker.innerHTML = '<i class="fas fa-sticky-note"></i>';
+        marker.title = 'Click to view note';
+        marker.addEventListener('click', function(e) {
+          e.stopPropagation();
+          // Open panel and scroll to note
+          if (!_panelOpen) _togglePanel(true);
+          _flash('Note is in the side panel', 'info');
+        });
+        range.insertNode(marker);
+        return true;
+      } catch (e) { /* skip */ }
+    }
+    return false;
+  }
+
+
+  // =========================================================================
+  // TEXT SELECTION → POPUP (Highlight + Add Note)
+  // =========================================================================
+
+  function _initSelection() {
+    if (!_cfg.highlightContainers || !_cfg.highlightContainers.length) return;
+
+    // Load saved highlights
+    _api('GET', _contentPath() + '/highlights').then(function(data) {
+      if (data.success && data.highlights) {
+        data.highlights.forEach(function(h) { _renderSavedHighlight(h); });
+      }
+    });
+
+    // Listen for text selection
+    document.addEventListener('mouseup', _handleSelection);
+  }
+
+  function _handleSelection(e) {
+    // Don't trigger on buttons/links
+    if (e.target.closest('button, a, .btn, .ci-side-panel, .ci-highlight-popup, #ciNotePopup')) return;
+
+    var selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
+    var text = selection.toString().trim();
+    if (text.length < 3 || text.length > 500) return;
+
+    // Check if selection is inside a highlightable area
+    var range = selection.getRangeAt(0);
+    var ancestor = range.commonAncestorContainer;
+    var el = ancestor.nodeType === Node.TEXT_NODE ? ancestor.parentElement : ancestor;
+    var annotatable = null;
+    (_cfg.highlightContainers || []).forEach(function(sel) {
+      if (!annotatable && el.closest(sel)) annotatable = el.closest(sel);
+    });
+    if (!annotatable) return;
+
+    _showSelectionPopup(e, text, annotatable);
+  }
+
+  function _showSelectionPopup(event, text, element) {
+    var old = document.getElementById('ciSelectionPopup');
+    if (old) old.remove();
+
+    var popup = document.createElement('div');
+    popup.id = 'ciSelectionPopup';
+    popup.className = 'ci-selection-popup';
+    popup.innerHTML =
+      '<button class="ci-sel-btn ci-sel-highlight" title="Highlight"><i class="fas fa-highlighter"></i> Highlight</button>'
+      + '<button class="ci-sel-btn ci-sel-note" title="Add Note"><i class="fas fa-sticky-note"></i> Note</button>';
+
+    var x = event.clientX || 0;
+    var y = event.clientY || 0;
+    popup.style.left = x + 'px';
+    popup.style.top = Math.max(10, y - 50) + 'px';
+    document.body.appendChild(popup);
+
+    var fieldName = element.dataset.field || element.id || 'content';
+
+    // Highlight button
+    popup.querySelector('.ci-sel-highlight').addEventListener('click', function() {
+      _createHighlight(text, 'yellow', element);
+      popup.remove();
+    });
+
+    // Note button
+    popup.querySelector('.ci-sel-note').addEventListener('click', function() {
+      popup.remove();
+      _openNotePopup(text, fieldName);
+    });
+
+    // Close on click outside
+    setTimeout(function() {
+      document.addEventListener('click', function handler(e) {
+        if (!popup.contains(e.target)) { popup.remove(); document.removeEventListener('click', handler); }
+      });
+    }, 100);
+  }
+
+
+  // =========================================================================
+  // NOTE POPUP (linked note entry)
+  // =========================================================================
+
+  function _openNotePopup(selectedText, fieldName) {
+    var old = document.getElementById('ciNotePopup');
+    if (old) old.remove();
+
+    var popup = document.createElement('div');
+    popup.id = 'ciNotePopup';
+    popup.className = 'ci-note-popup';
+    popup.innerHTML =
+      '<div class="ci-note-popup-header">'
+      + '<span><i class="fas fa-sticky-note me-1"></i>Add Note</span>'
+      + '<button class="ci-note-popup-close" id="ciNotePopupClose"><i class="fas fa-times"></i></button>'
+      + '</div>'
+      + '<div class="ci-note-popup-ref">'
+      + '<i class="fas fa-quote-left me-1" style="color:#9ca3af;"></i>'
+      + '<span class="ci-note-popup-ref-text">' + _esc(selectedText.substring(0, 120)) + (selectedText.length > 120 ? '...' : '') + '</span>'
+      + '</div>'
+      + '<textarea class="ci-note-popup-input" id="ciNotePopupInput" placeholder="Type your note about this text..." rows="3"></textarea>'
+      + '<div class="ci-note-popup-actions">'
+      + '<button class="ci-btn ci-btn-sm ci-btn-primary" id="ciNotePopupSave"><i class="fas fa-save me-1"></i>Save Note</button>'
+      + '</div>';
+
+    document.body.appendChild(popup);
+
+    // Auto-open panel if closed
+    if (!_panelOpen) _togglePanel(true);
+
+    // Focus input
+    setTimeout(function() { document.getElementById('ciNotePopupInput').focus(); }, 100);
+
+    // Close
+    document.getElementById('ciNotePopupClose').addEventListener('click', function() { popup.remove(); });
+
+    // Save
+    document.getElementById('ciNotePopupSave').addEventListener('click', function() {
+      var noteText = document.getElementById('ciNotePopupInput').value.trim();
+      if (!noteText) { _flash('Please type a note', 'warning'); return; }
+      _addLinkedNote(selectedText, fieldName, noteText);
+      popup.remove();
+    });
+
+    // Enter to save
+    document.getElementById('ciNotePopupInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        document.getElementById('ciNotePopupSave').click();
+      }
     });
   }
 
@@ -132,80 +411,9 @@ var ContentInteract = (function() {
   // HIGHLIGHTS
   // =========================================================================
 
-  function _initHighlights() {
-    if (!_cfg.highlightContainers || !_cfg.highlightContainers.length) return;
-
-    // Load saved highlights
-    _api('GET', _contentPath() + '/highlights').then(function(data) {
-      if (data.success && data.highlights) {
-        data.highlights.forEach(function(h) {
-          _renderSavedHighlight(h);
-        });
-      }
-    });
-
-    // Listen for text selection in highlight containers
-    _cfg.highlightContainers.forEach(function(sel) {
-      var els = document.querySelectorAll(sel);
-      els.forEach(function(el) {
-        el.addEventListener('mouseup', function(e) {
-          var selection = window.getSelection();
-          if (!selection || selection.isCollapsed) return;
-          var selectedText = selection.toString().trim();
-          if (selectedText.length < 3 || selectedText.length > 500) return;
-
-          // Show highlight popup
-          _showHighlightPopup(e, selectedText, el);
-        });
-      });
-    });
-  }
-
-  function _showHighlightPopup(event, text, element) {
-    // Remove existing popup
-    var old = document.getElementById('ciHighlightPopup');
-    if (old) old.remove();
-
-    var colors = [
-      { name: 'yellow', hex: '#FFEB3B' },
-      { name: 'green', hex: '#A5D6A7' },
-      { name: 'pink', hex: '#F48FB1' },
-      { name: 'blue', hex: '#90CAF9' },
-    ];
-
-    var popup = document.createElement('div');
-    popup.id = 'ciHighlightPopup';
-    popup.className = 'ci-highlight-popup';
-    popup.innerHTML = '<span class="ci-highlight-popup-label">Highlight:</span> '
-      + colors.map(function(c) {
-        return '<button class="ci-highlight-color-btn" data-color="' + c.name + '" style="background:' + c.hex + ';" title="' + c.name + '"></button>';
-      }).join('');
-    popup.style.left = event.pageX + 'px';
-    popup.style.top = (event.pageY - 40) + 'px';
-    document.body.appendChild(popup);
-
-    popup.querySelectorAll('.ci-highlight-color-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        _createHighlight(text, this.dataset.color, element);
-        popup.remove();
-      });
-    });
-
-    // Remove popup on click elsewhere
-    setTimeout(function() {
-      document.addEventListener('click', function handler(e) {
-        if (!popup.contains(e.target)) {
-          popup.remove();
-          document.removeEventListener('click', handler);
-        }
-      });
-    }, 100);
-  }
-
   function _createHighlight(text, color, element) {
     var selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
-
     var range = selection.getRangeAt(0);
     var fieldName = element.dataset.field || element.id || 'content';
     var fullText = element.textContent || '';
@@ -213,91 +421,61 @@ var ContentInteract = (function() {
     var contextBefore = startIndex > 0 ? fullText.substring(Math.max(0, startIndex - 50), startIndex) : '';
     var contextAfter = startIndex >= 0 ? fullText.substring(startIndex + text.length, startIndex + text.length + 50) : '';
 
-    var colorMap = { yellow: '#FFEB3B', green: '#A5D6A7', pink: '#F48FB1', blue: '#90CAF9' };
-
     try {
       var mark = document.createElement('mark');
       mark.className = 'ci-user-highlight';
-      mark.style.backgroundColor = colorMap[color] || '#FFEB3B';
+      mark.style.backgroundColor = '#FFEB3B';
       mark.style.cursor = 'pointer';
       mark.title = 'Click to remove';
       range.surroundContents(mark);
       selection.removeAllRanges();
 
       _api('POST', _contentPath() + '/highlight', {
-        text_content: text,
-        highlight_color: color,
-        field_name: fieldName,
-        context_before: contextBefore,
-        context_after: contextAfter
+        text_content: text, highlight_color: color, field_name: fieldName,
+        context_before: contextBefore, context_after: contextAfter
       }).then(function(data) {
         if (data.success) {
           mark.dataset.highlightId = data.id;
           mark.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (confirm('Remove this highlight?')) {
-              _deleteHighlight(data.id, mark);
-            }
+            if (confirm('Remove this highlight?')) _deleteHighlight(data.id, mark);
           });
           _flash('Highlighted!', 'success');
-        } else {
-          _unwrapMark(mark);
-        }
+        } else { _unwrapMark(mark); }
       }).catch(function() { _unwrapMark(mark); });
-    } catch (e) {
-      _flash('Cannot highlight across elements', 'warning');
-    }
+    } catch (e) { _flash('Cannot highlight across elements', 'warning'); }
   }
 
   function _renderSavedHighlight(h) {
-    // Find the text in highlight containers and wrap it
-    var colorMap = { yellow: '#FFEB3B', green: '#A5D6A7', pink: '#F48FB1', blue: '#90CAF9' };
     var containers = [];
     (_cfg.highlightContainers || []).forEach(function(sel) {
       document.querySelectorAll(sel).forEach(function(el) { containers.push(el); });
     });
-
     for (var i = 0; i < containers.length; i++) {
-      var el = containers[i];
-      if (_highlightTextInElement(el, h.text_content, h.context_before, h.context_after, colorMap[h.highlight_color] || '#FFEB3B', h.id)) {
-        break;
-      }
+      if (_highlightInElement(containers[i], h.text_content, h.context_before, h.id)) break;
     }
   }
 
-  function _highlightTextInElement(container, text, ctxBefore, ctxAfter, bgColor, highlightId) {
-    // Use TreeWalker to find text nodes containing the highlight text
+  function _highlightInElement(container, text, ctxBefore, highlightId) {
     var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
     var node;
     while ((node = walker.nextNode())) {
       var idx = node.textContent.indexOf(text);
       if (idx === -1) continue;
-
-      // Verify context if available
-      if (ctxBefore) {
-        var fullBefore = '';
-        var prev = node.previousSibling;
-        while (prev) { fullBefore = (prev.textContent || '') + fullBefore; prev = prev.previousSibling; }
-        fullBefore += node.textContent.substring(0, idx);
-        if (fullBefore.length >= ctxBefore.length && !fullBefore.endsWith(ctxBefore)) continue;
-      }
-
-      var range = document.createRange();
-      range.setStart(node, idx);
-      range.setEnd(node, idx + text.length);
-      var mark = document.createElement('mark');
-      mark.className = 'ci-user-highlight';
-      mark.style.backgroundColor = bgColor;
-      mark.style.cursor = 'pointer';
-      mark.title = 'Click to remove';
-      mark.dataset.highlightId = highlightId;
       try {
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + text.length);
+        var mark = document.createElement('mark');
+        mark.className = 'ci-user-highlight';
+        mark.style.backgroundColor = '#FFEB3B';
+        mark.style.cursor = 'pointer';
+        mark.title = 'Click to remove';
+        mark.dataset.highlightId = highlightId;
         range.surroundContents(mark);
         mark.addEventListener('click', function(e) {
           e.stopPropagation();
-          if (confirm('Remove this highlight?')) {
-            _deleteHighlight(parseInt(this.dataset.highlightId), this);
-          }
+          if (confirm('Remove this highlight?')) _deleteHighlight(parseInt(this.dataset.highlightId), this);
         });
         return true;
       } catch (e) { return false; }
@@ -307,10 +485,7 @@ var ContentInteract = (function() {
 
   function _deleteHighlight(id, markEl) {
     _api('DELETE', '/highlight/' + id).then(function(data) {
-      if (data.success) {
-        _unwrapMark(markEl);
-        _flash('Highlight removed', 'success');
-      }
+      if (data.success) { _unwrapMark(markEl); _flash('Highlight removed', 'success'); }
     });
   }
 
@@ -322,27 +497,24 @@ var ContentInteract = (function() {
 
 
   // =========================================================================
-  // DISCUSSION FORUM
+  // DISCUSSION FORUM (in side panel)
   // =========================================================================
 
   function _initForum() {
-    var container = document.querySelector(_cfg.forumContainer);
+    var container = document.getElementById('ciPanelForum');
     if (!container) return;
 
     container.innerHTML =
-      '<div class="ci-forum-panel">'
-      + '<div class="ci-forum-header">'
-      +   '<span class="ci-forum-title"><i class="fas fa-comments me-1"></i>Discussion</span>'
-      +   '<span class="ci-forum-count" id="ciForumCount"></span>'
+      '<div class="ci-forum-header">'
+      + '<span class="ci-forum-title"><i class="fas fa-comments me-1"></i>Discussion</span>'
+      + '<span class="ci-forum-count" id="ciForumCount"></span>'
       + '</div>'
       + '<div class="ci-forum-messages" id="ciForumMessages"></div>'
       + '<div class="ci-forum-compose">'
-      +   '<textarea class="ci-forum-input" id="ciForumInput" placeholder="Join the discussion..." rows="2"></textarea>'
-      +   '<div class="ci-forum-compose-actions">'
-      +     '<button class="ci-btn ci-btn-sm ci-btn-primary" id="ciForumSend"><i class="fas fa-paper-plane me-1"></i>Post</button>'
-      +   '</div>'
-      + '</div>'
-      + '</div>';
+      + '<textarea class="ci-forum-input" id="ciForumInput" placeholder="Join the discussion..." rows="2"></textarea>'
+      + '<div class="ci-forum-compose-actions">'
+      + '<button class="ci-btn ci-btn-sm ci-btn-primary" id="ciForumSend"><i class="fas fa-paper-plane me-1"></i>Post</button>'
+      + '</div></div>';
 
     _loadForumMessages();
 
@@ -353,15 +525,9 @@ var ContentInteract = (function() {
       this.disabled = true;
       _api('POST', _contentPath() + '/forum', { content: text }).then(function(data) {
         document.getElementById('ciForumSend').disabled = false;
-        if (data.success) {
-          input.value = '';
-          _loadForumMessages();
-        } else {
-          _flash(data.error || 'Failed to post', 'error');
-        }
-      }).catch(function() {
-        document.getElementById('ciForumSend').disabled = false;
-      });
+        if (data.success) { input.value = ''; _loadForumMessages(); }
+        else _flash(data.error || 'Failed', 'error');
+      }).catch(function() { document.getElementById('ciForumSend').disabled = false; });
     });
   }
 
@@ -370,33 +536,26 @@ var ContentInteract = (function() {
       var msgDiv = document.getElementById('ciForumMessages');
       var countEl = document.getElementById('ciForumCount');
       if (!data.success) return;
-
       if (countEl) countEl.textContent = data.total ? '(' + data.total + ')' : '';
-
       if (!data.messages || !data.messages.length) {
-        msgDiv.innerHTML = '<p class="ci-forum-empty">No messages yet. Start the discussion!</p>';
+        msgDiv.innerHTML = '<p class="ci-forum-empty">No messages yet.</p>';
         return;
       }
-
       msgDiv.innerHTML = data.messages.map(function(m) {
         var voteUp = m.user_vote === 1 ? ' ci-vote-active' : '';
         var voteDown = m.user_vote === -1 ? ' ci-vote-active' : '';
         return '<div class="ci-forum-msg' + (m.is_pinned ? ' ci-forum-msg-pinned' : '') + '">'
           + '<div class="ci-forum-msg-header">'
-          +   (m.user_picture ? '<img src="' + _esc(m.user_picture) + '" class="ci-forum-avatar">' : '<i class="fas fa-user-circle ci-forum-avatar-icon"></i>')
-          +   '<span class="ci-forum-msg-author">' + _esc(m.user_name) + (m.is_admin ? ' <span class="ci-badge-admin">Admin</span>' : '') + '</span>'
-          +   '<span class="ci-forum-msg-time">' + _timeAgo(m.created_at) + '</span>'
-          +   (m.is_pinned ? '<span class="ci-badge-pinned"><i class="fas fa-thumbtack"></i></span>' : '')
+          + '<span class="ci-forum-msg-author">' + _esc(m.user_name) + (m.is_admin ? ' <span class="ci-badge-admin">Admin</span>' : '') + '</span>'
+          + '<span class="ci-forum-msg-time">' + _timeAgo(m.created_at) + '</span>'
           + '</div>'
           + '<div class="ci-forum-msg-body">' + _esc(m.content) + '</div>'
-          + (m.image_thumbnail_url ? '<img src="' + _esc(m.image_thumbnail_url) + '" class="ci-forum-msg-img">' : '')
           + '<div class="ci-forum-msg-actions">'
-          +   '<button class="ci-vote-btn' + voteUp + '" onclick="ContentInteract.vote(' + m.id + ', 1)"><i class="fas fa-arrow-up"></i></button>'
-          +   '<span class="ci-vote-score">' + m.vote_score + '</span>'
-          +   '<button class="ci-vote-btn' + voteDown + '" onclick="ContentInteract.vote(' + m.id + ', -1)"><i class="fas fa-arrow-down"></i></button>'
-          +   (m.is_own ? '<button class="ci-delete-btn" onclick="ContentInteract.deleteMsg(' + m.id + ')"><i class="fas fa-trash"></i></button>' : '')
-          + '</div>'
-          + '</div>';
+          + '<button class="ci-vote-btn' + voteUp + '" onclick="ContentInteract.vote(' + m.id + ', 1)"><i class="fas fa-arrow-up"></i></button>'
+          + '<span class="ci-vote-score">' + m.vote_score + '</span>'
+          + '<button class="ci-vote-btn' + voteDown + '" onclick="ContentInteract.vote(' + m.id + ', -1)"><i class="fas fa-arrow-down"></i></button>'
+          + (m.is_own ? '<button class="ci-delete-btn" onclick="ContentInteract.deleteMsg(' + m.id + ')"><i class="fas fa-trash"></i></button>' : '')
+          + '</div></div>';
       }).join('');
     });
   }
@@ -410,13 +569,22 @@ var ContentInteract = (function() {
     init: function(config) {
       _cfg = config;
       if (!_cfg.contentType || !_cfg.contentKey) {
-        console.error('[ContentInteract] contentType and contentKey are required');
+        console.error('[ContentInteract] contentType and contentKey required');
         return;
       }
-      if (_cfg.notesContainer) _initNotes();
-      if (_cfg.highlightContainers) _initHighlights();
-      if (_cfg.forumContainer) _initForum();
+      _createSidePanel();
+      _initSelection();
+
+      // Toggle button
+      if (_cfg.notesToggleBtn) {
+        var btn = document.querySelector(_cfg.notesToggleBtn);
+        if (btn) {
+          btn.addEventListener('click', function() { _togglePanel(); });
+        }
+      }
     },
+
+    toggle: function() { _togglePanel(); },
 
     vote: function(msgId, value) {
       _api('POST', '/forum/' + msgId + '/vote', { vote: value }).then(function(data) {
