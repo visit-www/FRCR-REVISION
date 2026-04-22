@@ -42,6 +42,26 @@ def osce_admin_page():
     return render_template('admin_osce.html', osce_cases=cases, linkable_cases=linkable_cases)
 
 
+@osce_admin_bp.route('/edit/<int:case_id>', methods=['GET'])
+@require_admin
+def edit_osce_case_page(case_id):
+    """Dedicated full-page editor for an OSCE case (TinyMCE needs visible DOM)."""
+    case = OsceCase.query.get_or_404(case_id)
+    linkable_cases = Case.query.filter_by(status=CaseStatus.PUBLISHED).order_by(Case.diagnosis).all()
+    linked_ids = case.get_linked_case_ids()
+    # Pre-format reference links for textarea
+    refs = case.get_reference_links()
+    ref_lines = '\n'.join(
+        ' | '.join(filter(None, [r.get('url', ''), r.get('label', ''), r.get('source', '')]))
+        for r in refs
+    ) if refs else ''
+    return render_template('admin_osce_edit.html',
+                           osce_case=case,
+                           linkable_cases=linkable_cases,
+                           linked_case_ids=linked_ids,
+                           ref_links_text=ref_lines)
+
+
 # =========================================================================
 # CASE CRUD (JSON API)
 # =========================================================================

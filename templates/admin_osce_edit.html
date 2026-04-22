@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block tool_active_osce_guide %}active{% endblock %}
+{% block mobile_active_osce_guide %}active{% endblock %}
+
+{% block title %}Edit {{ osce_case.code }} | OSCE Admin | RadInsights{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1100px;">
+
+  <!-- ═══════════ BREADCRUMB + HEADER ═══════════ -->
+  <nav aria-label="breadcrumb" class="mb-2">
+    <ol class="breadcrumb small mb-0">
+      <li class="breadcrumb-item"><a href="/api/admin/osce" class="text-decoration-none">OSCE Admin</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ osce_case.code }}</li>
+    </ol>
+  </nav>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h1 style="font-size:1.4rem;" class="mb-0">
+      <i class="fas fa-edit me-2" style="color:var(--brand-primary);"></i>Edit {{ osce_case.code }}: {{ osce_case.diagnosis }}
+    </h1>
+    <div class="d-flex gap-2">
+      <a href="/api/admin/osce" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back</a>
+      <button class="btn btn-sm btn-brand-primary" id="oeSaveBtn" onclick="saveCase()"><i class="fas fa-save me-1"></i>Save</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ STATUS TOAST ═══════════ -->
+  <div class="alert alert-success d-none small py-2" id="oeSaveSuccess"><i class="fas fa-check me-1"></i>Saved successfully</div>
+
+  <!-- ═══════════ METADATA ROW ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-header"><i class="fas fa-info-circle me-2"></i>Case Details</div>
+    <div class="card-brand-body">
+      <div class="row g-3">
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Code</label>
+          <input type="text" class="form-control form-control-sm" id="oeCode" value="{{ osce_case.code }}" readonly>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-bold">Diagnosis</label>
+          <input type="text" class="form-control form-control-sm" id="oeDiagnosis" value="{{ osce_case.diagnosis }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Modality</label>
+          <select class="form-select form-select-sm" id="oeModality">
+            {% for mod in ['CXR', 'AXR', 'Knee X-ray', 'Shoulder X-ray', 'Elbow X-ray', 'Foot X-ray', 'CT Brain'] %}
+            <option value="{{ mod }}" {{ 'selected' if osce_case.modality == mod }}>{{ mod }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Category</label>
+          <select class="form-select form-select-sm" id="oeCategory">
+            {% for cat, lbl in [('emergency','Emergency'),('spotter','Spotter'),('common','Common'),('normal','Normal')] %}
+            <option value="{{ cat }}" {{ 'selected' if osce_case.category == cat }}>{{ lbl }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-bold">Difficulty</label>
+          <select class="form-select form-select-sm" id="oeDifficulty">
+            {% for d in ['Easy', 'Moderate'] %}
+            <option value="{{ d }}" {{ 'selected' if osce_case.difficulty == d }}>{{ d }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-1 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="oePublished" {{ 'checked' if osce_case.is_published }}>
+            <label class="form-check-label small" for="oePublished">Published</label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ LINKED CASES + REFERENCES ═══════════ -->
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card-brand h-100">
+        <div class="card-brand-header"><i class="fas fa-link me-2"></i>Dive Deeper Links</div>
+        <div class="card-brand-body">
+          <select class="form-select form-select-sm" id="oeLinkedCases" multiple size="5">
+            {% for lc in linkable_cases %}
+            <option value="{{ lc.id }}" {{ 'selected' if lc.id in linked_case_ids }}>{{ lc.case_number }} -- {{ lc.diagnosis[:60] }}</option>
+            {% endfor %}
+          </select>
+          <span class="small text-muted">Hold Ctrl/Cmd to select multiple</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="card-brand h-100">
+        <div class="card-brand-header"><i class="fas fa-external-link-alt me-2"></i>Reference Links</div>
+        <div class="card-brand-body">
+          <textarea class="form-control form-control-sm" id="oeRefLinks" rows="4" placeholder="URL | Label | Source (one per line)">{{ ref_links_text }}</textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TINYMCE CONTENT ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-header d-flex justify-content-between align-items-center">
+      <span><i class="fas fa-file-alt me-2"></i>Content (HTML)</span>
+      <span class="small text-muted">Auto-populated by AI generation, or edit manually below</span>
+    </div>
+    <div class="card-brand-body p-2">
+      <textarea id="oeContent">{{ osce_case.content_html or '' }}</textarea>
+    </div>
+  </div>
+
+  <!-- ═══════════ BOTTOM SAVE ═══════════ -->
+  <div class="d-flex justify-content-between">
+    <a href="/api/admin/osce" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i>Back to List</a>
+    <button class="btn btn-sm btn-brand-primary" onclick="saveCase()"><i class="fas fa-save me-1"></i>Save Changes</button>
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+(function() {
+  var CASE_ID = {{ osce_case.id }};
+  var API = '/api/admin/osce';
+
+  // ── TinyMCE init on page load (not in a modal — will work reliably) ──
+  function initTiny() {
+    if (typeof tinymce === 'undefined') {
+      setTimeout(initTiny, 300);
+      return;
+    }
+    tinymce.init({
+      selector: '#oeContent',
+      min_height: 500,
+      max_height: 900,
+      menubar: 'edit view insert format tools',
+      plugins: 'lists link table code autoresize image',
+      toolbar: 'undo redo | blocks styles | bold italic underline | numlist bullist indent outdent | table link image | code removeformat',
+      content_style: 'body { font-family: -apple-system, system-ui, sans-serif; font-size: 14px; line-height: 1.6; }',
+      base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+      convert_urls: false,
+      relative_urls: false,
+      autoresize_bottom_margin: 30,
+    });
+  }
+  initTiny();
+
+  // ── Save ──
+  window.saveCase = function() {
+    var btn = document.getElementById('oeSaveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+    var refText = document.getElementById('oeRefLinks').value.trim();
+    var refLinks = refText ? refText.split('\n').map(function(line) {
+      var parts = line.split('|').map(function(p) { return p.trim(); });
+      return { url: parts[0] || '', label: parts[1] || '', source: parts[2] || '' };
+    }) : [];
+
+    var tinyEd = tinymce.get('oeContent');
+
+    var payload = {
+      diagnosis: document.getElementById('oeDiagnosis').value.trim(),
+      modality: document.getElementById('oeModality').value,
+      category: document.getElementById('oeCategory').value,
+      difficulty: document.getElementById('oeDifficulty').value,
+      is_published: document.getElementById('oePublished').checked,
+      linked_case_ids: Array.from(document.getElementById('oeLinkedCases').selectedOptions).map(function(o) { return parseInt(o.value); }),
+      reference_links: refLinks,
+      content_html: tinyEd ? tinyEd.getContent() : '',
+    };
+
+    fetch(API + '/cases/' + CASE_ID, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+      if (data.success) {
+        var toast = document.getElementById('oeSaveSuccess');
+        toast.classList.remove('d-none');
+        setTimeout(function() { toast.classList.add('d-none'); }, 3000);
+      } else {
+        alert('Error: ' + (data.error || 'Unknown'));
+      }
+    }).catch(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+      alert('Save failed: ' + err.message);
+    });
+  };
+
+  // ── Keyboard shortcut: Ctrl/Cmd+S to save ──
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveCase();
+    }
+  });
+})();
+</script>
+{% endblock %}
