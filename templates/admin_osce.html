@@ -171,15 +171,15 @@
             </div>
           </div>
 
-          <!-- Linked Case -->
+          <!-- Linked Cases (multi-select) -->
           <div class="col-md-4">
-            <label class="form-label small fw-bold">Dive Deeper → Link to Case</label>
-            <select class="form-select form-select-sm" id="oaCaseLinkedCase">
-              <option value="">None</option>
+            <label class="form-label small fw-bold">Dive Deeper → Link to Case(s)</label>
+            <select class="form-select form-select-sm" id="oaCaseLinkedCases" multiple size="4">
               {% for lc in linkable_cases %}
               <option value="{{ lc.id }}">{{ lc.case_number }} — {{ lc.diagnosis[:60] }}</option>
               {% endfor %}
             </select>
+            <span class="small text-muted">Hold Ctrl/Cmd to select multiple</span>
           </div>
 
           <!-- Reference Links -->
@@ -354,7 +354,9 @@
     document.getElementById('oaCaseCategory').value = 'emergency';
     document.getElementById('oaCaseDifficulty').value = 'Moderate';
     document.getElementById('oaCasePublished').checked = false;
-    document.getElementById('oaCaseLinkedCase').value = '';
+    // Clear multi-select
+    var lcSel = document.getElementById('oaCaseLinkedCases');
+    for (var i = 0; i < lcSel.options.length; i++) lcSel.options[i].selected = false;
     document.getElementById('oaCaseRefLinks').value = '';
     document.getElementById('oaCaseModalTitle').textContent = 'New OSCE Case';
     document.getElementById('oaCaseCode').removeAttribute('readonly');
@@ -374,7 +376,12 @@
       document.getElementById('oaCaseCategory').value = data.category;
       document.getElementById('oaCaseDifficulty').value = data.difficulty;
       document.getElementById('oaCasePublished').checked = data.is_published;
-      document.getElementById('oaCaseLinkedCase').value = data.linked_case_id || '';
+      // Set multi-select values
+      var lcSel = document.getElementById('oaCaseLinkedCases');
+      var linkedIds = data.linked_case_ids || [];
+      for (var i = 0; i < lcSel.options.length; i++) {
+        lcSel.options[i].selected = linkedIds.indexOf(parseInt(lcSel.options[i].value)) !== -1;
+      }
       // Reference links
       var links = (data.reference_links || []).map(function(l) {
         return [l.url || '', l.label || '', l.source || ''].join(' | ');
@@ -403,7 +410,7 @@
       category: document.getElementById('oaCaseCategory').value,
       difficulty: document.getElementById('oaCaseDifficulty').value,
       is_published: document.getElementById('oaCasePublished').checked,
-      linked_case_id: document.getElementById('oaCaseLinkedCase').value || null,
+      linked_case_ids: Array.from(document.getElementById('oaCaseLinkedCases').selectedOptions).map(function(o) { return parseInt(o.value); }),
       reference_links: refLinks,
       content_html: tinyInstance ? tinyInstance.getContent() : '',
     };

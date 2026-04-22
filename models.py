@@ -4331,8 +4331,9 @@ class OsceCase(db.Model):
     # TinyMCE-editable HTML (rendered from JSON, then admin can tweak)
     content_html = db.Column(db.Text, nullable=True)
 
-    # Link to full Case for "Dive Deeper" button
-    linked_case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='SET NULL'), nullable=True)
+    # Link to full Case(s) for "Dive Deeper" button (JSON array of case IDs)
+    linked_case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='SET NULL'), nullable=True)  # legacy single link
+    linked_case_ids = db.Column(db.Text, nullable=True)  # JSON array: [1, 5, 12] — multiple cases
 
     # External reference links (JSON array: [{"url": "...", "label": "...", "source": "..."}])
     reference_links = db.Column(db.Text, nullable=True)
@@ -4365,6 +4366,25 @@ class OsceCase(db.Model):
     def set_reference_links(self, links):
         """Store reference_links as JSON."""
         self.reference_links = json.dumps(links) if links else None
+
+    def get_linked_case_ids(self):
+        """Get all linked case IDs (combines legacy single + new multi)."""
+        ids = []
+        if self.linked_case_ids:
+            try:
+                ids = json.loads(self.linked_case_ids)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        # Include legacy single link if not already in list
+        if self.linked_case_id and self.linked_case_id not in ids:
+            ids.insert(0, self.linked_case_id)
+        return ids
+
+    def set_linked_case_ids(self, case_ids):
+        """Store linked case IDs as JSON array."""
+        self.linked_case_ids = json.dumps(case_ids) if case_ids else None
+        # Keep legacy field in sync with first ID
+        self.linked_case_id = case_ids[0] if case_ids else None
 
     def get_osce_data(self):
         """Parse osce_data JSON."""

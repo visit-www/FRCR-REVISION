@@ -2047,6 +2047,8 @@ match specific statistical claims to paper abstracts.</p>
         # -- osce_case_image: annotation pairing --
         _add_col_if_missing('osce_case_image', 'is_annotated', 'is_annotated BOOLEAN DEFAULT false')
         _add_col_if_missing('osce_case_image', 'paired_image_id', 'paired_image_id INTEGER')
+        # -- osce_case: multi-case linking --
+        _add_col_if_missing('osce_case', 'linked_case_ids', 'linked_case_ids TEXT')
 
         # -- user: Login rate limiting (brute force protection) --
         _add_col_if_missing('user', 'failed_login_count', 'failed_login_count INTEGER DEFAULT 0')

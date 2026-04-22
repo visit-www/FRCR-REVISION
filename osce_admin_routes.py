@@ -55,7 +55,7 @@ def list_osce_cases():
         'id': c.id, 'code': c.code, 'diagnosis': c.diagnosis,
         'modality': c.modality, 'category': c.category,
         'difficulty': c.difficulty, 'is_published': c.is_published,
-        'linked_case_id': c.linked_case_id,
+        'linked_case_ids': c.get_linked_case_ids(),
         'image_count': c.images.count(),
     } for c in cases])
 
@@ -88,7 +88,8 @@ def create_osce_case():
         difficulty=data.get('difficulty', 'Moderate'),
         osce_data=data.get('osce_data'),
         content_html=data.get('content_html'),
-        linked_case_id=data.get('linked_case_id'),
+        linked_case_id=data.get('linked_case_ids', [None])[0] if data.get('linked_case_ids') else data.get('linked_case_id'),
+        linked_case_ids=json.dumps(data.get('linked_case_ids', [])) if data.get('linked_case_ids') else None,
         reference_links=json.dumps(data.get('reference_links', [])),
         is_published=data.get('is_published', False),
         sort_order=data.get('sort_order', 0),
@@ -151,7 +152,9 @@ def update_osce_case(case_id):
         case.content_html = data['content_html']
     if 'osce_data' in data:
         case.osce_data = data['osce_data']
-    if 'linked_case_id' in data:
+    if 'linked_case_ids' in data:
+        case.set_linked_case_ids(data['linked_case_ids'] or [])
+    elif 'linked_case_id' in data:
         case.linked_case_id = data['linked_case_id'] or None
     if 'reference_links' in data:
         case.set_reference_links(data['reference_links'])

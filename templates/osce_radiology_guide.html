@@ -876,13 +876,22 @@ body.is-admin .osce-admin-edit-btn:hover {
       refLinksHtml += '</div>';
     }
 
-    // ── Dive Deeper (link to full case) ──
+    // ── Dive Deeper (link to full case(s)) ──
+    var linkedIds = c.linked_case_ids || [];
     var diveDeeperHtml = '';
-    if (c.linked_case_id) {
+    if (linkedIds.length === 1) {
       diveDeeperHtml = '<div class="mt-2">'
-        + '<a href="/view-case/' + c.linked_case_id + '" class="btn btn-sm btn-brand-neutral osce-dive-deeper-btn">'
+        + '<a href="/view-case/' + linkedIds[0] + '" class="btn btn-sm btn-brand-neutral osce-dive-deeper-btn">'
         + '<i class="fas fa-microscope me-1"></i>Dive Deeper — Full Case Study'
         + '</a></div>';
+    } else if (linkedIds.length > 1) {
+      diveDeeperHtml = '<div class="mt-2"><div class="osce-dive-deeper-multi">'
+        + '<span class="small fw-bold text-muted"><i class="fas fa-microscope me-1"></i>Dive Deeper:</span> ';
+      linkedIds.forEach(function(cid, i) {
+        diveDeeperHtml += '<a href="/view-case/' + cid + '" class="btn btn-sm btn-outline-secondary me-1 mb-1">'
+          + 'Case ' + (i + 1) + '</a>';
+      });
+      diveDeeperHtml += '</div></div>';
     }
 
     var search = [c.diagnosis, c.modality, cat, tags.pattern, tags.tissue, tags.mechanism,

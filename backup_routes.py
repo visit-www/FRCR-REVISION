@@ -1310,6 +1310,7 @@ def _build_backup_data():
             'difficulty': oc.difficulty, 'osce_data': oc.osce_data,
             'content_html': oc.content_html,
             'linked_case_id': oc.linked_case_id,
+            'linked_case_ids': oc.linked_case_ids,
             'reference_links': oc.reference_links,
             'is_published': oc.is_published, 'sort_order': oc.sort_order,
             'created_at': oc.created_at.isoformat() if oc.created_at else None,

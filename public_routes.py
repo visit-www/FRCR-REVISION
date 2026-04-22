@@ -142,7 +142,7 @@ def osce_radiology_guide():
             'teaching_points': osce_data.get('teaching_points', []),
             'images': images,
             'content_html': c.content_html or '',
-            'linked_case_id': c.linked_case_id,
+            'linked_case_ids': c.get_linked_case_ids(),
             'reference_links': c.get_reference_links(),
         })
 

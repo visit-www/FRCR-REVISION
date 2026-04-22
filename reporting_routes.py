@@ -951,14 +951,51 @@ def unified_search():
                     'similarity': float(r.sim) if r.sim else 0,
                 })
 
+        # Search OSCE cases
+        if filter_type in ('', 'osce'):
+            osce_sql = text("""
+                SELECT oc.id, oc.code, oc.diagnosis, oc.modality, oc.category,
+                       oc.difficulty,
+                       GREATEST(
+                           similarity(lower(oc.diagnosis), lower(:query)),
+                           COALESCE(similarity(lower(oc.modality), lower(:query)), 0)
+                       ) AS sim
+                FROM osce_case oc
+                WHERE oc.is_published = TRUE
+                  AND (
+                      similarity(lower(oc.diagnosis), lower(:query)) > 0.1
+                      OR oc.diagnosis ILIKE :like_query
+                      OR oc.diagnosis ILIKE :like_raw
+                      OR oc.modality ILIKE :like_query
+                      OR oc.code ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            osce_results = db.session.execute(osce_sql, {
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
+            }).fetchall()
+
+            for r in osce_results:
+                results.append({
+                    'type': 'osce',
+                    'id': r.id,
+                    'title': r.diagnosis,
+                    'body_section': r.modality,
+                    'description': f'{r.category.title()} — {r.modality}',
+                    'subtitle': f'OSCE Case ({r.code})',
+                    'url': f'/osce-radiology-guide?case={r.code}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
     except Exception as exc:
         logger.warning(f"pg_trgm unified search failed, falling back to ILIKE: {exc}")
         results = _fallback_search(query, filter_type, limit, raw_query=raw_query)
 
     # Sort by similarity descending, with type priority as tiebreaker
     TYPE_PRIORITY = {
-        'case': 0, 'protocol': 1, 'reporting': 2, 'template': 3,
-        'learning': 4, 'oncologic': 5, 'tnm_case': 6, 'incidental': 7, 'anatomy': 8, 'pearl': 9, 'intelligence': 10,
+        'case': 0, 'osce': 1, 'protocol': 2, 'reporting': 3, 'template': 4,
+        'learning': 5, 'oncologic': 6, 'tnm_case': 7, 'incidental': 8, 'anatomy': 9, 'pearl': 10, 'intelligence': 11,
     }
     results.sort(key=lambda r: (-r.get('similarity', 0), TYPE_PRIORITY.get(r.get('type'), 99)))
 
