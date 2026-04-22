@@ -286,7 +286,7 @@ Return valid JSON with this exact structure:
     "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "[DISPLAYED AS: study notes] Walk through the {modality} systematic approach ({approach}), confirming each structure is normal. Do NOT start with view identification — that belongs in model_script. Focus on demonstrating thoroughness: what you check, in what order, what you confirm.",
+      "approach": "[DISPLAYED AS: study notes — shown ABOVE the systematic_check table] Brief narrative summary of the systematic approach for this modality: name the categories you check and in what order, but do NOT list measurements or thresholds here — those belong in systematic_check. Think of this as the overview, systematic_check as the detail. 3-5 sentences max.",
       "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings. Correlate clinically."
@@ -312,10 +312,10 @@ QUALITY RULES
 ═══════════════════════════════════════════════════════════════════
 
 Before outputting, verify:
-1. Does approach repeat model_script? Approach is the detailed study walkthrough, model_script is the concise spoken performance.
-2. Does systematic_check overlap with approach? systematic_check is a reference table (values + pitfalls), approach is the narrative.
-3. Are common_pitfalls already covered in systematic_check? If so, set to null.
-4. Do teaching points repeat anything from above? Drop duplicates.
+1. Does approach contain measurements or thresholds? Move them to systematic_check — approach is the overview only.
+2. Does model_script repeat the approach walkthrough? Model_script should be the concise spoken version, not a re-narration.
+3. Are common_pitfalls already in systematic_check? Set to null.
+4. Do teaching points repeat any measurement, pitfall, or fact from above? Drop them.
 5. All text is plain text — no HTML, no markdown."""
 
 
