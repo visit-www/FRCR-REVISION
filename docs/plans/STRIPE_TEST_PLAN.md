@@ -1,9 +1,9 @@
 # Stripe Payment Gateway — Comprehensive Test Plan
 
 > **Created:** March 30, 2026
-> **Updated:** April 15, 2026 — lookup keys, 4 tiers, AI action billing, credit pack 25 actions
+> **Updated:** April 20, 2026 — added Suites 12-14 (Promotion Codes, Customer Portal, Billing Portal, End-to-End Flows); corrected credit RadIQ behavior
 > **Status:** Ready to Execute
-> **Scope:** Full subscription lifecycle testing — signup, trial, upgrade, downgrade, cancellation, credit top-ups, edge cases, webhooks
+> **Scope:** Full subscription lifecycle testing — signup, trial, upgrade, downgrade, cancellation, credit top-ups, promotion codes, customer portal, edge cases, webhooks, end-to-end flows
 > **Keyword:** `RADINSIGHTS-STRIPE-TESTS-2026`
 
 ---
@@ -24,15 +24,18 @@
 12. [Test Suite 8 — AI Usage Rate Limiting](#12-suite-8-rate-limiting)
 13. [Test Suite 9 — UI/UX Verification](#13-suite-9-ui-ux)
 14. [Test Suite 10 — Security & Compliance](#14-suite-10-security)
-15. [Code Review Checklist](#15-code-review)
-16. [Automated Test Specifications](#16-automated-tests)
-17. [Test Execution Tracking](#17-test-tracking)
+15. [Test Suite 12 — Promotion Codes](#15-suite-12-promotion-codes)
+16. [Test Suite 13 — Customer Portal & Billing Management](#16-suite-13-customer-portal)
+17. [Test Suite 14 — End-to-End Payment Flows](#17-suite-14-e2e-flows)
+18. [Code Review Checklist](#18-code-review)
+19. [Automated Test Specifications](#19-automated-tests)
+20. [Test Execution Tracking](#20-test-tracking)
 
 ---
 
 ## 1. Executive Summary
 
-RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first architecture for subscription management. Four tiers: Free, Standard (£9/mo), Elite (£29/mo), Elite Pro (£99/mo) with a 7-day trial for free users. **Prices resolved via Stripe lookup keys** (no price ID env vars). Launch/post-launch auto-switch on 2026-07-17. Billing unit: **AI actions** (not reports). Credit top-up: 25 AI actions for £6. This plan covers 70+ test cases across 11 suites.
+RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first architecture for subscription management. Four tiers: Free, Standard (£9/mo), Elite (£29/mo), Elite Pro (£99/mo) with a 7-day trial for free users. **Prices resolved via Stripe lookup keys** (no price ID env vars). Launch/post-launch auto-switch on 2026-07-17. Billing unit: **AI actions** (not reports). Credit top-up: 25 AI actions for £6 (SR only — credits do NOT apply to RadIQ). Promotion codes enabled at checkout. Stripe Customer Portal for billing self-service. This plan covers 91+ test cases across 14 suites + lookup key tests.
 
 **Key files under test:**
 - `stripe_routes.py` — Lookup key resolution, checkout, plan changes, credit purchases, webhooks
@@ -40,6 +43,8 @@ RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first arch
 - `reporting_routes.py` — `_check_ai_rate_limit()`, `TIER_LIMITS`, credit consumption
 - `models.py` — `User` model subscription fields, `report_credits` for top-ups
 - `templates/pricing.html` — Pricing UI, checkout triggers, plan change modal, credit purchase
+- `templates/profile.html` — "Manage Billing" link → Customer Portal
+- `templates/base.html` — Global `manageSubscription()` function → `/stripe/create-portal-session`
 - `templates/smart_reporter.html`, `templates/radiq.html` — Upgrade modals, buy credits
 
 **Architecture pattern:**
@@ -49,6 +54,8 @@ RadInsights uses Stripe Checkout (hosted payment form) with a webhook-first arch
 - **Downgrades:** `cancel_at_period_end=True` → webhook handles tier change at period end
 - **Free → Paid:** Stripe Checkout hosted session → `checkout.session.completed` webhook
 - **Credit top-up:** One-time payment → `checkout.session.completed` with `type=credit_pack` metadata → adds 25 AI actions
+- **Promotion codes:** `allow_promotion_codes=True` on subscription checkouts (not credit packs)
+- **Customer Portal:** `stripe.billing_portal.Session.create()` → return URL → `/auth/profile`
 - **Webhook is single source of truth** for subscription state
 
 ---
@@ -702,7 +709,157 @@ if current_tier == requested_tier:
 
 ---
 
-## 15. Code Review Checklist
+## 15. Test Suite 12 — Promotion Codes
+
+> Stripe Checkout has `allow_promotion_codes=True` enabled for subscription checkouts.
+
+### T12.1 — Valid Promotion Code at Checkout
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Create a promotion code in Stripe Dashboard (test mode) → e.g. `LAUNCH20` for 20% off | Code active |
+| 2 | Free user clicks "Get Standard" → Stripe Checkout opens | Promo code field visible |
+| 3 | Enter `LAUNCH20` in promotion code field | Discount applied, price shows £7.20 (20% off £9) |
+| 4 | Complete with `4242 4242 4242 4242` | Payment succeeds at discounted rate |
+| 5 | Webhook `checkout.session.completed` fires | User upgraded to Standard in DB |
+| 6 | Verify Stripe invoice | Discount line item present |
+
+### T12.2 — Invalid/Expired Promotion Code
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Enter `EXPIRED_CODE` at checkout | Stripe shows "This code is not valid" error inline |
+| 2 | User can still complete at full price | Payment succeeds without discount |
+
+### T12.3 — Promotion Code Not Available on Credit Pack
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Paid user clicks "Buy Credits" → Stripe Checkout opens | Promo code field NOT shown (credit_pack uses `mode='payment'`, no `allow_promotion_codes`) |
+| 2 | Verify in code | `buy_credits()` does NOT pass `allow_promotion_codes=True` |
+
+---
+
+## 16. Test Suite 13 — Customer Portal & Billing Management
+
+> Stripe Customer Portal accessed via "Manage Billing" link on profile page and `base.html` global function.
+
+### T13.1 — Open Customer Portal (Active Subscriber)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Standard/Elite/Elite Pro user on `/auth/profile` | "Manage Billing" link visible |
+| 2 | Click "Manage Billing" | `POST /stripe/create-portal-session` called |
+| 3 | Verify redirect | Opens Stripe Customer Portal in same tab |
+| 4 | Verify portal features | Can update payment method, view invoices, see plan details |
+| 5 | Click "Return" in portal | Redirects back to `/auth/profile` |
+
+### T13.2 — Customer Portal (Free User)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Free user with no `stripe_customer_id` | |
+| 2 | Attempt to call `POST /stripe/create-portal-session` | Returns 404: "No active subscription found" |
+| 3 | Verify redirect hint | Response includes `redirect: '/#pricing-section'` |
+
+### T13.3 — Customer Portal (Stripe Not Configured)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | `STRIPE_SECRET_KEY` not set | |
+| 2 | Call `POST /stripe/create-portal-session` | Returns 503: "Payments not configured" |
+
+### T13.4 — Update Payment Method via Portal
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Customer Portal as paid subscriber | |
+| 2 | Click "Update payment method" | Card update form shown |
+| 3 | Enter new test card `4242 4242 4242 4242` | Payment method updated |
+| 4 | Next renewal uses new card | Verify in Stripe Dashboard |
+
+### T13.5 — View Invoice History via Portal
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open Customer Portal | |
+| 2 | Click "Billing history" or "Invoices" | Past invoices listed |
+| 3 | Click on an invoice | PDF opens or details shown |
+
+---
+
+## 17. Test Suite 14 — End-to-End Payment Flows
+
+> Full lifecycle flows combining multiple suites. Execute these AFTER individual suite tests pass.
+
+### T14.1 — Complete New User Journey (Free → Trial → Expiry → Standard → Elite → Cancel)
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Register new user at `/register` | `tier='free'`, `trial_started_at=now()` |
+| 2 | Use Smart Reporter 3 times | 3/10 actions used, all succeed |
+| 3 | Set `trial_started_at` to 8 days ago | Simulates trial expiry |
+| 4 | Attempt Smart Reporter | Blocked: "Trial expired" with `trial_expired: true` |
+| 5 | Navigate to `/pricing` | "Trial expired" warning, upgrade CTAs prominent |
+| 6 | Click "Get Standard", pay with `4242...4242` | Checkout success → webhook → `tier='standard'` |
+| 7 | Verify 50/month SR limit active | Use SR once — succeeds, shows 49 remaining |
+| 8 | On `/pricing`, click "Upgrade to Elite" | Preview shows prorated cost |
+| 9 | Confirm upgrade | Immediate: `tier='elite'`, new cycle starts today |
+| 10 | Verify 160/month SR limit | Correct limit shown |
+| 11 | On `/pricing`, click "Downgrade to Standard" | Scheduled: "Switching on [date]" banner |
+| 12 | Verify Elite access retained | All Elite features work |
+| 13 | Simulate period end (webhook `customer.subscription.deleted`) | Auto-creates Standard sub |
+| 14 | Verify `tier='standard'`, 50/month limit | Correct |
+| 15 | Click "Downgrade to Free" | Scheduled cancellation |
+| 16 | Period ends → webhook | `tier='free'`, 2/month post-trial limits |
+
+### T14.2 — Credit Pack Lifecycle
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Standard user uses 50 SR actions | Monthly limit reached |
+| 2 | Attempt SR | Blocked: "Buy top-up credits or upgrade" with `can_buy_credits: true` |
+| 3 | Buy credit pack (£6, 25 actions) | Checkout → webhook → `report_credits=25` |
+| 4 | Attempt SR | Succeeds, `report_credits=24` (1 consumed) |
+| 5 | Attempt RadIQ (at 20/20 limit) | Blocked (credits do NOT apply to RadIQ — SR only) |
+| 6 | Use 24 more SR actions | `report_credits=0` |
+| 7 | Attempt SR again | Blocked: monthly limit + no credits left |
+| 8 | Wait for month reset (simulate `usage_reset_date` to last month) | Counters reset, SR works again (monthly limit) |
+| 9 | Verify `report_credits` unchanged after reset | Credits persist across months (never expire) |
+
+### T14.3 — Payment Failure Recovery Flow
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Standard user with subscription | Active subscription |
+| 2 | Simulate `invoice.payment_failed` webhook | `payment_status='past_due'` |
+| 3 | Verify user access during grace period | Features still work |
+| 4 | Open Customer Portal → update payment method | New card saved |
+| 5 | Stripe retries payment successfully | `payment_status='active'` (via `subscription.updated` webhook) |
+| 6 | If all retries fail → `subscription.deleted` webhook | `tier='free'`, downgraded |
+
+### T14.4 — Concurrent Upgrade + Downgrade Race Condition
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Elite user opens `/pricing` in Tab A and Tab B | |
+| 2 | Tab A: click "Downgrade to Standard" → confirm | Pending downgrade set |
+| 3 | Tab B (stale state): click "Upgrade to Elite Pro" | |
+| 4 | Verify: upgrade wins | `cancel_at_period_end` undone, upgraded to Elite Pro |
+| 5 | Verify `pending_subscription_tier=NULL` | Cleared by upgrade_to_paid() |
+
+### T14.5 — Stripe Unavailability / Network Errors
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Temporarily set `STRIPE_SECRET_KEY` to invalid value | |
+| 2 | Attempt checkout, plan change, credit purchase | All return 500 with user-friendly error |
+| 3 | Verify no DB state corruption | User tier/status unchanged |
+| 4 | Restore valid key | All operations resume working |
+
+---
+
+## 18. Code Review Checklist
 
 ### 15.1 `stripe_routes.py` — Critical Verification
 
@@ -747,7 +904,7 @@ if current_tier == requested_tier:
 
 ---
 
-## 16. Automated Test Specifications
+## 19. Automated Test Specifications
 
 ### 16.1 Python Test File: `tests/test_stripe.py`
 
@@ -822,7 +979,7 @@ class TestCreditTopUp:
     def test_buy_credits_free_user_blocked(self)
     def test_credits_consumed_after_monthly_limit(self)
     def test_credits_not_consumed_before_limit(self)
-    def test_buy_credits_radiq_also_works(self)
+    def test_credits_not_consumed_for_radiq(self)  # Credits are SR-only (code: usage_type != 'radiq')
     def test_webhook_adds_25_action_credits(self)
 
 class TestLookupKeys:
@@ -834,6 +991,16 @@ class TestLookupKeys:
     def test_pricing_phase_post_launch(self)
     def test_pricing_phase_env_override(self)
     def test_tier_from_subscription_both_phases(self)
+
+class TestCustomerPortal:
+    def test_portal_session_paid_user(self)
+    def test_portal_session_free_user_blocked(self)
+    def test_portal_session_no_stripe_key(self)
+    def test_portal_return_url(self)
+
+class TestPromotionCodes:
+    def test_checkout_allows_promo_codes(self)  # allow_promotion_codes=True in session
+    def test_credit_pack_no_promo_codes(self)   # buy_credits() does NOT set allow_promotion_codes
 ```
 
 ### 16.2 Manual Test Checklist Template
@@ -869,15 +1036,27 @@ T9.1    | Pricing page: 4 tiers + AI actions   |           |
 T11.1   | Buy credits (paid user)              |           |
 T11.2   | Buy credits (free user blocked)      |           |
 T11.3   | Credits consumed after limit hit     |           |
-T11.4   | Credits for RadIQ after limit hit    |           |
-T12.1   | Lookup key resolves (launch phase)   |           |
-T12.2   | Phase auto-switch logic              |           |
-T12.3   | PRICING_PHASE env override           |           |
+T11.4   | Credits NOT used for RadIQ           |           |
+T12.1   | Promo code at checkout (valid)       |           |
+T12.2   | Promo code expired/invalid           |           |
+T12.3   | Promo code unavail on credit pack    |           |
+T13.1   | Customer Portal (paid user)          |           |
+T13.2   | Customer Portal (free user blocked)  |           |
+T13.4   | Update payment method via portal     |           |
+T13.5   | View invoice history via portal      |           |
+T14.1   | E2E: Free → Trial → Std → Elite → Cancel |       |
+T14.2   | E2E: Credit pack lifecycle           |           |
+T14.3   | E2E: Payment failure recovery        |           |
+T14.4   | Race: concurrent upgrade + downgrade |           |
+T14.5   | Stripe unavailability handling       |           |
+T-LK.1  | Lookup key resolves (launch phase)   |           |
+T-LK.2  | Phase auto-switch logic              |           |
+T-LK.3  | PRICING_PHASE env override           |           |
 ```
 
 ---
 
-## 17. Test Execution Tracking
+## 20. Test Execution Tracking
 
 ### 17.1 Pre-Test Verification
 
@@ -911,18 +1090,26 @@ After each test session:
 | 9. UI/UX | 15+ | P2 | Manual |
 | 10. Security | 4+ | P1 | Automated |
 | 11. Credit Top-Ups | 6 | P0 | Automated |
-| 12. Lookup Keys & Pricing Phase | 8 | P0 | Automated |
-| **Total** | **78+** | | |
+| 12. Promotion Codes | 3 | P2 | Manual (needs Stripe Dashboard promo setup) |
+| 13. Customer Portal | 5 | P1 | Manual (needs Stripe Portal config) |
+| 14. End-to-End Flows | 5 | P0 | Manual (full lifecycle) |
+| Lookup Keys & Pricing Phase | 8 | P0 | Automated |
+| **Total** | **91+** | | |
 
 ---
 
-> **Next steps:**
+> **Next steps — Execution Order:**
 > 1. Create test-mode Stripe products with correct lookup keys on prices
-> 2. Create test users (6 accounts: free, standard, elite, elite_pro, expired, edge)
-> 3. Run T12.x (lookup keys) first — verify prices resolve correctly
-> 4. Run T1.x (signup/trial) suite
-> 5. Run T2.x (upgrades) including Elite Pro paths
-> 6. Run T11.x (credit top-ups) — buy, consume, verify RadIQ credits
-> 7. Run T7.x (webhooks) — verify webhook-first architecture
-> 8. Run T9.x (UI/UX) — verify all 4 tiers show correctly with AI action counts
-> 9. Run remaining suites in priority order
+> 2. Create a test promo code in Stripe Dashboard (e.g. `LAUNCH20` = 20% off)
+> 3. Configure Stripe Customer Portal in Dashboard (enable payment method update, invoice history)
+> 4. Create test users (6 accounts: free, standard, elite, elite_pro, expired, edge)
+> 5. Run T-LK.x (lookup keys) first — verify prices resolve correctly
+> 6. Run T1.x (signup/trial) suite
+> 7. Run T2.x (upgrades) including Elite Pro paths
+> 8. Run T11.x (credit top-ups) — buy, consume, verify credits are SR-only (NOT RadIQ)
+> 9. Run T7.x (webhooks) — verify webhook-first architecture
+> 10. Run T12.x (promotion codes) — verify promo field appears at checkout
+> 11. Run T13.x (customer portal) — verify Manage Billing link on profile
+> 12. Run T9.x (UI/UX) — verify all 4 tiers show correctly with AI action counts
+> 13. Run T14.x (end-to-end flows) — full lifecycle tests LAST (after all unit suites pass)
+> 14. Run remaining suites in priority order

@@ -426,15 +426,17 @@ def preview_change():
             if not new_price_id:
                 return jsonify({'error': f'Price not configured for {new_plan}'}), 500
 
-            upcoming = stripe.Invoice.upcoming(
+            upcoming = stripe.Invoice.create_preview(
                 customer=customer_id,
                 subscription=_get(sub, 'id'),
-                subscription_items=[{
-                    'id': sub_item_id,
-                    'price': new_price_id,
-                }],
-                subscription_proration_behavior='create_prorations',
-                subscription_billing_cycle_anchor='now',
+                subscription_details={
+                    'items': [{
+                        'id': sub_item_id,
+                        'price': new_price_id,
+                    }],
+                    'proration_behavior': 'create_prorations',
+                    'billing_cycle_anchor': 'now',
+                },
             )
 
             amount_due = _get(upcoming, 'amount_due', 0) / 100  # pence → pounds

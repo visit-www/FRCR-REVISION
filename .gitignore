@@ -86,7 +86,8 @@ data/nice_cache/
 data/drafts/
 
 .env.vercel
-.env.vercel
+.env.neon-backup
+.env.new-neon
 .ajcc_cookies.json
 .cursor/
 .claude/
