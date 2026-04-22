@@ -141,6 +141,7 @@ def osce_radiology_guide():
             'osce': osce_data.get('osce', {}),
             'explanation': osce_data.get('explanation', {}),
             'teaching_points': osce_data.get('teaching_points', []),
+            'visual_hook': osce_data.get('visual_hook', ''),
             'images': images,
             'content_html': c.content_html or '',
             'linked_case_ids': c.get_linked_case_ids(),

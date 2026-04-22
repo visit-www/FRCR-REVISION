@@ -431,6 +431,14 @@
   border-radius: 0.5rem; padding: 0.5rem; margin-top: 0.5rem;
 }
 
+/* ── Visual hook ── */
+.osce-visual-hook {
+  background: #fefce8; border-left: 3px solid #eab308; padding: 0.5rem 0.75rem;
+  border-radius: 0 0.3rem 0.3rem 0; font-size: 0.84rem; font-style: italic;
+  color: #854d0e; margin: 0.5rem 0;
+}
+.osce-visual-hook i { color: #eab308; }
+
 /* ── Teaching points ── */
 .osce-teaching-points {
   background: #fefce8; border-left: 3px solid var(--brand-secondary);
@@ -1046,6 +1054,12 @@ body.is-admin .osce-admin-edit-btn:hover {
       }
     }
 
+    // Visual hook
+    var hookHtml = '';
+    if (c.visual_hook) {
+      hookHtml = '<div class="osce-visual-hook"><i class="fas fa-lightbulb me-1"></i>' + esc(c.visual_hook) + '</div>';
+    }
+
     // Teaching points
     var ptsHtml = '';
     if (pts.length) {
@@ -1149,6 +1163,7 @@ body.is-admin .osce-admin-edit-btn:hover {
       +     '<button class="osce-reveal-btn osce-reveal-btn-step2 d-none" data-step="2">Show Diagnosis &amp; Teaching</button>'
       +     '<div class="osce-reveal-step2">'
       +       diagHtml
+      +       hookHtml
       +       (explHtml ? '<div class="osce-explanation">' + explHtml + '</div>' : '')
       +       (ptsHtml ? '<div class="osce-teaching-points">' + ptsHtml + '</div>' : '')
       +       refLinksHtml
@@ -1930,6 +1945,10 @@ body.is-admin .osce-admin-edit-btn:hover {
           + '<div class="osce-card-expl-text">' + formatExplText(expl[ek]) + '</div></div>';
       }
       html += '</div>';
+    }
+    // Visual hook
+    if (c.visual_hook) {
+      html += '<div class="osce-visual-hook"><i class="fas fa-lightbulb me-1"></i>' + esc(c.visual_hook) + '</div>';
     }
     // Teaching points
     if (pts.length) {
