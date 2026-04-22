@@ -966,10 +966,11 @@ body.is-admin .osce-admin-edit-btn:hover {
     }
 
     // Views detail (inside findings reveal)
-    if (views.why_this_view || views.additional_views) {
+    if (views.notes || views.why_this_view || views.additional_views) {
       findingsHtml += '<div class="osce-card-section osce-card-section--views">'
         + '<div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div>'
         + '<div class="osce-card-section-body">';
+      if (views.notes) findingsHtml += '<p class="mb-0">' + esc(views.notes) + '</p>';
       if (views.why_this_view) findingsHtml += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
       if (views.additional_views) findingsHtml += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
       findingsHtml += '</div></div>';
@@ -1847,8 +1848,9 @@ body.is-admin .osce-admin-edit-btn:hover {
       html += '<div class="osce-card-section"><div class="osce-card-section-label osce-card-section-label--finding"><i class="fas fa-search me-1"></i>Key Finding</div>'
         + '<div class="osce-card-section-body">' + formatExplText(answer.key_finding) + '</div></div>';
     }
-    if (views.why_this_view || views.additional_views) {
+    if (views.notes || views.why_this_view || views.additional_views) {
       html += '<div class="osce-card-section osce-card-section--views"><div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div><div class="osce-card-section-body">';
+      if (views.notes) html += '<p class="mb-0">' + esc(views.notes) + '</p>';
       if (views.why_this_view) html += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
       if (views.additional_views) html += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
       html += '</div></div>';

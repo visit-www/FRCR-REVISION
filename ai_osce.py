@@ -163,41 +163,36 @@ Return valid JSON with this exact structure:
   "difficulty": "Easy or Moderate (choose based on how recognisable the findings are)",
 
   "views": {{
-    "obtained": "Which view(s) this case image would be (e.g., 'PA erect chest radiograph', 'AP and lateral knee radiographs', 'Axial non-contrast CT brain')",
-    "why_this_view": "Brief explanation of why this is the standard/appropriate view for this diagnosis",
-    "additional_views": "Any supplementary views that would help confirm the diagnosis (e.g., 'Lateral decubitus to confirm free fluid', 'Axillary view to confirm posterior dislocation'). Say 'None required' if the standard view is sufficient."
+    "obtained": "Which view(s) this case image would be (e.g., 'PA erect chest radiograph')",
+    "notes": "Why this view is appropriate AND any additional views that would help. Combine in one brief paragraph."
   }},
 
   "tags": {{
-    "pattern": "visual pattern category (e.g., air, fluid, blood, bone disruption, soft tissue, calcification)",
-    "tissue": "affected tissue/structure (e.g., pleural, parenchymal, cortical, intra-axial)",
-    "mechanism": "brief pathophysiological mechanism (e.g., air leak, vascular occlusion, fracture)"
+    "pattern": "visual pattern (e.g., air, fluid, blood, bone disruption, calcification)",
+    "tissue": "affected structure (e.g., pleural, parenchymal, cortical, intra-axial)"
   }},
 
   "osce": {{
     "prompt": "The examiner's instruction (e.g., 'Please interpret this chest X-ray')",
 
     "expected_answer": {{
-      "approach": "[DISPLAYED AS: study notes the student reads to learn the method] Walk through the {modality} systematic approach ({approach}), noting what is normal and what is abnormal at each step. Do NOT start with view identification here — that belongs in model_script. Focus on the analytical process: what to check, in what order, what you find.",
-      "key_finding": "[DISPLAYED AS: the core observation] Describe what is SEEN in simple visual language. Do not name the diagnosis — describe the appearance only (e.g., 'visible line in right hemithorax with absent lung markings beyond it').",
+      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] Walk through the {modality} systematic approach ({approach}), noting what is normal and what is abnormal at each step. This is the core learning content — be thorough. Do NOT start with view identification (that belongs in model_script).",
+      "key_finding": "[DISPLAYED AS: the core observation + pattern link] Describe what is SEEN in simple visual language (not the diagnosis name). Then add: 'This pattern suggests...' to link the visual finding to the diagnosis. Combine observation and pattern recognition in one statement.",
       "diagnosis": "The diagnosis with laterality/specifics.",
-      "urgency": "Is this an emergency? What immediate action is needed? Include clinical significance here — this field replaces any need for a separate 'why it matters' section."
+      "urgency": "Clinical significance: is this an emergency? What action is needed? Why must a student know this? This single field covers urgency, clinical importance, and 'why it matters'."
     }},
 
-    "model_script": "[DISPLAYED AS: the script the student rehearses aloud] A 2-4 sentence OSCE verbal response that a student would speak to an examiner. This is the PERFORMANCE — start with view identification, state the key finding, give diagnosis, state urgency. Do NOT repeat the detailed systematic walkthrough from approach — this is the concise summary version."
+    "model_script": "[DISPLAYED AS: the script the student rehearses aloud] A 2-4 sentence OSCE verbal response. Start with view identification, state finding, give diagnosis, state urgency. This is the concise spoken performance — do NOT repeat the approach walkthrough."
   }},
 
   "explanation": {{
-    "pattern_recognition": "[DISPLAYED AS: a memorable one-liner] If you see X → think Y → because Z. Set to null if the pattern is already obvious from key_finding.",
-    "mechanism": "[DISPLAYED AS: understanding WHY] Explain why the imaging looks like this. Set to null if approach already explains the mechanism as part of the walkthrough.",
-    "why_it_matters": "Set to null — urgency field now covers clinical significance. Only populate if there is important context BEYOND what urgency states (e.g., epidemiology, screening implications)."
+    "mechanism": "WHY the imaging looks like this — the pathophysiology in simple terms. Set to null if approach already explains the mechanism during the walkthrough."
   }},
 
   "teaching_points": [
-    "[DISPLAYED AS: bonus exam tips below the main content]",
-    "Only include points that add NEW information not covered in approach, key_finding, model_script, or explanation",
-    "Classic signs, measurement thresholds, key differentials, examiner follow-ups — whatever is genuinely useful for THIS case",
-    "Typically 2-4 points. If the case is well-covered above, fewer is better than padding"
+    "[DISPLAYED AS: bonus exam tips] Only include points that add NEW information not in approach, key_finding, or urgency",
+    "Classic signs, measurement thresholds, key differentials, examiner follow-ups",
+    "Typically 2-4 points. Fewer is better than padding"
   ]
 }}
 
@@ -271,51 +266,48 @@ Return valid JSON with this exact structure:
   "difficulty": "Easy",
 
   "views": {{
-    "obtained": "Which standard view(s) are shown (e.g., 'PA erect chest radiograph', 'AP and lateral knee radiographs')",
-    "why_this_view": "Brief note on what the standard view allows you to assess",
-    "additional_views": "What other views exist for this modality and when they are requested"
+    "obtained": "Which standard view(s) are shown (e.g., 'PA erect chest radiograph')",
+    "notes": "What this view allows you to assess AND what other views exist for this modality and when they are requested. Combine in one brief paragraph."
   }},
 
   "tags": {{
     "pattern": "normal",
-    "tissue": "all structures",
-    "mechanism": "none — normal study"
+    "tissue": "all structures"
   }},
 
   "osce": {{
     "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "[DISPLAYED AS: study notes — shown ABOVE the systematic_check table] Brief narrative summary of the systematic approach for this modality: name the categories you check and in what order, but do NOT list measurements or thresholds here — those belong in systematic_check. Think of this as the overview, systematic_check as the detail. 3-5 sentences max.",
+      "approach": "[DISPLAYED AS: the main study content in 'What do you see?'] This is the CORE of the normal case. Walk through the COMPLETE {modality} systematic approach ({approach}). For each structure: state what to check, the normal value/threshold, and ONE common pitfall that mimics pathology. Include measurements. Be thorough but concise — this is everything the student needs to learn from this case. Format as a structured walkthrough, not a numbered checklist.",
       "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings. Correlate clinically."
     }},
 
-    "model_script": "[DISPLAYED AS: rehearsal script] A 3-5 sentence OSCE verbal response. Start with view identification, then a CONCISE confirmation of normality (not a full repeat of approach), conclude with summary. This is performance, not study notes."
+    "model_script": "[DISPLAYED AS: rehearsal script] A 3-5 sentence OSCE verbal response. Start with view identification, then a CONCISE confirmation of normality (not a repeat of approach), conclude with summary. This is the spoken performance version."
   }},
 
   "explanation": {{
-    "systematic_check": "[DISPLAYED AS: reference checklist with measurements] Numbered list of structures to verify, with normal values/thresholds AND one pitfall per item. Format: 'N. Structure — normal (value). Pitfall: what mimics pathology.' 5-8 items for {modality_label}. This is DIFFERENT from approach — approach is the narrative walkthrough, this is the quick-reference lookup table.",
-    "common_pitfalls": "Additional OSCE traps NOT already in systematic_check. Set to null if systematic_check covers all major pitfalls."
+    "common_pitfalls": "OSCE traps: 2-4 normal variants or artefacts specific to {modality_label} that look abnormal. Only include pitfalls NOT already mentioned in the approach. Set to null if approach already covers all major pitfalls."
   }},
 
   "teaching_points": [
-    "[DISPLAYED AS: bonus tips] Only include points that add NEW information",
-    "Review areas commonly missed, examiner follow-ups ('What would worry you?'), key concepts",
-    "Do NOT restate landmarks, pitfalls, or approach content"
+    "[DISPLAYED AS: bonus tips] Only include points that add NEW information not in approach",
+    "Examiner follow-ups ('What would worry you?'), review areas, key concepts",
+    "Do NOT restate anything from the approach"
   ]
 }}
 
-═══════════════════════════════��═══════════════════════════════════
-QUALITY RULES
+═════════════════════════════════════════════════════════════════════
+SELF-CHECK
 ═══════════════════════════════════════════════════════════════════
 
 Before outputting, verify:
-1. Does approach contain measurements or thresholds? Move them to systematic_check — approach is the overview only.
-2. Does model_script repeat the approach walkthrough? Model_script should be the concise spoken version, not a re-narration.
-3. Are common_pitfalls already in systematic_check? Set to null.
-4. Do teaching points repeat any measurement, pitfall, or fact from above? Drop them.
+1. Does approach contain all the key landmarks, measurements, and pitfalls? It should — this is the main teaching content.
+2. Does model_script repeat the approach? It should NOT — model_script is the concise spoken version only.
+3. Are common_pitfalls already covered in approach? Set to null if so.
+4. Do teaching points repeat anything from approach? Drop them if so.
 5. All text is plain text — no HTML, no markdown."""
 
 
@@ -534,7 +526,7 @@ def render_osce_html(osce_data):
     if views and isinstance(views, dict):
         parts.append('<div class="osce-section" data-section="views">')
         parts.append('<h4>Radiographic Views</h4>')
-        for field in ("obtained", "why_this_view", "additional_views"):
+        for field in ("obtained", "notes", "why_this_view", "additional_views"):
             val = views.get(field)
             if val:
                 label = field.replace("_", " ").title()
