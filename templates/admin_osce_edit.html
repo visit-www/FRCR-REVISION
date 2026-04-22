@@ -106,7 +106,7 @@
       <span class="small text-muted">Auto-populated by AI generation, or edit manually below</span>
     </div>
     <div class="card-brand-body p-2">
-      <textarea id="oeContent">{{ osce_case.content_html or '' }}</textarea>
+      <textarea id="oeContent"></textarea>
     </div>
   </div>
 
@@ -123,8 +123,9 @@
 (function() {
   var CASE_ID = {{ osce_case.id }};
   var API = '/api/admin/osce';
+  var initialContent = {{ osce_case.content_html|tojson }};
 
-  // ── TinyMCE init on page load (not in a modal — will work reliably) ──
+  // ── TinyMCE init on page load ──
   function initTiny() {
     if (typeof tinymce === 'undefined') {
       setTimeout(initTiny, 300);
@@ -141,7 +142,11 @@
       base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
       convert_urls: false,
       relative_urls: false,
+      remove_script_host: false,
       autoresize_bottom_margin: 30,
+      init_instance_callback: function(ed) {
+        ed.setContent(initialContent || '');
+      }
     });
   }
   initTiny();
