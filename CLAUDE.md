@@ -128,6 +128,46 @@ When making code changes, **always check** whether the change requires updates t
 - Trust bar hidden if unresolved disputes exist
 - Dashboard crosshair link: `?claim=<id>` param → `cmv-badges.js` auto-scrolls to badge
 
+## OSCE Radiology Guide
+- **Public page**: `/osce-radiology-guide` — fully public, no auth required, SEO-optimised
+- **AI generator**: `ai_osce.py` — pathological + normal prompt variants with view identification, modality-specific approaches
+- **Admin CRUD**: `/api/admin/osce` — create cases, generate AI content (with references/PDFs/instructions), upload images (Cloudinary), edit via TinyMCE, link to full Case for "Dive Deeper"
+- **Models**: `OsceCase` (code, diagnosis, modality, category, osce_data JSON, content_html, linked_case_id) + `OsceCaseImage` (multiple per case, with attribution)
+- **Static content**: Quick Reference, Pattern Index, Exam Technique stored in `static/data/osce_guide.json` — editable by admin via Static Content tab, uses mtime-cache (changes reflect immediately)
+- **Guide page template**: `templates/osce_radiology_guide.html` — 4 tabs (Cases, Quick Reference, Pattern Index, Exam Technique), Study/Exam mode toggle, filters, 2-step reveal, timer, shuffle, score
+- **Route file**: `osce_admin_routes.py` (blueprint prefix `/api/admin/osce`)
+- **Admin access**: uses `@require_admin` decorator from `access_control.py` (NOT `getattr(current_user, 'is_admin', False)`)
+
+## Content Interact — Standalone Reusable Package
+**3 files**: `content_interact_routes.py`, `static/js/content-interact.js`, `static/css/content-interact.css`
+
+A generic notes + highlights + discussion forum system that works with ANY content type. Drop into any page with:
+```javascript
+ContentInteract.init({
+  contentType: 'osce_guide',   // any string
+  contentKey: 'cxr',           // any string
+  notesContainer: '#myNotes',
+  highlightContainers: ['.content-area'],
+  forumContainer: '#myForum',
+});
+```
+
+### How it works
+- **API blueprint**: `/api/content/<type>/<key>/note`, `/api/content/<type>/<key>/highlights`, `/api/content/<type>/<key>/forum`
+- **Models**: Reuses existing `CandidateNote`, `TextHighlight`, `ForumMessage` with added `content_type` + `content_key` columns (polymorphic — same models serve cases, TNM, OSCE, and any future content)
+- **Legacy compatible**: Existing `/api/case/<id>/note` endpoints still work unchanged
+- **Features**: Auto-save notes (1.5s debounce), text highlight with 4-color picker popup, discussion forum with upvote/downvote, toast notifications
+
+### When adding to a new page
+1. Include CSS: `<link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">`
+2. Include JS: `<script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>`
+3. Add container divs for notes/forum
+4. Call `ContentInteract.init({...})` with your content type/key
+5. Add `data-field` attributes to highlightable containers
+
+### Currently wired into
+- OSCE Radiology Guide (collapsible "Study Tools" panel for authenticated users)
+
 ## Case Deletion
 - `delete_case()` in `app.py` has 11 cleanup steps covering ALL FK references to `case.id`
 - If you add a new model with `ForeignKey('case.id')` without `ondelete='CASCADE'`, you MUST add explicit deletion in `delete_case()`
