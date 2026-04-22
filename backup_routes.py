@@ -59,6 +59,8 @@ from models import (
     MdtMeeting, MdtCase,
     # Audit and compliance
     PiiOverrideLog, RateLimitEntry, ErasureLog, AdminActionLog,
+    # OSCE Guide
+    OsceCase, OsceCaseImage,
     # Additional association tables
     case_learning_links, content_links,
 )
@@ -241,6 +243,9 @@ def _build_backup_data():
         # MDT module
         'mdt_meetings': [],
         'mdt_cases': [],
+        # OSCE Guide
+        'osce_cases': [],
+        'osce_case_images': [],
         # Audit and compliance
         'pii_override_logs': [],
         'rate_limit_entries': [],
@@ -1294,6 +1299,32 @@ def _build_backup_data():
             'source_smart_reporter_session_id': mc.source_smart_reporter_session_id,
             'created_at': mc.created_at.isoformat() if mc.created_at else None,
             'updated_at': mc.updated_at.isoformat() if mc.updated_at else None,
+        })
+
+    # ==================== OSCE GUIDE ====================
+
+    for oc in OsceCase.query.all():
+        backup_data['osce_cases'].append({
+            'id': oc.id, 'code': oc.code, 'diagnosis': oc.diagnosis,
+            'modality': oc.modality, 'category': oc.category,
+            'difficulty': oc.difficulty, 'osce_data': oc.osce_data,
+            'content_html': oc.content_html,
+            'linked_case_id': oc.linked_case_id,
+            'reference_links': oc.reference_links,
+            'is_published': oc.is_published, 'sort_order': oc.sort_order,
+            'created_at': oc.created_at.isoformat() if oc.created_at else None,
+            'updated_at': oc.updated_at.isoformat() if oc.updated_at else None,
+        })
+
+    for oi in OsceCaseImage.query.all():
+        backup_data['osce_case_images'].append({
+            'id': oi.id, 'osce_case_id': oi.osce_case_id,
+            'image_url': oi.image_url, 'image_public_id': oi.image_public_id,
+            'image_thumbnail_url': oi.image_thumbnail_url,
+            'image_description': oi.image_description,
+            'attribution': oi.attribution, 'source_url': oi.source_url,
+            'sort_order': oi.sort_order,
+            'created_at': oi.created_at.isoformat() if oi.created_at else None,
         })
 
     # ==================== AUDIT & COMPLIANCE ====================
@@ -4801,6 +4832,50 @@ def restore_backup():
                 mc.updated_at = _parse_datetime_for_sqlite(mc_data['updated_at'])
             db.session.add(mc)
             stats['mdt_cases']['added'] += 1
+
+        # ==================== OSCE GUIDE ====================
+        stats['osce_cases'] = {'added': 0, 'skipped': 0}
+        for oc_data in backup_data.get('osce_cases', []):
+            if not isinstance(oc_data, dict):
+                continue
+            oc = OsceCase(
+                code=oc_data.get('code', ''),
+                diagnosis=oc_data.get('diagnosis', ''),
+                modality=oc_data.get('modality', ''),
+                category=oc_data.get('category', ''),
+                difficulty=oc_data.get('difficulty', 'Moderate'),
+                osce_data=oc_data.get('osce_data'),
+                content_html=oc_data.get('content_html'),
+                linked_case_id=oc_data.get('linked_case_id'),
+                reference_links=oc_data.get('reference_links'),
+                is_published=oc_data.get('is_published', False),
+                sort_order=oc_data.get('sort_order', 0),
+            )
+            if oc_data.get('created_at'):
+                oc.created_at = _parse_datetime_for_sqlite(oc_data['created_at']) or datetime.utcnow()
+            if oc_data.get('updated_at'):
+                oc.updated_at = _parse_datetime_for_sqlite(oc_data['updated_at'])
+            db.session.add(oc)
+            stats['osce_cases']['added'] += 1
+
+        stats['osce_case_images'] = {'added': 0, 'skipped': 0}
+        for oi_data in backup_data.get('osce_case_images', []):
+            if not isinstance(oi_data, dict):
+                continue
+            oi = OsceCaseImage(
+                osce_case_id=oi_data.get('osce_case_id'),
+                image_url=oi_data.get('image_url', ''),
+                image_public_id=oi_data.get('image_public_id'),
+                image_thumbnail_url=oi_data.get('image_thumbnail_url'),
+                image_description=oi_data.get('image_description', ''),
+                attribution=oi_data.get('attribution', ''),
+                source_url=oi_data.get('source_url'),
+                sort_order=oi_data.get('sort_order', 0),
+            )
+            if oi_data.get('created_at'):
+                oi.created_at = _parse_datetime_for_sqlite(oi_data['created_at']) or datetime.utcnow()
+            db.session.add(oi)
+            stats['osce_case_images']['added'] += 1
 
         # ==================== AUDIT & COMPLIANCE ====================
         stats['pii_override_logs'] = {'added': 0, 'skipped': 0}

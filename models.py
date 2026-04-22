@@ -4292,3 +4292,97 @@ class PeerReviewClaim(db.Model):
         db.Index('idx_prc_verdict', 'gemini_verdict'),
         db.Index('idx_prc_override', 'admin_override'),
     )
+
+
+# =========================================================================
+# OSCE RADIOLOGY GUIDE
+# =========================================================================
+
+class OsceCase(db.Model):
+    """OSCE radiology case for the public guide page.
+    AI-generated via ai_osce.py, editable in TinyMCE by admin."""
+    __tablename__ = 'osce_case'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), unique=True, nullable=False)  # e.g. CXR001, CTB001
+    diagnosis = db.Column(db.String(300), nullable=False)
+    modality = db.Column(db.String(50), nullable=False)  # CXR, AXR, Knee X-ray, etc.
+    category = db.Column(db.String(20), nullable=False)  # emergency, spotter, common, normal
+    difficulty = db.Column(db.String(20), default='Moderate')  # Easy, Moderate
+
+    # AI-generated structured JSON (raw output from ai_osce.py)
+    osce_data = db.Column(db.Text, nullable=True)
+
+    # TinyMCE-editable HTML (rendered from JSON, then admin can tweak)
+    content_html = db.Column(db.Text, nullable=True)
+
+    # Link to full Case for "Dive Deeper" button
+    linked_case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='SET NULL'), nullable=True)
+
+    # External reference links (JSON array: [{"url": "...", "label": "...", "source": "..."}])
+    reference_links = db.Column(db.Text, nullable=True)
+
+    # Publishing
+    is_published = db.Column(db.Boolean, default=False, index=True)
+    sort_order = db.Column(db.Integer, default=0)  # For custom ordering within modality
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    images = db.relationship('OsceCaseImage', backref='osce_case', lazy='dynamic',
+                             cascade='all, delete-orphan', order_by='OsceCaseImage.sort_order')
+    linked_case = db.relationship('Case', foreign_keys=[linked_case_id])
+
+    __table_args__ = (
+        db.Index('idx_osce_mod_cat', 'modality', 'category'),
+    )
+
+    def get_reference_links(self):
+        """Parse reference_links JSON."""
+        if not self.reference_links:
+            return []
+        try:
+            return json.loads(self.reference_links)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def set_reference_links(self, links):
+        """Store reference_links as JSON."""
+        self.reference_links = json.dumps(links) if links else None
+
+    def get_osce_data(self):
+        """Parse osce_data JSON."""
+        if not self.osce_data:
+            return {}
+        try:
+            return json.loads(self.osce_data)
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    def __repr__(self):
+        return f'<OsceCase {self.code}: {self.diagnosis}>'
+
+
+class OsceCaseImage(db.Model):
+    """Images for OSCE cases — multiple per case, each with description + attribution."""
+    __tablename__ = 'osce_case_image'
+
+    id = db.Column(db.Integer, primary_key=True)
+    osce_case_id = db.Column(db.Integer, db.ForeignKey('osce_case.id', ondelete='CASCADE'), nullable=False)
+
+    # Cloudinary storage
+    image_url = db.Column(db.String(500), nullable=False)
+    image_public_id = db.Column(db.String(255), nullable=True)  # For Cloudinary deletion
+    image_thumbnail_url = db.Column(db.String(500), nullable=True)
+
+    # Metadata
+    image_description = db.Column(db.Text, default='')  # What the image shows
+    attribution = db.Column(db.String(500), default='')  # e.g. "Radiopaedia, CC BY-NC-SA 3.0"
+    source_url = db.Column(db.String(500), nullable=True)  # Link to original source
+
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<OsceCaseImage {self.id} for OsceCase {self.osce_case_id}>'

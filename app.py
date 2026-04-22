@@ -2306,7 +2306,9 @@ app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporti
 app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
 from public_routes import public_bp
+from osce_admin_routes import osce_admin_bp
 app.register_blueprint(public_bp)  # Public preview pages for SEO (case library, etc.)
+app.register_blueprint(osce_admin_bp)  # OSCE guide admin CRUD
 
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
@@ -8072,6 +8074,76 @@ def generate_preliminary_case_data(case_id):
     })
 
 
+# =========================================================================
+# OSCE CASE GENERATION API
+# =========================================================================
+
+@app.route('/api/osce/generate', methods=['POST'])
+@login_required
+def generate_osce_case_api():
+    """Generate an OSCE case via ai_osce.py. Admin only."""
+    if not getattr(current_user, 'is_admin', False):
+        return jsonify({'error': 'Admin access required'}), 403
+
+    data = request.get_json() or {}
+    diagnosis = (data.get('diagnosis') or '').strip()
+    modality = (data.get('modality') or '').strip()
+    category = (data.get('category') or '').strip()
+    tags = (data.get('tags') or '').strip()
+    notes = (data.get('notes') or '').strip()
+
+    if not modality:
+        return jsonify({'error': 'Modality is required'}), 400
+    if not category:
+        return jsonify({'error': 'Category is required'}), 400
+    if category.lower() != 'normal' and not diagnosis:
+        return jsonify({'error': 'Diagnosis is required for pathological cases'}), 400
+
+    from ai_osce import AiOsceError, generate_osce_case, render_osce_html
+
+    context = {
+        'diagnosis': diagnosis,
+        'modality': modality,
+        'category': category,
+        'tags': tags,
+        'notes': notes,
+    }
+
+    try:
+        result = generate_osce_case(context)
+    except AiOsceError as exc:
+        return jsonify({'error': str(exc)}), 400
+    except Exception as exc:
+        return jsonify({'error': f'OSCE generation failed: {exc}'}), 500
+
+    # Track AI usage
+    try:
+        from ai_cost_tracker import track_ai_call
+        _usage = result.get('usage', {})
+        track_ai_call(current_user.id, 'generate_osce_case',
+                      model=result.get('model', ''),
+                      input_tokens=_usage.get('input_tokens', 0),
+                      output_tokens=_usage.get('output_tokens', 0),
+                      input_summary=f"osce: {diagnosis or 'Normal ' + modality}")
+    except Exception:
+        pass
+
+    output = result.get('output', {})
+    html = render_osce_html(output)
+
+    _usage = result.get('usage', {})
+    return jsonify({
+        'success': True,
+        'output': output,
+        'html': html,
+        'model': result.get('model', ''),
+        'usage': {
+            'input_tokens': _usage.get('input_tokens', 0),
+            'output_tokens': _usage.get('output_tokens', 0),
+        },
+    })
+
+
 @app.route('/api/case/<int:case_id>/ai-prelim/reload', methods=['POST'])
 @login_required
 def reload_preliminary_case_data(case_id):
@@ -8844,6 +8916,7 @@ Allow: /anatomy-snippets/
 Allow: /contrast-reaction-card
 Allow: /vetting-essentials
 Allow: /paediatric-ct-protocols
+Allow: /osce-radiology-guide
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
@@ -8944,6 +9017,7 @@ def sitemap_xml():
         (f'{BASE}/contrast-reaction-card', '0.8', 'monthly'),
         (f'{BASE}/vetting-essentials', '0.8', 'monthly'),
         (f'{BASE}/paediatric-ct-protocols', '0.8', 'monthly'),
+        (f'{BASE}/osce-radiology-guide', '0.8', 'monthly'),
         # /learn/sba and /learn/viva removed — require login (302 to /auth/login)
         (f'{BASE}/privacy-policy', '0.3', 'yearly'),
         (f'{BASE}/terms-of-use', '0.3', 'yearly'),

@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% block tool_active_osce_guide %}active{% endblock %}
+{% block mobile_active_osce_guide %}active{% endblock %}
+
+{% block title %}OSCE Guide Admin | RadInsights{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 style="font-size:1.5rem;" class="mb-0"><i class="fas fa-x-ray me-2" style="color:var(--brand-primary);"></i>OSCE Guide Admin</h1>
+      <p class="text-muted small mb-0">Manage cases, images, and static content</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/osce-radiology-guide" class="btn btn-sm btn-brand-neutral" target="_blank"><i class="fas fa-external-link-alt me-1"></i>View Guide</a>
+      <button class="btn btn-sm btn-brand-primary" onclick="openCreateModal()"><i class="fas fa-plus me-1"></i>New Case</button>
+    </div>
+  </div>
+
+  <!-- ═══════════ TABS ═══════════ -->
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#oa-cases" type="button">Cases ({{ osce_cases|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#oa-static" type="button">Static Content</button></li>
+  </ul>
+
+  <div class="tab-content">
+    <!-- ─── CASES TAB ─── -->
+    <div class="tab-pane fade show active" id="oa-cases">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle" id="oaCaseTable">
+          <thead class="table-light">
+            <tr>
+              <th style="width:80px;">Code</th>
+              <th>Diagnosis</th>
+              <th>Modality</th>
+              <th>Category</th>
+              <th style="width:60px;">Images</th>
+              <th style="width:60px;">Link</th>
+              <th style="width:80px;">Status</th>
+              <th style="width:180px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in osce_cases %}
+            <tr data-id="{{ c.id }}">
+              <td><code>{{ c.code }}</code></td>
+              <td>{{ c.diagnosis }}</td>
+              <td><span class="badge bg-secondary">{{ c.modality }}</span></td>
+              <td>
+                {% if c.category == 'emergency' %}<span class="badge bg-danger">Emergency</span>
+                {% elif c.category == 'spotter' %}<span class="badge bg-warning text-dark">Spotter</span>
+                {% elif c.category == 'common' %}<span class="badge bg-info">Common</span>
+                {% else %}<span class="badge bg-success">Normal</span>{% endif %}
+              </td>
+              <td class="text-center">{{ c.images.count() }}</td>
+              <td class="text-center">
+                {% if c.linked_case_id %}<a href="/view-case/{{ c.linked_case_id }}" target="_blank" class="text-success"><i class="fas fa-link"></i></a>
+                {% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td>
+                {% if c.is_published %}<span class="badge bg-success">Published</span>
+                {% else %}<span class="badge bg-secondary">Draft</span>{% endif %}
+              </td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" onclick="openEditModal({{ c.id }})" title="Edit"><i class="fas fa-edit"></i></button>
+                  <button class="btn btn-outline-info" onclick="openImageModal({{ c.id }})" title="Images"><i class="fas fa-images"></i></button>
+                  <button class="btn btn-outline-warning" onclick="generateAI({{ c.id }})" title="Generate AI"><i class="fas fa-robot"></i></button>
+                  <button class="btn btn-outline-success" onclick="togglePublish({{ c.id }}, {{ 'true' if c.is_published else 'false' }})" title="Toggle publish"><i class="fas fa-eye"></i></button>
+                  <button class="btn btn-outline-danger" onclick="deleteCase({{ c.id }}, '{{ c.code }}')" title="Delete"><i class="fas fa-trash"></i></button>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─── STATIC CONTENT TAB ─── -->
+    <div class="tab-pane fade" id="oa-static">
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="alert alert-info small mb-3">
+            <i class="fas fa-info-circle me-1"></i>Edit the static guide content (quick reference approaches, pattern index, exam technique). Changes save to <code>osce_guide.json</code> and appear on the public page immediately.
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card-brand">
+            <div class="card-brand-header"><i class="fas fa-clipboard-list me-2"></i>Quick Reference Approaches</div>
+            <div class="card-brand-body">
+              <textarea id="oaStaticQuickRef" class="form-control" rows="15" style="font-family:monospace;font-size:0.78rem;"></textarea>
+              <button class="btn btn-sm btn-brand-primary mt-2" onclick="saveStatic('quickReference', 'oaStaticQuickRef')"><i class="fas fa-save me-1"></i>Save Quick Reference</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card-brand">
+            <div class="card-brand-header"><i class="fas fa-th me-2"></i>Pattern Index</div>
+            <div class="card-brand-body">
+              <textarea id="oaStaticPatterns" class="form-control" rows="15" style="font-family:monospace;font-size:0.78rem;"></textarea>
+              <button class="btn btn-sm btn-brand-primary mt-2" onclick="saveStatic('patternIndex', 'oaStaticPatterns')"><i class="fas fa-save me-1"></i>Save Pattern Index</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="card-brand">
+            <div class="card-brand-header"><i class="fas fa-user-graduate me-2"></i>Exam Technique</div>
+            <div class="card-brand-body">
+              <textarea id="oaStaticTechnique" class="form-control" rows="20" style="font-family:monospace;font-size:0.78rem;"></textarea>
+              <button class="btn btn-sm btn-brand-primary mt-2" onclick="saveStatic('examTechnique', 'oaStaticTechnique')"><i class="fas fa-save me-1"></i>Save Exam Technique</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ CREATE / EDIT MODAL ═══════════ -->
+<div class="modal fade app-content-modal" id="oaCaseModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="oaCaseModalTitle">New OSCE Case</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="oaCaseId">
+        <div class="row g-3">
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Code</label>
+            <input type="text" class="form-control form-control-sm" id="oaCaseCode" placeholder="CXR001">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small fw-bold">Diagnosis</label>
+            <input type="text" class="form-control form-control-sm" id="oaCaseDiagnosis" placeholder="Pneumothorax">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Modality</label>
+            <select class="form-select form-select-sm" id="oaCaseModality">
+              <option value="CXR">CXR</option>
+              <option value="AXR">AXR</option>
+              <option value="Knee X-ray">Knee X-ray</option>
+              <option value="Shoulder X-ray">Shoulder X-ray</option>
+              <option value="Elbow X-ray">Elbow X-ray</option>
+              <option value="Foot X-ray">Foot X-ray</option>
+              <option value="CT Brain">CT Brain</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Category</label>
+            <select class="form-select form-select-sm" id="oaCaseCategory">
+              <option value="emergency">Emergency</option>
+              <option value="spotter">Spotter</option>
+              <option value="common">Common</option>
+              <option value="normal">Normal</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label small fw-bold">Difficulty</label>
+            <select class="form-select form-select-sm" id="oaCaseDifficulty">
+              <option value="Easy">Easy</option>
+              <option value="Moderate">Moderate</option>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="oaCasePublished">
+              <label class="form-check-label small" for="oaCasePublished">Publish</label>
+            </div>
+          </div>
+
+          <!-- Linked Case -->
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">Dive Deeper → Link to Case</label>
+            <select class="form-select form-select-sm" id="oaCaseLinkedCase">
+              <option value="">None</option>
+              {% for lc in linkable_cases %}
+              <option value="{{ lc.id }}">{{ lc.case_number }} — {{ lc.diagnosis[:60] }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Reference Links -->
+          <div class="col-md-8">
+            <label class="form-label small fw-bold">Reference Links (one per line: URL | Label | Source)</label>
+            <textarea class="form-control form-control-sm" id="oaCaseRefLinks" rows="2" placeholder="https://radiopaedia.org/articles/pneumothorax | Radiopaedia Article | Radiopaedia"></textarea>
+          </div>
+
+          <!-- TinyMCE Content -->
+          <div class="col-12">
+            <label class="form-label small fw-bold">Content (TinyMCE) <span class="text-muted">— editable HTML, auto-populated by AI generation</span></label>
+            <textarea id="oaCaseContent" class="form-control"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-sm btn-brand-primary" onclick="saveCase()"><i class="fas fa-save me-1"></i>Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ IMAGE MODAL ═══════════ -->
+<div class="modal fade app-content-modal" id="oaImageModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Manage Images</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="oaImageCaseId">
+        <!-- Existing images -->
+        <div id="oaImageList" class="row g-2 mb-3"></div>
+        <!-- Upload form -->
+        <div class="card-brand">
+          <div class="card-brand-header">Upload New Image</div>
+          <div class="card-brand-body">
+            <div class="row g-2">
+              <div class="col-12">
+                <input type="file" class="form-control form-control-sm" id="oaImageFile" accept="image/*">
+              </div>
+              <div class="col-md-6">
+                <input type="text" class="form-control form-control-sm" id="oaImageDesc" placeholder="Description (what the image shows)">
+              </div>
+              <div class="col-md-6">
+                <input type="text" class="form-control form-control-sm" id="oaImageAttribution" placeholder="Attribution (e.g. Radiopaedia, CC BY-NC-SA)">
+              </div>
+              <div class="col-md-8">
+                <input type="text" class="form-control form-control-sm" id="oaImageSourceUrl" placeholder="Source URL (optional)">
+              </div>
+              <div class="col-md-4">
+                <button class="btn btn-sm btn-brand-primary w-100" onclick="uploadImage()"><i class="fas fa-upload me-1"></i>Upload</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+(function() {
+  var tinyInstance = null;
+  var API = '/api/admin/osce';
+
+  // ── TinyMCE init ──
+  function initTiny() {
+    if (typeof tinymce === 'undefined') {
+      console.warn('TinyMCE not loaded yet, retrying...');
+      setTimeout(initTiny, 500);
+      return;
+    }
+    if (tinyInstance) { tinymce.remove('#oaCaseContent'); tinyInstance = null; }
+    tinymce.init({
+      selector: '#oaCaseContent',
+      height: 400,
+      menubar: false,
+      plugins: 'lists link code table',
+      toolbar: 'undo redo | blocks | bold italic | bullist numlist | link table | code',
+      content_style: 'body { font-family: -apple-system, system-ui, sans-serif; font-size: 14px; }',
+      setup: function(ed) { tinyInstance = ed; }
+    });
+  }
+
+  // ── Static content ──
+  function loadStatic() {
+    fetch(API + '/static-content').then(r => r.json()).then(data => {
+      document.getElementById('oaStaticQuickRef').value = JSON.stringify(data.quickReference || {}, null, 2);
+      document.getElementById('oaStaticPatterns').value = JSON.stringify(data.patternIndex || {}, null, 2);
+      document.getElementById('oaStaticTechnique').value = JSON.stringify(data.examTechnique || {}, null, 2);
+    });
+  }
+  loadStatic();
+
+  window.saveStatic = function(section, textareaId) {
+    var el = document.getElementById(textareaId);
+    try {
+      var parsed = JSON.parse(el.value);
+    } catch(e) {
+      alert('Invalid JSON: ' + e.message);
+      return;
+    }
+    fetch(API + '/static-content/' + section, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(parsed)
+    }).then(r => r.json()).then(data => {
+      if (data.success) alert('Saved ' + section);
+      else alert('Error: ' + (data.error || 'Unknown'));
+    });
+  };
+
+  // ── Create modal ──
+  window.openCreateModal = function() {
+    document.getElementById('oaCaseId').value = '';
+    document.getElementById('oaCaseCode').value = '';
+    document.getElementById('oaCaseDiagnosis').value = '';
+    document.getElementById('oaCaseModality').value = 'CXR';
+    document.getElementById('oaCaseCategory').value = 'emergency';
+    document.getElementById('oaCaseDifficulty').value = 'Moderate';
+    document.getElementById('oaCasePublished').checked = false;
+    document.getElementById('oaCaseLinkedCase').value = '';
+    document.getElementById('oaCaseRefLinks').value = '';
+    document.getElementById('oaCaseModalTitle').textContent = 'New OSCE Case';
+    document.getElementById('oaCaseCode').removeAttribute('readonly');
+    initTiny();
+    setTimeout(function() { if (tinyInstance) tinyInstance.setContent(''); }, 300);
+    new bootstrap.Modal(document.getElementById('oaCaseModal')).show();
+  };
+
+  // ── Edit modal ──
+  window.openEditModal = function(id) {
+    fetch(API + '/cases/' + id).then(r => r.json()).then(data => {
+      document.getElementById('oaCaseId').value = data.id;
+      document.getElementById('oaCaseCode').value = data.code;
+      document.getElementById('oaCaseCode').setAttribute('readonly', true);
+      document.getElementById('oaCaseDiagnosis').value = data.diagnosis;
+      document.getElementById('oaCaseModality').value = data.modality;
+      document.getElementById('oaCaseCategory').value = data.category;
+      document.getElementById('oaCaseDifficulty').value = data.difficulty;
+      document.getElementById('oaCasePublished').checked = data.is_published;
+      document.getElementById('oaCaseLinkedCase').value = data.linked_case_id || '';
+      // Reference links
+      var links = (data.reference_links || []).map(function(l) {
+        return [l.url || '', l.label || '', l.source || ''].join(' | ');
+      }).join('\n');
+      document.getElementById('oaCaseRefLinks').value = links;
+      document.getElementById('oaCaseModalTitle').textContent = 'Edit ' + data.code;
+      initTiny();
+      setTimeout(function() { if (tinyInstance) tinyInstance.setContent(data.content_html || ''); }, 300);
+      new bootstrap.Modal(document.getElementById('oaCaseModal')).show();
+    });
+  };
+
+  // ── Save case ──
+  window.saveCase = function() {
+    var id = document.getElementById('oaCaseId').value;
+    var refText = document.getElementById('oaCaseRefLinks').value.trim();
+    var refLinks = refText ? refText.split('\n').map(function(line) {
+      var parts = line.split('|').map(function(p) { return p.trim(); });
+      return { url: parts[0] || '', label: parts[1] || '', source: parts[2] || '' };
+    }) : [];
+
+    var payload = {
+      code: document.getElementById('oaCaseCode').value.trim(),
+      diagnosis: document.getElementById('oaCaseDiagnosis').value.trim(),
+      modality: document.getElementById('oaCaseModality').value,
+      category: document.getElementById('oaCaseCategory').value,
+      difficulty: document.getElementById('oaCaseDifficulty').value,
+      is_published: document.getElementById('oaCasePublished').checked,
+      linked_case_id: document.getElementById('oaCaseLinkedCase').value || null,
+      reference_links: refLinks,
+      content_html: tinyInstance ? tinyInstance.getContent() : '',
+    };
+
+    var url = id ? API + '/cases/' + id : API + '/cases';
+    var method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method: method, headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    }).then(r => r.json()).then(data => {
+      if (data.success || data.id) {
+        bootstrap.Modal.getInstance(document.getElementById('oaCaseModal')).hide();
+        location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Unknown'));
+      }
+    });
+  };
+
+  // ── Generate AI ──
+  window.generateAI = function(id) {
+    if (!confirm('Generate AI content for this case? This will overwrite existing content.')) return;
+    var btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    fetch(API + '/cases/' + id + '/generate', { method: 'POST' })
+      .then(r => r.json()).then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot"></i>';
+        if (data.success) {
+          alert('Generated! Tokens: ' + (data.usage.input_tokens + data.usage.output_tokens));
+          location.reload();
+        } else {
+          alert('Error: ' + (data.error || 'Unknown'));
+        }
+      }).catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-robot"></i>';
+        alert('Generation failed');
+      });
+  };
+
+  // ── Toggle publish ──
+  window.togglePublish = function(id, current) {
+    fetch(API + '/cases/' + id, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ is_published: !current })
+    }).then(r => r.json()).then(function() { location.reload(); });
+  };
+
+  // ── Delete case ──
+  window.deleteCase = function(id, code) {
+    if (!confirm('Delete OSCE case ' + code + '? This cannot be undone.')) return;
+    fetch(API + '/cases/' + id, { method: 'DELETE' })
+      .then(r => r.json()).then(function() { location.reload(); });
+  };
+
+  // ── Image modal ──
+  window.openImageModal = function(caseId) {
+    document.getElementById('oaImageCaseId').value = caseId;
+    loadImages(caseId);
+    new bootstrap.Modal(document.getElementById('oaImageModal')).show();
+  };
+
+  function loadImages(caseId) {
+    fetch(API + '/cases/' + caseId).then(r => r.json()).then(data => {
+      var list = document.getElementById('oaImageList');
+      if (!data.images || !data.images.length) {
+        list.innerHTML = '<p class="text-muted small">No images yet.</p>';
+        return;
+      }
+      list.innerHTML = data.images.map(function(img) {
+        return '<div class="col-md-4"><div class="card-brand">'
+          + '<img src="' + (img.image_thumbnail_url || img.image_url) + '" class="w-100" style="border-radius:8px 8px 0 0;height:140px;object-fit:cover;">'
+          + '<div class="card-brand-body py-2 px-2">'
+          + '<p class="small mb-1"><strong>' + (img.image_description || 'No description') + '</strong></p>'
+          + '<p class="small text-muted mb-1">' + (img.attribution || 'No attribution') + '</p>'
+          + '<button class="btn btn-sm btn-outline-danger" onclick="deleteImage(' + img.id + ',' + data.id + ')"><i class="fas fa-trash me-1"></i>Delete</button>'
+          + '</div></div></div>';
+      }).join('');
+    });
+  }
+
+  window.uploadImage = function() {
+    var caseId = document.getElementById('oaImageCaseId').value;
+    var file = document.getElementById('oaImageFile').files[0];
+    if (!file) { alert('Select an image file'); return; }
+
+    var fd = new FormData();
+    fd.append('image', file);
+    fd.append('description', document.getElementById('oaImageDesc').value);
+    fd.append('attribution', document.getElementById('oaImageAttribution').value);
+    fd.append('source_url', document.getElementById('oaImageSourceUrl').value);
+
+    fetch(API + '/cases/' + caseId + '/images', { method: 'POST', body: fd })
+      .then(r => r.json()).then(data => {
+        if (data.success) {
+          document.getElementById('oaImageFile').value = '';
+          document.getElementById('oaImageDesc').value = '';
+          document.getElementById('oaImageAttribution').value = '';
+          document.getElementById('oaImageSourceUrl').value = '';
+          loadImages(caseId);
+        } else {
+          alert('Error: ' + (data.error || 'Unknown'));
+        }
+      });
+  };
+
+  window.deleteImage = function(imgId, caseId) {
+    if (!confirm('Delete this image?')) return;
+    fetch(API + '/images/' + imgId, { method: 'DELETE' })
+      .then(r => r.json()).then(function() { loadImages(caseId); });
+  };
+
+  // ── Auto-open edit modal if redirected from guide page ──
+  (function() {
+    var editId = sessionStorage.getItem('oaEditCase');
+    if (editId) {
+      sessionStorage.removeItem('oaEditCase');
+      setTimeout(function() { openEditModal(parseInt(editId)); }, 500);
+    }
+    // Auto-switch to static content tab if redirected
+    var staticTab = sessionStorage.getItem('oaStaticTab');
+    if (staticTab) {
+      sessionStorage.removeItem('oaStaticTab');
+      var tabBtn = document.querySelector('[data-bs-target="#oa-static"]');
+      if (tabBtn) {
+        setTimeout(function() { new bootstrap.Tab(tabBtn).show(); }, 300);
+      }
+    }
+  })();
+})();
+</script>
+{% endblock %}

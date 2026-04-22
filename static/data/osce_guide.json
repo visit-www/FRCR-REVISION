@@ -1,0 +1,743 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "lastUpdated": "2026-04-22",
+    "description": "OSCE Radiology Guide — static data for the guide page (quick reference, pattern index, exam technique). Case content is AI-generated and stored in DB."
+  },
+  "modalities": {
+    "cxr": {
+      "label": "Chest X-Ray",
+      "icon": "fa-lungs",
+      "color": "#2196F3",
+      "count": 15
+    },
+    "axr": {
+      "label": "Abdominal X-Ray",
+      "icon": "fa-stomach",
+      "color": "#4CAF50",
+      "count": 12
+    },
+    "knee": {
+      "label": "Knee X-Ray",
+      "icon": "fa-bone",
+      "color": "#FF9800",
+      "count": 8
+    },
+    "shoulder": {
+      "label": "Shoulder X-Ray",
+      "icon": "fa-bone",
+      "color": "#9C27B0",
+      "count": 7
+    },
+    "elbow": {
+      "label": "Elbow X-Ray",
+      "icon": "fa-bone",
+      "color": "#F44336",
+      "count": 7
+    },
+    "foot": {
+      "label": "Foot X-Ray",
+      "icon": "fa-shoe-prints",
+      "color": "#795548",
+      "count": 7
+    },
+    "ct_brain": {
+      "label": "CT Brain",
+      "icon": "fa-brain",
+      "color": "#607D8B",
+      "count": 9
+    }
+  },
+  "quickReference": {
+    "axr": {
+      "quickRules": [
+        {
+          "meaning": "SB < 3cm, LB < 6cm, Caecum < 9cm. Above = dilated.",
+          "rule": "3-6-9 rule"
+        },
+        {
+          "meaning": "Valvulae conniventes, short fluid levels",
+          "rule": "SBO: central, many loops"
+        },
+        {
+          "meaning": "Haustra, long fluid levels",
+          "rule": "LBO: peripheral, few loops"
+        },
+        {
+          "meaning": "Perforation until proven otherwise — surgical emergency",
+          "rule": "Free air under diaphragm"
+        },
+        {
+          "meaning": "But only 10% gallstones visible on AXR",
+          "rule": "90% renal stones visible"
+        }
+      ],
+      "steps": [
+        {
+          "items": [
+            "Small bowel: central location, valvulae conniventes (folds cross full width), < 3cm diameter. Normal: no more than 2-3 air-fluid levels.",
+            "Large bowel: peripheral location, haustra (folds cross part-way), < 6cm diameter (caecum < 9cm). Remember the 3-6-9 rule.",
+            "SBO vs LBO: SB = many central dilated loops with short fluid levels. LB = few peripheral dilated loops with long fluid levels.",
+            "Rectum: gas normally present. Absent rectal gas in obstruction.",
+            "Faecal loading: mottled grey appearance, distribution pattern."
+          ],
+          "label": "Intraluminal Gas (Bowel Gas Pattern)",
+          "letter": "I"
+        },
+        {
+          "items": [
+            "Erect CXR: air under diaphragm (most sensitive test for pneumoperitoneum).",
+            "Supine AXR: Rigler sign (both sides of bowel wall outlined by air), falciform ligament sign, football sign (large oval lucency).",
+            "Causes: perforated viscus (peptic ulcer, diverticulitis, appendicitis) — surgical emergency.",
+            "Pitfall: recent surgery or laparoscopy can cause benign free air for up to 7 days."
+          ],
+          "label": "Extraluminal Gas (FREE AIR = EMERGENCY)",
+          "letter": "E"
+        },
+        {
+          "items": [
+            "Renal tract: kidney stones (90% radio-opaque), staghorn calculi, ureteric stones, bladder stones.",
+            "Biliary: gallstones (only 10% radio-opaque — most are radiolucent), porcelain gallbladder.",
+            "Vascular: aortic calcification (AAA if > 3cm), iliac artery calcification.",
+            "Other: pancreatic (chronic pancreatitis), appendicolith, phleboliths (round, in pelvis — benign)."
+          ],
+          "label": "Calcifications",
+          "letter": "C"
+        },
+        {
+          "items": [
+            "Liver: size (should not extend below right costal margin), density.",
+            "Spleen: visible? Enlarged? (tip below left costal margin).",
+            "Kidneys: both visible? Normal size (3-3.5 vertebral bodies). Psoas lines intact (loss = retroperitoneal pathology).",
+            "Bladder: distended? Displaced?",
+            "Fat lines: properitoneal fat stripe, psoas margins (obliteration = fluid/inflammation)."
+          ],
+          "label": "Solid Organs & Soft Tissues",
+          "letter": "S"
+        },
+        {
+          "items": [
+            "Spine: alignment, vertebral body height, disc spaces, pedicles (absent = metastasis).",
+            "Pelvis: sacroiliac joints, pubic symphysis, hip joints.",
+            "Lower ribs: fractures (especially left lower ribs → splenic injury)."
+          ],
+          "label": "Bones",
+          "letter": "B"
+        },
+        {
+          "items": [
+            "Lines/tubes: NG tube tip position (should be beyond GOJ), urinary catheter, surgical drains.",
+            "Foreign bodies: ingested objects, retained surgical instruments.",
+            "External artefacts: buttons, jewellery, clothing — don't mistake for pathology."
+          ],
+          "label": "Artefacts & Foreign Bodies",
+          "letter": "A"
+        }
+      ],
+      "title": "Abdominal X-Ray: Systematic Approach",
+      "views": "AP supine (standard). Erect AXR for air-fluid levels. Erect CXR for free air under diaphragm."
+    },
+    "ct_brain": {
+      "quickRules": [
+        {
+          "meaning": "Acute blood is hyperdense on non-contrast CT",
+          "rule": "Blood = white (50-70 HU)"
+        },
+        {
+          "meaning": "Arterial (MMA), lucid interval",
+          "rule": "EDH = biconvex, does NOT cross sutures"
+        },
+        {
+          "meaning": "Venous (bridging veins), elderly/anticoagulated",
+          "rule": "SDH = crescent, DOES cross sutures"
+        },
+        {
+          "meaning": "Clinically significant. > 10mm + falling GCS = surgical emergency",
+          "rule": "Midline shift > 5mm"
+        },
+        {
+          "meaning": "Earliest sign of raised ICP — before ventricle changes",
+          "rule": "Cistern effacement"
+        },
+        {
+          "meaning": "Hydrocephalus (not atrophy — atrophy has prominent sulci)",
+          "rule": "Dilated ventricles + effaced sulci"
+        }
+      ],
+      "steps": [
+        {
+          "items": [
+            "Acute blood = hyperdense (white, 50-70 HU) on non-contrast CT. No contrast needed to see it.",
+            "Extra-axial: EDH (biconvex, does NOT cross sutures), SDH (crescent, DOES cross sutures), SAH (blood in sulci, cisterns, Sylvian fissures).",
+            "Intraparenchymal haemorrhage: location (basal ganglia = hypertensive, lobar = amyloid/tumour).",
+            "Intraventricular blood: blood layering in ventricles.",
+            "Pitfall: do NOT confuse choroid plexus calcifications (normal, bright white in ventricles) with blood."
+          ],
+          "label": "Blood",
+          "letter": "B"
+        },
+        {
+          "items": [
+            "Quadrigeminal cistern: 'smile sign' — should be open. Effacement = raised ICP / early herniation.",
+            "Suprasellar cistern: star-shaped. Asymmetry or effacement = mass effect.",
+            "Basal cisterns (ambient, prepontine): blood here = SAH. Effacement = raised ICP.",
+            "Cistern effacement is often the EARLIEST sign of raised ICP — look before ventricles change."
+          ],
+          "label": "Cisterns",
+          "letter": "C"
+        },
+        {
+          "items": [
+            "Grey-white matter differentiation: loss = cerebral oedema or early ischaemia. White matter is darker (more fat/myelin).",
+            "Symmetry: compare both hemispheres. Asymmetry = focal pathology.",
+            "Midline shift: > 5mm is clinically significant. > 10mm with decreasing GCS = surgical emergency.",
+            "Sulci: effaced (oedema/raised ICP) or prominent (atrophy).",
+            "Focal hypo/hyperdensities: hypodense = oedema/infarct, hyperdense = blood/calcification."
+          ],
+          "label": "Brain Parenchyma",
+          "letter": "B"
+        },
+        {
+          "items": [
+            "Size: symmetric? Dilated = hydrocephalus or atrophy.",
+            "Hydrocephalus vs Atrophy: dilated ventricles + effaced sulci = hydrocephalus. Dilated ventricles + prominent sulci = atrophy.",
+            "Temporal horns: dilatation is an early sign of raised ICP (normally slit-like).",
+            "Slit-like ventricles: suggests diffuse cerebral oedema.",
+            "Blood in ventricles: layering posteriorly in occipital horns."
+          ],
+          "label": "Ventricles",
+          "letter": "V"
+        },
+        {
+          "items": [
+            "Skull vault: linear fractures (distinguish from suture lines — check contralateral side for symmetry).",
+            "Base of skull fractures: look for fluid in mastoid air cells or sphenoid sinus.",
+            "Facial bones: orbital walls, zygomatic arch.",
+            "Sinuses: air-fluid levels in trauma = fracture until proven otherwise."
+          ],
+          "label": "Bone (use bone windows)",
+          "letter": "B"
+        }
+      ],
+      "title": "CT Brain: Systematic Approach",
+      "views": "Axial non-contrast (standard for acute). Bone windows for fractures. Soft tissue windows for parenchyma. CTA if vascular pathology suspected."
+    },
+    "cxr": {
+      "quickRules": [
+        {
+          "meaning": "Consolidation, effusion, mass, collapse, foreign body",
+          "rule": "Too white?"
+        },
+        {
+          "meaning": "Pneumothorax, hyperinflation, emphysema, cavitation",
+          "rule": "Too black?"
+        },
+        {
+          "meaning": "Cardiomegaly, widened mediastinum, hilar enlargement, mass",
+          "rule": "Too large?"
+        },
+        {
+          "meaning": "Tracheal deviation, mediastinal shift, elevated diaphragm, herniation",
+          "rule": "Wrong place?"
+        },
+        {
+          "meaning": "Normal heart size. AP magnifies — cannot assess CTR on AP film",
+          "rule": "CTR < 0.5 (PA only)"
+        },
+        {
+          "meaning": "Always check outer 1cm of lung fields — where pneumothorax and small nodules hide",
+          "rule": "Peripheral 1cm"
+        },
+        {
+          "meaning": "List ALL findings before analysing any one. Don't stop at the first abnormality.",
+          "rule": "Complete your scan"
+        }
+      ],
+      "steps": [
+        {
+          "items": [
+            "Trachea: midline? Deviation AWAY from = tension pneumothorax, large effusion. Deviation TOWARDS = collapse, volume loss.",
+            "Carina: visible at T4-T5? Splayed > 100 degrees = left atrial enlargement or subcarinal mass.",
+            "Main bronchi: patent? Right main bronchus is more vertical — foreign bodies favour the right side.",
+            "If intubated: ETT tip should be 2-4 cm above carina."
+          ],
+          "label": "Airway",
+          "letter": "A"
+        },
+        {
+          "items": [
+            "Lung fields: compare side to side — should be equally translucent. One side whiter = consolidation/effusion/collapse. One side blacker = pneumothorax/hyperinflation.",
+            "Costophrenic angles: sharp = normal. Blunted = effusion (>175-200ml needed to blunt). Meniscus sign = fluid.",
+            "Pleural line: visible line with NO lung markings beyond it = pneumothorax. Deep sulcus sign on supine film.",
+            "Lung markings: should extend to periphery. Absent peripherally = pneumothorax. Prominent/upper lobe diversion = pulmonary oedema.",
+            "Consolidation: dense white opacity. Air bronchograms (dark branching lines within white area) = alveolar filling."
+          ],
+          "label": "Breathing (Lungs & Pleura)",
+          "letter": "B"
+        },
+        {
+          "items": [
+            "Heart size: CTR < 0.5 on PA = normal. CTR > 0.5 = cardiomegaly. WARNING: AP film magnifies heart — cannot assess CTR reliably on AP.",
+            "Heart shape: boot-shaped = RV hypertrophy. Globular = pericardial effusion. Normal silhouette: right atrium, left ventricle borders visible.",
+            "Mediastinum: width < 8cm on PA. Widened = aortic dissection, lymphadenopathy, mass. URGENT if widened + chest pain.",
+            "Hila: left hilum normally slightly higher than right. Bilateral hilar enlargement = sarcoidosis, lymphoma. Unilateral = tumour.",
+            "Aortic knob: visible? Unfolded/calcified = atherosclerosis. Absent/obscured = dissection."
+          ],
+          "label": "Circulation (Heart & Mediastinum)",
+          "letter": "C"
+        },
+        {
+          "items": [
+            "Ribs: trace each one — fractures (especially posterior, easy to miss). Flail segment = 3+ consecutive rib fractures. Rib notching = coarctation of aorta.",
+            "Clavicles: fractures, AC joint separation.",
+            "Spine: vertebral body height, alignment, compression fractures.",
+            "Soft tissues: surgical emphysema (air in soft tissues = lucent streaks in neck/chest wall). Mastectomy (absent breast shadow — explains asymmetric density)."
+          ],
+          "label": "Disability (Bones & Soft Tissue)",
+          "letter": "D"
+        },
+        {
+          "items": [
+            "IMPORTANT: Complete your ENTIRE ABCDE scan before analysing any finding. The temptation is to stop at the first abnormality — resist it. List everything, then interpret.",
+            "PERIPHERAL 1CM: Always check the outer 1cm of each lung field — pneumothorax, small nodules, and effusion margins hide here.",
+            "APICES: Pancoast tumour (apical mass + rib erosion), TB (upper lobe cavitation), pneumothorax (air rises).",
+            "BEHIND HEART: left lower lobe collapse/consolidation hides behind cardiac silhouette — look for loss of left hemidiaphragm.",
+            "BELOW DIAPHRAGM: free air (pneumoperitoneum) = crescent of black under right hemidiaphragm on erect film. Gastric bubble normally under left.",
+            "DIAPHRAGM: right normally 1-2 cm higher than left. Flattened = hyperinflation/COPD. Elevated = phrenic nerve palsy, hepatomegaly.",
+            "Lines/tubes: ETT (2-4 cm above carina), CVC (tip in SVC), NG tube (tip below diaphragm), chest drain (in pleural space).",
+            "Adequacy: Rotation (medial clavicle ends equidistant from spinous process), Inspiration (5-7 anterior ribs above diaphragm), Exposure (just see vertebrae through cardiac shadow)."
+          ],
+          "label": "Everything Else (Review Areas)",
+          "letter": "E"
+        }
+      ],
+      "title": "Chest X-Ray: ABCDE Approach",
+      "views": "PA erect (standard — accurate CTR, sharp CP angles). AP (portable/sick — magnifies heart, widens mediastinum). Lateral (retrosternal space, posterior pathology)."
+    },
+    "msk": {
+      "quickRules": [
+        {
+          "meaning": "Fractures hide on single views — AP + Lateral minimum",
+          "rule": "Always 2 views"
+        },
+        {
+          "meaning": "ALWAYS abnormal = assume occult fracture",
+          "rule": "Posterior fat pad (elbow)"
+        },
+        {
+          "meaning": "Fat-fluid level on lateral = intra-articular fracture",
+          "rule": "Lipohaemarthrosis (knee)"
+        },
+        {
+          "meaning": "Should bisect middle third of capitellum — if not = supracondylar fracture",
+          "rule": "Anterior humeral line"
+        },
+        {
+          "meaning": "2nd MT base aligns with middle cuneiform — malalignment = commonly missed injury",
+          "rule": "Lisfranc alignment"
+        },
+        {
+          "meaning": "Flattened = calcaneal fracture (normal 20-40°)",
+          "rule": "Bohler angle < 20°"
+        }
+      ],
+      "steps": [
+        {
+          "items": [
+            "Joint congruency: are the articular surfaces parallel and properly aligned? Any step-off = fracture or dislocation.",
+            "Dislocation: is the bone completely out of joint? (Shoulder: humeral head vs glenoid. Elbow: olecranon vs trochlea. Knee: tibia vs femur.)",
+            "Subluxation: partial displacement — bone still partially in contact with joint surface.",
+            "Joint-specific lines: Anterior humeral line should pass through middle third of capitellum (elbow). Radiocapitellar line should point to capitellum in all views.",
+            "Lisfranc alignment (foot): medial border of 2nd metatarsal base should align with medial border of middle cuneiform. Malalignment = Lisfranc injury (commonly missed)."
+          ],
+          "label": "Alignment",
+          "letter": "A"
+        },
+        {
+          "items": [
+            "Trace EVERY cortex systematically — cortical break = fracture. Follow the outer edge of every bone like drawing an outline.",
+            "Subtle fractures: look for cortical buckling, angulation, or a faint lucent line. Compare with the other side if in doubt.",
+            "Density: focal lucency = lytic lesion (tumour, infection). Focal sclerosis = healing fracture, bone island, or sclerotic metastasis.",
+            "Periosteal reaction: new bone along the shaft = fracture healing, infection, or tumour. Sunburst/onion-skin = aggressive (sarcoma).",
+            "Joint-specific: Tibial plateau depression (knee — look on lateral). Bankart lesion (shoulder — inferior glenoid). Bohler angle < 20 degrees (calcaneus — flattened = fracture)."
+          ],
+          "label": "Bones",
+          "letter": "B"
+        },
+        {
+          "items": [
+            "Joint space: should be uniform. Asymmetric narrowing = OA (weight-bearing side). Diffuse narrowing = inflammatory (RA).",
+            "Effusion: Knee — suprapatellar pouch fullness on lateral view. Lipohaemarthrosis (fat-fluid level) = intra-articular fracture.",
+            "Fat pads (ELBOW): posterior fat pad visible = ALWAYS abnormal = occult fracture. Anterior 'sail sign' = raised anterior fat pad = effusion.",
+            "Osteophytes: bony spurs at joint margins = OA. Subchondral sclerosis + cysts also = OA.",
+            "Erosions: marginal erosions = RA. Periarticular osteopenia + symmetric joint involvement = inflammatory arthritis."
+          ],
+          "label": "Cartilage & Joints",
+          "letter": "C"
+        },
+        {
+          "items": [
+            "Swelling: focal soft tissue swelling points to the injury site — look at the underlying bone carefully.",
+            "Fat pad displacement: elbow posterior fat pad (see above). Knee suprapatellar fat pad.",
+            "Calcification: supraspinatus tendon (shoulder — calcific tendinitis). Meniscal calcification (knee — chondrocalcinosis). Achilles tendon.",
+            "Foreign bodies: glass IS visible on X-ray (radio-opaque). Wood is NOT visible. Metal is bright white.",
+            "Muscle planes: loss of normal fat planes between muscles = deep soft tissue injury or haematoma."
+          ],
+          "label": "Soft Tissues",
+          "letter": "S"
+        }
+      ],
+      "subtitle": "Applies to: Knee, Shoulder, Elbow, Foot",
+      "title": "MSK X-Ray: ABCS Approach",
+      "views": "MINIMUM 2 views at 90 degrees (AP + Lateral) — fractures hide on single views. Special views: Skyline/sunrise (patella), Axillary/Y-view (shoulder — essential for posterior dislocation), Oblique (foot — 5th MT base), Scaphoid views (wrist)."
+    }
+  },
+  "patternIndex": {
+    "air": {
+      "label": "Air / Lucency",
+      "icon": "fa-wind",
+      "description": "Black on X-ray, black on CT. Air where it should not be.",
+      "cases": {
+        "cxr": [
+          "Pneumothorax",
+          "Tension Pneumothorax"
+        ],
+        "axr": [
+          "Pneumoperitoneum",
+          "Small Bowel Obstruction",
+          "Large Bowel Obstruction"
+        ]
+      }
+    },
+    "fluid": {
+      "label": "Fluid / White-out",
+      "icon": "fa-droplet",
+      "description": "White on X-ray (meniscus, blunting). Hypodense on CT.",
+      "cases": {
+        "cxr": [
+          "Pleural Effusion",
+          "Pulmonary Edema"
+        ],
+        "axr": [
+          "Ileus"
+        ],
+        "ct_brain": [
+          "Hydrocephalus"
+        ]
+      }
+    },
+    "blood": {
+      "label": "Blood / Hyperdense",
+      "icon": "fa-tint",
+      "description": "Hyperdense (white) on non-contrast CT. 50-70 HU acutely.",
+      "cases": {
+        "ct_brain": [
+          "Epidural Hematoma",
+          "Subdural Hematoma",
+          "Subarachnoid Hemorrhage",
+          "Intracerebral Hemorrhage"
+        ]
+      }
+    },
+    "bone": {
+      "label": "Bone Disruption",
+      "icon": "fa-bone",
+      "description": "Cortical break, lucent line, step-off, angulation.",
+      "cases": {
+        "cxr": [
+          "Rib Fractures"
+        ],
+        "knee": [
+          "Tibial Plateau Fracture",
+          "Patellar Fracture"
+        ],
+        "shoulder": [
+          "Clavicle Fracture",
+          "Proximal Humerus Fracture"
+        ],
+        "elbow": [
+          "Supracondylar Fracture",
+          "Radial Head Fracture",
+          "Olecranon Fracture"
+        ],
+        "foot": [
+          "Calcaneal Fracture",
+          "Jones Fracture",
+          "Lisfranc Injury"
+        ]
+      }
+    },
+    "soft_tissue": {
+      "label": "Soft Tissue Changes",
+      "icon": "fa-hand",
+      "description": "Swelling, fat pad displacement, calcification, mass.",
+      "cases": {
+        "cxr": [
+          "Aortic Dissection (Widened Mediastinum)",
+          "Cardiomegaly"
+        ],
+        "knee": [
+          "Knee Effusion",
+          "Lipohemarthrosis"
+        ],
+        "elbow": [
+          "Posterior Fat Pad Sign"
+        ],
+        "shoulder": [
+          "Calcific Tendinitis"
+        ]
+      }
+    }
+  },
+  "examTechnique": {
+    "beforeYouSpeak": {
+      "examinerTip": "These 7 steps take 10-15 seconds when practised. They are worth 10-20% of the marks on most OSCE marking schemes. Students who skip them and jump to 'I can see a pneumothorax' lose easy marks — even if their diagnosis is correct.",
+      "steps": [
+        {
+          "action": "Check the image to ensure patient identity : check at least three patient identifies (example, patient name, date of birth, and hospital number)",
+          "ifMissing": "If no patient details visible: 'I note there are no patient identifiers on this image — in clinical practice I would confirm the patient identity before reporting.'",
+          "label": "Patient Identification",
+          "say": "'I have confirmed patient identity and will now proceed reading the study.'",
+          "step": 1,
+          "why": "Confirms you are interpreting the correct patient's image. In clinical practice, wrong-patient errors cause harm. Examiners mark this explicitly."
+        },
+        {
+          "action": "Check the date/time stamp on the image.",
+          "ifMissing": "If no date: 'The date of this study is not visible — I would confirm when this was taken.'",
+          "label": "Date of Study",
+          "say": "'This study was performed on [date].'",
+          "step": 2,
+          "why": "Establishes whether the image is current or historical. A 3-week-old CXR may not reflect today's clinical status."
+        },
+        {
+          "action": "Identify the view: PA vs AP, erect vs supine, lateral, axial, etc.",
+          "label": "View / Projection",
+          "modality_specifics": {
+            "AXR": "AP supine is standard. If erect: specifically look for air-fluid levels and free air under diaphragm.",
+            "CT Brain": "'Axial non-contrast CT brain.' State window: 'on soft tissue windows' or 'on bone windows.'",
+            "CXR": "PA erect is standard. AP if portable/sick patient — state 'I note this is an AP film, so heart size assessment is limited.'",
+            "MSK": "Minimum 2 views at 90 degrees. State both: 'AP and lateral views of the [joint].' If only one view: 'I note only one view is available — I would request a second view at 90 degrees in most situations to allow optimum assessment.'"
+          },
+          "say": "'This is a [PA erect / AP supine / lateral / axial non-contrast] [modality].'",
+          "step": 3,
+          "why": "The view changes your interpretation: AP magnifies the heart (pseudocardiomegaly), supine films layer effusions posteriorly (invisible), rotation widens the mediastinum. Stating the view shows the examiner you understand these pitfalls."
+        },
+        {
+          "action": "Confirm the L or R marker on the image. Check it correlates with the anatomy.",
+          "label": "Side Marker and Laterality",
+          "say": "'The side marker indicates this is the [left/right] side. The marker correlates with the [anatomical landmark, e.g., gastric bubble on the left, heart apex on the left].'",
+          "step": 4,
+          "trap": "A deliberately mislabelled image can be an OSCE trap. If the marker doesn't correlate: 'I note the side marker does not correlate with the anatomy — I would confirm laterality with the radiographer before reporting.'",
+          "why": "Wrong-side errors are a never event in clinical practice. Examiners specifically test whether students check laterality. On a CXR: gastric bubble should be under the LEFT hemidiaphragm. On MSK: the marker should match the side of the body."
+        },
+        {
+          "action": "If age and sex are provided (on the image or in the clinical vignette), state them.",
+          "label": "Patient Demographics",
+          "say": "'This is an image of a [age]-year-old [male/female].'",
+          "why": "Age and sex change your differential. A 25-year-old with a lung mass → think lymphoma/germ cell. A 70-year-old → think primary lung cancer. A child with an elbow fracture → think supracondylar. Stating demographics shows you're thinking about pre-test probability."
+        },
+        {
+          "action": "Assess whether the image is of diagnostic quality before interpreting it.",
+          "checks": {
+            "AXR": [
+              "Coverage: from diaphragm to pubic symphysis included?",
+              "Exposure: can you see the psoas lines and renal outlines?"
+            ],
+            "CT Brain": [
+              "Coverage: vertex to foramen magnum?",
+              "Windows: are both soft tissue and bone windows available?",
+              "Motion artefact: is the image degraded by patient movement?"
+            ],
+            "CXR": [
+              "Rotation: are the medial ends of the clavicles equidistant from the spinous processes?",
+              "Inspiration: can you count 5-7 anterior ribs above the diaphragm?",
+              "Exposure/Penetration: can you just see the vertebral bodies through the cardiac shadow?",
+              "Coverage: are the lung apices and both costophrenic angles included?"
+            ],
+            "MSK": [
+              "Two views: are AP and lateral both available?",
+              "Coverage: does the image include the joint above and below the injury?",
+              "Exposure: can you see cortical bone and soft tissues?"
+            ]
+          },
+          "ifSuboptimal": "'This image is [rotated/underexposed/poorly inspired]. If needed, I will consider requesting a repeat study, but I will interpret with this limitation in mind.'",
+          "label": "Technical Quality (Adequacy)",
+          "say": "'The image is of [adequate/suboptimal] quality. [If suboptimal: specify the issue].'",
+          "step": 6,
+          "why": "A rotated CXR can fake a widened mediastinum. Poor inspiration can fake cardiomegaly. If the image is suboptimal, state it — examiners want to hear you recognise limitations. If adequate, say so briefly and move on."
+        },
+        {
+          "action": "Read the clinical information / referral question if provided.",
+          "ifNone": "If no clinical context: 'No clinical information is provided — I will perform a systematic review.'",
+          "label": "Clinical Context",
+          "say": "'The clinical indication is [chest pain / fall / shortness of breath / trauma].'",
+          "step": 7,
+          "why": "The clinical context directs your search pattern. 'Trauma' means look for fractures, pneumothorax, haemothorax. 'SOB' means look for consolidation, effusion, pulmonary oedema. Stating the context shows you are goal-directed, not just pattern-matching blindly."
+        }
+      ],
+      "subtitle": "These are free marks. Every OSCE marking scheme scores them. Never skip them.",
+      "title": "Before You Speak — The First 15 Seconds"
+    },
+    "Common Mistakes": [
+      {
+        "fix": "Always start with the 7 identification steps. 'I can see a pneumothorax' without stating the view, side marker, or quality loses easy marks.",
+        "mistake": "Jumping straight to the diagnosis"
+      },
+      {
+        "fix": "Complete EVERY step of ABCDE/ABCS. The examiner may have placed a second finding you'll miss if you stop after the first.",
+        "mistake": "Skipping the systematic approach after spotting the obvious finding"
+      },
+      {
+        "fix": "Radiology provides differentials, not diagnoses. Say 'consistent with' or 'in keeping with'.",
+        "mistake": "Saying 'this IS pneumonia' instead of 'consistent with'"
+      },
+      {
+        "fix": "A rotated CXR can fake a widened mediastinum. State the quality — even 'adequate' shows you've checked.",
+        "mistake": "Not checking technical quality"
+      },
+      {
+        "fix": "If it's an emergency, SAY it's an emergency. 'This requires urgent [intervention]' — examiners mark this explicitly.",
+        "mistake": "Forgetting to state urgency for emergencies"
+      },
+      {
+        "fix": "Always have 2-3 differentials ready. Single-diagnosis answers suggest you haven't considered alternatives.",
+        "mistake": "Only giving one differential"
+      }
+    ],
+    "commonQuestions": [
+      {
+        "question": "What is the differential diagnosis?",
+        "tip": "Give 2-3 differentials, most likely first. For each: state one distinguishing feature. Example: 'The main differential is lobar pneumonia, but I would also consider pulmonary infarction — the absence of air bronchograms might favour infarction.'"
+      },
+      {
+        "question": "What investigation would you do next?",
+        "tip": "Be SPECIFIC. 'CT pulmonary angiogram with IV contrast' not just 'CT'. For trauma: 'trauma CT with IV contrast (CT head, C-spine, chest, abdomen, pelvis)'. For stroke: 'urgent CT brain followed by CT angiography if within treatment window.'"
+      },
+      {
+        "question": "How would you manage this patient?",
+        "tip": "Structure as: 1) A-E assessment for emergencies, 2) specific intervention (chest drain, antibiotics, surgery referral), 3) monitoring. Don't just say 'refer to surgery' — state what you'd do while waiting."
+      },
+      {
+        "question": "What is the mechanism of injury?",
+        "tip": "Link mechanism to injury pattern: fall on outstretched hand → scaphoid/distal radius. Dashboard injury → posterior hip dislocation/femoral shaft. Deceleration → aortic injury. Fall from height → calcaneal fracture + lumbar spine."
+      },
+      {
+        "question": "Is this normal or abnormal?",
+        "tip": "If normal: demonstrate your FULL systematic approach — this is what they're testing. If abnormal: state the abnormality, then complete the systematic review. Never say 'it looks normal' without proving you've checked everything."
+      },
+      {
+        "question": "What are the complications of this condition?",
+        "tip": "Think: immediate (death, organ damage), early (infection, compartment syndrome), late (malunion, avascular necrosis, post-traumatic arthritis). Be specific to the diagnosis."
+      },
+      {
+        "question": "What would you tell the patient?",
+        "tip": "Simple language: 'The X-ray shows a broken bone in your [location]. You will need [treatment]. Recovery takes approximately [timeframe].' Show empathy and avoid jargon."
+      },
+      {
+        "question": "What if you don't know the diagnosis?",
+        "tip": "DON'T PANIC. State: 'I am not certain of the diagnosis, but the main findings are [describe what you see]. The differential includes [2-3 options]. I would recommend [next investigation] to clarify.' A structured uncertainty scores higher than a confident wrong answer."
+      }
+    ],
+    "keyPhrases": [
+      {
+        "marks": "Shows you recognise the urgency — high-scoring phrase when appropriate",
+        "phrase": "This is a surgical emergency",
+        "when": "Tension pneumothorax, bowel perforation, bowel obstruction with ischaemia, epidural haematoma with midline shift"
+      },
+      {
+        "marks": "Shows you know the next step in the investigation pathway",
+        "phrase": "Requires urgent CT / further imaging",
+        "when": "Widened mediastinum (aortic dissection), new focal neurology, suspected vascular injury, equivocal fracture"
+      },
+      {
+        "marks": "Demonstrates radiological caution. Radiology provides a differential, not a definitive diagnosis.",
+        "phrase": "Findings are consistent with...",
+        "when": "ALWAYS — never say 'this IS X', say 'consistent with X'"
+      },
+      {
+        "marks": "Appropriate when findings need clinical context to interpret",
+        "phrase": "Clinical correlation is recommended",
+        "when": "Subtle findings, incidental findings, findings that could be chronic or acute"
+      },
+      {
+        "marks": "Shows you think about temporal progression, not just one snapshot",
+        "phrase": "I would like to compare with previous imaging",
+        "when": "Chronic conditions, progressive disease, post-operative changes, follow-up studies"
+      },
+      {
+        "marks": "Demonstrates safety awareness — you've looked for the dangerous diagnosis and excluded it",
+        "phrase": "There are no features of [important negative]",
+        "when": "Trauma: 'no pneumothorax'. SOB: 'no pulmonary oedema'. Head injury: 'no intracranial haemorrhage'"
+      },
+      {
+        "marks": "Links imaging to clinical reasoning — shows you're not just a pattern-matcher",
+        "phrase": "I would take a focused history to clarify...",
+        "when": "When imaging findings could be explained by multiple clinical scenarios"
+      },
+      {
+        "marks": "Giving a sensible differential with reasoning scores higher than a confident wrong answer",
+        "phrase": "The main differential includes X, Y, and Z",
+        "when": "When you're not 100% sure of the diagnosis — this is better than guessing"
+      }
+    ],
+    "presentationTemplate": {
+      "sections": [
+        {
+          "notes": "Cover all 7 'Before You Speak' steps in 2-3 sentences. This takes 10-15 seconds.",
+          "phase": "1. Identify",
+          "template": "'This is a [PA erect / AP supine / axial non-contrast] [modality] of [patient name/age/sex if given], taken on [date]. The side marker is [confirmed/not visible]. The image is of [adequate/suboptimal] quality. The clinical indication is [reason].'"
+        },
+        {
+          "notes": "Say what jumps out. If nothing jumps out, say so — it shows confidence, not ignorance. Then proceed systematically.",
+          "phase": "2. Global Impression",
+          "template": "'On initial inspection, [the most obvious abnormality is... / there is no immediately obvious abnormality — I will proceed with a systematic review].'"
+        },
+        {
+          "notes": "Walk through EVERY step. For normal findings, say 'A — Airway: trachea midline, no abnormality.' Don't skip steps just because you've already spotted the diagnosis.",
+          "phase": "3. Systematic Review",
+          "template": "'Using the [ABCDE / ABCS / BBCB] approach: [A — ..., B — ..., C — ..., etc.]'"
+        },
+        {
+          "notes": "Say 'consistent with', never 'this IS'. If uncertain: 'The main differential includes X and Y. I would recommend Z to distinguish between them.'",
+          "phase": "4. Summary and Diagnosis",
+          "template": "'In summary, the key findings are [list 1-3 findings]. These are consistent with a diagnosis of [diagnosis].'"
+        },
+        {
+          "notes": "Emergencies: state urgency explicitly. Non-emergencies: suggest next investigation or management. Always end with a recommendation.",
+          "phase": "5. Clinical Significance",
+          "template": "'[If emergency:] This is a [surgical/medical] emergency requiring [action]. [If non-urgent:] I would recommend [next step / clinical correlation / follow-up].'"
+        }
+      ],
+      "title": "Structured Presentation — What to Say"
+    },
+    "timing": {
+      "breakdown": [
+        {
+          "color": "#e96304",
+          "description": "Patient ID, date, view, side marker, quality, clinical context (the 7 steps above)",
+          "minutes": 0.5,
+          "phase": "Identify"
+        },
+        {
+          "color": "#5E899E",
+          "description": "Walk through the modality-specific approach (ABCDE / ABCS / BBCB). Note ALL findings — normal and abnormal.",
+          "minutes": 1,
+          "phase": "Systematic Review"
+        },
+        {
+          "color": "#4CAF50",
+          "description": "Structured presentation: identify → findings → diagnosis → urgency → recommendation",
+          "minutes": 2.5,
+          "phase": "Present"
+        },
+        {
+          "color": "#607D8B",
+          "description": "Examiner follow-up: differentials, management, next investigation, complications",
+          "minutes": 1,
+          "phase": "Questions"
+        }
+      ],
+      "total": 5
+    }
+  }
+}

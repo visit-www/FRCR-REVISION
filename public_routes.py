@@ -28,6 +28,22 @@ def _load_json(filename):
 
 CT_PROTOCOLS = _load_json('ct_protocols.json')
 MRI_PROTOCOLS = _load_json('mri_protocols.json')
+# OSCE guide data loaded per-request (admin can edit via static content editor)
+_OSCE_GUIDE_JSON = os.path.join(_DATA_DIR, 'osce_guide.json')
+_osce_cache = {'data': None, 'mtime': 0}
+
+def _load_osce_guide():
+    """Load osce_guide.json with file-mtime caching — refreshes when admin edits the file."""
+    try:
+        mt = os.path.getmtime(_OSCE_GUIDE_JSON)
+    except OSError:
+        return {}
+    if _osce_cache['data'] is not None and mt == _osce_cache['mtime']:
+        return _osce_cache['data']
+    with open(_OSCE_GUIDE_JSON, 'r') as f:
+        _osce_cache['data'] = json.load(f)
+    _osce_cache['mtime'] = mt
+    return _osce_cache['data']
 
 public_bp = Blueprint('public', __name__)
 
@@ -88,6 +104,53 @@ def vetting_essentials():
 def paediatric_ct_protocols():
     """Public interactive paediatric CT protocol reference page."""
     return render_template('paediatric_ct_protocols.html')
+
+
+@public_bp.route('/osce-radiology-guide')
+def osce_radiology_guide():
+    """Public OSCE radiology guide — interactive cases for 3rd year medical students."""
+    from models import OsceCase, OsceCaseImage
+    # Published cases from DB
+    db_cases = OsceCase.query.filter_by(is_published=True)\
+        .order_by(OsceCase.modality, OsceCase.sort_order, OsceCase.code).all()
+
+    cases_json = []
+    for c in db_cases:
+        images = [{
+            'url': img.image_url,
+            'thumbnail': img.image_thumbnail_url,
+            'description': img.image_description,
+            'attribution': img.attribution,
+        } for img in c.images.order_by(OsceCaseImage.sort_order).all()]
+
+        # Try to use structured osce_data JSON, fall back to content_html
+        osce_data = c.get_osce_data()
+        cases_json.append({
+            'id': c.code,
+            'db_id': c.id,
+            'diagnosis': c.diagnosis,
+            'modality': osce_data.get('modality', c.modality).lower().replace(' x-ray', '').replace('x-ray', '').replace(' ', '_'),
+            'category': c.category,
+            'difficulty': c.difficulty or 'Moderate',
+            'views': osce_data.get('views', {}),
+            'tags': osce_data.get('tags', {}),
+            'osce': osce_data.get('osce', {}),
+            'explanation': osce_data.get('explanation', {}),
+            'teaching_points': osce_data.get('teaching_points', []),
+            'images': images,
+            'content_html': c.content_html or '',
+            'linked_case_id': c.linked_case_id,
+            'reference_links': c.get_reference_links(),
+        })
+
+    # Merge: DB cases override prototype cases, static data stays
+    guide_data = dict(_load_osce_guide())
+    if cases_json:
+        guide_data['prototypeCases'] = cases_json
+    # If no DB cases yet, keep the prototype cases from JSON for demo
+
+    return render_template('osce_radiology_guide.html',
+                           osce_data=guide_data)
 
 
 @public_bp.route('/imaging-protocols-reference')

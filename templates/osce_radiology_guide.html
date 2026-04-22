@@ -1,0 +1,1379 @@
+{% extends 'base.html' %}
+{% from 'partials/_schema_medical.html' import educational_content %}
+
+{% block tool_active_osce_guide %}active{% endblock %}
+{% block mobile_active_osce_guide %}active{% endblock %}
+
+{% block title %}OSCE Radiology Guide — Pattern Recognition for Medical Students | RadInsights{% endblock %}
+{% block meta_description %}Interactive radiology OSCE guide for 3rd-year medical students. 65 cases across 7 modalities with systematic approaches, pattern recognition, and exam-mode practice.{% endblock %}
+{% block og_title %}OSCE Radiology Guide — RadInsights{% endblock %}
+{% block og_description %}Master radiology pattern recognition for your OSCE. Chest X-ray, abdominal X-ray, MSK, CT brain — with timed exam mode and instant feedback.{% endblock %}
+
+{% block extra_schema %}
+{{ educational_content(
+    'OSCE Radiology Guide — Pattern Recognition for Medical Students',
+    'Interactive radiology OSCE preparation covering 7 modalities with systematic approaches, pattern recognition drills, and timed exam-mode practice.',
+    'https://www.radinsights.xyz/osce-radiology-guide'
+) }}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.radinsights.xyz/" },
+    { "@type": "ListItem", "position": 2, "name": "Knowledge Hub", "item": "https://www.radinsights.xyz/knowledge-hub" },
+    { "@type": "ListItem", "position": 3, "name": "OSCE Radiology Guide", "item": "https://www.radinsights.xyz/osce-radiology-guide" }
+  ]
+}
+</script>
+{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item"><a href="/knowledge-hub" class="text-white text-decoration-none">Knowledge Hub</a></li>
+<li class="breadcrumb-item active text-white-50">OSCE Radiology Guide</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="osceGuideRoot">
+
+  <!-- ═══════════ BREADCRUMB ═══════════ -->
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+      <li class="breadcrumb-item"><a href="/knowledge-hub" class="text-decoration-none">Knowledge Hub</a></li>
+      <li class="breadcrumb-item active" aria-current="page">OSCE Radiology Guide</li>
+    </ol>
+  </nav>
+
+  <!-- ═══════════ HEADER ═══════════ -->
+  <div class="text-center mb-4">
+    <i class="fas fa-x-ray" style="font-size: 2.5rem; color: var(--brand-primary);"></i>
+    <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">OSCE Radiology Guide</h1>
+    <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="osceModBadges"></div>
+  </div>
+
+  <!-- ═══════════ STUDY / EXAM MODE TOGGLE ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-body py-2 px-3">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div class="d-flex align-items-center gap-3">
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" id="osceExamToggle" role="switch">
+            <label class="form-check-label fw-semibold small" for="osceExamToggle">
+              <span id="osceModeLabel">Study Mode</span>
+            </label>
+          </div>
+          <span class="small text-muted d-none d-md-inline" id="osceModeHint">All answers visible</span>
+        </div>
+        <!-- Exam mode controls (hidden in study mode) -->
+        <div class="d-none align-items-center gap-2" id="osceExamControls">
+          <button class="btn btn-sm btn-brand-neutral" id="osceShuffleBtn" title="Shuffle cases">
+            <i class="fas fa-shuffle me-1"></i>Shuffle
+          </button>
+          <div class="d-flex align-items-center gap-1">
+            <button class="btn btn-sm btn-outline-secondary" id="osceTimerBtn" title="5-minute OSCE timer">
+              <i class="fas fa-stopwatch me-1"></i><span id="osceTimerDisplay">5:00</span>
+            </button>
+          </div>
+          <span class="badge bg-secondary" id="osceScoreBadge" title="Session score">0 / 0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TAB NAVIGATION ═══════════ -->
+  <ul class="nav osce-tabs mb-3" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="osce-tab-cases-btn" data-bs-toggle="tab" data-bs-target="#osce-tab-cases" type="button" role="tab" aria-selected="true">
+        <i class="fas fa-images me-1"></i><span class="osce-tab-label">Cases</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="osce-tab-ref-btn" data-bs-toggle="tab" data-bs-target="#osce-tab-ref" type="button" role="tab">
+        <i class="fas fa-clipboard-list me-1"></i><span class="osce-tab-label">Quick Reference</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="osce-tab-patterns-btn" data-bs-toggle="tab" data-bs-target="#osce-tab-patterns" type="button" role="tab">
+        <i class="fas fa-th me-1"></i><span class="osce-tab-label">Pattern Index</span>
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="osce-tab-technique-btn" data-bs-toggle="tab" data-bs-target="#osce-tab-technique" type="button" role="tab">
+        <i class="fas fa-user-graduate me-1"></i><span class="osce-tab-label">Exam Technique</span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- ═══════════ TAB CONTENT ═══════════ -->
+  <div class="tab-content">
+
+    <!-- ─────────── TAB 1: CASES ─────────── -->
+    <div class="tab-pane fade show active" id="osce-tab-cases" role="tabpanel">
+
+      <!-- Filter bar -->
+      <div class="card-brand mb-3">
+        <div class="card-brand-body py-2 px-3">
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="small text-muted me-1"><i class="fas fa-filter me-1"></i>Filter:</span>
+            <select id="osceFilterMod" class="form-select form-select-sm osce-filter-select">
+              <option value="">All modalities</option>
+            </select>
+            <select id="osceFilterCat" class="form-select form-select-sm osce-filter-select">
+              <option value="">All categories</option>
+              <option value="emergency">Emergency</option>
+              <option value="spotter">Spotter</option>
+              <option value="common">Common</option>
+              <option value="normal">Normal</option>
+            </select>
+            <input type="text" id="osceFilterSearch" class="form-control form-control-sm" style="max-width:220px;" placeholder="Search cases..." autocomplete="off">
+            <span id="osceFilterCount" class="small text-muted ms-auto"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin: manage cases button -->
+      <div class="osce-admin-bar">
+        <a href="/api/admin/osce" class="btn btn-sm btn-outline-warning"><i class="fas fa-cog me-1"></i>Manage Cases</a>
+      </div>
+
+      <!-- Case cards grid -->
+      <div class="row g-3" id="osceCaseGrid"></div>
+    </div>
+
+    <!-- ─────────── TAB 2: QUICK REFERENCE ─────────── -->
+    <div class="tab-pane fade" id="osce-tab-ref" role="tabpanel">
+      <div class="osce-admin-bar">
+        <a href="/api/admin/osce#oa-static" class="btn btn-sm btn-outline-warning" onclick="sessionStorage.setItem('oaStaticTab','quickReference')"><i class="fas fa-edit me-1"></i>Edit Quick Reference</a>
+      </div>
+      <div class="row g-3" id="osceRefGrid"></div>
+    </div>
+
+    <!-- ─────────── TAB 3: PATTERN INDEX ─────────── -->
+    <div class="tab-pane fade" id="osce-tab-patterns" role="tabpanel">
+      <div class="osce-admin-bar">
+        <a href="/api/admin/osce#oa-static" class="btn btn-sm btn-outline-warning" onclick="sessionStorage.setItem('oaStaticTab','patternIndex')"><i class="fas fa-edit me-1"></i>Edit Pattern Index</a>
+      </div>
+      <p class="text-muted small mb-3">Click any diagnosis to filter to that case in the Cases tab.</p>
+      <div class="table-responsive">
+        <table class="table table-bordered osce-pattern-table" id="oscePatternTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ─────────── TAB 4: EXAM TECHNIQUE ─────────── -->
+    <div class="tab-pane fade" id="osce-tab-technique" role="tabpanel">
+      <div class="osce-admin-bar">
+        <a href="/api/admin/osce#oa-static" class="btn btn-sm btn-outline-warning" onclick="sessionStorage.setItem('oaStaticTab','examTechnique')"><i class="fas fa-edit me-1"></i>Edit Exam Technique</a>
+      </div>
+      <div class="row g-3" id="osceTechniqueGrid"></div>
+    </div>
+
+  </div><!-- /tab-content -->
+</div><!-- /container -->
+
+{% include 'partials/_public_cta.html' %}
+
+<!-- ═══════════ SCOPED CSS ═══════════ -->
+<style>
+/* ── Tab nav ── */
+.osce-tabs { border-bottom: 2px solid #e9ecef; display: flex; gap: 0; }
+.osce-tabs .nav-item { flex: 1; }
+.osce-tabs .nav-link {
+  width: 100%; border: none; border-bottom: 3px solid transparent;
+  background: transparent; color: #6c757d; font-size: 0.85rem;
+  font-weight: 600; padding: 0.6rem 0.5rem; text-align: center;
+  transition: all 0.2s;
+}
+.osce-tabs .nav-link:hover { color: var(--brand-primary); }
+.osce-tabs .nav-link.active {
+  color: var(--brand-primary); border-bottom-color: var(--brand-primary);
+  background: transparent;
+}
+@media (max-width: 575px) {
+  .osce-tab-label { display: none; }
+  .osce-tabs .nav-link { font-size: 1rem; }
+}
+
+/* ── Filter selects — prevent chevron overlap ── */
+.osce-filter-select {
+  width: auto; min-width: 150px;
+  padding-right: 2rem !important;
+  text-overflow: ellipsis;
+}
+
+/* ── Modality badges (header) ── */
+.osce-mod-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.72rem;
+  font-weight: 600; color: #fff; cursor: pointer; transition: transform 0.15s;
+}
+.osce-mod-pill:hover { transform: scale(1.08); }
+
+/* ── Case cards ── */
+.osce-case-card {
+  border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.2s;
+  overflow: hidden;
+}
+.osce-case-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.osce-case-header {
+  padding: 0.75rem 1rem; display: flex; align-items: center;
+  justify-content: space-between; gap: 0.5rem; flex-wrap: wrap;
+}
+.osce-case-body { padding: 0 1rem 1rem; }
+.osce-case-title { font-size: 1rem; font-weight: 700; margin: 0; }
+
+/* ── Category chips ── */
+.osce-cat-chip {
+  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.osce-cat-emergency { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.osce-cat-spotter { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.osce-cat-common { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.osce-cat-normal { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+
+/* ── Difficulty chip ── */
+.osce-diff-chip {
+  display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.2rem;
+  font-size: 0.65rem; font-weight: 500; background: #f3f4f6; color: #6b7280;
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Image placeholder ── */
+.osce-img-placeholder {
+  background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 0.5rem;
+  height: 160px; display: flex; align-items: center; justify-content: center;
+  color: #adb5bd; font-size: 0.8rem; margin-bottom: 0.75rem;
+}
+.osce-img-placeholder i { font-size: 2rem; margin-bottom: 0.25rem; }
+
+/* ── Case images ── */
+.osce-case-image-wrap { margin-bottom: 0.75rem; }
+.osce-case-img {
+  width: 100%; border-radius: 0.5rem; object-fit: cover;
+  max-height: 220px; border: 1px solid #e5e7eb;
+}
+.osce-case-image-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem; margin-bottom: 0.75rem;
+}
+.osce-case-image-item { text-align: center; }
+.osce-case-img-thumb {
+  width: 100%; height: 100px; object-fit: cover;
+  border-radius: 0.4rem; border: 1px solid #e5e7eb;
+}
+.osce-img-caption { font-size: 0.72rem; color: #374151; margin-top: 0.2rem; }
+.osce-img-attribution { font-size: 0.65rem; color: #9ca3af; font-style: italic; }
+
+/* ── Reference links ── */
+.osce-ref-link-btn {
+  display: inline-block; padding: 0.2rem 0.5rem; border-radius: 0.25rem;
+  font-size: 0.75rem; background: #f0f4f8; color: #1e40af;
+  border: 1px solid #cbd5e1; text-decoration: none; transition: all 0.15s;
+}
+.osce-ref-link-btn:hover { background: var(--brand-neutral); color: #fff; border-color: var(--brand-neutral); }
+
+/* ── Dive Deeper button ── */
+.osce-dive-deeper-btn { width: 100%; text-align: center; }
+
+/* ── Views badge ── */
+.osce-views-badge {
+  display: inline-block; padding: 0.2rem 0.5rem; border-radius: 0.25rem;
+  font-size: 0.72rem; background: #f0f4f8; color: #475569;
+  border: 1px solid #cbd5e1; margin-bottom: 0.5rem;
+}
+
+/* ── Tags ── */
+.osce-tag-row { margin-bottom: 0.25rem; }
+.osce-tag {
+  display: inline-block; padding: 0.1rem 0.4rem; border-radius: 0.2rem;
+  font-size: 0.68rem; background: #f3f4f6; color: #6b7280;
+  border: 1px solid #e5e7eb; margin: 0.1rem;
+}
+
+/* ── Card content sections (structured layout inside reveal) ── */
+.osce-card-section {
+  margin-bottom: 0.6rem; padding: 0.5rem 0.65rem;
+  border-radius: 0.4rem; background: #f9fafb;
+  border-left: 3px solid var(--brand-neutral);
+}
+.osce-card-section--views { border-left-color: #94a3b8; background: #f8fafc; }
+.osce-card-section-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--brand-neutral); margin-bottom: 0.25rem;
+}
+.osce-card-section-label--finding { color: #b45309; }
+.osce-card-section-label--diagnosis { color: #059669; }
+.osce-card-section-label--urgency { color: #dc2626; }
+.osce-card-section-body { font-size: 0.84rem; color: #1e293b; line-height: 1.5; }
+.osce-card-diagnosis-text { font-size: 1rem; font-weight: 700; color: #065f46; }
+
+/* ── Explanation items (inside step 2) ── */
+.osce-card-expl-item {
+  margin-bottom: 0.5rem; padding: 0.4rem 0.6rem;
+  border-radius: 0.3rem; background: #f0f7ff;
+  border-left: 2px solid #3b82f6;
+}
+.osce-card-expl-label {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; color: #1d4ed8; margin-bottom: 0.15rem;
+}
+.osce-card-expl-text { font-size: 0.82rem; color: #334155; line-height: 1.45; }
+
+/* ── Approach list (structured bullet points) ── */
+.osce-approach-list {
+  list-style: none; padding-left: 0; margin: 0;
+}
+.osce-approach-list li {
+  padding: 0.3rem 0 0.3rem 0.5rem; margin-bottom: 0.15rem;
+  border-left: 2px solid var(--brand-neutral); font-size: 0.84rem;
+  line-height: 1.45; color: #1e293b;
+}
+.osce-approach-list li strong { color: var(--brand-neutral); }
+
+/* ── Teaching points list ── */
+.osce-card-teaching-list {
+  padding-left: 1.1rem; margin: 0;
+}
+.osce-card-teaching-list li {
+  font-size: 0.82rem; margin-bottom: 0.35rem; line-height: 1.45;
+  color: #334155;
+}
+
+/* ── Reveal sections ── */
+.osce-reveal { display: none; margin-top: 0.75rem; }
+.osce-reveal.active { display: block; }
+.osce-reveal-btn {
+  border: none; background: var(--brand-primary); color: #fff;
+  padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.8rem;
+  font-weight: 600; cursor: pointer; transition: background 0.2s;
+  width: 100%; margin-top: 0.5rem;
+}
+.osce-reveal-btn:hover { background: #d45a03; }
+.osce-reveal-btn.revealed { background: var(--brand-neutral); }
+
+/* ── Reveal step 2 (diagnosis in exam mode) ── */
+.osce-reveal-step2 { display: none; margin-top: 0.5rem; }
+.osce-reveal-step2.active { display: block; }
+
+/* ── Model script ── */
+.osce-model-script {
+  background: #f0fdf4; border-left: 3px solid var(--brand-success);
+  padding: 0.5rem 0.65rem; border-radius: 0 0.4rem 0.4rem 0;
+  margin-bottom: 0.6rem;
+}
+.osce-model-script .osce-card-section-label { color: #166534; }
+.osce-model-script .osce-card-section-body { font-size: 0.84rem; font-style: italic; }
+
+/* ── Explanation block ── */
+.osce-explanation {
+  border-radius: 0.5rem; padding: 0.5rem; margin-top: 0.5rem;
+}
+
+/* ── Teaching points ── */
+.osce-teaching-points {
+  background: #fefce8; border-left: 3px solid var(--brand-secondary);
+  padding: 0.6rem 0.8rem; border-radius: 0 0.4rem 0.4rem 0;
+  margin-top: 0.5rem;
+}
+.osce-teaching-points ul { margin-bottom: 0; padding-left: 1.2rem; }
+.osce-teaching-points li { margin-bottom: 0.3rem; font-size: 0.82rem; line-height: 1.45; }
+
+/* ── Quick Reference cards ── */
+.osce-ref-card {
+  border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden;
+}
+.osce-ref-card-header {
+  padding: 0.75rem 1rem; font-weight: 700; color: #fff; font-size: 0.9rem;
+}
+.osce-ref-card-body { padding: 1rem; }
+.osce-ref-step {
+  display: flex; gap: 0.75rem; padding: 0.5rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.osce-ref-step:last-child { border-bottom: none; }
+.osce-ref-letter {
+  width: 32px; height: 32px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-weight: 800;
+  font-size: 0.85rem; color: #fff; flex-shrink: 0;
+}
+.osce-ref-step-content { flex: 1; }
+.osce-ref-step-label { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.2rem; }
+.osce-ref-step-items { font-size: 0.8rem; color: #4b5563; margin: 0; padding-left: 1rem; }
+.osce-ref-step-items li { margin-bottom: 0.15rem; }
+.osce-ref-subtitle {
+  padding: 0.4rem 1rem; font-size: 0.78rem; color: #6b7280;
+  background: #f9fafb; border-bottom: 1px solid #e5e7eb;
+}
+.osce-ref-views {
+  font-size: 0.75rem; color: #64748b; padding: 0.4rem 1rem;
+  background: #f8fafc; border-top: 1px solid #e5e7eb;
+}
+/* Quick Rules strip */
+.osce-ref-rules {
+  border-top: 1px solid #e5e7eb; padding: 0.5rem 0.75rem;
+  background: #fefce8;
+}
+.osce-ref-rules-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  color: #92400e; margin-bottom: 0.3rem; letter-spacing: 0.03em;
+}
+.osce-ref-rules-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.3rem;
+}
+.osce-ref-rule {
+  background: #fff; border: 1px solid #fcd34d; border-radius: 0.3rem;
+  padding: 0.25rem 0.4rem;
+}
+.osce-ref-rule-key {
+  font-size: 0.72rem; font-weight: 700; color: #92400e;
+}
+.osce-ref-rule-val {
+  font-size: 0.68rem; color: #6b7280;
+}
+/* Visual aid highlights in items */
+.osce-ref-measure {
+  background: #dbeafe; color: #1e40af; padding: 0 0.2rem;
+  border-radius: 0.15rem; font-weight: 600; font-size: 0.82em;
+}
+.osce-ref-flag {
+  background: #fee2e2; color: #991b1b; padding: 0 0.2rem;
+  border-radius: 0.15rem; font-weight: 700; font-size: 0.82em;
+}
+.osce-ref-arrow { color: var(--brand-primary); font-weight: 700; }
+
+/* ── Pattern table ── */
+.osce-pattern-table { font-size: 0.82rem; }
+.osce-pattern-table thead th {
+  background: var(--brand-neutral); color: #fff;
+  font-weight: 600; font-size: 0.75rem; text-align: center;
+  position: sticky; top: 0;
+}
+.osce-pattern-table tbody td { vertical-align: top; }
+.osce-pattern-table .osce-pattern-label {
+  font-weight: 700; white-space: nowrap;
+}
+.osce-pattern-link {
+  display: inline-block; padding: 0.1rem 0.3rem; margin: 0.1rem;
+  border-radius: 0.2rem; font-size: 0.72rem; cursor: pointer;
+  background: #f3f4f6; color: #1e40af; border: 1px solid #e5e7eb;
+  transition: all 0.15s; text-decoration: none;
+}
+.osce-pattern-link:hover {
+  background: var(--brand-primary); color: #fff; border-color: var(--brand-primary);
+}
+
+/* ── Exam technique cards ── */
+.osce-tech-card {
+  border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow: hidden;
+}
+.osce-tech-header {
+  padding: 0.75rem 1rem; background: var(--brand-neutral); color: #fff;
+  font-weight: 700; font-size: 0.9rem;
+}
+.osce-tech-body { padding: 1rem; }
+
+/* ── Timing bar ── */
+.osce-timing-bar {
+  display: flex; border-radius: 0.5rem; overflow: hidden;
+  height: 32px; margin-bottom: 0.75rem;
+}
+.osce-timing-segment {
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 0.72rem; font-weight: 600;
+}
+
+/* ── Phrase cards ── */
+.osce-phrase {
+  padding: 0.5rem 0.75rem; border-left: 3px solid var(--brand-primary);
+  margin-bottom: 0.5rem; background: #fef7f0; border-radius: 0 0.3rem 0.3rem 0;
+}
+.osce-phrase-text { font-weight: 600; font-size: 0.85rem; }
+.osce-phrase-when { font-size: 0.75rem; color: #6b7280; margin-top: 0.15rem; }
+
+/* ── Score animation ── */
+@keyframes osceCorrect { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.osce-score-pop { animation: osceCorrect 0.3s ease; }
+
+/* ── Timer ── */
+.osce-timer-running { color: #dc2626 !important; font-weight: 700; }
+.osce-timer-warning { animation: osce-blink 0.5s infinite; }
+@keyframes osce-blink { 50% { opacity: 0.4; } }
+
+/* ── Before You Speak steps ── */
+.osce-bys-step {
+  display: flex; gap: 0.75rem; padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.osce-bys-step:last-child { border-bottom: none; }
+.osce-bys-num {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  background: var(--brand-primary); color: #fff; display: flex;
+  align-items: center; justify-content: center; font-weight: 800;
+  font-size: 0.8rem;
+}
+.osce-bys-content { flex: 1; }
+.osce-bys-label { font-weight: 700; font-size: 0.9rem; margin-bottom: 0.2rem; color: #1e293b; }
+.osce-bys-say {
+  background: #f0fdf4; border-left: 3px solid var(--brand-success);
+  padding: 0.35rem 0.6rem; border-radius: 0 0.3rem 0.3rem 0;
+  font-size: 0.8rem; font-style: italic; color: #166534; margin: 0.3rem 0;
+}
+.osce-bys-tip {
+  font-size: 0.78rem; color: #92400e; background: #fef3c7;
+  padding: 0.3rem 0.5rem; border-radius: 0.25rem; margin-top: 0.25rem;
+}
+.osce-bys-trap {
+  font-size: 0.78rem; color: #991b1b; background: #fef2f2;
+  padding: 0.3rem 0.5rem; border-radius: 0.25rem; margin-top: 0.25rem;
+}
+.osce-bys-modality-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.3rem; margin-top: 0.3rem;
+}
+.osce-bys-mod-item {
+  font-size: 0.76rem; background: #f8fafc; padding: 0.3rem 0.5rem;
+  border-radius: 0.25rem; border: 1px solid #e2e8f0;
+}
+.osce-bys-examiner-tip {
+  background: #eff6ff; border-top: 1px solid #bfdbfe;
+  padding: 0.75rem 1rem; font-size: 0.82rem; color: #1e40af;
+  font-weight: 500;
+}
+
+/* ── Common mistakes ── */
+.osce-mistake-card {
+  border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;
+}
+.osce-mistake-bad {
+  padding: 0.4rem 0.6rem; background: #fef2f2; color: #991b1b;
+  font-size: 0.8rem; font-weight: 600; border-bottom: 1px solid #fecaca;
+}
+.osce-mistake-fix {
+  padding: 0.4rem 0.6rem; background: #f0fdf4; color: #166534;
+  font-size: 0.8rem;
+}
+
+/* ── Admin-only edit controls (hidden from students/public) ── */
+.osce-admin-bar { display: none; margin-bottom: 0.5rem; text-align: right; }
+.osce-admin-edit-btn { display: none; }
+body.is-admin .osce-admin-bar { display: block; }
+body.is-admin .osce-admin-edit-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+  font-size: 0.65rem; text-decoration: none; transition: all 0.15s;
+}
+body.is-admin .osce-admin-edit-btn:hover {
+  background: #f59e0b; color: #fff; border-color: #f59e0b;
+}
+
+/* ── Exam mode: hide diagnosis in header ── */
+.osce-exam-mode .osce-case-title { filter: blur(8px); pointer-events: none; user-select: none; }
+.osce-exam-mode .osce-cat-chip { visibility: hidden; }
+.osce-exam-mode .osce-diff-chip { visibility: hidden; }
+.osce-exam-mode .osce-views-badge { display: none; }
+.osce-exam-mode .osce-tag { visibility: hidden; }
+</style>
+
+<!-- ═══════════ SCOPED JS ═══════════ -->
+<script>
+(function() {
+  var root = document.getElementById('osceGuideRoot');
+  if (!root) return;
+  if (root.dataset.osceInit === '1') return;
+  root.dataset.osceInit = '1';
+
+  var DATA = {{ osce_data|tojson }};
+  var CASES = DATA.prototypeCases || [];
+  var MODS = DATA.modalities || {};
+  var QREF = DATA.quickReference || {};
+  var PATTERNS = DATA.patternIndex || {};
+  var TECHNIQUE = DATA.examTechnique || {};
+
+  // ── State ──
+  var examMode = localStorage.getItem('osceExamMode') === '1';
+  var timerInterval = null;
+  var timerSeconds = 300;
+  var score = { correct: 0, total: 0 };
+  var shuffled = false;
+
+  // ── Helpers ──
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+  }
+  function $(sel) { return root.querySelector(sel); }
+  function $$(sel) { return root.querySelectorAll(sel); }
+
+  /**
+   * Format approach text into structured HTML.
+   * Splits on patterns like "A — ", "B — ", "1. ", "- ", ". " (sentence boundaries after steps)
+   * Returns HTML with proper bullet structure.
+   */
+  function formatApproach(text) {
+    if (!text) return '';
+    // Try to split on step patterns: ". A — " or ". B — " (period + space + letter + dash)
+    // First, try splitting on the ABCDE / ABCS pattern
+    var stepRegex = /([A-Z])\s*[—–-]\s*([^.]+(?:\.[^A-Z])*)/g;
+    var matches = [];
+    var m;
+    while ((m = stepRegex.exec(text)) !== null) {
+      matches.push({ letter: m[1], content: m[2].replace(/\.\s*$/, '').trim() });
+    }
+    if (matches.length > 1) {
+      // Extract any preamble before the first step
+      var firstIdx = text.indexOf(matches[0].letter + ' ');
+      if (firstIdx < 0) firstIdx = text.indexOf(matches[0].letter + String.fromCharCode(8212));
+      var preamble = firstIdx > 0 ? text.substring(0, firstIdx).replace(/\.\s*$/, '').trim() : '';
+      var html = '';
+      if (preamble) html += '<p style="margin-bottom:0.4rem;">' + esc(preamble) + '.</p>';
+      html += '<ul class="osce-approach-list">';
+      matches.forEach(function(step) {
+        // Bold the letter and label (up to first colon)
+        var escaped = esc(step.content);
+        var colonIdx = escaped.indexOf(':');
+        if (colonIdx > 0 && colonIdx < 40) {
+          escaped = '<strong>' + esc(step.letter) + ' — ' + escaped.substring(0, colonIdx + 1) + '</strong>' + escaped.substring(colonIdx + 1);
+        } else {
+          escaped = '<strong>' + esc(step.letter) + ' —</strong> ' + escaped;
+        }
+        html += '<li>' + escaped + '.</li>';
+      });
+      html += '</ul>';
+      return html;
+    }
+    // Fallback: split on ". " followed by uppercase
+    var sentences = text.split(/\.\s+(?=[A-Z])/);
+    if (sentences.length > 2) {
+      var html = '<ul class="osce-approach-list">';
+      sentences.forEach(function(s) {
+        var trimmed = s.replace(/\.$/, '').trim();
+        if (trimmed) html += '<li>' + esc(trimmed) + '.</li>';
+      });
+      html += '</ul>';
+      return html;
+    }
+    return '<p>' + esc(text) + '</p>';
+  }
+
+  /**
+   * Format explanation text — split long text on sentence boundaries.
+   */
+  function formatExplText(text) {
+    if (!text) return '';
+    var sentences = text.split(/\.\s+(?=[A-Z])/);
+    if (sentences.length > 2) {
+      return sentences.map(function(s) {
+        return '<p style="margin-bottom:0.3rem;">' + esc(s.replace(/\.$/, '').trim()) + '.</p>';
+      }).join('');
+    }
+    return '<p>' + esc(text) + '</p>';
+  }
+
+  // ── Modality badges in header ──
+  (function renderModBadges() {
+    var el = $('#osceModBadges');
+    if (!el) return;
+    var html = '';
+    for (var k in MODS) {
+      var m = MODS[k];
+      html += '<span class="osce-mod-pill" style="background:' + esc(m.color) + ';" data-mod="' + esc(k) + '">'
+            + '<i class="fas ' + esc(m.icon) + '"></i> ' + esc(m.label)
+            + '</span>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.osce-mod-pill').forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        var mod = this.dataset.mod;
+        var sel = $('#osceFilterMod');
+        if (sel) { sel.value = mod; sel.dispatchEvent(new Event('change')); }
+        var tabBtn = $('#osce-tab-cases-btn');
+        if (tabBtn) { new bootstrap.Tab(tabBtn).show(); }
+      });
+    });
+  })();
+
+  // ── Populate modality filter ──
+  (function() {
+    var sel = $('#osceFilterMod');
+    if (!sel) return;
+    for (var k in MODS) {
+      var o = document.createElement('option');
+      o.value = k; o.textContent = MODS[k].label;
+      sel.appendChild(o);
+    }
+  })();
+
+  // ── Render case cards ──
+  function renderCaseCard(c) {
+    var mod = MODS[c.modality] || {};
+    var cat = (c.category || '').toLowerCase();
+    var tags = c.tags || {};
+    var views = c.views || {};
+    var osce = c.osce || {};
+    var answer = osce.expected_answer || {};
+    var expl = c.explanation || {};
+    var pts = c.teaching_points || [];
+
+    var tagHtml = '';
+    for (var tk in tags) {
+      if (tags[tk]) tagHtml += '<span class="osce-tag">' + esc(tk) + ': ' + esc(tags[tk]) + '</span> ';
+    }
+
+    var viewBadge = views.obtained
+      ? '<div class="osce-views-badge"><i class="fas fa-eye me-1"></i>' + esc(views.obtained) + '</div>'
+      : '';
+
+    // ── Step 1 reveal: Findings ──
+    var findingsHtml = '';
+    if (answer.approach) {
+      findingsHtml += '<div class="osce-card-section">'
+        + '<div class="osce-card-section-label"><i class="fas fa-list-ol me-1"></i>Systematic Approach</div>'
+        + '<div class="osce-card-section-body">' + formatApproach(answer.approach) + '</div>'
+        + '</div>';
+    }
+    if (answer.key_finding) {
+      findingsHtml += '<div class="osce-card-section">'
+        + '<div class="osce-card-section-label osce-card-section-label--finding"><i class="fas fa-search me-1"></i>Key Finding</div>'
+        + '<div class="osce-card-section-body">' + formatExplText(answer.key_finding) + '</div>'
+        + '</div>';
+    }
+
+    // Views detail (inside findings reveal)
+    if (views.why_this_view || views.additional_views) {
+      findingsHtml += '<div class="osce-card-section osce-card-section--views">'
+        + '<div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div>'
+        + '<div class="osce-card-section-body">';
+      if (views.why_this_view) findingsHtml += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
+      if (views.additional_views) findingsHtml += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
+      findingsHtml += '</div></div>';
+    }
+
+    // ── Step 2 reveal: Diagnosis + explanation + teaching ──
+    var diagHtml = '';
+    if (answer.diagnosis) {
+      diagHtml += '<div class="osce-card-section">'
+        + '<div class="osce-card-section-label osce-card-section-label--diagnosis"><i class="fas fa-stethoscope me-1"></i>Diagnosis</div>'
+        + '<div class="osce-card-section-body osce-card-diagnosis-text">' + esc(answer.diagnosis) + '</div>'
+        + '</div>';
+    }
+    if (answer.urgency) {
+      diagHtml += '<div class="osce-card-section">'
+        + '<div class="osce-card-section-label osce-card-section-label--urgency"><i class="fas fa-exclamation-triangle me-1"></i>Urgency</div>'
+        + '<div class="osce-card-section-body">' + formatExplText(answer.urgency) + '</div>'
+        + '</div>';
+    }
+    if (osce.model_script) {
+      diagHtml += '<div class="osce-model-script">'
+        + '<div class="osce-card-section-label" style="color:#166534;"><i class="fas fa-comment-dots me-1"></i>Model Script</div>'
+        + '<div class="osce-card-section-body">' + formatExplText(osce.model_script) + '</div>'
+        + '</div>';
+    }
+
+    // Explanation sections
+    var explHtml = '';
+    var explLabels = {
+      'pattern_recognition': { icon: 'fa-bolt', label: 'Pattern Recognition' },
+      'mechanism': { icon: 'fa-cogs', label: 'Mechanism' },
+      'why_it_matters': { icon: 'fa-heart-pulse', label: 'Why It Matters' },
+      'normal_landmarks': { icon: 'fa-map-pin', label: 'Normal Landmarks' },
+      'common_pitfalls': { icon: 'fa-exclamation-circle', label: 'Common Pitfalls' },
+      'confirm_normal_checklist': { icon: 'fa-clipboard-check', label: 'Confirm Normal Checklist' }
+    };
+    for (var ek in expl) {
+      if (expl[ek]) {
+        var meta = explLabels[ek] || { icon: 'fa-info-circle', label: ek.replace(/_/g, ' ').replace(/\b\w/g, function(l){ return l.toUpperCase(); }) };
+        explHtml += '<div class="osce-card-expl-item">'
+          + '<div class="osce-card-expl-label"><i class="fas ' + meta.icon + ' me-1"></i>' + esc(meta.label) + '</div>'
+          + '<div class="osce-card-expl-text">' + formatExplText(expl[ek]) + '</div>'
+          + '</div>';
+      }
+    }
+
+    // Teaching points
+    var ptsHtml = '';
+    if (pts.length) {
+      ptsHtml = '<ul class="osce-card-teaching-list">' + pts.map(function(p){ return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>';
+    }
+
+    // ── Images (multiple, with attribution) ──
+    var caseImages = c.images || [];
+    var imageHtml = '';
+    if (caseImages.length) {
+      if (caseImages.length === 1) {
+        var im = caseImages[0];
+        imageHtml = '<div class="osce-case-image-wrap">'
+          + '<img src="' + esc(im.url || im.thumbnail) + '" alt="' + esc(im.description || c.diagnosis) + '" class="osce-case-img">'
+          + (im.description ? '<div class="osce-img-caption">' + esc(im.description) + '</div>' : '')
+          + (im.attribution ? '<div class="osce-img-attribution">' + esc(im.attribution) + '</div>' : '')
+          + '</div>';
+      } else {
+        imageHtml = '<div class="osce-case-image-grid">';
+        caseImages.forEach(function(im) {
+          imageHtml += '<div class="osce-case-image-item">'
+            + '<img src="' + esc(im.thumbnail || im.url) + '" alt="' + esc(im.description || '') + '" class="osce-case-img-thumb">'
+            + (im.description ? '<div class="osce-img-caption">' + esc(im.description) + '</div>' : '')
+            + (im.attribution ? '<div class="osce-img-attribution">' + esc(im.attribution) + '</div>' : '')
+            + '</div>';
+        });
+        imageHtml += '</div>';
+      }
+    } else {
+      imageHtml = '<div class="osce-img-placeholder">'
+        + '<div class="text-center"><i class="fas ' + esc(mod.icon || 'fa-image') + '"></i><br>Image coming soon</div>'
+        + '</div>';
+    }
+
+    // ── Reference links ──
+    var refLinks = c.reference_links || [];
+    var refLinksHtml = '';
+    if (refLinks.length) {
+      refLinksHtml = '<div class="osce-ref-links mt-2">';
+      refLinks.forEach(function(rl) {
+        if (rl.url) {
+          refLinksHtml += '<a href="' + esc(rl.url) + '" target="_blank" rel="noopener" class="osce-ref-link-btn">'
+            + '<i class="fas fa-external-link-alt me-1"></i>' + esc(rl.label || rl.source || 'Reference')
+            + '</a> ';
+        }
+      });
+      refLinksHtml += '</div>';
+    }
+
+    // ── Dive Deeper (link to full case) ──
+    var diveDeeperHtml = '';
+    if (c.linked_case_id) {
+      diveDeeperHtml = '<div class="mt-2">'
+        + '<a href="/view-case/' + c.linked_case_id + '" class="btn btn-sm btn-brand-neutral osce-dive-deeper-btn">'
+        + '<i class="fas fa-microscope me-1"></i>Dive Deeper — Full Case Study'
+        + '</a></div>';
+    }
+
+    var search = [c.diagnosis, c.modality, cat, tags.pattern, tags.tissue, tags.mechanism,
+                  answer.key_finding, answer.diagnosis].filter(Boolean).join(' ').toLowerCase();
+
+    return '<div class="col-md-6 col-xl-4 osce-case-item" '
+      + 'data-modality="' + esc(c.modality) + '" '
+      + 'data-category="' + esc(cat) + '" '
+      + 'data-search="' + esc(search) + '" '
+      + 'data-id="' + esc(c.id) + '">'
+      + '<div class="osce-case-card">'
+      +   '<div class="osce-case-header">'
+      +     '<div>'
+      +       '<h3 class="osce-case-title">' + esc(c.diagnosis) + '</h3>'
+      +     '</div>'
+      +     '<div class="d-flex gap-1 align-items-center">'
+      +       (c.db_id ? '<a href="/api/admin/osce" class="osce-admin-edit-btn" onclick="sessionStorage.setItem(\'oaEditCase\',\'' + c.db_id + '\')" title="Edit case"><i class="fas fa-pen-to-square"></i></a>' : '')
+      +       '<span class="osce-cat-chip osce-cat-' + esc(cat) + '">' + esc(c.category) + '</span>'
+      +       '<span class="osce-diff-chip">' + esc(c.difficulty) + '</span>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div class="osce-case-body">'
+      +     '<div class="d-flex align-items-center gap-2 mb-2">'
+      +       '<span class="osce-mod-pill" style="background:' + esc(mod.color || '#666') + ';font-size:0.68rem;cursor:default;">'
+      +         '<i class="fas ' + esc(mod.icon || 'fa-image') + '"></i> ' + esc(mod.label || c.modality)
+      +       '</span>'
+      +     '</div>'
+      +     viewBadge
+      +     imageHtml
+      +     '<div class="osce-tag-row">' + tagHtml + '</div>'
+      // Step 1 reveal: findings
+      +     '<button class="osce-reveal-btn" data-step="1">What do you see?</button>'
+      +     '<div class="osce-reveal osce-reveal-findings">'
+      +       findingsHtml
+      +     '</div>'
+      // Step 2 reveal: diagnosis + explanation + teaching
+      +     '<button class="osce-reveal-btn osce-reveal-btn-step2 d-none" data-step="2">Show Diagnosis &amp; Teaching</button>'
+      +     '<div class="osce-reveal-step2">'
+      +       diagHtml
+      +       (explHtml ? '<div class="osce-explanation">' + explHtml + '</div>' : '')
+      +       (ptsHtml ? '<div class="osce-teaching-points">' + ptsHtml + '</div>' : '')
+      +       refLinksHtml
+      +       diveDeeperHtml
+      +     '</div>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  function renderAllCases() {
+    var grid = $('#osceCaseGrid');
+    if (!grid) return;
+    var list = shuffled ? CASES.slice().sort(function() { return Math.random() - 0.5; }) : CASES;
+    grid.innerHTML = list.map(renderCaseCard).join('');
+    attachRevealHandlers();
+    applyMode();
+    filterCases();
+  }
+
+  // ── Reveal handlers ──
+  function attachRevealHandlers() {
+    $$('.osce-reveal-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var card = this.closest('.osce-case-card');
+        var step = this.dataset.step;
+
+        if (step === '1') {
+          var findings = card.querySelector('.osce-reveal-findings');
+          if (findings.classList.contains('active')) {
+            findings.classList.remove('active');
+            this.textContent = 'What do you see?';
+            this.classList.remove('revealed');
+            // Hide step 2 too
+            var btn2 = card.querySelector('.osce-reveal-btn-step2');
+            var diag = card.querySelector('.osce-reveal-step2');
+            if (btn2) btn2.classList.add('d-none');
+            if (diag) diag.classList.remove('active');
+          } else {
+            findings.classList.add('active');
+            this.textContent = 'Hide Findings';
+            this.classList.add('revealed');
+            // In exam mode, show step 2 button
+            if (examMode) {
+              var btn2 = card.querySelector('.osce-reveal-btn-step2');
+              if (btn2) btn2.classList.remove('d-none');
+            }
+          }
+        } else if (step === '2') {
+          var diag = card.querySelector('.osce-reveal-step2');
+          if (diag.classList.contains('active')) {
+            diag.classList.remove('active');
+            this.textContent = 'Show Diagnosis & Teaching';
+          } else {
+            diag.classList.add('active');
+            this.textContent = 'Hide Diagnosis';
+            // Score tracking
+            score.total++;
+            score.correct++;
+            updateScore();
+          }
+        }
+      });
+    });
+  }
+
+  // ── Study / Exam mode ──
+  function applyMode() {
+    var label = $('#osceModeLabel');
+    var hint = $('#osceModeHint');
+    var controls = $('#osceExamControls');
+    var toggle = $('#osceExamToggle');
+
+    if (examMode) {
+      root.classList.add('osce-exam-mode');
+      if (label) label.textContent = 'Exam Mode';
+      if (hint) hint.textContent = 'Diagnosis hidden — reveal step by step';
+      if (controls) controls.classList.remove('d-none');
+      if (controls) controls.classList.add('d-flex');
+      if (toggle) toggle.checked = true;
+      // In exam mode: hide step 2 button initially, only show after step 1
+      $$('.osce-reveal-btn-step2').forEach(function(b) { b.classList.add('d-none'); });
+      // Study mode reveals diagnosis inline — in exam mode, hide it
+      $$('.osce-reveal-step2').forEach(function(el) { el.classList.remove('active'); });
+    } else {
+      root.classList.remove('osce-exam-mode');
+      if (label) label.textContent = 'Study Mode';
+      if (hint) hint.textContent = 'All answers visible';
+      if (controls) controls.classList.add('d-none');
+      if (controls) controls.classList.remove('d-flex');
+      if (toggle) toggle.checked = false;
+      // In study mode: show step 2 content directly when step 1 is revealed (no separate button)
+      $$('.osce-reveal-btn-step2').forEach(function(b) { b.classList.add('d-none'); });
+      $$('.osce-reveal-findings').forEach(function(el) {
+        if (el.classList.contains('active')) {
+          var card = el.closest('.osce-case-card');
+          var s2 = card.querySelector('.osce-reveal-step2');
+          if (s2) s2.classList.add('active');
+        }
+      });
+    }
+  }
+
+  var toggleEl = $('#osceExamToggle');
+  if (toggleEl) {
+    toggleEl.addEventListener('change', function() {
+      examMode = this.checked;
+      localStorage.setItem('osceExamMode', examMode ? '1' : '0');
+      // Reset reveals
+      $$('.osce-reveal').forEach(function(el) { el.classList.remove('active'); });
+      $$('.osce-reveal-step2').forEach(function(el) { el.classList.remove('active'); });
+      $$('.osce-reveal-btn[data-step="1"]').forEach(function(b) {
+        b.textContent = 'What do you see?'; b.classList.remove('revealed');
+      });
+      applyMode();
+    });
+  }
+
+  // ── Timer ──
+  var timerBtn = $('#osceTimerBtn');
+  var timerDisplay = $('#osceTimerDisplay');
+  if (timerBtn) {
+    timerBtn.addEventListener('click', function() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        timerSeconds = 300;
+        timerDisplay.textContent = '5:00';
+        timerDisplay.classList.remove('osce-timer-running', 'osce-timer-warning');
+      } else {
+        timerSeconds = 300;
+        timerDisplay.classList.add('osce-timer-running');
+        timerInterval = setInterval(function() {
+          timerSeconds--;
+          var m = Math.floor(timerSeconds / 60);
+          var s = timerSeconds % 60;
+          timerDisplay.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+          if (timerSeconds <= 30) timerDisplay.classList.add('osce-timer-warning');
+          if (timerSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            timerDisplay.textContent = "Time!";
+          }
+        }, 1000);
+      }
+    });
+  }
+
+  // ── Shuffle ──
+  var shuffleBtn = $('#osceShuffleBtn');
+  if (shuffleBtn) {
+    shuffleBtn.addEventListener('click', function() {
+      shuffled = true;
+      renderAllCases();
+    });
+  }
+
+  // ── Score ──
+  function updateScore() {
+    var badge = $('#osceScoreBadge');
+    if (badge) {
+      badge.textContent = score.correct + ' / ' + score.total;
+      badge.classList.add('osce-score-pop');
+      setTimeout(function() { badge.classList.remove('osce-score-pop'); }, 400);
+    }
+  }
+
+  // ── Filter ──
+  function filterCases() {
+    var mod = ($('#osceFilterMod') || {}).value || '';
+    var cat = ($('#osceFilterCat') || {}).value || '';
+    var q = (($('#osceFilterSearch') || {}).value || '').trim().toLowerCase();
+    var shown = 0;
+    $$('.osce-case-item').forEach(function(el) {
+      var show = true;
+      if (mod && el.dataset.modality !== mod) show = false;
+      if (cat && el.dataset.category !== cat) show = false;
+      if (q && el.dataset.search.indexOf(q) === -1) show = false;
+      el.style.display = show ? '' : 'none';
+      if (show) shown++;
+    });
+    var countEl = $('#osceFilterCount');
+    if (countEl) countEl.textContent = shown + ' case' + (shown !== 1 ? 's' : '');
+  }
+
+  ['osceFilterMod', 'osceFilterCat', 'osceFilterSearch'].forEach(function(id) {
+    var el = root.querySelector('#' + id);
+    if (el) el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', filterCases);
+  });
+
+  // ── Quick Reference ──
+  function renderQuickReference() {
+    var grid = $('#osceRefGrid');
+    if (!grid) return;
+    var colors = {
+      'cxr': '#2196F3', 'axr': '#4CAF50', 'msk': '#FF9800', 'ct_brain': '#607D8B'
+    };
+    var icons = {
+      'cxr': 'fa-lungs', 'axr': 'fa-stomach', 'msk': 'fa-bone', 'ct_brain': 'fa-brain'
+    };
+
+    // Helper: format item text with visual aids
+    // Bold text before first colon, highlight measurements/thresholds, flag warnings
+    function fmtItem(text) {
+      var s = esc(text);
+      // Bold the lead-in label before first colon (e.g., "Trachea:" → "<strong>Trachea:</strong>")
+      s = s.replace(/^([^:]+:)/, '<strong>$1</strong>');
+      // Highlight measurements in brackets-style: < 3cm, > 5mm, etc.
+      s = s.replace(/(&lt;\s*\d+[^&<]*|&gt;\s*\d+[^&<]*|\d+-\d+\s*(?:cm|mm|degrees|°|HU))/g, '<span class="osce-ref-measure">$1</span>');
+      // Flag WARNING/URGENT/EMERGENCY/PITFALL/ALWAYS
+      s = s.replace(/(WARNING|URGENT|EMERGENCY|ALWAYS abnormal|EARLIEST|DO NOT|commonly missed)/gi, '<span class="osce-ref-flag">$1</span>');
+      // Style arrows and equals for visual flow
+      s = s.replace(/(→)/g, '<span class="osce-ref-arrow">$1</span>');
+      return s;
+    }
+
+    var html = '';
+    for (var key in QREF) {
+      var ref = QREF[key];
+      var color = colors[key] || '#5E899E';
+      var icon = icons[key] || 'fa-clipboard-list';
+      html += '<div class="col-md-6">';
+      html += '<div class="osce-ref-card">';
+      html += '<div class="osce-ref-card-header" style="background:' + color + ';">'
+            + '<i class="fas ' + icon + ' me-2"></i>' + esc(ref.title) + '</div>';
+      if (ref.subtitle) {
+        html += '<div class="osce-ref-subtitle">' + esc(ref.subtitle) + '</div>';
+      }
+      html += '<div class="osce-ref-card-body">';
+      (ref.steps || []).forEach(function(step) {
+        html += '<div class="osce-ref-step">';
+        html += '<div class="osce-ref-letter" style="background:' + color + ';">' + esc(step.letter) + '</div>';
+        html += '<div class="osce-ref-step-content">';
+        html += '<div class="osce-ref-step-label">' + esc(step.label) + '</div>';
+        html += '<ul class="osce-ref-step-items">';
+        (step.items || []).forEach(function(item) {
+          html += '<li>' + fmtItem(item) + '</li>';
+        });
+        html += '</ul></div></div>';
+      });
+      html += '</div>';
+      // Views strip
+      if (ref.views) {
+        html += '<div class="osce-ref-views"><i class="fas fa-eye me-1"></i><strong>Views:</strong> ' + esc(ref.views) + '</div>';
+      }
+      // Quick Rules strip
+      var rules = ref.quickRules || [];
+      if (rules.length) {
+        html += '<div class="osce-ref-rules">';
+        html += '<div class="osce-ref-rules-title"><i class="fas fa-bolt me-1"></i>Quick Rules</div>';
+        html += '<div class="osce-ref-rules-grid">';
+        rules.forEach(function(r) {
+          html += '<div class="osce-ref-rule">'
+            + '<div class="osce-ref-rule-key">' + esc(r.rule) + '</div>'
+            + '<div class="osce-ref-rule-val">' + esc(r.meaning) + '</div>'
+            + '</div>';
+        });
+        html += '</div></div>';
+      }
+      html += '</div></div>';
+    }
+    grid.innerHTML = html;
+  }
+
+  // ── Pattern Index ──
+  function renderPatternIndex() {
+    var table = $('#oscePatternTable');
+    if (!table) return;
+    var thead = table.querySelector('thead');
+    var tbody = table.querySelector('tbody');
+
+    // Header: Pattern | each modality
+    var modKeys = Object.keys(MODS);
+    var hRow = '<tr><th style="text-align:left;">Pattern</th>';
+    modKeys.forEach(function(k) {
+      hRow += '<th>' + esc(MODS[k].label) + '</th>';
+    });
+    hRow += '</tr>';
+    thead.innerHTML = hRow;
+
+    // Rows
+    var rowsHtml = '';
+    for (var pk in PATTERNS) {
+      var pat = PATTERNS[pk];
+      rowsHtml += '<tr>';
+      rowsHtml += '<td class="osce-pattern-label"><i class="fas ' + esc(pat.icon || '') + ' me-1"></i>' + esc(pat.label) + '<br><span style="font-weight:400;font-size:0.7rem;color:#6b7280;">' + esc(pat.description || '') + '</span></td>';
+      modKeys.forEach(function(mk) {
+        var cases = (pat.cases || {})[mk] || [];
+        var cellHtml = cases.map(function(name) {
+          return '<a class="osce-pattern-link" data-diagnosis="' + esc(name) + '">' + esc(name) + '</a>';
+        }).join(' ');
+        rowsHtml += '<td>' + (cellHtml || '<span class="text-muted" style="font-size:0.7rem;">—</span>') + '</td>';
+      });
+      rowsHtml += '</tr>';
+    }
+    tbody.innerHTML = rowsHtml;
+
+    // Click handler: jump to case
+    tbody.querySelectorAll('.osce-pattern-link').forEach(function(link) {
+      link.addEventListener('click', function() {
+        var diag = this.dataset.diagnosis.toLowerCase();
+        var searchEl = $('#osceFilterSearch');
+        var modEl = $('#osceFilterMod');
+        var catEl = $('#osceFilterCat');
+        if (modEl) modEl.value = '';
+        if (catEl) catEl.value = '';
+        if (searchEl) { searchEl.value = diag; searchEl.dispatchEvent(new Event('input')); }
+        var tabBtn = $('#osce-tab-cases-btn');
+        if (tabBtn) { new bootstrap.Tab(tabBtn).show(); }
+      });
+    });
+  }
+
+  // ── Exam Technique ──
+  function renderTechnique() {
+    var grid = $('#osceTechniqueGrid');
+    if (!grid) return;
+    var html = '';
+
+    // ── Card 1: Before You Speak (FULL WIDTH — most important) ──
+    var bys = TECHNIQUE.beforeYouSpeak || {};
+    var bysSteps = bys.steps || [];
+    if (bysSteps.length) {
+      html += '<div class="col-12"><div class="osce-tech-card">';
+      html += '<div class="osce-tech-header" style="background:var(--brand-primary);">'
+            + '<i class="fas fa-hand-paper me-2"></i>' + esc(bys.title || 'Before You Speak') + '</div>';
+      if (bys.subtitle) {
+        html += '<div style="padding:0.5rem 1rem;font-size:0.82rem;color:#991b1b;background:#fef2f2;border-bottom:1px solid #fecaca;font-weight:600;">'
+              + '<i class="fas fa-exclamation-triangle me-1"></i>' + esc(bys.subtitle) + '</div>';
+      }
+      html += '<div class="osce-tech-body">';
+      bysSteps.forEach(function(s) {
+        html += '<div class="osce-bys-step">';
+        html += '<div class="osce-bys-num">' + s.step + '</div>';
+        html += '<div class="osce-bys-content">';
+        html += '<div class="osce-bys-label">' + esc(s.label) + '</div>';
+        html += '<p class="mb-1" style="font-size:0.82rem;">' + esc(s.action) + '</p>';
+        if (s.say) {
+          html += '<div class="osce-bys-say"><i class="fas fa-comment-dots me-1"></i>' + esc(s.say) + '</div>';
+        }
+        if (s.why) {
+          html += '<p class="mb-1" style="font-size:0.78rem;color:#4b5563;"><strong>Why:</strong> ' + esc(s.why) + '</p>';
+        }
+        // Modality specifics (step 3 — view)
+        if (s.modality_specifics) {
+          html += '<div class="osce-bys-modality-grid">';
+          for (var mk in s.modality_specifics) {
+            html += '<div class="osce-bys-mod-item"><strong>' + esc(mk) + ':</strong> ' + esc(s.modality_specifics[mk]) + '</div>';
+          }
+          html += '</div>';
+        }
+        // Quality checks (step 6)
+        if (s.checks) {
+          for (var ck in s.checks) {
+            html += '<div style="margin-top:0.3rem;"><strong style="font-size:0.78rem;">' + esc(ck) + ':</strong>';
+            html += '<ul style="font-size:0.78rem;margin:0.1rem 0 0.3rem 1rem;padding:0;">';
+            s.checks[ck].forEach(function(item) {
+              html += '<li>' + esc(item) + '</li>';
+            });
+            html += '</ul></div>';
+          }
+        }
+        // If missing / trap / if suboptimal
+        if (s.ifMissing) {
+          html += '<div class="osce-bys-tip"><i class="fas fa-lightbulb me-1"></i><strong>If missing:</strong> ' + esc(s.ifMissing) + '</div>';
+        }
+        if (s.trap) {
+          html += '<div class="osce-bys-trap"><i class="fas fa-exclamation-circle me-1"></i><strong>OSCE trap:</strong> ' + esc(s.trap) + '</div>';
+        }
+        if (s.ifSuboptimal) {
+          html += '<div class="osce-bys-tip"><i class="fas fa-lightbulb me-1"></i><strong>If suboptimal:</strong> ' + esc(s.ifSuboptimal) + '</div>';
+        }
+        if (s.ifNone) {
+          html += '<div class="osce-bys-tip"><i class="fas fa-lightbulb me-1"></i><strong>If none:</strong> ' + esc(s.ifNone) + '</div>';
+        }
+        html += '</div></div>';
+      });
+      if (bys.examinerTip) {
+        html += '<div class="osce-bys-examiner-tip"><i class="fas fa-user-tie me-2"></i>' + esc(bys.examinerTip) + '</div>';
+      }
+      html += '</div></div></div>';
+    }
+
+    // ── Card 2: Timing ──
+    var timing = TECHNIQUE.timing || {};
+    var breakdown = timing.breakdown || [];
+    html += '<div class="col-md-6"><div class="osce-tech-card">';
+    html += '<div class="osce-tech-header"><i class="fas fa-stopwatch me-2"></i>OSCE Timing — ' + (timing.total || 5) + ' Minutes</div>';
+    html += '<div class="osce-tech-body">';
+    html += '<div class="osce-timing-bar">';
+    breakdown.forEach(function(b) {
+      var pct = ((b.minutes / (timing.total || 5)) * 100).toFixed(0);
+      var col = b.color || '#5E899E';
+      html += '<div class="osce-timing-segment" style="width:' + pct + '%;background:' + col + ';">'
+            + esc(b.phase) + '</div>';
+    });
+    html += '</div>';
+    breakdown.forEach(function(b) {
+      html += '<p style="font-size:0.82rem;margin-bottom:0.3rem;"><strong>' + esc(b.phase)
+            + ' (' + b.minutes + ' min):</strong> ' + esc(b.description) + '</p>';
+    });
+    html += '</div></div></div>';
+
+    // ── Card 3: Presentation template ──
+    var tmpl = TECHNIQUE.presentationTemplate || {};
+    var tmplSections = tmpl.sections || [];
+    html += '<div class="col-md-6"><div class="osce-tech-card">';
+    html += '<div class="osce-tech-header"><i class="fas fa-microphone me-2"></i>' + esc(tmpl.title || 'Presentation Template') + '</div>';
+    html += '<div class="osce-tech-body">';
+    tmplSections.forEach(function(s) {
+      html += '<div style="margin-bottom:0.6rem;padding-bottom:0.6rem;border-bottom:1px solid #f3f4f6;">';
+      html += '<p style="font-size:0.82rem;font-weight:700;margin-bottom:0.2rem;color:var(--brand-neutral);">' + esc(s.phase) + '</p>';
+      html += '<p style="font-size:0.82rem;margin-bottom:0.15rem;font-style:italic;">' + esc(s.template) + '</p>';
+      if (s.notes) {
+        html += '<p style="font-size:0.75rem;color:#6b7280;margin:0;">' + esc(s.notes) + '</p>';
+      }
+      html += '</div>';
+    });
+    html += '</div></div></div>';
+
+    // ── Card 4: Key phrases ──
+    var phrases = TECHNIQUE.keyPhrases || [];
+    if (phrases.length) {
+      html += '<div class="col-md-6"><div class="osce-tech-card">';
+      html += '<div class="osce-tech-header"><i class="fas fa-quote-left me-2"></i>Key Phrases Examiners Expect</div>';
+      html += '<div class="osce-tech-body">';
+      phrases.forEach(function(p) {
+        html += '<div class="osce-phrase">';
+        html += '<div class="osce-phrase-text">"' + esc(p.phrase) + '"</div>';
+        html += '<div class="osce-phrase-when"><strong>When:</strong> ' + esc(p.when) + '</div>';
+        if (p.marks) {
+          html += '<div style="font-size:0.7rem;color:#065f46;margin-top:0.1rem;"><i class="fas fa-check-circle me-1"></i>' + esc(p.marks) + '</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    // ── Card 5: Common questions ──
+    var questions = TECHNIQUE.commonQuestions || [];
+    if (questions.length) {
+      html += '<div class="col-md-6"><div class="osce-tech-card">';
+      html += '<div class="osce-tech-header"><i class="fas fa-question-circle me-2"></i>Common Examiner Questions</div>';
+      html += '<div class="osce-tech-body">';
+      questions.forEach(function(q) {
+        html += '<div style="margin-bottom:0.5rem;padding-bottom:0.5rem;border-bottom:1px solid #f3f4f6;">';
+        html += '<p style="font-size:0.85rem;font-weight:600;margin-bottom:0.15rem;">' + esc(q.question) + '</p>';
+        html += '<p style="font-size:0.8rem;color:#4b5563;margin:0;">' + esc(q.tip) + '</p>';
+        html += '</div>';
+      });
+      html += '</div></div></div>';
+    }
+
+    // ── Card 6: Common mistakes ──
+    var mistakes = TECHNIQUE.commonMistakes || [];
+    if (mistakes.length) {
+      html += '<div class="col-12"><div class="osce-tech-card">';
+      html += '<div class="osce-tech-header" style="background:#dc2626;">'
+            + '<i class="fas fa-times-circle me-2"></i>Common Mistakes That Lose Marks</div>';
+      html += '<div class="osce-tech-body">';
+      html += '<div class="row g-2">';
+      mistakes.forEach(function(m) {
+        html += '<div class="col-md-6"><div class="osce-mistake-card">';
+        html += '<div class="osce-mistake-bad"><i class="fas fa-times me-1"></i>' + esc(m.mistake) + '</div>';
+        html += '<div class="osce-mistake-fix"><i class="fas fa-check me-1"></i>' + esc(m.fix) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+      html += '</div></div></div>';
+    }
+
+    grid.innerHTML = html;
+  }
+
+  // ── Init ──
+  renderAllCases();
+  renderQuickReference();
+  renderPatternIndex();
+  renderTechnique();
+
+})();
+</script>
+{% endblock %}
