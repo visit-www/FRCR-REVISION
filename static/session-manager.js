@@ -14,8 +14,8 @@ class SessionManager {
     constructor() {
         this.SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
         this.WARNING_TIME = 5 * 60 * 1000; // Show warning 5 minutes before expiration
-        this.REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh session every 5 minutes
-        this.ACTIVITY_CHECK_INTERVAL = 60000; // Check activity every minute
+        this.REFRESH_INTERVAL = 14 * 60 * 1000; // Refresh session every 14 minutes
+        this.ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // Check activity every 5 minutes
 
         this.lastActivity = Date.now();
         this.warningShown = false;

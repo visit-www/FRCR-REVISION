@@ -8958,56 +8958,66 @@ def sitemap_xml():
                 browse_dates[browse_url] = dt
 
     try:
-        # Published Cases (public case library)
-        published_cases = Case.query.filter_by(status=CaseStatus.PUBLISHED).all()
+        # Published Cases (public case library) — lightweight: only id + dates
+        published_cases = Case.query.filter_by(status=CaseStatus.PUBLISHED).with_entities(
+            Case.id, Case.updated_at, Case.created_at).all()
         _track_browse(f'{BASE}/case-library', published_cases)
         for case in published_cases:
             pages.append((f'{BASE}/case-library/{case.id}', '0.6', 'monthly', _lastmod(case)))
 
         # TNM Calculators (dynamic from DB)
-        calculators = TNMCalculatorContent.query.filter_by(is_available=True).all()
+        calculators = TNMCalculatorContent.query.filter_by(is_available=True).with_entities(
+            TNMCalculatorContent.slug, TNMCalculatorContent.updated_at, TNMCalculatorContent.created_at).all()
         _track_browse(f'{BASE}/tnm-calculator', calculators)
         for calc in calculators:
             if calc.slug:
                 pages.append((f'{BASE}/tnm-calculator/{calc.slug}', '0.7', 'monthly', _lastmod(calc)))
 
         # Reporting Algorithms (admin-verified only)
-        algorithms = ReportingAlgorithm.query.filter_by(origin='admin', is_available=True).all()
+        algorithms = ReportingAlgorithm.query.filter_by(origin='admin', is_available=True).with_entities(
+            ReportingAlgorithm.slug, ReportingAlgorithm.updated_at, ReportingAlgorithm.created_at).all()
         _track_browse(f'{BASE}/reporting-algorithms', algorithms)
         for algo in algorithms:
             pages.append((f'{BASE}/reporting-template/{algo.slug}', '0.6', 'monthly', _lastmod(algo)))
 
         # Radiology Templates (admin, available)
-        rad_templates = RadiologyTemplate.query.filter_by(is_available=True).all()
+        rad_templates = RadiologyTemplate.query.filter_by(is_available=True).with_entities(
+            RadiologyTemplate.id, RadiologyTemplate.updated_at, RadiologyTemplate.created_at).all()
         _track_browse(f'{BASE}/reporting-templates', rad_templates)
         for t in rad_templates:
             pages.append((f'{BASE}/radiology-template/view/{t.id}', '0.5', 'monthly', _lastmod(t)))
 
         # Radiology Tools (published)
-        tools = IncidentalFindingCalculator.query.filter_by(is_available=True).all()
+        tools = IncidentalFindingCalculator.query.filter_by(is_available=True).with_entities(
+            IncidentalFindingCalculator.slug, IncidentalFindingCalculator.updated_at, IncidentalFindingCalculator.created_at).all()
         _track_browse(f'{BASE}/incidental-findings', tools)
         for tool in tools:
             if tool.slug:
                 pages.append((f'{BASE}/incidental-findings/{tool.slug}', '0.6', 'monthly', _lastmod(tool)))
 
         # Clinical Protocols (published)
-        protocols = ClinicalProtocol.query.filter_by(is_published=True).all()
+        protocols = ClinicalProtocol.query.filter_by(is_published=True).with_entities(
+            ClinicalProtocol.id, ClinicalProtocol.updated_at, ClinicalProtocol.created_at).all()
         _track_browse(f'{BASE}/radiology-protocols', protocols)
         for proto in protocols:
             pages.append((f'{BASE}/radiology-protocols/view/{proto.id}', '0.5', 'monthly', _lastmod(proto)))
 
         # Anatomy Snippets (published) — browse page is /knowledge-hub
-        snippets = ReportingAlgorithm.query.filter_by(origin='anatomy_cache', is_available=True).all()
+        snippets = ReportingAlgorithm.query.filter_by(origin='anatomy_cache', is_available=True).with_entities(
+            ReportingAlgorithm.slug, ReportingAlgorithm.updated_at, ReportingAlgorithm.created_at).all()
         _track_browse(f'{BASE}/knowledge-hub', snippets)
         for s in snippets:
             pages.append((f'{BASE}/anatomy-snippets/{s.slug}', '0.5', 'monthly', _lastmod(s)))
 
         # Radiology Pearls (verified) — no individual URLs, just update browse page
-        pearls = RadiologyPearl.query.filter_by(is_verified=True).all()
+        pearls = RadiologyPearl.query.filter_by(is_verified=True).with_entities(
+            RadiologyPearl.id, RadiologyPearl.updated_at, RadiologyPearl.created_at).all()
         _track_browse(f'{BASE}/radiology-pearls', pearls)
 
         # Learning Questions (SBA/Viva)
-        lqs = LearningQuestion.query.all()
+        lqs = LearningQuestion.query.with_entities(
+            LearningQuestion.id, LearningQuestion.question_type,
+            LearningQuestion.updated_at, LearningQuestion.created_at).all()
         sba_lqs = [lq for lq in lqs if lq.question_type == 'sba']
         viva_lqs = [lq for lq in lqs if lq.question_type == 'viva']
         _track_browse(f'{BASE}/learn/sba', sba_lqs)

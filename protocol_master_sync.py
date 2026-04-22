@@ -439,10 +439,10 @@ def sync_master_protocols_to_db(db, ImagingProtocol, logger):
                          .count())
         if _synced_count >= len(master_map):
             result['skipped'] = _synced_count
-            logger.info('sync_master_protocols: all %d protocols already synced, skipping upsert',
+            logger.info('sync_master_protocols: all %d protocols already synced, skipping upsert + orphan check',
                         _synced_count)
-            # Jump straight to orphan deletion
-            return _delete_orphans(db, ImagingProtocol, master_map, result, logger)
+            # All master protocols present and synced — no orphans possible, skip DB read
+            return result
     except Exception:
         pass  # fall through to full sync
 
@@ -553,12 +553,13 @@ def _delete_orphans(db, ImagingProtocol, master_map, result, logger):
         master_slugs = set(master_map.keys())
         orphans = (ImagingProtocol.query
                    .filter(ImagingProtocol.origin == 'admin')
+                   .with_entities(ImagingProtocol.id, ImagingProtocol.slug)
                    .all())
         orphan_ids = []
         for row in orphans:
             if row.slug not in master_slugs:
-                logger.info('sync_master_protocols: deleting orphan admin row id=%s slug=%s title=%s',
-                            row.id, row.slug, row.title)
+                logger.info('sync_master_protocols: deleting orphan admin row id=%s slug=%s',
+                            row.id, row.slug)
                 orphan_ids.append(row.id)
                 result['deleted'] += 1
         if orphan_ids:
