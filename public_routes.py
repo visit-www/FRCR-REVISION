@@ -117,6 +117,7 @@ def osce_radiology_guide():
     cases_json = []
     for c in db_cases:
         images = [{
+            'id': img.id,
             'url': img.image_url,
             'thumbnail': img.image_thumbnail_url,
             'description': img.image_description,

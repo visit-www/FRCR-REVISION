@@ -54,8 +54,8 @@
         <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
       </div>
       {% if current_user.is_authenticated %}
-      <button class="btn btn-sm btn-brand-primary osce-header-notes-btn" id="osceNotesToggle" title="Notes & Discussion">
-        <i class="fas fa-sticky-note me-1"></i><span class="d-none d-md-inline">Notes</span>
+      <button class="btn btn-sm osce-header-notes-btn" id="osceNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);">
+        <i class="fas fa-comments me-1"></i><span class="d-none d-md-inline">Notes & Discussion</span>
       </button>
       {% endif %}
     </div>
@@ -196,17 +196,33 @@
           <span class="osce-focus-case-title" id="osceFocusTitle"></span>
         </div>
         <div class="osce-focus-header-right">
-          <button class="osce-focus-nav-btn" id="osceFocusPrev" title="Previous (←)"><i class="fas fa-chevron-left"></i></button>
-          <span class="osce-focus-counter" id="osceFocusCounter"></span>
-          <button class="osce-focus-nav-btn" id="osceFocusNext" title="Next (→)"><i class="fas fa-chevron-right"></i></button>
           <button class="osce-focus-close-btn" id="osceFocusClose" title="Close (Esc)"><i class="fas fa-times"></i></button>
         </div>
       </div>
-      <!-- Image area -->
-      <div class="osce-focus-image-area" id="osceFocusImageArea"></div>
-      <!-- Content area (scrollable) -->
-      <div class="osce-focus-content" id="osceFocusContent"></div>
+      <!-- Body: image + content side by side, or stacked on mobile -->
+      <div class="osce-focus-body" id="osceFocusBody">
+        <!-- Image panel (collapsible) -->
+        <div class="osce-focus-image-panel" id="osceFocusImagePanel">
+          <div class="osce-focus-image-area" id="osceFocusImageArea"></div>
+          <div class="osce-focus-image-nav" id="osceFocusImageNav"></div>
+        </div>
+        <!-- Content area (scrollable) -->
+        <div class="osce-focus-content" id="osceFocusContent"></div>
+      </div>
+      <!-- Case navigation footer -->
+      <div class="osce-focus-footer">
+        <button class="osce-focus-case-nav-btn" id="osceFocusPrev" title="Previous case"><i class="fas fa-chevron-left me-1"></i>Prev Case</button>
+        <span class="osce-focus-counter" id="osceFocusCounter"></span>
+        <button class="osce-focus-case-nav-btn" id="osceFocusNext" title="Next case">Next Case<i class="fas fa-chevron-right ms-1"></i></button>
+      </div>
     </div>
+  </div>
+
+  <!-- Fullscreen image viewer -->
+  <div class="osce-img-fullscreen" id="osceImgFullscreen" style="display:none;">
+    <img id="osceImgFullscreenImg" src="" alt="">
+    <div class="osce-img-fullscreen-caption" id="osceImgFullscreenCaption"></div>
+    <button class="osce-img-fullscreen-close" id="osceImgFullscreenClose"><i class="fas fa-times"></i></button>
   </div>
 
 </div><!-- /container -->
@@ -631,8 +647,8 @@
   padding: 0.5rem 1rem; background: var(--brand-neutral, #5E899E);
   color: #fff; flex-shrink: 0;
 }
-.osce-focus-header-left { display: flex; align-items: center; gap: 0.75rem; overflow: hidden; }
-.osce-focus-header-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+.osce-focus-header-left { display: flex; align-items: center; gap: 0.75rem; overflow: hidden; flex: 1; }
+.osce-focus-header-right { flex-shrink: 0; }
 .osce-focus-case-code {
   font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.2);
   padding: 0.15rem 0.4rem; border-radius: 0.25rem;
@@ -641,78 +657,109 @@
   font-size: 1rem; font-weight: 700; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
-.osce-focus-counter { font-size: 0.78rem; opacity: 0.8; min-width: 50px; text-align: center; }
-.osce-focus-nav-btn {
-  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
-  color: #fff; width: 32px; height: 32px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 0.85rem; transition: all 0.15s;
-}
-.osce-focus-nav-btn:hover { background: rgba(255,255,255,0.3); }
 .osce-focus-close-btn {
   background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
   color: #fff; width: 32px; height: 32px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  cursor: pointer; font-size: 1rem; transition: all 0.15s; margin-left: 0.5rem;
+  cursor: pointer; font-size: 1rem; transition: all 0.15s;
 }
 .osce-focus-close-btn:hover { background: #ef4444; border-color: #ef4444; }
 
-/* Image area */
+/* Body: image + content layout */
+.osce-focus-body {
+  flex: 1; display: flex; overflow: hidden;
+}
+.osce-focus-image-panel {
+  width: 40%; min-width: 280px; background: #111;
+  display: flex; flex-direction: column; flex-shrink: 0;
+  transition: width 0.3s ease;
+}
+.osce-focus-image-panel.osce-focus-img-hidden { width: 0; min-width: 0; overflow: hidden; padding: 0; }
 .osce-focus-image-area {
-  flex-shrink: 0; background: #111; padding: 1rem;
-  display: flex; flex-wrap: wrap; gap: 1rem;
-  justify-content: center; align-items: flex-start;
-  max-height: 55vh; overflow-y: auto;
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 0.75rem; overflow: hidden; cursor: pointer;
 }
-.osce-focus-img-slot { text-align: center; max-width: 100%; }
-.osce-focus-img-wrap { position: relative; display: inline-block; }
-.osce-focus-img {
-  max-height: 45vh; max-width: 100%; object-fit: contain;
-  border-radius: 0.5rem; border: 2px solid #333;
-  transition: opacity 0.3s ease;
+.osce-focus-image-area img {
+  max-width: 100%; max-height: 100%; object-fit: contain;
+  border-radius: 0.5rem; border: 2px solid #333; transition: opacity 0.3s;
 }
+.osce-focus-img-wrap { position: relative; display: inline-block; max-width: 100%; max-height: 100%; }
 .osce-focus-img-annotated {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   object-fit: contain; border-radius: 0.5rem;
 }
-.osce-focus-img-caption { font-size: 0.78rem; color: #d1d5db; margin-top: 0.3rem; }
-.osce-focus-img-attribution { font-size: 0.65rem; color: #9ca3af; font-style: italic; }
-.osce-focus-img-source {
-  display: inline-block; font-size: 0.68rem; color: #93c5fd;
-  text-decoration: none; margin-top: 0.15rem;
+/* Image nav bar (arrows, counter, hide/annotate buttons) */
+.osce-focus-image-nav {
+  flex-shrink: 0; background: #1f2937; padding: 0.4rem 0.75rem;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  color: #d1d5db; font-size: 0.75rem;
 }
-.osce-focus-img-source:hover { color: #60a5fa; text-decoration: underline; }
-.osce-focus-annot-toggle {
-  display: inline-block; margin-top: 0.4rem; padding: 0.25rem 0.6rem;
-  border-radius: 0.3rem; border: 1px solid #6b7280; background: #374151;
-  color: #d1d5db; font-size: 0.72rem; font-weight: 600; cursor: pointer;
-  transition: all 0.15s;
+.osce-focus-image-nav button {
+  background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+  color: #d1d5db; border-radius: 0.25rem; padding: 0.2rem 0.5rem;
+  font-size: 0.72rem; cursor: pointer; transition: all 0.15s;
 }
-.osce-focus-annot-toggle:hover { background: #4b5563; color: #fff; }
-.osce-focus-annot-toggle.osce-focus-annot-active {
-  background: var(--brand-primary, #e96304); border-color: var(--brand-primary);
-  color: #fff;
+.osce-focus-image-nav button:hover { background: rgba(255,255,255,0.25); color: #fff; }
+.osce-focus-image-nav button.osce-focus-annot-active {
+  background: var(--brand-primary); border-color: var(--brand-primary); color: #fff;
 }
+.osce-focus-img-caption { font-size: 0.72rem; color: #d1d5db; text-align: center; padding: 0.25rem 0.75rem; background: #1a1a1a; }
+.osce-focus-img-attribution { font-size: 0.62rem; color: #9ca3af; font-style: italic; text-align: center; padding: 0 0.75rem 0.25rem; background: #1a1a1a; }
+.osce-focus-img-attribution a { color: #93c5fd; text-decoration: none; }
+.osce-focus-img-attribution a:hover { color: #60a5fa; text-decoration: underline; }
 .osce-focus-no-image {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; padding: 2rem; color: #6b7280;
+  justify-content: center; padding: 2rem; color: #6b7280; flex: 1;
 }
 
-/* Content area (scrollable) */
+/* Content area */
 .osce-focus-content {
   flex: 1; overflow-y: auto; padding: 1.5rem 2rem;
 }
+/* Explanation list styling */
+.osce-expl-list { padding-left: 1.2rem; margin: 0.3rem 0; }
+.osce-expl-list li { margin-bottom: 0.4rem; line-height: 1.5; }
+
+/* Case nav footer */
+.osce-focus-footer {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  gap: 1rem; padding: 0.4rem 1rem; background: #f3f4f6; border-top: 1px solid #e5e7eb;
+}
+.osce-focus-counter { font-size: 0.78rem; color: #6b7280; min-width: 60px; text-align: center; }
+.osce-focus-case-nav-btn {
+  background: var(--brand-neutral); border: none; color: #fff;
+  padding: 0.3rem 0.75rem; border-radius: 0.3rem; font-size: 0.78rem;
+  font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.osce-focus-case-nav-btn:hover { filter: brightness(1.15); }
+
+/* Fullscreen image viewer */
+.osce-img-fullscreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 1100; background: rgba(0,0,0,0.95);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.osce-img-fullscreen img { max-width: 95%; max-height: 85vh; object-fit: contain; border-radius: 0.5rem; }
+.osce-img-fullscreen-caption { color: #d1d5db; font-size: 0.85rem; margin-top: 0.75rem; text-align: center; max-width: 80%; }
+.osce-img-fullscreen-close {
+  position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3); color: #fff; width: 40px; height: 40px;
+  border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex;
+  align-items: center; justify-content: center;
+}
+.osce-img-fullscreen-close:hover { background: #ef4444; border-color: #ef4444; }
+
 @media (max-width: 768px) {
+  .osce-focus-body { flex-direction: column; }
+  .osce-focus-image-panel { width: 100%; min-width: 0; max-height: 40vh; }
+  .osce-focus-image-panel.osce-focus-img-hidden { max-height: 0; }
   .osce-focus-content { padding: 1rem; }
-  .osce-focus-image-area { max-height: 40vh; padding: 0.5rem; }
   .osce-focus-header { padding: 0.4rem 0.5rem; }
   .osce-focus-case-title { font-size: 0.85rem; }
 }
 
-/* Focus reveal buttons (same style as card reveal) */
-.osce-focus-reveal-btn {
-  width: 100%; margin-bottom: 0.5rem;
-}
+/* Focus reveal buttons */
+.osce-focus-reveal-btn { width: 100%; margin-bottom: 0.5rem; }
 .osce-focus-reveal { /* container for revealed content */ }
 
 /* ── Admin-only edit controls (hidden from students/public) ── */
@@ -823,6 +870,26 @@ body.is-admin .osce-admin-edit-btn:hover {
    */
   function formatExplText(text) {
     if (!text) return '';
+    // Detect numbered list patterns: "1. Something 2. Something" or "1. Something. 2. Something."
+    var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
+    numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
+    if (numberedItems.length > 2) {
+      var html = '<ol class="osce-expl-list">';
+      numberedItems.forEach(function(item) {
+        var cleaned = item.replace(/^\d+\.\s*/, '').replace(/\.\s*$/, '').trim();
+        if (!cleaned) return;
+        // Bold the label before first dash or colon
+        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*(.*)/);
+        if (labelMatch) {
+          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
+        } else {
+          html += '<li>' + esc(cleaned) + '</li>';
+        }
+      });
+      html += '</ol>';
+      return html;
+    }
+    // Fall back to sentence splitting
     var sentences = text.split(/\.\s+(?=[A-Z])/);
     if (sentences.length > 2) {
       return sentences.map(function(s) {
@@ -958,24 +1025,22 @@ body.is-admin .osce-admin-edit-btn:hover {
       ptsHtml = '<ul class="osce-card-teaching-list">' + pts.map(function(p){ return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>';
     }
 
-    // ── Images (multiple, with attribution) ──
+    // ── Images: only non-annotated in card thumbnails ──
     var caseImages = c.images || [];
+    var cleanImages = caseImages.filter(function(i) { return !i.is_annotated; });
+    var displayImages = cleanImages.length ? cleanImages : caseImages;
     var imageHtml = '';
-    if (caseImages.length) {
-      if (caseImages.length === 1) {
-        var im = caseImages[0];
+    if (displayImages.length) {
+      if (displayImages.length === 1) {
+        var im = displayImages[0];
         imageHtml = '<div class="osce-case-image-wrap osce-focus-trigger" style="cursor:pointer;">'
           + '<img src="' + esc(im.url || im.thumbnail) + '" alt="' + esc(im.description || c.diagnosis) + '" class="osce-case-img">'
-          + (im.description ? '<div class="osce-img-caption">' + esc(im.description) + '</div>' : '')
-          + (im.attribution ? '<div class="osce-img-attribution">' + esc(im.attribution) + '</div>' : '')
           + '</div>';
       } else {
         imageHtml = '<div class="osce-case-image-grid osce-focus-trigger" style="cursor:pointer;">';
-        caseImages.forEach(function(im) {
+        displayImages.forEach(function(im) {
           imageHtml += '<div class="osce-case-image-item">'
             + '<img src="' + esc(im.thumbnail || im.url) + '" alt="' + esc(im.description || '') + '" class="osce-case-img-thumb">'
-            + (im.description ? '<div class="osce-img-caption">' + esc(im.description) + '</div>' : '')
-            + (im.attribution ? '<div class="osce-img-attribution">' + esc(im.attribution) + '</div>' : '')
             + '</div>';
         });
         imageHtml += '</div>';
@@ -1051,6 +1116,7 @@ body.is-admin .osce-admin-edit-btn:hover {
       +     '<button class="osce-reveal-btn" data-step="1">What do you see?</button>'
       +     '<div class="osce-reveal osce-reveal-findings">'
       +       findingsHtml
+      +       diveDeeperHtml
       +     '</div>'
       // Step 2 reveal: diagnosis + explanation + teaching
       +     '<button class="osce-reveal-btn osce-reveal-btn-step2 d-none" data-step="2">Show Diagnosis &amp; Teaching</button>'
@@ -1615,69 +1681,91 @@ body.is-admin .osce-admin-edit-btn:hover {
     if (examMode) { titleEl.style.filter = 'blur(8px)'; } else { titleEl.style.filter = ''; }
     document.getElementById('osceFocusCounter').textContent = (focusCurrentIdx + 1) + ' / ' + focusFilteredList.length;
 
-    // ── Image area ──
+    // ── Image area: carousel with one image at a time ──
     var imgArea = document.getElementById('osceFocusImageArea');
-    if (caseImages.length) {
-      // Separate clean and annotated
-      var cleanImgs = caseImages.filter(function(i) { return !i.is_annotated; });
-      var annotatedMap = {};
-      caseImages.forEach(function(i) {
-        if (i.is_annotated && i.paired_image_id) annotatedMap[i.paired_image_id] = i;
-      });
+    var imgNav = document.getElementById('osceFocusImageNav');
+    var imgPanel = document.getElementById('osceFocusImagePanel');
+    imgPanel.classList.remove('osce-focus-img-hidden');
 
-      var imgHtml = '';
-      var displayImgs = cleanImgs.length ? cleanImgs : caseImages;
-      displayImgs.forEach(function(im, idx) {
-        var annot = annotatedMap[im.id] || null; // look up by id field — may need adjusting
-        // For prototype cases without DB ids, skip annotation pairing
-        var hasAnnotated = !!annot;
+    // Separate clean and annotated images
+    var cleanImgs = caseImages.filter(function(i) { return !i.is_annotated; });
+    var annotatedMap = {};
+    caseImages.forEach(function(i) {
+      if (i.is_annotated && i.paired_image_id) annotatedMap[i.paired_image_id] = i;
+    });
+    var focusImgs = cleanImgs.length ? cleanImgs : caseImages.filter(function(i) { return !i.is_annotated; });
+    if (!focusImgs.length && caseImages.length) focusImgs = caseImages;
+    var focusImgIdx = 0;
+    var showingAnnotated = false;
 
-        imgHtml += '<div class="osce-focus-img-slot">';
-        // Clean image (always shown)
-        imgHtml += '<div class="osce-focus-img-wrap">'
-          + '<img src="' + esc(im.url || im.thumbnail) + '" alt="' + esc(im.description || c.diagnosis) + '" class="osce-focus-img" id="osceFocusImg' + idx + '">';
-        // Annotated overlay (hidden by default, toggled)
-        if (hasAnnotated) {
-          imgHtml += '<img src="' + esc(annot.url || annot.thumbnail) + '" alt="Annotated" class="osce-focus-img osce-focus-img-annotated" id="osceFocusAnnot' + idx + '" style="display:none;">';
-        }
-        imgHtml += '</div>';
-        // Caption + attribution
-        if (im.description) imgHtml += '<div class="osce-focus-img-caption">' + esc(im.description) + '</div>';
-        if (im.attribution) imgHtml += '<div class="osce-focus-img-attribution">' + esc(im.attribution) + '</div>';
-        if (im.source_url) imgHtml += '<a href="' + esc(im.source_url) + '" target="_blank" class="osce-focus-img-source"><i class="fas fa-external-link-alt me-1"></i>Source</a>';
-        // Toggle button
-        if (hasAnnotated) {
-          imgHtml += '<button class="osce-focus-annot-toggle" data-idx="' + idx + '">'
-            + '<i class="fas fa-draw-polygon me-1"></i>Show Annotations</button>';
-        }
-        imgHtml += '</div>';
-      });
-      imgArea.innerHTML = imgHtml;
+    function renderFocusImage() {
+      if (!focusImgs.length) {
+        imgArea.innerHTML = '<div class="osce-focus-no-image"><i class="fas ' + esc(mod.icon || 'fa-image') + '" style="font-size:3rem;color:#d1d5db;"></i><p>Image coming soon</p></div>';
+        imgNav.innerHTML = '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide</button>';
+        return;
+      }
+      var im = focusImgs[focusImgIdx];
+      var annot = annotatedMap[im.id] || null;
+      var src = im.url || im.thumbnail;
+      if (showingAnnotated && annot) src = annot.url || annot.thumbnail;
 
-      // Attach annotation toggle handlers
-      imgArea.querySelectorAll('.osce-focus-annot-toggle').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var idx = this.dataset.idx;
-          var clean = document.getElementById('osceFocusImg' + idx);
-          var annot = document.getElementById('osceFocusAnnot' + idx);
-          if (!annot) return;
-          var showing = annot.style.display !== 'none';
-          if (showing) {
-            annot.style.display = 'none';
-            clean.style.opacity = '1';
-            this.innerHTML = '<i class="fas fa-draw-polygon me-1"></i>Show Annotations';
-            this.classList.remove('osce-focus-annot-active');
-          } else {
-            annot.style.display = '';
-            clean.style.opacity = '0.3';
-            this.innerHTML = '<i class="fas fa-eye me-1"></i>Hide Annotations';
-            this.classList.add('osce-focus-annot-active');
-          }
-        });
+      imgArea.innerHTML = '<div class="osce-focus-img-wrap">'
+        + '<img src="' + esc(src) + '" alt="' + esc(im.description || c.diagnosis) + '" id="osceFocusMainImg">'
+        + '</div>';
+
+      // Caption + attribution below image
+      var captionHtml = '';
+      if (im.description) captionHtml += '<div class="osce-focus-img-caption">' + esc(im.description) + '</div>';
+      var attrParts = [];
+      if (im.attribution) attrParts.push(esc(im.attribution));
+      if (im.source_url) attrParts.push('<a href="' + esc(im.source_url) + '" target="_blank" rel="noopener"><i class="fas fa-external-link-alt me-1"></i>Source</a>');
+      if (attrParts.length) captionHtml += '<div class="osce-focus-img-attribution">' + attrParts.join(' &middot; ') + '</div>';
+      imgArea.insertAdjacentHTML('beforeend', captionHtml);
+
+      // Nav bar: arrows + counter + annotate + hide
+      var navHtml = '';
+      if (focusImgs.length > 1) {
+        navHtml += '<button id="osceFocusImgPrev"><i class="fas fa-chevron-left"></i></button>';
+        navHtml += '<span>' + (focusImgIdx + 1) + ' / ' + focusImgs.length + '</span>';
+        navHtml += '<button id="osceFocusImgNext"><i class="fas fa-chevron-right"></i></button>';
+        navHtml += '<span style="margin:0 0.25rem;">|</span>';
+      }
+      if (annot) {
+        navHtml += '<button id="osceFocusAnnotBtn" class="' + (showingAnnotated ? 'osce-focus-annot-active' : '') + '">'
+          + '<i class="fas fa-draw-polygon me-1"></i>' + (showingAnnotated ? 'Clean' : 'Annotated') + '</button>';
+      }
+      navHtml += '<button id="osceFocusHideImg"><i class="fas fa-eye-slash me-1"></i>Hide</button>';
+      imgNav.innerHTML = navHtml;
+
+      // Attach nav handlers
+      var prevBtn = document.getElementById('osceFocusImgPrev');
+      var nextBtn = document.getElementById('osceFocusImgNext');
+      if (prevBtn) prevBtn.addEventListener('click', function() {
+        focusImgIdx = (focusImgIdx - 1 + focusImgs.length) % focusImgs.length;
+        showingAnnotated = false; renderFocusImage();
       });
-    } else {
-      imgArea.innerHTML = '<div class="osce-focus-no-image"><i class="fas ' + esc(mod.icon || 'fa-image') + '" style="font-size:3rem;color:#d1d5db;"></i><p>Image coming soon</p></div>';
+      if (nextBtn) nextBtn.addEventListener('click', function() {
+        focusImgIdx = (focusImgIdx + 1) % focusImgs.length;
+        showingAnnotated = false; renderFocusImage();
+      });
+      var annotBtn = document.getElementById('osceFocusAnnotBtn');
+      if (annotBtn) annotBtn.addEventListener('click', function() {
+        showingAnnotated = !showingAnnotated; renderFocusImage();
+      });
+      document.getElementById('osceFocusHideImg').addEventListener('click', function() {
+        imgPanel.classList.toggle('osce-focus-img-hidden');
+        this.innerHTML = imgPanel.classList.contains('osce-focus-img-hidden')
+          ? '<i class="fas fa-eye me-1"></i>Show' : '<i class="fas fa-eye-slash me-1"></i>Hide';
+      });
+      // Fullscreen on image click
+      document.getElementById('osceFocusMainImg').addEventListener('click', function() {
+        var fs = document.getElementById('osceImgFullscreen');
+        document.getElementById('osceImgFullscreenImg').src = this.src;
+        document.getElementById('osceImgFullscreenCaption').textContent = im.description || '';
+        fs.style.display = '';
+      });
     }
+    renderFocusImage();
 
     // ── Content area ──
     var contentEl = document.getElementById('osceFocusContent');
@@ -1715,6 +1803,14 @@ body.is-admin .osce-admin-edit-btn:hover {
       if (views.why_this_view) html += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
       if (views.additional_views) html += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
       html += '</div></div>';
+    }
+    // Dive deeper in step 1 reveal
+    if (linkedIds.length === 1) {
+      html += '<div class="mt-2"><a href="/view-case/' + linkedIds[0] + '" class="btn btn-sm btn-brand-neutral osce-dive-deeper-btn"><i class="fas fa-microscope me-1"></i>Dive Deeper — Full Case Study</a></div>';
+    } else if (linkedIds.length > 1) {
+      html += '<div class="mt-2"><span class="small fw-bold text-muted"><i class="fas fa-microscope me-1"></i>Dive Deeper:</span> ';
+      linkedIds.forEach(function(cid, i) { html += '<a href="/view-case/' + cid + '" class="btn btn-sm btn-outline-secondary me-1 mb-1">Case ' + (i+1) + '</a>'; });
+      html += '</div>';
     }
     html += '</div></div>';
 
@@ -1833,8 +1929,20 @@ body.is-admin .osce-admin-edit-btn:hover {
   document.getElementById('osceFocusPrev').addEventListener('click', function() { focusNav(-1); });
   document.getElementById('osceFocusNext').addEventListener('click', function() { focusNav(1); });
 
+  // Fullscreen image close
+  document.getElementById('osceImgFullscreenClose').addEventListener('click', function() {
+    document.getElementById('osceImgFullscreen').style.display = 'none';
+  });
+  document.getElementById('osceImgFullscreen').addEventListener('click', function(e) {
+    if (e.target === this) this.style.display = 'none';
+  });
+
   // Keyboard navigation
   document.addEventListener('keydown', function(e) {
+    // Fullscreen image close
+    if (document.getElementById('osceImgFullscreen').style.display !== 'none' && e.key === 'Escape') {
+      document.getElementById('osceImgFullscreen').style.display = 'none'; return;
+    }
     if (!focusOverlay.classList.contains('osce-focus-open')) return;
     if (e.key === 'Escape') closeFocusView();
     if (e.key === 'ArrowLeft') focusNav(-1);
