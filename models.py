@@ -4380,7 +4380,8 @@ class OsceCase(db.Model):
 
 
 class OsceCaseImage(db.Model):
-    """Images for OSCE cases — multiple per case, each with description + attribution."""
+    """Images for OSCE cases — multiple per case, each with description + attribution.
+    Supports annotated/clean image pairing for comparison view."""
     __tablename__ = 'osce_case_image'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -4396,8 +4397,17 @@ class OsceCaseImage(db.Model):
     attribution = db.Column(db.String(500), default='')  # e.g. "Radiopaedia, CC BY-NC-SA 3.0"
     source_url = db.Column(db.String(500), nullable=True)  # Link to original source
 
+    # Annotation pairing
+    is_annotated = db.Column(db.Boolean, default=False)  # True = this is an annotated version
+    paired_image_id = db.Column(db.Integer, db.ForeignKey('osce_case_image.id', ondelete='SET NULL'), nullable=True)
+    # annotated image points to its clean counterpart (or vice versa)
+
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Self-referential relationship
+    paired_image = db.relationship('OsceCaseImage', remote_side=[id], uselist=False,
+                                   foreign_keys=[paired_image_id])
+
     def __repr__(self):
-        return f'<OsceCaseImage {self.id} for OsceCase {self.osce_case_id}>'
+        return f'<OsceCaseImage {self.id} {"(annotated)" if self.is_annotated else ""} for OsceCase {self.osce_case_id}>'

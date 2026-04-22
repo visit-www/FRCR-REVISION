@@ -121,6 +121,9 @@ def osce_radiology_guide():
             'thumbnail': img.image_thumbnail_url,
             'description': img.image_description,
             'attribution': img.attribution,
+            'source_url': img.source_url,
+            'is_annotated': img.is_annotated or False,
+            'paired_image_id': img.paired_image_id,
         } for img in c.images.order_by(OsceCaseImage.sort_order).all()]
 
         # Try to use structured osce_data JSON, fall back to content_html

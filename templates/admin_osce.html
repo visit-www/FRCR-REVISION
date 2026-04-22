@@ -229,10 +229,21 @@
               <div class="col-md-6">
                 <input type="text" class="form-control form-control-sm" id="oaImageAttribution" placeholder="Attribution (e.g. Radiopaedia, CC BY-NC-SA)">
               </div>
-              <div class="col-md-8">
+              <div class="col-md-6">
                 <input type="text" class="form-control form-control-sm" id="oaImageSourceUrl" placeholder="Source URL (optional)">
               </div>
-              <div class="col-md-4">
+              <div class="col-md-3">
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" id="oaImageAnnotated">
+                  <label class="form-check-label small" for="oaImageAnnotated">Annotated image</label>
+                </div>
+              </div>
+              <div class="col-md-3" id="oaPairSelect" style="display:none;">
+                <select class="form-select form-select-sm" id="oaImagePairId">
+                  <option value="">Pair with clean image...</option>
+                </select>
+              </div>
+              <div class="col-md-12">
                 <button class="btn btn-sm btn-brand-primary w-100" onclick="uploadImage()"><i class="fas fa-upload me-1"></i>Upload</button>
               </div>
             </div>
@@ -497,21 +508,62 @@
   function loadImages(caseId) {
     fetch(API + '/cases/' + caseId).then(r => r.json()).then(data => {
       var list = document.getElementById('oaImageList');
+      // Populate pair dropdown for annotated uploads
+      var pairSel = document.getElementById('oaImagePairId');
+      pairSel.innerHTML = '<option value="">Pair with clean image...</option>';
+
       if (!data.images || !data.images.length) {
         list.innerHTML = '<p class="text-muted small">No images yet.</p>';
         return;
       }
+
+      // Build pair options (clean images only)
+      data.images.filter(function(i) { return !i.is_annotated; }).forEach(function(i) {
+        var opt = document.createElement('option');
+        opt.value = i.id;
+        opt.textContent = '#' + i.id + ' — ' + (i.image_description || 'No desc').substring(0, 40);
+        pairSel.appendChild(opt);
+      });
+
       list.innerHTML = data.images.map(function(img) {
+        var badge = img.is_annotated
+          ? '<span class="badge bg-warning text-dark" style="font-size:0.65rem;">Annotated</span>'
+          : '<span class="badge bg-info" style="font-size:0.65rem;">Clean</span>';
+        var pairInfo = '';
+        if (img.paired_image_id) {
+          pairInfo = '<span class="small text-success d-block"><i class="fas fa-link me-1"></i>Paired #' + img.paired_image_id + '</span>';
+        } else if (!img.is_annotated) {
+          // Clean image without annotated pair — show upload button
+          pairInfo = '<button class="btn btn-sm btn-outline-warning mt-1 w-100" onclick="prepareAnnotatedUpload(' + img.id + ')"><i class="fas fa-draw-polygon me-1"></i>Upload Annotated</button>';
+        }
         return '<div class="col-md-4"><div class="card-brand">'
           + '<img src="' + (img.image_thumbnail_url || img.image_url) + '" class="w-100" style="border-radius:8px 8px 0 0;height:140px;object-fit:cover;">'
           + '<div class="card-brand-body py-2 px-2">'
-          + '<p class="small mb-1"><strong>' + (img.image_description || 'No description') + '</strong></p>'
+          + '<div class="d-flex justify-content-between align-items-center mb-1">'
+          + '<p class="small mb-0"><strong>' + (img.image_description || 'No description') + '</strong></p>'
+          + badge + '</div>'
           + '<p class="small text-muted mb-1">' + (img.attribution || 'No attribution') + '</p>'
-          + '<button class="btn btn-sm btn-outline-danger" onclick="deleteImage(' + img.id + ',' + data.id + ')"><i class="fas fa-trash me-1"></i>Delete</button>'
+          + pairInfo
+          + '<button class="btn btn-sm btn-outline-danger mt-1" onclick="deleteImage(' + img.id + ',' + data.id + ')"><i class="fas fa-trash me-1"></i>Delete</button>'
           + '</div></div></div>';
       }).join('');
     });
   }
+
+  // Pre-fill annotated upload form when clicking "Upload Annotated" on a clean image
+  window.prepareAnnotatedUpload = function(cleanImageId) {
+    document.getElementById('oaImageAnnotated').checked = true;
+    document.getElementById('oaImagePairId').value = cleanImageId;
+    document.getElementById('oaPairSelect').style.display = '';
+    // Scroll to upload form
+    document.getElementById('oaImageFile').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('oaImageFile').focus();
+  };
+
+  // Show/hide pair selector when annotated checkbox changes
+  document.getElementById('oaImageAnnotated').addEventListener('change', function() {
+    document.getElementById('oaPairSelect').style.display = this.checked ? '' : 'none';
+  });
 
   window.uploadImage = function() {
     var caseId = document.getElementById('oaImageCaseId').value;
@@ -523,6 +575,9 @@
     fd.append('description', document.getElementById('oaImageDesc').value);
     fd.append('attribution', document.getElementById('oaImageAttribution').value);
     fd.append('source_url', document.getElementById('oaImageSourceUrl').value);
+    fd.append('is_annotated', document.getElementById('oaImageAnnotated').checked);
+    var pairId = document.getElementById('oaImagePairId').value;
+    if (pairId) fd.append('paired_image_id', pairId);
 
     fetch(API + '/cases/' + caseId + '/images', { method: 'POST', body: fd })
       .then(r => r.json()).then(data => {
@@ -531,6 +586,16 @@
           document.getElementById('oaImageDesc').value = '';
           document.getElementById('oaImageAttribution').value = '';
           document.getElementById('oaImageSourceUrl').value = '';
+          document.getElementById('oaImageAnnotated').checked = false;
+          document.getElementById('oaPairSelect').style.display = 'none';
+          document.getElementById('oaImagePairId').value = '';
+          // If we uploaded an annotated version, also link the clean image back
+          if (data.image && data.image.id && pairId) {
+            fetch(API + '/images/' + pairId, {
+              method: 'PUT', headers: {'Content-Type':'application/json'},
+              body: JSON.stringify({ paired_image_id: data.image.id })
+            });
+          }
           loadImages(caseId);
         } else {
           alert('Error: ' + (data.error || 'Unknown'));

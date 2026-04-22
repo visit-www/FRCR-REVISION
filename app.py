@@ -2044,6 +2044,10 @@ match specific statistical claims to paper abstracts.</p>
         _add_col_if_missing('forum_message', 'content_type', 'content_type VARCHAR(30)')
         _add_col_if_missing('forum_message', 'content_key', 'content_key VARCHAR(100)')
 
+        # -- osce_case_image: annotation pairing --
+        _add_col_if_missing('osce_case_image', 'is_annotated', 'is_annotated BOOLEAN DEFAULT false')
+        _add_col_if_missing('osce_case_image', 'paired_image_id', 'paired_image_id INTEGER')
+
         # -- user: Login rate limiting (brute force protection) --
         _add_col_if_missing('user', 'failed_login_count', 'failed_login_count INTEGER DEFAULT 0')
         _add_col_if_missing('user', 'failed_login_last', 'failed_login_last TIMESTAMP')

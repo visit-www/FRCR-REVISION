@@ -113,6 +113,8 @@ def get_osce_case(case_id):
         'attribution': img.attribution,
         'source_url': img.source_url,
         'sort_order': img.sort_order,
+        'is_annotated': img.is_annotated or False,
+        'paired_image_id': img.paired_image_id,
     } for img in case.images.order_by(OsceCaseImage.sort_order).all()]
 
     return jsonify({
@@ -277,6 +279,9 @@ def upload_osce_image(case_id):
     description = (request.form.get('description') or '').strip()
     attribution = (request.form.get('attribution') or '').strip()
     source_url = (request.form.get('source_url') or '').strip()
+    is_annotated = request.form.get('is_annotated', '').lower() in ('true', '1', 'on')
+    paired_image_id = request.form.get('paired_image_id', '').strip()
+    paired_image_id = int(paired_image_id) if paired_image_id else None
 
     try:
         # Strip EXIF for privacy
@@ -302,6 +307,8 @@ def upload_osce_image(case_id):
             image_description=description,
             attribution=attribution,
             source_url=source_url or None,
+            is_annotated=is_annotated,
+            paired_image_id=paired_image_id,
             sort_order=case.images.count(),
         )
         db.session.add(img)
@@ -337,6 +344,10 @@ def update_osce_image(image_id):
         img.source_url = data['source_url']
     if 'sort_order' in data:
         img.sort_order = int(data['sort_order'])
+    if 'is_annotated' in data:
+        img.is_annotated = bool(data['is_annotated'])
+    if 'paired_image_id' in data:
+        img.paired_image_id = data['paired_image_id'] or None
 
     db.session.commit()
     return jsonify({'success': True})
