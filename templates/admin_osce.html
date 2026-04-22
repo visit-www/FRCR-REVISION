@@ -54,7 +54,7 @@
               </td>
               <td class="text-center">{{ c.images.count() }}</td>
               <td class="text-center">
-                {% if c.linked_case_id %}<a href="/view-case/{{ c.linked_case_id }}" target="_blank" class="text-success"><i class="fas fa-link"></i></a>
+                {% if c.get_linked_case_ids() %}<span class="text-success" title="{{ c.get_linked_case_ids()|length }} linked case(s)"><i class="fas fa-link"></i> {{ c.get_linked_case_ids()|length }}</span>
                 {% else %}<span class="text-muted">—</span>{% endif %}
               </td>
               <td>

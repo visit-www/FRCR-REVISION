@@ -161,7 +161,7 @@
                                 <i class="fas fa-book-open me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Knowledge Hub
                             </a>
                             <a href="/osce-radiology-guide" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_osce_guide %}{% endblock %}">
-                                <i class="fas fa-x-ray me-2" style="color: #e96304; width: 16px; text-align: center;"></i>OSCE Guide
+                                <i class="fas fa-x-ray me-2" style="color: #e96304; width: 16px; text-align: center;"></i>OSCE Radiology
                             </a>
                         </div>
 
@@ -318,7 +318,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/osce-radiology-guide" title="OSCE Radiology Guide">
-                            <i class="fas fa-x-ray me-1"></i><span class="d-none d-md-inline">OSCE Guide</span>
+                            <i class="fas fa-x-ray me-1"></i><span class="d-none d-md-inline">OSCE Radiology</span>
                         </a>
                     </li>
                     <!-- Login/Register Links (when not authenticated) -->
@@ -381,7 +381,7 @@
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_cases() }}" href="/cases"><i class="fas fa-book-medical me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Cases</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm_staging() }}" href="/tnm"><i class="fas fa-layer-group me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>Oncology</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in (self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) }}" href="/knowledge-hub"><i class="fas fa-book-open me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Knowledge Hub</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_osce_guide() }}" href="/osce-radiology-guide"><i class="fas fa-x-ray me-2" style="color: #e96304; width: 16px; text-align: center;"></i>OSCE Guide</a></li>
+                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_osce_guide() }}" href="/osce-radiology-guide"><i class="fas fa-x-ray me-2" style="color: #e96304; width: 16px; text-align: center;"></i>OSCE Radiology</a></li>
                     </ul>
                 </div>
 

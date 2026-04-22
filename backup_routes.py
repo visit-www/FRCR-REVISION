@@ -1324,6 +1324,8 @@ def _build_backup_data():
             'image_thumbnail_url': oi.image_thumbnail_url,
             'image_description': oi.image_description,
             'attribution': oi.attribution, 'source_url': oi.source_url,
+            'is_annotated': oi.is_annotated or False,
+            'paired_image_id': oi.paired_image_id,
             'sort_order': oi.sort_order,
             'created_at': oi.created_at.isoformat() if oi.created_at else None,
         })
@@ -4848,6 +4850,7 @@ def restore_backup():
                 osce_data=oc_data.get('osce_data'),
                 content_html=oc_data.get('content_html'),
                 linked_case_id=oc_data.get('linked_case_id'),
+                linked_case_ids=oc_data.get('linked_case_ids'),
                 reference_links=oc_data.get('reference_links'),
                 is_published=oc_data.get('is_published', False),
                 sort_order=oc_data.get('sort_order', 0),
@@ -4871,6 +4874,8 @@ def restore_backup():
                 image_description=oi_data.get('image_description', ''),
                 attribution=oi_data.get('attribution', ''),
                 source_url=oi_data.get('source_url'),
+                is_annotated=oi_data.get('is_annotated', False),
+                paired_image_id=oi_data.get('paired_image_id'),
                 sort_order=oi_data.get('sort_order', 0),
             )
             if oi_data.get('created_at'):

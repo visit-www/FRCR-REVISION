@@ -4,14 +4,14 @@
 {% block tool_active_osce_guide %}active{% endblock %}
 {% block mobile_active_osce_guide %}active{% endblock %}
 
-{% block title %}OSCE Radiology Guide — Pattern Recognition for Medical Students | RadInsights{% endblock %}
+{% block title %}Basic Radiology for 3rd Year OSCE — Pattern Recognition for Medical Students | RadInsights{% endblock %}
 {% block meta_description %}Interactive radiology OSCE guide for 3rd-year medical students. 65 cases across 7 modalities with systematic approaches, pattern recognition, and exam-mode practice.{% endblock %}
-{% block og_title %}OSCE Radiology Guide — RadInsights{% endblock %}
+{% block og_title %}Basic Radiology for 3rd Year OSCE — RadInsights{% endblock %}
 {% block og_description %}Master radiology pattern recognition for your OSCE. Chest X-ray, abdominal X-ray, MSK, CT brain — with timed exam mode and instant feedback.{% endblock %}
 
 {% block extra_schema %}
 {{ educational_content(
-    'OSCE Radiology Guide — Pattern Recognition for Medical Students',
+    'Basic Radiology for 3rd Year OSCE — Pattern Recognition for Medical Students',
     'Interactive radiology OSCE preparation covering 7 modalities with systematic approaches, pattern recognition drills, and timed exam-mode practice.',
     'https://www.radinsights.xyz/osce-radiology-guide'
 ) }}
@@ -22,7 +22,7 @@
   "itemListElement": [
     { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.radinsights.xyz/" },
     { "@type": "ListItem", "position": 2, "name": "Knowledge Hub", "item": "https://www.radinsights.xyz/knowledge-hub" },
-    { "@type": "ListItem", "position": 3, "name": "OSCE Radiology Guide", "item": "https://www.radinsights.xyz/osce-radiology-guide" }
+    { "@type": "ListItem", "position": 3, "name": "Basic Radiology for 3rd Year OSCE", "item": "https://www.radinsights.xyz/osce-radiology-guide" }
   ]
 }
 </script>
@@ -30,7 +30,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item"><a href="/knowledge-hub" class="text-white text-decoration-none">Knowledge Hub</a></li>
-<li class="breadcrumb-item active text-white-50">OSCE Radiology Guide</li>
+<li class="breadcrumb-item active text-white-50">Basic Radiology for 3rd Year OSCE</li>
 {% endblock %}
 
 {% block content %}
@@ -41,15 +41,24 @@
     <ol class="breadcrumb small mb-0">
       <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
       <li class="breadcrumb-item"><a href="/knowledge-hub" class="text-decoration-none">Knowledge Hub</a></li>
-      <li class="breadcrumb-item active" aria-current="page">OSCE Radiology Guide</li>
+      <li class="breadcrumb-item active" aria-current="page">Basic Radiology for 3rd Year OSCE</li>
     </ol>
   </nav>
 
   <!-- ═══════════ HEADER ═══════════ -->
-  <div class="text-center mb-4">
-    <i class="fas fa-x-ray" style="font-size: 2.5rem; color: var(--brand-primary);"></i>
-    <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">OSCE Radiology Guide</h1>
-    <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
+  <div class="mb-4">
+    <div class="d-flex align-items-start justify-content-between">
+      <div class="text-center flex-grow-1">
+        <i class="fas fa-x-ray" style="font-size: 2.5rem; color: var(--brand-primary);"></i>
+        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Basic Radiology for 3rd Year OSCE</h1>
+        <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
+      </div>
+      {% if current_user.is_authenticated %}
+      <button class="btn btn-sm btn-brand-primary osce-header-notes-btn" id="osceNotesToggle" title="Notes & Discussion">
+        <i class="fas fa-sticky-note me-1"></i><span class="d-none d-md-inline">Notes</span>
+      </button>
+      {% endif %}
+    </div>
     <div class="d-flex flex-wrap justify-content-center gap-2 mb-3" id="osceModBadges"></div>
   </div>
 
@@ -202,12 +211,8 @@
 
 </div><!-- /container -->
 
-{% if current_user.is_authenticated %}
-<button class="osce-notes-fab" id="osceNotesToggle" title="Notes & Discussion">
-  <i class="fas fa-sticky-note"></i>
-</button>
-{% endif %}
-
+{% set cta_title = 'Access the full RadInsights platform' %}
+{% set cta_description = 'Free access to the full OSCE radiology guide with personal notes, text highlighting, and discussion forums. Plus AI-powered Smart Reporter, RadIQ radiology suite, 45+ TNM staging calculators, 130+ imaging protocols, radiology tools and calculators, and much more.' %}
 {% include 'partials/_public_cta.html' %}
 
 <!-- ═══════════ SCOPED CSS ═══════════ -->
@@ -595,23 +600,13 @@
   font-size: 0.8rem;
 }
 
-/* ── Notes & Discussion FAB (fixed top-right) ── */
-.osce-notes-fab {
-  position: fixed; top: 80px; right: 16px; z-index: 1035;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: linear-gradient(135deg, #e96304 0%, #d45a03 100%);
-  color: #fff; border: none; box-shadow: 0 3px 12px rgba(233,99,4,0.35);
-  font-size: 1.1rem; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s ease;
+/* ── Notes button in header row ── */
+.osce-header-notes-btn {
+  white-space: nowrap; flex-shrink: 0; margin-top: 0.5rem;
 }
-.osce-notes-fab:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 16px rgba(233,99,4,0.5);
-}
-.osce-notes-fab.ci-toggle-active {
-  background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);
-  box-shadow: 0 3px 12px rgba(94,137,158,0.4);
+.osce-header-notes-btn.ci-toggle-active {
+  background: var(--brand-neutral) !important;
+  border-color: var(--brand-neutral) !important;
 }
 
 /* ══════════════ FOCUS VIEW OVERLAY ══════════════ */
