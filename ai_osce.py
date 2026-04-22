@@ -7,7 +7,7 @@ Two prompt variants: pathological cases and normal studies.
 Output: structured JSON for the OSCE guide page — editable in TinyMCE
 when rendered to HTML.
 
-Prompt Version: v1
+Prompt Version: v2
 Last Updated: April 2026
 """
 
@@ -180,18 +180,16 @@ Return valid JSON with this exact structure:
   }},
 
   "explanation": {{
-    "pattern_recognition": "Link the visual pattern to the diagnosis: 'If you see X → think Y → because Z'. Make this memorable and concise.",
-    "mechanism": "Explain WHY the imaging looks like this. Keep simple but conceptually correct. A 3rd-year student should understand this. Example: 'Air enters the pleural space through a defect in the visceral pleura. The lung elastic recoil causes it to collapse away from the chest wall, creating a visible edge.'",
-    "why_it_matters": "Clinical significance — why must a student know this? Focus on patient safety and exam relevance."
+    "pattern_recognition": "One concise sentence: 'If you see X → think Y → because Z'. Make this memorable.",
+    "mechanism": "2-3 sentences explaining WHY the imaging looks like this. Simple enough for a 3rd-year student.",
+    "why_it_matters": "1-2 sentences: clinical significance, patient safety, and what action is needed."
   }},
 
   "teaching_points": [
-    "3-5 high-yield, memorable teaching points",
-    "MUST include one point about the view: which view best shows this finding, why, and what additional views help (brief, 1-2 sentences)",
-    "Include classic signs, named signs, measurement thresholds where relevant",
-    "Include common examiner follow-up questions with brief answers",
-    "Include key differentials if relevant (1-2 main mimics)",
-    "Include 'do not miss' safety point if applicable"
+    "3 high-yield teaching points only (not 4, not 5 — exactly 3)",
+    "Each point must be 1-2 sentences max",
+    "Include: one classic sign/measurement, one key differential or mimic, one examiner follow-up with brief answer",
+    "Do NOT repeat information already in approach, key_finding, or explanation"
   ]
 }}
 
@@ -290,18 +288,15 @@ Return valid JSON with this exact structure:
   }},
 
   "explanation": {{
-    "normal_landmarks": "List the key normal landmarks/measurements the student should check for this modality. Include normal values where relevant (e.g., cardiothoracic ratio <0.5, trachea midline). Be specific to {modality_label}.",
-    "common_pitfalls": "List 3-5 things that look abnormal on a normal {modality_label.lower()} but are actually normal variants or artefacts. Include: what it looks like, what it mimics, and how to tell it's normal. These are common OSCE traps.",
-    "confirm_normal_checklist": "A concise checklist the student can mentally run through to confirm the study is truly normal. Each item should be a yes/no check."
+    "systematic_check": "Numbered checklist combining landmarks, normal values, AND common pitfalls in one pass. Format each item as: 'N. Structure — normal finding (value/threshold). Pitfall: what mimics pathology and how to tell it's normal.' Example: '1. Trachea — midline. Pitfall: slight right deviation is normal if there is a left aortic arch.' Keep to 6-8 items max, specific to {modality_label}.",
+    "common_pitfalls": "List 3-4 OSCE traps: normal variants or artefacts that look abnormal on {modality_label.lower()}. Each item: what it looks like, what it mimics, one-line way to confirm it's normal. Keep brief — 1-2 sentences per item."
   }},
 
   "teaching_points": [
-    "3-5 teaching points about reading normal studies",
-    "MUST include one point about views: which views are standard for this modality, what each view shows, and when to request additional views (brief, 1-2 sentences)",
-    "Include 'always check' review areas that are commonly missed",
-    "Include normal variants that trap students in OSCEs",
-    "Include the examiner's likely follow-up: 'What would make you worried on this image?'",
-    "Emphasise: knowing normal is the foundation of spotting abnormal"
+    "3 teaching points only (not 4, not 5 — exactly 3)",
+    "Each point must be 1-2 sentences max",
+    "Include: one 'always check' review area, one examiner follow-up ('What would worry you?') with answer, one key concept about why knowing normal matters",
+    "Do NOT repeat information already in the systematic_check or common_pitfalls"
   ]
 }}
 
@@ -595,8 +590,8 @@ def render_osce_html(osce_data):
                 label = field.replace("_", " ").title()
                 parts.append(f'<p><strong>{_esc(label)}:</strong> {_esc(val)}</p>')
 
-        # Normal fields
-        for field in ("normal_landmarks", "common_pitfalls", "confirm_normal_checklist"):
+        # Normal fields (new: systematic_check; legacy: normal_landmarks, confirm_normal_checklist)
+        for field in ("systematic_check", "normal_landmarks", "common_pitfalls", "confirm_normal_checklist"):
             val = explanation.get(field)
             if val:
                 label = field.replace("_", " ").title()
