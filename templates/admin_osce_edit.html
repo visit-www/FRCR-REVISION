@@ -99,6 +99,26 @@
     </div>
   </div>
 
+  <!-- ═══════════ VIEWS EDITOR (JSON field) ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-header d-flex justify-content-between align-items-center">
+      <span><i class="fas fa-eye me-2"></i>Views (from AI JSON)</span>
+      <span class="small text-muted">Edit the view descriptions — one line per view, format: View name — description</span>
+    </div>
+    <div class="card-brand-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Obtained (projection)</label>
+          <input type="text" class="form-control form-control-sm" id="oeViewsObtained" placeholder="e.g. PA erect chest radiograph">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label small fw-bold">View Notes <span class="text-muted fw-normal">— one view per line: Name — what it shows</span></label>
+          <textarea class="form-control form-control-sm" id="oeViewsNotes" rows="4" placeholder="PA erect — standard view, accurate heart size&#10;AP — sick patients, magnifies heart&#10;Lateral — retrosternal space, posterior angles"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══════════ TINYMCE CONTENT ═══════════ -->
   <div class="card-brand mb-3">
     <div class="card-brand-header d-flex justify-content-between align-items-center">
@@ -124,6 +144,17 @@
   var CASE_ID = {{ osce_case.id }};
   var API = '/api/admin/osce';
   var initialContent = {{ osce_case.content_html|tojson }};
+  var osceData = {{ osce_case.osce_data|default('"{}"', true)|safe }};
+  if (typeof osceData === 'string') { try { osceData = JSON.parse(osceData); } catch(e) { osceData = {}; } }
+
+  // Populate views fields from osce_data
+  var views = osceData.views || {};
+  document.getElementById('oeViewsObtained').value = views.obtained || views.why_this_view || '';
+  // Notes: try notes field, fall back to combining legacy fields
+  var notesVal = views.notes || '';
+  if (!notesVal && views.why_this_view) notesVal = views.why_this_view;
+  if (views.additional_views) notesVal += (notesVal ? '\n' : '') + views.additional_views;
+  document.getElementById('oeViewsNotes').value = notesVal;
 
   // ── TinyMCE init on page load ──
   function initTiny() {
@@ -165,6 +196,12 @@
 
     var tinyEd = tinymce.get('oeContent');
 
+    // Update views in osce_data
+    osceData.views = {
+      obtained: document.getElementById('oeViewsObtained').value.trim(),
+      notes: document.getElementById('oeViewsNotes').value.trim()
+    };
+
     var payload = {
       diagnosis: document.getElementById('oeDiagnosis').value.trim(),
       modality: document.getElementById('oeModality').value,
@@ -174,6 +211,7 @@
       linked_case_ids: Array.from(document.getElementById('oeLinkedCases').selectedOptions).map(function(o) { return parseInt(o.value); }),
       reference_links: refLinks,
       content_html: tinyEd ? tinyEd.getContent() : '',
+      osce_data: JSON.stringify(osceData),
     };
 
     fetch(API + '/cases/' + CASE_ID, {
