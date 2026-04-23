@@ -13,14 +13,23 @@ const PLAN_CONFIG = {
     canceled:      { label: 'Cancelled',    color: '#dc3545', sr: 0,   radiq: 0  },
 };
 
-function getPlanBadge(tier, isAdmin) {
-    if (isAdmin) return `<span class="badge" style="background:#5E899E;color:#fff;">Admin (Unlimited)</span>`;
-    const cfg = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
-    return `<span class="badge" style="background:${cfg.color};color:#fff;">${cfg.label}</span>`;
+function getEffectiveTier(tier, trialExpired) {
+    if (tier === 'free' && trialExpired) return 'free_post_trial';
+    return tier;
 }
 
-function getPlanUsageText(tier, srUsed, radiqUsed) {
-    const cfg = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
+function getPlanBadge(tier, isAdmin, trialExpired) {
+    if (isAdmin) return `<span class="badge" style="background:#5E899E;color:#fff;">Admin (Unlimited)</span>`;
+    const effective = getEffectiveTier(tier, trialExpired);
+    const cfg = PLAN_CONFIG[effective] || PLAN_CONFIG.free;
+    let badge = `<span class="badge" style="background:${cfg.color};color:#fff;">${cfg.label}</span>`;
+    if (trialExpired) badge += ` <span class="badge bg-warning text-dark" style="font-size:0.65rem;">Trial Expired</span>`;
+    return badge;
+}
+
+function getPlanUsageText(tier, srUsed, radiqUsed, trialExpired) {
+    const effective = getEffectiveTier(tier, trialExpired);
+    const cfg = PLAN_CONFIG[effective] || PLAN_CONFIG.free;
     return `SR: ${srUsed}/${cfg.sr} · RadIQ: ${radiqUsed}/${cfg.radiq}`;
 }
 
@@ -197,8 +206,8 @@ class UserManagement {
                     </span>
                 </td>
                 <td>
-                    ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin)}
-                    <br><small class="text-muted">${(user.role === 'admin' || user.is_superadmin) ? 'Unlimited' : getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</small>
+                    ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin, user.trial_expired)}
+                    <br><small class="text-muted">${(user.role === 'admin' || user.is_superadmin) ? 'Unlimited' : getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0, user.trial_expired)}</small>
                 </td>
                 <td>
                     <span class="status-${user.is_active ? 'active' : 'inactive'}">
@@ -317,7 +326,7 @@ class UserManagement {
                     <div class="detail-row mt-3">
                         <label><i class="fas fa-robot"></i> Plan:</label>
                         ${isReadOnly ? `
-                            ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin)}
+                            ${getPlanBadge(user.subscription_tier || 'free', user.role === 'admin' || user.is_superadmin, user.trial_expired)}
                         ` : `
                             <select id="editPlan" class="form-select">
                                 ${Object.entries(PLAN_CONFIG).filter(([k]) => k !== 'free_post_trial').map(([k, v]) =>
@@ -328,7 +337,7 @@ class UserManagement {
                     </div>
                     <div class="detail-row mt-2">
                         <label><i class="fas fa-chart-bar"></i> Usage:</label>
-                        <span>${getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0)}</span>
+                        <span>${getPlanUsageText(user.subscription_tier || 'free', user.sr_usage_month || 0, user.radiq_usage_month || 0, user.trial_expired)}</span>
                     </div>
                     ${!user.is_superadmin ? `
                         <div class="detail-row mt-2 d-flex gap-2 flex-wrap">

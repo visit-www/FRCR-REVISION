@@ -300,6 +300,11 @@
                                 <span class="badge w-100 text-center" style="background: rgba(94,137,158,0.12); color: #5E899E; font-size: 0.78rem; padding: 4px 0;">
                                     <i class="fas fa-compass me-1"></i>Free Plan
                                 </span>
+                                {% if current_user.trial_started_at and (utcnow() - current_user.trial_started_at).days > 7 %}
+                                <span class="badge w-100 text-center mt-1" style="background: rgba(233,99,4,0.12); color: #e96304; font-size: 0.7rem; padding: 3px 0;">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Trial Expired
+                                </span>
+                                {% endif %}
                                 {% endif %}
                             </li>
                             <li><hr class="dropdown-divider my-1"></li>

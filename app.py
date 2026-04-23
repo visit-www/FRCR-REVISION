@@ -122,10 +122,13 @@ cloudinary.config(
     secure=True
 )
 
-app = Flask(__name__, 
+app = Flask(__name__,
     template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
     static_folder=os.path.join(os.path.dirname(__file__), 'static')
 )
+
+# Make utcnow available in all Jinja templates (for trial expiry checks etc.)
+app.jinja_env.globals['utcnow'] = lambda: datetime.utcnow()
 
 # Jinja filter: strip <style> and <script> tags from HTML content
 # Prevents AI-generated or user-entered content from injecting global CSS/JS

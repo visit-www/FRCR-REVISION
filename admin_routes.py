@@ -87,6 +87,10 @@ def list_users():
         # Build response
         users_data = []
         for user in pagination.items:
+            tier = getattr(user, 'subscription_tier', 'free') or 'free'
+            trial_expired = False
+            if tier == 'free' and user.trial_started_at is not None:
+                trial_expired = (datetime.utcnow() - user.trial_started_at).days > 7
             users_data.append({
                 'id': user.id,
                 'email': user.email,
@@ -97,7 +101,8 @@ def list_users():
                 'payment_status': user.payment_status.value if user.payment_status else None,
                 'is_active': user.is_active,
                 'is_deleted': user.is_deleted,
-                'subscription_tier': getattr(user, 'subscription_tier', 'free') or 'free',
+                'subscription_tier': tier,
+                'trial_expired': trial_expired,
                 'sr_usage_month': user.sr_usage_month or 0,
                 'radiq_usage_month': user.radiq_usage_month or 0,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
