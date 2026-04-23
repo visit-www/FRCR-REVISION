@@ -93,9 +93,15 @@
                                 </small>
                                 {% endif %}
                                 {% if trial_days_left is defined and trial_days_left is not none %}
-                                <small class="d-block mt-1" style="color: var(--brand-primary);">
-                                    <i class="fas fa-clock me-1"></i>{{ trial_days_left }} trial day{{ 's' if trial_days_left != 1 else '' }} remaining
-                                </small>
+                                    {% if trial_days_left <= 0 %}
+                                    <small class="d-block mt-1" style="color: var(--brand-primary);">
+                                        <i class="fas fa-exclamation-circle me-1"></i>Trial expired &mdash; <a href="/pricing" style="color: var(--brand-primary); font-weight: 600;">upgrade to continue</a>
+                                    </small>
+                                    {% else %}
+                                    <small class="d-block mt-1" style="color: var(--brand-primary);">
+                                        <i class="fas fa-clock me-1"></i>{{ trial_days_left }} trial day{{ 's' if trial_days_left != 1 else '' }} remaining
+                                    </small>
+                                    {% endif %}
                                 {% endif %}
                             </div>
 
@@ -121,8 +127,13 @@
                                     <div><i class="fas fa-check me-1" style="color:#e96304;"></i>Email to Patient, SBA & Viva generation</div>
                                     <div><i class="fas fa-check me-1" style="color:#e96304;"></i>Buy top-up credits</div>
                                     {% else %}
-                                    <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>Smart Reporter: <strong>10</strong> AI actions/month (~4 reports)</div>
-                                    <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>RadIQ: <strong>5</strong> queries/month</div>
+                                        {% if trial_days_left is defined and trial_days_left is not none and trial_days_left <= 0 %}
+                                        <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>Smart Reporter: <strong>2</strong> AI actions/month (~1 report)</div>
+                                        <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>RadIQ: <strong>1</strong> query/month</div>
+                                        {% else %}
+                                        <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>Smart Reporter: <strong>10</strong> AI actions/month (~4 reports)</div>
+                                        <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>RadIQ: <strong>5</strong> queries/month</div>
+                                        {% endif %}
                                     <div><i class="fas fa-check me-1" style="color:#5E899E;"></i>All cases, tools, calculators & protocols</div>
                                     {% endif %}
                                     <div class="mt-1" style="font-size:0.75rem; color:var(--brand-text-secondary);">
