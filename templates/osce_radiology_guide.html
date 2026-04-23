@@ -837,7 +837,7 @@ body.is-admin .osce-admin-edit-btn:hover {
   function formatApproach(text) {
     if (!text) return '';
 
-    // 1. Try numbered list FIRST: "1. Something 2. Something"
+    // 1. Try numbered list: "1. Something 2. Something"
     var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
     numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
     if (numberedItems.length > 2) {
@@ -845,54 +845,45 @@ body.is-admin .osce-admin-edit-btn:hover {
       numberedItems.forEach(function(item) {
         var cleaned = item.replace(/^\d+\.\s*/, '').trim();
         if (!cleaned) return;
-        // Bold the label before first dash/colon
-        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
-        if (labelMatch) {
-          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
-        } else {
-          html += '<li>' + esc(cleaned) + '</li>';
-        }
+        html += '<li>' + _formatListItem(cleaned) + '</li>';
       });
       html += '</ol>';
       return html;
     }
 
-    // 2. Try ABCDE letter pattern (only if text clearly uses "A — ..., B — ..." structure)
-    // Require at least 3 sequential letters to avoid false positives
-    var stepRegex = /(?:^|(?:\.\s+))([A-Z])\s*[—–]\s*([^.]+(?:\.[^A-Z])*)/g;
-    var matches = [];
-    var m;
-    while ((m = stepRegex.exec(text)) !== null) {
-      matches.push({ letter: m[1], content: m[2].replace(/\.\s*$/, '').trim() });
-    }
-    if (matches.length >= 3) {
-      var html = '<ul class="osce-approach-list">';
-      matches.forEach(function(step) {
-        var escaped = esc(step.content);
-        var colonIdx = escaped.indexOf(':');
-        if (colonIdx > 0 && colonIdx < 40) {
-          escaped = '<strong>' + esc(step.letter) + ' — ' + escaped.substring(0, colonIdx + 1) + '</strong>' + escaped.substring(colonIdx + 1);
-        } else {
-          escaped = '<strong>' + esc(step.letter) + ' —</strong> ' + escaped;
+    // 2. Try newline-separated items with label — content format
+    var lines = text.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+    if (lines.length >= 3) {
+      // Check if most lines have a label pattern (word(s) followed by dash/colon)
+      var labelledCount = lines.filter(function(l) { return /^[A-Z][^—–:\-]*[—–:\-]/.test(l); }).length;
+      if (labelledCount >= 2) {
+        // First line might be a preamble (e.g., "Begin by identifying the view...")
+        var html = '';
+        var startIdx = 0;
+        if (!/^[A-Z][^—–:\-]*[—–:\-]/.test(lines[0])) {
+          html += '<p style="margin-bottom:0.5rem;">' + esc(lines[0]) + '</p>';
+          startIdx = 1;
         }
-        html += '<li>' + escaped + '.</li>';
-      });
-      html += '</ul>';
-      return html;
+        html += '<ul class="osce-approach-list">';
+        for (var i = startIdx; i < lines.length; i++) {
+          html += '<li>' + _formatListItem(lines[i]) + '</li>';
+        }
+        html += '</ul>';
+        return html;
+      }
     }
 
-    // 3. Fallback: split on ". " followed by uppercase (sentence-per-bullet)
-    var sentences = text.split(/\.\s+(?=[A-Z])/);
-    if (sentences.length > 2) {
-      var html = '<ul class="osce-approach-list">';
-      sentences.forEach(function(s) {
-        var trimmed = s.replace(/\.$/, '').trim();
-        if (trimmed) html += '<li>' + esc(trimmed) + '.</li>';
-      });
-      html += '</ul>';
-      return html;
-    }
+    // 3. Fallback: just render as paragraphs (NO sentence splitting — it causes truncation)
     return '<p>' + esc(text) + '</p>';
+  }
+
+  // Helper: bold the label before first dash/colon in a list item
+  function _formatListItem(text) {
+    var m = text.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
+    if (m) {
+      return '<strong>' + esc(m[1].trim()) + '</strong> — ' + esc(m[2].trim());
+    }
+    return esc(text);
   }
 
   /**
@@ -906,25 +897,20 @@ body.is-admin .osce-admin-edit-btn:hover {
     if (numberedItems.length > 2) {
       var html = '<ol class="osce-expl-list">';
       numberedItems.forEach(function(item) {
-        var cleaned = item.replace(/^\d+\.\s*/, '').replace(/\.\s*$/, '').trim();
+        var cleaned = item.replace(/^\d+\.\s*/, '').trim();
         if (!cleaned) return;
-        // Bold the label before first dash or colon
-        var labelMatch = cleaned.match(/^([^—–:\-]+?)\s*[—–:\-]\s*(.*)/);
-        if (labelMatch) {
-          html += '<li><strong>' + esc(labelMatch[1].trim()) + '</strong> — ' + esc(labelMatch[2].trim()) + '</li>';
-        } else {
-          html += '<li>' + esc(cleaned) + '</li>';
-        }
+        html += '<li>' + _formatListItem(cleaned) + '</li>';
       });
       html += '</ol>';
       return html;
     }
-    // Fall back to sentence splitting
-    var sentences = text.split(/\.\s+(?=[A-Z])/);
-    if (sentences.length > 2) {
-      return sentences.map(function(s) {
-        return '<p style="margin-bottom:0.3rem;">' + esc(s.replace(/\.$/, '').trim()) + '.</p>';
-      }).join('');
+    // Try newline-separated items
+    var lines = text.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+    if (lines.length >= 2) {
+      var html = '<ul class="osce-expl-list">';
+      lines.forEach(function(l) { html += '<li>' + _formatListItem(l) + '</li>'; });
+      html += '</ul>';
+      return html;
     }
     return '<p>' + esc(text) + '</p>';
   }
