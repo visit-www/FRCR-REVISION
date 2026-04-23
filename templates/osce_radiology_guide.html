@@ -974,10 +974,24 @@ body.is-admin .osce-admin-edit-btn:hover {
 
     // Notes (new format) or legacy fields
     if (notes) {
-      html += '<div class="osce-views-item">'
-        + '<div class="osce-views-item-label">About this view</div>'
-        + '<div class="osce-views-item-text">' + esc(notes) + '</div>'
-        + '</div>';
+      var viewItems = _parseItems(notes);
+      if (viewItems.list.length > 1) {
+        html += '<table class="osce-landmarks-table"><thead><tr><th>View</th><th>When &amp; Why</th></tr></thead><tbody>';
+        viewItems.list.forEach(function(item) {
+          var m = item.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
+          if (m) {
+            html += '<tr><td>' + esc(m[1].trim()) + '</td><td>' + esc(m[2].trim()) + '</td></tr>';
+          } else {
+            html += '<tr><td colspan="2">' + esc(item) + '</td></tr>';
+          }
+        });
+        html += '</tbody></table>';
+      } else {
+        html += '<div class="osce-views-item">'
+          + '<div class="osce-views-item-label">About this view</div>'
+          + '<div class="osce-views-item-text">' + esc(notes) + '</div>'
+          + '</div>';
+      }
     }
     if (whyView) {
       html += '<div class="osce-views-item">'

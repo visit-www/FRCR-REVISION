@@ -163,7 +163,7 @@ Return valid JSON with this exact structure:
 
   "views": {{
     "obtained": "Which view(s) this case image would be (e.g., 'PA erect chest radiograph')",
-    "notes": "Why this is the appropriate view, and any supplementary views that would help confirm the diagnosis. One brief paragraph."
+    "notes": "One line per view. Format:\\nPA erect — standard view, accurate heart size, sharp costophrenic angles\\nAP — used for sick patients, magnifies heart\\nLateral — retrosternal space, posterior angles"
   }},
 
   "tags": {{
@@ -272,7 +272,7 @@ Return valid JSON with this exact structure:
 
   "views": {{
     "obtained": "Which standard view(s) are shown (e.g., 'PA erect chest radiograph')",
-    "notes": "What this view allows you to assess, and what other views exist for this modality and when they are requested. One brief paragraph."
+    "notes": "One line per view. Format:\\nAP supine — standard, shows gas pattern and organ outlines\\nErect — air-fluid levels, free subdiaphragmatic gas\\nLateral decubitus — alternative when patient cannot stand"
   }},
 
   "tags": {{
