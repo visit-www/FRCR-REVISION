@@ -419,17 +419,17 @@
 .osce-landmarks-table tr:nth-child(even) td { background: #f8fafc; }
 .osce-landmarks-table td:first-child { font-weight: 600; color: #334155; white-space: nowrap; }
 
-/* Views info card */
-.osce-views-card {
-  background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 0.4rem;
-  padding: 0.5rem 0.75rem; font-size: 0.82rem;
+/* Views info cards */
+.osce-views-grid { display: flex; flex-direction: column; gap: 0.4rem; }
+.osce-views-item {
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 0.4rem;
+  padding: 0.5rem 0.7rem; font-size: 0.82rem; line-height: 1.5;
 }
-.osce-views-obtained {
-  font-weight: 700; color: var(--brand-neutral); font-size: 0.85rem;
-  margin-bottom: 0.3rem; padding-bottom: 0.3rem; border-bottom: 1px solid #bae6fd;
+.osce-views-item-label {
+  font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--brand-neutral); margin-bottom: 0.15rem;
 }
-.osce-views-primary { color: #1e40af; margin-bottom: 0.25rem; line-height: 1.5; }
-.osce-views-alt { color: #6b7280; font-size: 0.78rem; line-height: 1.45; font-style: italic; }
+.osce-views-item-text { color: #374151; }
 
 /* Legacy approach list fallback */
 .osce-approach-list {
@@ -954,29 +954,43 @@ body.is-admin .osce-admin-edit-btn:hover {
     return esc(text);
   }
 
-  // Format views into structured info card
+  // Format views into app-style cards
   function formatViews(obtained, notes, whyView, additionalViews) {
-    var html = '<div class="osce-views-card">';
-    // Obtained view badge
+    var html = '<div class="osce-views-grid">';
+
+    // Projection card
     if (obtained) {
-      html += '<div class="osce-views-obtained"><i class="fas fa-film me-1"></i>' + esc(obtained) + '</div>';
+      html += '<div class="osce-views-item">'
+        + '<div class="osce-views-item-label">Projection</div>'
+        + '<div class="osce-views-item-text">' + esc(obtained) + '</div>'
+        + '</div>';
     }
-    // Notes or legacy fields — split on sentences about different views
+
+    // Build combined text from notes or legacy fields
     var text = notes || '';
     if (!text && whyView) text = whyView;
     if (additionalViews) text += (text ? ' ' : '') + additionalViews;
+
     if (text) {
-      // Try to split into "this view" vs "alternative views" sections
-      var parts = text.split(/(?:\.\s+)(?=An?\s+erect|In\s+practice|A\s+lateral|Alternatively|Additional)/i);
+      // Split into "what this view shows" vs "alternative views"
+      var parts = text.split(/(?:\.\s+)(?=An?\s+erect|In\s+practice|A\s+lateral|Alternatively|Additional|The\s+erect|A\s+left)/i);
       if (parts.length >= 2) {
-        html += '<div class="osce-views-primary"><i class="fas fa-check-circle me-1" style="color:var(--brand-neutral);"></i>' + esc(parts[0].replace(/\.\s*$/, '').trim()) + '.</div>';
-        html += '<div class="osce-views-alt"><i class="fas fa-plus-circle me-1" style="color:#9ca3af;"></i>';
-        html += parts.slice(1).map(function(p) { return esc(p.replace(/\.\s*$/, '').trim()) + '.'; }).join(' ');
-        html += '</div>';
+        html += '<div class="osce-views-item">'
+          + '<div class="osce-views-item-label">What it shows</div>'
+          + '<div class="osce-views-item-text">' + esc(parts[0].replace(/\.\s*$/, '').trim()) + '.</div>'
+          + '</div>';
+        html += '<div class="osce-views-item">'
+          + '<div class="osce-views-item-label">Other views</div>'
+          + '<div class="osce-views-item-text">' + parts.slice(1).map(function(p) { return esc(p.replace(/\.\s*$/, '').trim()) + '.'; }).join(' ') + '</div>'
+          + '</div>';
       } else {
-        html += '<div class="osce-views-primary">' + esc(text) + '</div>';
+        html += '<div class="osce-views-item">'
+          + '<div class="osce-views-item-label">Details</div>'
+          + '<div class="osce-views-item-text">' + esc(text) + '</div>'
+          + '</div>';
       }
     }
+
     html += '</div>';
     return html;
   }
