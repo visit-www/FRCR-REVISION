@@ -119,13 +119,79 @@
     </div>
   </div>
 
-  <!-- ═══════════ TINYMCE CONTENT ═══════════ -->
+  <!-- ═══════════ OSCE CONTENT FIELDS (what the page actually renders) ═══════════ -->
   <div class="card-brand mb-3">
-    <div class="card-brand-header d-flex justify-content-between align-items-center">
-      <span><i class="fas fa-file-alt me-2"></i>Content (HTML)</span>
-      <span class="small text-muted">Auto-populated by AI generation, or edit manually below</span>
+    <div class="card-brand-header"><i class="fas fa-list-ol me-2"></i>OSCE Case Content <span class="small fw-normal text-white-50 ms-2">— these fields are what the guide page displays</span></div>
+    <div class="card-brand-body">
+      <div class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-bold">Systematic Approach <span class="text-muted fw-normal">— the main "What do you see?" content</span></label>
+          <textarea class="form-control form-control-sm" id="oeApproach" rows="8" style="font-family:monospace;font-size:0.8rem;"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Key Finding <span class="text-muted fw-normal">— visual description (not diagnosis name)</span></label>
+          <textarea class="form-control form-control-sm" id="oeKeyFinding" rows="3"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Model Script <span class="text-muted fw-normal">— what to say at the OSCE</span></label>
+          <textarea class="form-control form-control-sm" id="oeModelScript" rows="3"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Urgency</label>
+          <textarea class="form-control form-control-sm" id="oeUrgency" rows="2"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Examiner Prompt</label>
+          <input type="text" class="form-control form-control-sm" id="oePrompt" placeholder="Please interpret this chest X-ray">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Visual Hook <span class="text-muted fw-normal">— memorable one-liner</span></label>
+          <textarea class="form-control form-control-sm" id="oeVisualHook" rows="2"></textarea>
+        </div>
+      </div>
     </div>
-    <div class="card-brand-body p-2">
+  </div>
+
+  <!-- ═══════════ EXPLANATION FIELDS ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-header"><i class="fas fa-lightbulb me-2"></i>Explanation &amp; Teaching</div>
+    <div class="card-brand-body">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Pattern Recognition</label>
+          <textarea class="form-control form-control-sm" id="oePatternRecognition" rows="2" placeholder="If you see X → think Y → because Z"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Mechanism</label>
+          <textarea class="form-control form-control-sm" id="oeMechanism" rows="2" placeholder="Why the imaging looks like this"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-bold">Why It Matters</label>
+          <textarea class="form-control form-control-sm" id="oeWhyItMatters" rows="2" placeholder="Clinical significance"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Normal Landmarks <span class="text-muted fw-normal">— one per line: Structure — value</span></label>
+          <textarea class="form-control form-control-sm" id="oeNormalLandmarks" rows="4" style="font-family:monospace;font-size:0.78rem;"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-bold">Common Pitfalls <span class="text-muted fw-normal">— OSCE traps, normal variants</span></label>
+          <textarea class="form-control form-control-sm" id="oeCommonPitfalls" rows="4"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-bold">Teaching Points <span class="text-muted fw-normal">— one per line</span></label>
+          <textarea class="form-control form-control-sm" id="oeTeachingPoints" rows="4" placeholder="One teaching point per line"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ RAW HTML (collapsible, for advanced editing) ═══════════ -->
+  <div class="card-brand mb-3">
+    <div class="card-brand-header" style="cursor:pointer;" onclick="document.getElementById('oeTinyWrap').classList.toggle('d-none')">
+      <i class="fas fa-code me-2"></i>Raw HTML (TinyMCE) <span class="small fw-normal text-white-50 ms-2">— click to expand, for advanced editing only</span>
+    </div>
+    <div class="card-brand-body d-none" id="oeTinyWrap">
+      <p class="small text-muted mb-2"><i class="fas fa-info-circle me-1"></i>This HTML is stored separately and is NOT what the guide page displays. Edit the fields above to change what users see.</p>
       <textarea id="oeContent"></textarea>
     </div>
   </div>
@@ -147,14 +213,42 @@
   var osceData = {{ osce_case.osce_data|default('"{}"', true)|safe }};
   if (typeof osceData === 'string') { try { osceData = JSON.parse(osceData); } catch(e) { osceData = {}; } }
 
-  // Populate views fields from osce_data
+  // Populate all osce_data fields
   var views = osceData.views || {};
-  document.getElementById('oeViewsObtained').value = views.obtained || views.why_this_view || '';
-  // Notes: try notes field, fall back to combining legacy fields
-  var notesVal = views.notes || '';
-  if (!notesVal && views.why_this_view) notesVal = views.why_this_view;
-  if (views.additional_views) notesVal += (notesVal ? '\n' : '') + views.additional_views;
-  document.getElementById('oeViewsNotes').value = notesVal;
+  var osce = osceData.osce || {};
+  var answer = osce.expected_answer || {};
+  var expl = osceData.explanation || {};
+
+  // Views
+  if (Array.isArray(views)) {
+    document.getElementById('oeViewsObtained').value = views.length ? views[0].name || '' : '';
+    document.getElementById('oeViewsNotes').value = views.map(function(v) { return (v.name || '') + ' — ' + (v.description || ''); }).join('\n');
+  } else {
+    document.getElementById('oeViewsObtained').value = views.obtained || '';
+    var notesVal = views.notes || '';
+    if (!notesVal && views.why_this_view) notesVal = views.why_this_view;
+    if (views.additional_views) notesVal += (notesVal ? '\n' : '') + views.additional_views;
+    document.getElementById('oeViewsNotes').value = notesVal;
+  }
+
+  // OSCE content fields
+  document.getElementById('oeApproach').value = answer.approach || '';
+  document.getElementById('oeKeyFinding').value = answer.key_finding || '';
+  document.getElementById('oeModelScript').value = osce.model_script || '';
+  document.getElementById('oeUrgency').value = answer.urgency || '';
+  document.getElementById('oePrompt').value = osce.prompt || '';
+  document.getElementById('oeVisualHook').value = osceData.visual_hook || '';
+
+  // Explanation fields
+  document.getElementById('oePatternRecognition').value = expl.pattern_recognition || '';
+  document.getElementById('oeMechanism').value = expl.mechanism || '';
+  document.getElementById('oeWhyItMatters').value = expl.why_it_matters || '';
+  document.getElementById('oeNormalLandmarks').value = expl.normal_landmarks || '';
+  document.getElementById('oeCommonPitfalls').value = expl.common_pitfalls || '';
+
+  // Teaching points — join array as one per line
+  var pts = osceData.teaching_points || [];
+  document.getElementById('oeTeachingPoints').value = pts.join('\n');
 
   // ── TinyMCE init on page load ──
   function initTiny() {
@@ -196,11 +290,57 @@
 
     var tinyEd = tinymce.get('oeContent');
 
-    // Update views in osce_data
-    osceData.views = {
-      obtained: document.getElementById('oeViewsObtained').value.trim(),
-      notes: document.getElementById('oeViewsNotes').value.trim()
+    // Collect all osce_data fields
+    // Views as array
+    var viewsNotesText = document.getElementById('oeViewsNotes').value.trim();
+    var viewsArray = [];
+    if (viewsNotesText) {
+      viewsNotesText.split('\n').forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var parts = line.split(' — ', 1);
+        if (line.indexOf(' — ') > 0) {
+          var idx = line.indexOf(' — ');
+          viewsArray.push({ name: line.substring(0, idx).trim(), description: line.substring(idx + 3).trim() });
+        } else {
+          viewsArray.push({ name: line, description: '' });
+        }
+      });
+    }
+    var obtained = document.getElementById('oeViewsObtained').value.trim();
+    if (obtained && (!viewsArray.length || viewsArray[0].name !== obtained)) {
+      viewsArray.unshift({ name: obtained, description: viewsArray.length ? viewsArray[0].description : '' });
+    }
+    osceData.views = viewsArray;
+
+    // OSCE fields
+    osceData.osce = osceData.osce || {};
+    osceData.osce.prompt = document.getElementById('oePrompt').value.trim();
+    osceData.osce.expected_answer = {
+      approach: document.getElementById('oeApproach').value.trim(),
+      key_finding: document.getElementById('oeKeyFinding').value.trim(),
+      diagnosis: document.getElementById('oeDiagnosis').value.trim(),
+      urgency: document.getElementById('oeUrgency').value.trim()
     };
+    osceData.osce.model_script = document.getElementById('oeModelScript').value.trim();
+    osceData.visual_hook = document.getElementById('oeVisualHook').value.trim() || null;
+
+    // Explanation
+    osceData.explanation = {};
+    var pr = document.getElementById('oePatternRecognition').value.trim();
+    var mech = document.getElementById('oeMechanism').value.trim();
+    var wim = document.getElementById('oeWhyItMatters').value.trim();
+    var nl = document.getElementById('oeNormalLandmarks').value.trim();
+    var cp = document.getElementById('oeCommonPitfalls').value.trim();
+    if (pr) osceData.explanation.pattern_recognition = pr;
+    if (mech) osceData.explanation.mechanism = mech;
+    if (wim) osceData.explanation.why_it_matters = wim;
+    if (nl) osceData.explanation.normal_landmarks = nl;
+    if (cp) osceData.explanation.common_pitfalls = cp;
+
+    // Teaching points — split lines into array
+    var tpText = document.getElementById('oeTeachingPoints').value.trim();
+    osceData.teaching_points = tpText ? tpText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean) : [];
 
     var payload = {
       diagnosis: document.getElementById('oeDiagnosis').value.trim(),
