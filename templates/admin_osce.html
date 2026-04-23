@@ -468,13 +468,38 @@
     document.getElementById('oaPairSelect').style.display = this.checked ? '' : 'none';
   });
 
+  // Compress image client-side if > 3MB
+  function compressImage(file, maxSizeMB) {
+    return new Promise(function(resolve) {
+      if (file.size <= maxSizeMB * 1024 * 1024) { resolve(file); return; }
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        // Scale down: max 1600px on longest side
+        var maxDim = 1600;
+        var w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.82);
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
   window.uploadImage = function() {
     var caseId = document.getElementById('oaImageCaseId').value;
     var file = document.getElementById('oaImageFile').files[0];
     if (!file) { alert('Select an image file'); return; }
 
+    compressImage(file, 3).then(function(processedFile) {
     var fd = new FormData();
-    fd.append('image', file);
+    fd.append('image', processedFile);
     fd.append('description', document.getElementById('oaImageDesc').value);
     fd.append('attribution', document.getElementById('oaImageAttribution').value);
     fd.append('source_url', document.getElementById('oaImageSourceUrl').value);
@@ -504,6 +529,7 @@
           alert('Error: ' + (data.error || 'Unknown'));
         }
       });
+    }); // end compressImage
   };
 
   window.deleteImage = function(imgId, caseId) {
