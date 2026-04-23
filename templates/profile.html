@@ -140,8 +140,9 @@
                                         <i class="fas fa-info-circle me-1"></i>Report estimates are averages &mdash; simple cases use fewer actions, complex cases with follow-ups use more.
                                     </div>
                                 </div>
-                                <!-- Dynamic usage counters -->
-                                <div id="profileUsageCounters" class="mt-2" style="font-size:0.82rem;"></div>
+                                <!-- Usage This Month -->
+                                <small class="text-muted d-block mt-3 mb-1"><i class="fas fa-chart-bar me-1"></i>Usage This Month</small>
+                                <div id="profileUsageCounters" style="font-size:0.82rem;"></div>
                                 <!-- Credit balance + Buy Credits (paid subscribers only) -->
                                 <div id="profileCreditsBlock" class="mt-2" style="display:none;"></div>
                             </div>
@@ -761,6 +762,16 @@
 </style>
 
 <script>
+// Credit purchase success toast
+if (new URLSearchParams(window.location.search).get('payment') === 'credits') {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:80px;right:20px;z-index:9999;background:#28a745;color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;font-size:0.9rem;box-shadow:0 4px 12px rgba(0,0,0,0.2);animation:fadeIn 0.3s;';
+    toast.innerHTML = '<i class="fas fa-check-circle me-2"></i>25 AI action credits added to your account!';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.5s'; setTimeout(() => toast.remove(), 500); }, 5000);
+    history.replaceState(null, '', '/auth/profile');
+}
+
 // Fetch and display usage counters
 (function() {
     fetch('/api/smart-reporter/ai-usage', {credentials: 'include'})

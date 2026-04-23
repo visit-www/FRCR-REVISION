@@ -293,6 +293,8 @@ def buy_credits():
 @login_required
 def checkout_success():
     """Post-checkout redirect. Actual upgrade happens via webhook."""
+    if request.args.get('credits'):
+        return redirect('/auth/profile?payment=credits')
     return redirect('/pricing?payment=success')
 
 
