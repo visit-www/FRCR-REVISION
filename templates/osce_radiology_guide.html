@@ -896,12 +896,14 @@ body.is-admin .osce-admin-edit-btn:hover {
   // Helper: parse text into preamble + list items
   function _parseItems(text) {
     var preamble = '', list = [];
-    // Try numbered: "1. Something 2. Something"
+
+    // 1. Try numbered: "1. Something 2. Something"
     var numbered = text.split(/(?:^|\s)(?=\d+\.\s)/).map(function(s) { return s.trim(); }).filter(Boolean);
     if (numbered.length > 2) {
       return { preamble: '', list: numbered.map(function(s) { return s.replace(/^\d+\.\s*/, '').trim(); }).filter(Boolean) };
     }
-    // Try newline-separated
+
+    // 2. Try newline-separated
     var lines = text.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
     if (lines.length >= 3) {
       var labelledCount = lines.filter(function(l) { return /^[A-Z][^—–:\-]{0,30}[—–:\-]/.test(l); }).length;
@@ -911,6 +913,23 @@ body.is-admin .osce-admin-edit-btn:hover {
         return { preamble: preamble, list: lines.slice(startIdx) };
       }
     }
+
+    // 3. Try splitting on "Label — " pattern within a paragraph
+    //    e.g., "...findings. Gas pattern — bowel gas... Free air — no free..."
+    var labelSplit = text.split(/(?:\.\s+)(?=[A-Z][a-z]+(?:\s+[a-z]+)?\s*[—–]\s)/);
+    if (labelSplit.length >= 3) {
+      // First chunk is likely preamble (before first label)
+      var firstHasLabel = /^[A-Z][a-z]+(?:\s+[a-z]+)?\s*[—–]/.test(labelSplit[0]);
+      if (firstHasLabel) {
+        return { preamble: '', list: labelSplit.map(function(s) { return s.replace(/\.\s*$/, '').trim(); }).filter(Boolean) };
+      } else {
+        return {
+          preamble: labelSplit[0].replace(/\.\s*$/, '').trim(),
+          list: labelSplit.slice(1).map(function(s) { return s.replace(/\.\s*$/, '').trim(); }).filter(Boolean)
+        };
+      }
+    }
+
     return { preamble: '', list: [text] };
   }
 
