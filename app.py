@@ -2694,9 +2694,11 @@ def pricing():
             remaining = (trial_end - datetime.utcnow()).days
             trial_days_left = max(0, remaining)
             trial_active = remaining >= 0
+        trial_expired = (tier == 'free' and current_user.trial_started_at is not None and not trial_active)
         user_data = {
             'tier': tier,
             'trial_active': trial_active,
+            'trial_expired': trial_expired,
             'trial_days_left': trial_days_left,
             'subscription_end_date': current_user.subscription_end_date.strftime('%d %b %Y') if current_user.subscription_end_date else None,
             'has_stripe_customer': bool(current_user.stripe_customer_id),
