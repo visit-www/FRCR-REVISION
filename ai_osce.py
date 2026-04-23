@@ -175,7 +175,7 @@ Return valid JSON with this exact structure:
     "prompt": "The examiner's instruction (e.g., 'Please interpret this chest X-ray')",
 
     "expected_answer": {{
-      "approach": "START by identifying the view: 'This is a [view] [modality].' Then demonstrate the systematic approach, walking through each step, noting normal AND abnormal findings. This should read like a student presenting at OSCE -- structured, methodical, not just jumping to the diagnosis. Use the {modality} approach: {approach}",
+      "approach": "START by identifying the view: 'This is a [view] [modality].' Then demonstrate the systematic approach. Put each step on its own line, starting with the category name. Use the {modality} approach: {approach}. Example format:\\nAirway — trachea is midline, no deviation...\\nBreathing — lung fields are clear bilaterally...\\nCirculation — heart size normal, cardiothoracic ratio under 0.5...",
       "key_finding": "Describe what is SEEN on the image in simple visual language. Do not name the diagnosis here -- describe the appearance (e.g., 'visible line in right hemithorax with absent lung markings beyond it', NOT 'pneumothorax')",
       "diagnosis": "The diagnosis with laterality/specifics as appropriate",
       "urgency": "Clinical urgency statement -- is this an emergency? What action is needed?"
@@ -284,7 +284,7 @@ Return valid JSON with this exact structure:
     "prompt": "Please interpret this {modality_label.lower()}",
 
     "expected_answer": {{
-      "approach": "START by identifying the view: 'This is a [view] [modality].' Then walk through the COMPLETE systematic approach, checking EVERY step and confirming each is normal. This is the most important part -- demonstrate thoroughness. Use: {approach}",
+      "approach": "START by identifying the view: 'This is a [view] [modality].' Then walk through the COMPLETE systematic approach, checking EVERY step and confirming each is normal. Put each step on its own line, starting with the category name. Use: {approach}. Example format:\\nGas pattern — bowel gas scattered and non-distended, small bowel under 3 cm...\\nFree air — no subdiaphragmatic gas...\\nCalcifications — trace renal outlines for calculi...",
       "key_finding": "No acute abnormality identified. All structures appear normal.",
       "diagnosis": "Normal {modality_label}",
       "urgency": "No urgent findings. Correlate clinically."
@@ -294,7 +294,7 @@ Return valid JSON with this exact structure:
   }},
 
   "explanation": {{
-    "normal_landmarks": "List the key normal landmarks/measurements the student should check for this modality. Include normal values where relevant (e.g., cardiothoracic ratio <0.5, trachea midline). Be specific to {modality_label}.",
+    "normal_landmarks": "One structure per line. Format: Structure name — normal value/threshold. Example:\\nSmall bowel diameter — less than 3 cm\\nLarge bowel diameter — less than 6 cm (caecum less than 9 cm)\\nPsoas shadows — bilateral, symmetric, visible from T12 to iliac fossa",
     "common_pitfalls": "List 3-5 things that look abnormal on a normal {modality_label.lower()} but are actually normal variants or artefacts. Include: what it looks like, what it mimics, and how to tell it is normal. These are common OSCE traps."
   }},
 
