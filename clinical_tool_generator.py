@@ -51,7 +51,7 @@ def fetch_url_content(url, max_chars=4000):
     import requests
     import re as _re
     try:
-        resp = requests.get(url, timeout=10, headers={
+        resp = requests.get(url, timeout=5, headers={
             'User-Agent': 'Mozilla/5.0 (RadInsights/1.0; +educational)',
         }, allow_redirects=True)
         resp.raise_for_status()
@@ -1029,9 +1029,9 @@ def generate_clinical_tool(topic, mode='full_tool', context=None, resources=None
         system_prompt=system_prompt,
         user_prompt=user_prompt,
         model=effective_model,
-        max_tokens=20000,
+        max_tokens=16000,
         temperature=0.3,
-        timeout=240,
+        timeout=180,
     )
 
     html = _strip_markdown_fences(text)
