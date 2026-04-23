@@ -334,6 +334,13 @@
 
 /* ── Dive Deeper button ── */
 .osce-dive-deeper-btn { width: 100%; text-align: center; }
+.osce-full-case-btn {
+  width: 100%; text-align: center; margin-top: 0.75rem; padding: 0.5rem;
+  background: #f8fafc; border: 1px dashed var(--brand-neutral); border-radius: 0.4rem;
+  color: var(--brand-neutral); font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+}
+.osce-full-case-btn:hover { background: var(--brand-neutral); color: #fff; border-style: solid; }
 
 /* ── Views badge ── */
 .osce-views-badge {
@@ -1280,6 +1287,7 @@ body.is-admin .osce-admin-edit-btn:hover {
       +       refLinksHtml
       +       diveDeeperHtml
       +     '</div>'
+      +     '<button class="osce-full-case-btn osce-focus-trigger" style="cursor:pointer;"><i class="fas fa-expand me-1"></i>View Complete Case</button>'
       +   '</div>'
       + '</div>'
       + '</div>';
