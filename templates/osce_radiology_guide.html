@@ -2131,8 +2131,9 @@ body.is-admin .osce-admin-edit-btn:hover {
   function attachFocusHandlers() {
     $$('.osce-focus-trigger').forEach(function(el) {
       el.addEventListener('click', function(e) {
-        // Don't trigger if clicking a button inside
-        if (e.target.closest('button, a, .osce-reveal-btn, .osce-admin-edit-btn')) return;
+        // Don't trigger if clicking a button inside (except the "View Complete Case" button)
+        if (e.target.closest('.osce-full-case-btn')) { /* allow */ }
+        else if (e.target.closest('button, a, .osce-reveal-btn, .osce-admin-edit-btn')) return;
         var card = this.closest('.osce-case-item');
         if (card) openFocusView(card.dataset.id);
       });
