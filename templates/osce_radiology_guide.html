@@ -380,9 +380,48 @@
 .osce-card-expl-text { font-size: 0.82rem; color: #334155; line-height: 1.45; }
 
 /* ── Approach list (structured bullet points) ── */
+/* Flowchart-style systematic approach */
+.osce-approach-flow {
+  list-style: none; padding-left: 1.2rem; margin: 0.3rem 0;
+  position: relative; counter-reset: flow-step;
+}
+.osce-approach-flow::before {
+  content: ''; position: absolute; left: 0.55rem; top: 0.6rem; bottom: 0.6rem;
+  width: 2px; background: var(--brand-neutral); opacity: 0.3;
+}
+.osce-approach-flow li {
+  position: relative; padding: 0.4rem 0.6rem 0.4rem 1.2rem;
+  margin-bottom: 0.3rem; font-size: 0.84rem; line-height: 1.5; color: #1e293b;
+  counter-increment: flow-step;
+}
+.osce-approach-flow li::before {
+  content: counter(flow-step); position: absolute; left: -1.2rem; top: 0.35rem;
+  width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  background: var(--brand-neutral); color: #fff; font-size: 0.65rem;
+  font-weight: 700; display: flex; align-items: center; justify-content: center;
+  z-index: 1;
+}
+.osce-approach-flow li strong { color: var(--brand-neutral); font-weight: 700; }
+
+/* Normal landmarks table */
+.osce-landmarks-table {
+  width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.3rem 0;
+}
+.osce-landmarks-table th {
+  background: var(--brand-neutral); color: #fff; padding: 0.35rem 0.6rem;
+  text-align: left; font-weight: 600; font-size: 0.75rem; text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.osce-landmarks-table td {
+  padding: 0.35rem 0.6rem; border-bottom: 1px solid #e5e7eb; vertical-align: top;
+}
+.osce-landmarks-table tr:last-child td { border-bottom: none; }
+.osce-landmarks-table tr:nth-child(even) td { background: #f8fafc; }
+.osce-landmarks-table td:first-child { font-weight: 600; color: #334155; white-space: nowrap; }
+
+/* Legacy approach list fallback */
 .osce-approach-list {
   list-style: none; padding-left: 0; margin: 0.3rem 0;
-  counter-reset: approach-step;
 }
 .osce-approach-list li {
   padding: 0.5rem 0.6rem; margin-bottom: 0.4rem;
@@ -837,44 +876,42 @@ body.is-admin .osce-admin-edit-btn:hover {
   function formatApproach(text) {
     if (!text) return '';
 
-    // 1. Try numbered list: "1. Something 2. Something"
-    var numberedItems = text.split(/(?:^|\s)(?=\d+\.\s)/);
-    numberedItems = numberedItems.map(function(s) { return s.trim(); }).filter(Boolean);
-    if (numberedItems.length > 2) {
-      var html = '<ol class="osce-approach-list">';
-      numberedItems.forEach(function(item) {
-        var cleaned = item.replace(/^\d+\.\s*/, '').trim();
-        if (!cleaned) return;
-        html += '<li>' + _formatListItem(cleaned) + '</li>';
-      });
-      html += '</ol>';
+    // Parse items from text (numbered, newline-separated, or sentence-separated)
+    var items = _parseItems(text);
+    if (items.preamble || items.list.length > 1) {
+      var html = '';
+      if (items.preamble) html += '<p style="margin-bottom:0.5rem;">' + esc(items.preamble) + '</p>';
+      if (items.list.length > 1) {
+        html += '<ol class="osce-approach-flow">';
+        items.list.forEach(function(item) { html += '<li>' + _formatListItem(item) + '</li>'; });
+        html += '</ol>';
+      } else if (items.list.length === 1) {
+        html += '<p>' + esc(items.list[0]) + '</p>';
+      }
       return html;
     }
+    return '<p>' + esc(text) + '</p>';
+  }
 
-    // 2. Try newline-separated items with label — content format
+  // Helper: parse text into preamble + list items
+  function _parseItems(text) {
+    var preamble = '', list = [];
+    // Try numbered: "1. Something 2. Something"
+    var numbered = text.split(/(?:^|\s)(?=\d+\.\s)/).map(function(s) { return s.trim(); }).filter(Boolean);
+    if (numbered.length > 2) {
+      return { preamble: '', list: numbered.map(function(s) { return s.replace(/^\d+\.\s*/, '').trim(); }).filter(Boolean) };
+    }
+    // Try newline-separated
     var lines = text.split(/\n/).map(function(l) { return l.trim(); }).filter(Boolean);
     if (lines.length >= 3) {
-      // Check if most lines have a label pattern (word(s) followed by dash/colon)
-      var labelledCount = lines.filter(function(l) { return /^[A-Z][^—–:\-]*[—–:\-]/.test(l); }).length;
+      var labelledCount = lines.filter(function(l) { return /^[A-Z][^—–:\-]{0,30}[—–:\-]/.test(l); }).length;
       if (labelledCount >= 2) {
-        // First line might be a preamble (e.g., "Begin by identifying the view...")
-        var html = '';
         var startIdx = 0;
-        if (!/^[A-Z][^—–:\-]*[—–:\-]/.test(lines[0])) {
-          html += '<p style="margin-bottom:0.5rem;">' + esc(lines[0]) + '</p>';
-          startIdx = 1;
-        }
-        html += '<ul class="osce-approach-list">';
-        for (var i = startIdx; i < lines.length; i++) {
-          html += '<li>' + _formatListItem(lines[i]) + '</li>';
-        }
-        html += '</ul>';
-        return html;
+        if (!/^[A-Z][^—–:\-]{0,30}[—–:\-]/.test(lines[0])) { preamble = lines[0]; startIdx = 1; }
+        return { preamble: preamble, list: lines.slice(startIdx) };
       }
     }
-
-    // 3. Fallback: just render as paragraphs (NO sentence splitting — it causes truncation)
-    return '<p>' + esc(text) + '</p>';
+    return { preamble: '', list: [text] };
   }
 
   // Helper: bold the label before first dash/colon in a list item
@@ -884,6 +921,26 @@ body.is-admin .osce-admin-edit-btn:hover {
       return '<strong>' + esc(m[1].trim()) + '</strong> — ' + esc(m[2].trim());
     }
     return esc(text);
+  }
+
+  // Format normal landmarks as a table
+  function formatLandmarks(text) {
+    if (!text) return '';
+    var items = _parseItems(text);
+    if (items.list.length > 1) {
+      var html = '<table class="osce-landmarks-table"><thead><tr><th>Structure</th><th>Normal / Threshold</th></tr></thead><tbody>';
+      items.list.forEach(function(item) {
+        var m = item.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
+        if (m) {
+          html += '<tr><td>' + esc(m[1].trim()) + '</td><td>' + esc(m[2].trim()) + '</td></tr>';
+        } else {
+          html += '<tr><td colspan="2">' + esc(item) + '</td></tr>';
+        }
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+    return '<p>' + esc(text) + '</p>';
   }
 
   /**
@@ -1030,9 +1087,10 @@ body.is-admin .osce-admin-edit-btn:hover {
     for (var ek in expl) {
       if (expl[ek]) {
         var meta = explLabels[ek] || { icon: 'fa-info-circle', label: ek.replace(/_/g, ' ').replace(/\b\w/g, function(l){ return l.toUpperCase(); }) };
+        var rendered = (ek === 'normal_landmarks') ? formatLandmarks(expl[ek]) : formatExplText(expl[ek]);
         explHtml += '<div class="osce-card-expl-item">'
           + '<div class="osce-card-expl-label"><i class="fas ' + meta.icon + ' me-1"></i>' + esc(meta.label) + '</div>'
-          + '<div class="osce-card-expl-text">' + formatExplText(expl[ek]) + '</div>'
+          + '<div class="osce-card-expl-text">' + rendered + '</div>'
           + '</div>';
       }
     }
@@ -1924,8 +1982,9 @@ body.is-admin .osce-admin-edit-btn:hover {
       for (var ek in expl) {
         if (!expl[ek]) continue;
         var meta = explLabels[ek] || { icon: 'fa-info-circle', label: ek.replace(/_/g, ' ') };
+        var rendered = (ek === 'normal_landmarks') ? formatLandmarks(expl[ek]) : formatExplText(expl[ek]);
         html += '<div class="osce-card-expl-item"><div class="osce-card-expl-label"><i class="fas ' + meta.icon + ' me-1"></i>' + esc(meta.label) + '</div>'
-          + '<div class="osce-card-expl-text">' + formatExplText(expl[ek]) + '</div></div>';
+          + '<div class="osce-card-expl-text">' + rendered + '</div></div>';
       }
       html += '</div>';
     }
