@@ -408,11 +408,13 @@ def get_ai_usage():
         sr_limit = 9999
         radiq_limit = 9999
 
+    credits = getattr(current_user, 'report_credits', 0) or 0
     return jsonify({
         'sr_remaining': max(0, sr_limit - sr_used),
         'sr_limit': sr_limit,
         'radiq_remaining': max(0, radiq_limit - radiq_used),
         'radiq_limit': radiq_limit,
+        'report_credits': credits,
         'tier': tier,
         'trial_expired': trial_expired,
         'trial_days_left': trial_days_left,

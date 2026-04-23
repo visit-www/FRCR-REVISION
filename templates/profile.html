@@ -142,6 +142,8 @@
                                 </div>
                                 <!-- Dynamic usage counters -->
                                 <div id="profileUsageCounters" class="mt-2" style="font-size:0.82rem;"></div>
+                                <!-- Credit balance + Buy Credits (paid subscribers only) -->
+                                <div id="profileCreditsBlock" class="mt-2" style="display:none;"></div>
                             </div>
 
                             <div class="row">
@@ -775,9 +777,44 @@
             const riqColor = riqRem <= Math.ceil(riqLim * 0.1) ? '#dc3545' : riqRem <= Math.ceil(riqLim * 0.3) ? '#ffc107' : '#28a745';
             el.innerHTML = '<div><i class="fas fa-bolt me-1" style="color:' + srColor + ';"></i>Smart Reporter: <strong style="color:' + srColor + ';">' + srRem + '/' + srLim + '</strong> actions remaining</div>'
                 + '<div><i class="fas fa-bolt me-1" style="color:' + riqColor + ';"></i>RadIQ: <strong style="color:' + riqColor + ';">' + riqRem + '/' + riqLim + '</strong> queries remaining</div>';
+
+            // Credit balance + Buy Credits button (paid subscribers only)
+            const creditsEl = document.getElementById('profileCreditsBlock');
+            if (creditsEl && data.tier && data.tier !== 'free') {
+                const credits = data.report_credits || 0;
+                creditsEl.style.display = 'block';
+                creditsEl.innerHTML =
+                    '<div style="font-size:0.82rem; margin-top:4px;">' +
+                        '<i class="fas fa-coins me-1" style="color: var(--brand-secondary);"></i>' +
+                        'Top-up credits: <strong>' + credits + '</strong> actions' +
+                        (credits > 0 ? ' <span style="font-size:0.72rem; color:var(--brand-text-secondary);">(used when monthly limit runs out, SR only)</span>' : '') +
+                    '</div>' +
+                    '<button onclick="buyCredits()" class="btn btn-sm mt-2" style="background: var(--brand-secondary); color: #1a1a1a; font-weight: 600; border-radius: 8px; padding: 4px 16px; font-size: 0.8rem;">' +
+                        '<i class="fas fa-plus-circle me-1"></i>Buy 25 Actions &mdash; &pound;6' +
+                    '</button>';
+            }
         })
         .catch(() => {});
 })();
+
+function buyCredits() {
+    const btn = event.target.closest('button');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Opening checkout...';
+    fetch('/stripe/buy-credits', {method: 'POST', headers: {'Content-Type': 'application/json'}, credentials: 'include'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                alert(data.error || 'Could not start checkout');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        })
+        .catch(() => { alert('Connection error'); btn.disabled = false; btn.innerHTML = orig; });
+}
 
 // GDPR Data Export
 function downloadMyData(btn) {
