@@ -979,17 +979,22 @@ body.is-admin .osce-admin-edit-btn:hover {
     if (additionalViews) text += (text ? ' ' : '') + additionalViews;
 
     if (text) {
-      // Split into "what this view shows" vs "alternative views"
-      var parts = text.split(/(?:\.\s+)(?=An?\s+erect|In\s+practice|A\s+lateral|Alternatively|Additional|The\s+erect|A\s+left)/i);
-      if (parts.length >= 2) {
-        html += '<div class="osce-views-item">'
-          + '<div class="osce-views-item-label">What it shows</div>'
-          + '<div class="osce-views-item-text">' + esc(parts[0].replace(/\.\s*$/, '').trim()) + '.</div>'
-          + '</div>';
-        html += '<div class="osce-views-item">'
-          + '<div class="osce-views-item-label">Other views</div>'
-          + '<div class="osce-views-item-text">' + parts.slice(1).map(function(p) { return esc(p.replace(/\.\s*$/, '').trim()) + '.'; }).join(' ') + '</div>'
-          + '</div>';
+      // Split into separate view descriptions — each sentence typically describes one view
+      // Split on ". " followed by "The ", "A ", "An ", "In " (start of new view description)
+      var viewParts = text.split(/(?<=\.)\s+(?=(?:The|An?|In)\s+[a-zA-Z])/);
+      viewParts = viewParts.map(function(p) { return p.trim(); }).filter(Boolean);
+
+      if (viewParts.length >= 2) {
+        viewParts.forEach(function(part, idx) {
+          // Try to extract view name from start of sentence
+          var nameMatch = part.match(/^(?:The|An?)\s+(.+?)\s+(?:view|radiograph|projection|film|image|is\s)/i);
+          var label = nameMatch ? nameMatch[1].trim() : (idx === 0 ? 'Standard view' : 'Additional view');
+          label = label.charAt(0).toUpperCase() + label.slice(1);
+          html += '<div class="osce-views-item">'
+            + '<div class="osce-views-item-label">' + esc(label) + '</div>'
+            + '<div class="osce-views-item-text">' + esc(part.replace(/\.\s*$/, '').trim()) + '.</div>'
+            + '</div>';
+        });
       } else {
         html += '<div class="osce-views-item">'
           + '<div class="osce-views-item-label">Details</div>'
