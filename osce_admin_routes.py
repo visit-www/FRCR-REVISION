@@ -55,47 +55,6 @@ def edit_osce_case_page(case_id):
         ' | '.join(filter(None, [r.get('url', ''), r.get('label', ''), r.get('source', '')]))
         for r in refs
     ) if refs else ''
-    # One-time: reformat views paragraph into line-per-view structure
-    try:
-        osce_json = case.get_osce_data()
-        views = osce_json.get('views', {})
-        notes = views.get('notes', '')
-        # Also handle legacy fields
-        if not notes:
-            parts = []
-            if views.get('why_this_view'):
-                parts.append(views['why_this_view'])
-            if views.get('additional_views'):
-                parts.append(views['additional_views'])
-            notes = ' '.join(parts)
-        if notes and '\n' not in notes:
-            # It's a paragraph — try to split into lines
-            import re
-            # Split on ". The ", ". An ", ". A ", ". In practice"
-            sentences = re.split(r'(?<=\.)\s+(?=(?:The|An?|In)\s)', notes)
-            if len(sentences) >= 2:
-                new_lines = []
-                for s in sentences:
-                    s = s.strip().rstrip('.')
-                    # Try to extract "The AP view is..." -> "AP view — is..."
-                    m = re.match(r'^(?:The|An?)\s+(.+?)\s+(?:view|radiograph|projection|film)\s+(.+)', s, re.IGNORECASE)
-                    if m:
-                        new_lines.append(m.group(1).strip() + ' — ' + m.group(2).strip())
-                    else:
-                        m2 = re.match(r'^(?:The|An?)\s+(.+?)\s+(?:is |can |lets )(.*)', s, re.IGNORECASE)
-                        if m2:
-                            new_lines.append(m2.group(1).strip() + ' — ' + m2.group(2).strip())
-                        else:
-                            new_lines.append(s)
-                views['notes'] = '\n'.join(new_lines)
-                views.pop('why_this_view', None)
-                views.pop('additional_views', None)
-                osce_json['views'] = views
-                case.osce_data = json.dumps(osce_json)
-                db.session.commit()
-    except Exception:
-        pass
-
     # If content_html is empty but osce_data has JSON, render it now
     if not case.content_html and case.osce_data:
         try:

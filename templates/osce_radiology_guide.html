@@ -961,52 +961,18 @@ body.is-admin .osce-admin-edit-btn:hover {
     return esc(text);
   }
 
-  // Format views into simple cards — no sentence parsing, just clean layout
-  function formatViews(obtained, notes, whyView, additionalViews) {
-    var html = '<div class="osce-views-grid">';
-
-    if (obtained) {
-      html += '<div class="osce-views-item">'
-        + '<div class="osce-views-item-label">Projection</div>'
-        + '<div class="osce-views-item-text">' + esc(obtained) + '</div>'
-        + '</div>';
+  // Render views from array of {name, description}
+  function formatViews(views) {
+    if (!views || !views.length) return '';
+    if (views.length === 1 && !views[0].name) {
+      // Single item without name — just show description
+      return '<div class="osce-views-item"><div class="osce-views-item-text">' + esc(views[0].description || '') + '</div></div>';
     }
-
-    // Notes (new format) or legacy fields
-    if (notes) {
-      var viewItems = _parseItems(notes);
-      if (viewItems.list.length > 1) {
-        html += '<table class="osce-landmarks-table"><thead><tr><th>View</th><th>When &amp; Why</th></tr></thead><tbody>';
-        viewItems.list.forEach(function(item) {
-          var m = item.match(/^([^—–:\-]+?)\s*[—–:\-]\s*([\s\S]*)/);
-          if (m) {
-            html += '<tr><td>' + esc(m[1].trim()) + '</td><td>' + esc(m[2].trim()) + '</td></tr>';
-          } else {
-            html += '<tr><td colspan="2">' + esc(item) + '</td></tr>';
-          }
-        });
-        html += '</tbody></table>';
-      } else {
-        html += '<div class="osce-views-item">'
-          + '<div class="osce-views-item-label">About this view</div>'
-          + '<div class="osce-views-item-text">' + esc(notes) + '</div>'
-          + '</div>';
-      }
-    }
-    if (whyView) {
-      html += '<div class="osce-views-item">'
-        + '<div class="osce-views-item-label">Why this view</div>'
-        + '<div class="osce-views-item-text">' + esc(whyView) + '</div>'
-        + '</div>';
-    }
-    if (additionalViews) {
-      html += '<div class="osce-views-item">'
-        + '<div class="osce-views-item-label">Other views</div>'
-        + '<div class="osce-views-item-text">' + esc(additionalViews) + '</div>'
-        + '</div>';
-    }
-
-    html += '</div>';
+    var html = '<table class="osce-landmarks-table"><thead><tr><th>View</th><th>Details</th></tr></thead><tbody>';
+    views.forEach(function(v) {
+      html += '<tr><td>' + esc(v.name || '') + '</td><td>' + esc(v.description || '') + '</td></tr>';
+    });
+    html += '</tbody></table>';
     return html;
   }
 
@@ -1109,8 +1075,9 @@ body.is-admin .osce-admin-edit-btn:hover {
       if (tags[tk]) tagHtml += '<span class="osce-tag">' + esc(tk) + ': ' + esc(tags[tk]) + '</span> ';
     }
 
-    var viewBadge = views.obtained
-      ? '<div class="osce-views-badge"><i class="fas fa-eye me-1"></i>' + esc(views.obtained) + '</div>'
+    var viewObtained = (views && views.length) ? views[0].name : '';
+    var viewBadge = viewObtained
+      ? '<div class="osce-views-badge"><i class="fas fa-eye me-1"></i>' + esc(viewObtained) + '</div>'
       : '';
 
     // ── Step 1 reveal: Findings ──
@@ -1128,12 +1095,12 @@ body.is-admin .osce-admin-edit-btn:hover {
         + '</div>';
     }
 
-    // Views detail (inside findings reveal)
-    if (views.obtained || views.notes || views.why_this_view || views.additional_views) {
+    // Views detail (inside findings reveal) — views is now an array of {name, description}
+    if (views && views.length) {
       findingsHtml += '<div class="osce-card-section osce-card-section--views">'
         + '<div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div>'
         + '<div class="osce-card-section-body">'
-        + formatViews(views.obtained, views.notes, views.why_this_view, views.additional_views)
+        + formatViews(views)
         + '</div></div>';
     }
 
@@ -2001,8 +1968,9 @@ body.is-admin .osce-admin-edit-btn:hover {
     html += '</div>';
 
     // Views
-    if (views.obtained && !examMode) {
-      html += '<div class="osce-views-badge mb-2"><i class="fas fa-eye me-1"></i>' + esc(views.obtained) + '</div>';
+    var focusViewObtained = (views && views.length) ? views[0].name : '';
+    if (focusViewObtained && !examMode) {
+      html += '<div class="osce-views-badge mb-2"><i class="fas fa-eye me-1"></i>' + esc(focusViewObtained) + '</div>';
     }
 
     // Step 1: Findings
@@ -2017,9 +1985,9 @@ body.is-admin .osce-admin-edit-btn:hover {
       html += '<div class="osce-card-section"><div class="osce-card-section-label osce-card-section-label--finding"><i class="fas fa-search me-1"></i>Key Finding</div>'
         + '<div class="osce-card-section-body">' + formatExplText(answer.key_finding) + '</div></div>';
     }
-    if (views.obtained || views.notes || views.why_this_view || views.additional_views) {
+    if (views && views.length) {
       html += '<div class="osce-card-section osce-card-section--views"><div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div><div class="osce-card-section-body">'
-        + formatViews(views.obtained, views.notes, views.why_this_view, views.additional_views)
+        + formatViews(views)
         + '</div></div>';
     }
     // Dive deeper in step 1 reveal

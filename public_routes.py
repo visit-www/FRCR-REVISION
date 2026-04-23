@@ -106,6 +106,43 @@ def paediatric_ct_protocols():
     return render_template('paediatric_ct_protocols.html')
 
 
+def _normalize_views(views):
+    """Convert any views format (old dict, new array, string) to array of {name, description}."""
+    # Already an array — return as-is
+    if isinstance(views, list):
+        return views
+    # Old dict format: {obtained, notes, why_this_view, additional_views}
+    if isinstance(views, dict):
+        result = []
+        obtained = views.get('obtained', '')
+        # Try notes field (may have newlines)
+        notes = views.get('notes', '')
+        if notes and '\n' in notes:
+            for line in notes.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                parts = line.split(' — ', 1)
+                if len(parts) == 2:
+                    result.append({'name': parts[0].strip(), 'description': parts[1].strip()})
+                else:
+                    result.append({'name': '', 'description': line})
+            return result
+        # Legacy fields or single paragraph notes — return as single item
+        desc_parts = []
+        if notes:
+            desc_parts.append(notes)
+        elif views.get('why_this_view'):
+            desc_parts.append(views['why_this_view'])
+        if views.get('additional_views'):
+            desc_parts.append(views['additional_views'])
+        desc = ' '.join(desc_parts)
+        if obtained or desc:
+            result.append({'name': obtained or 'Standard view', 'description': desc})
+        return result
+    return []
+
+
 @public_bp.route('/osce-radiology-guide')
 def osce_radiology_guide():
     """Public OSCE radiology guide — interactive cases for 3rd year medical students."""
@@ -113,46 +150,6 @@ def osce_radiology_guide():
     # Published cases from DB
     db_cases = OsceCase.query.filter_by(is_published=True)\
         .order_by(OsceCase.modality, OsceCase.sort_order, OsceCase.code).all()
-
-    # One-time: reformat views paragraphs into line-per-view for existing cases
-    import re as _re
-    _dirty = False
-    for c in db_cases:
-        try:
-            _od = c.get_osce_data()
-            _v = _od.get('views', {})
-            _n = _v.get('notes', '')
-            if not _n:
-                _parts = []
-                if _v.get('why_this_view'): _parts.append(_v['why_this_view'])
-                if _v.get('additional_views'): _parts.append(_v['additional_views'])
-                _n = ' '.join(_parts)
-            if _n and '\n' not in _n:
-                _sents = _re.split(r'(?<=\.)\s+(?=(?:The|An?|In)\s)', _n)
-                if len(_sents) >= 2:
-                    _lines = []
-                    for _s in _sents:
-                        _s = _s.strip().rstrip('.')
-                        _m = _re.match(r'^(?:The|An?)\s+(.+?)\s+(?:view|radiograph|projection|film)\s+(.+)', _s, _re.IGNORECASE)
-                        if _m:
-                            _lines.append(_m.group(1).strip() + ' — ' + _m.group(2).strip())
-                        else:
-                            _m2 = _re.match(r'^(?:The|An?)\s+(.+?)\s+(?:is |can |lets )(.*)', _s, _re.IGNORECASE)
-                            if _m2:
-                                _lines.append(_m2.group(1).strip() + ' — ' + _m2.group(2).strip())
-                            else:
-                                _lines.append(_s)
-                    _v['notes'] = '\n'.join(_lines)
-                    _v.pop('why_this_view', None)
-                    _v.pop('additional_views', None)
-                    _od['views'] = _v
-                    c.osce_data = json.dumps(_od)
-                    _dirty = True
-        except Exception:
-            pass
-    if _dirty:
-        from models import db
-        db.session.commit()
 
     cases_json = []
     for c in db_cases:
@@ -176,7 +173,7 @@ def osce_radiology_guide():
             'modality': osce_data.get('modality', c.modality).lower().replace(' x-ray', '').replace('x-ray', '').replace(' ', '_'),
             'category': c.category,
             'difficulty': c.difficulty or 'Moderate',
-            'views': osce_data.get('views', {}),
+            'views': _normalize_views(osce_data.get('views', {})),
             'tags': osce_data.get('tags', {}),
             'osce': osce_data.get('osce', {}),
             'explanation': osce_data.get('explanation', {}),

@@ -161,10 +161,11 @@ Return valid JSON with this exact structure:
   "category": "{category}",
   "difficulty": "Easy or Moderate (choose based on how recognisable the findings are)",
 
-  "views": {{
-    "obtained": "Which view(s) this case image would be (e.g., 'PA erect chest radiograph')",
-    "notes": "One line per view. Format:\\nPA erect — standard view, accurate heart size, sharp costophrenic angles\\nAP — used for sick patients, magnifies heart\\nLateral — retrosternal space, posterior angles"
-  }},
+  "views": [
+    {{"name": "PA erect", "description": "Standard view — accurate heart size, sharp costophrenic angles, trachea midline"}},
+    {{"name": "AP", "description": "Used for sick patients — magnifies heart, poor mediastinal assessment"}},
+    {{"name": "Lateral", "description": "Retrosternal space, posterior costophrenic angles, vertebral density"}}
+  ],
 
   "tags": {{
     "pattern": "visual pattern category (e.g., air, fluid, blood, bone disruption, soft tissue, calcification)",
@@ -270,10 +271,11 @@ Return valid JSON with this exact structure:
   "category": "Normal",
   "difficulty": "Easy",
 
-  "views": {{
-    "obtained": "Which standard view(s) are shown (e.g., 'PA erect chest radiograph')",
-    "notes": "One line per view. Format:\\nAP supine — standard, shows gas pattern and organ outlines\\nErect — air-fluid levels, free subdiaphragmatic gas\\nLateral decubitus — alternative when patient cannot stand"
-  }},
+  "views": [
+    {{"name": "AP supine", "description": "Standard view — gas pattern, calcifications, organ outlines"}},
+    {{"name": "Erect", "description": "Air-fluid levels in obstruction, free subdiaphragmatic gas"}},
+    {{"name": "Lateral decubitus", "description": "Alternative when patient cannot stand — detects free air"}}
+  ],
 
   "tags": {{
     "pattern": "normal",
