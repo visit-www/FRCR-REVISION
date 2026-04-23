@@ -419,6 +419,18 @@
 .osce-landmarks-table tr:nth-child(even) td { background: #f8fafc; }
 .osce-landmarks-table td:first-child { font-weight: 600; color: #334155; white-space: nowrap; }
 
+/* Views info card */
+.osce-views-card {
+  background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 0.4rem;
+  padding: 0.5rem 0.75rem; font-size: 0.82rem;
+}
+.osce-views-obtained {
+  font-weight: 700; color: var(--brand-neutral); font-size: 0.85rem;
+  margin-bottom: 0.3rem; padding-bottom: 0.3rem; border-bottom: 1px solid #bae6fd;
+}
+.osce-views-primary { color: #1e40af; margin-bottom: 0.25rem; line-height: 1.5; }
+.osce-views-alt { color: #6b7280; font-size: 0.78rem; line-height: 1.45; font-style: italic; }
+
 /* Legacy approach list fallback */
 .osce-approach-list {
   list-style: none; padding-left: 0; margin: 0.3rem 0;
@@ -942,6 +954,33 @@ body.is-admin .osce-admin-edit-btn:hover {
     return esc(text);
   }
 
+  // Format views into structured info card
+  function formatViews(obtained, notes, whyView, additionalViews) {
+    var html = '<div class="osce-views-card">';
+    // Obtained view badge
+    if (obtained) {
+      html += '<div class="osce-views-obtained"><i class="fas fa-film me-1"></i>' + esc(obtained) + '</div>';
+    }
+    // Notes or legacy fields — split on sentences about different views
+    var text = notes || '';
+    if (!text && whyView) text = whyView;
+    if (additionalViews) text += (text ? ' ' : '') + additionalViews;
+    if (text) {
+      // Try to split into "this view" vs "alternative views" sections
+      var parts = text.split(/(?:\.\s+)(?=An?\s+erect|In\s+practice|A\s+lateral|Alternatively|Additional)/i);
+      if (parts.length >= 2) {
+        html += '<div class="osce-views-primary"><i class="fas fa-check-circle me-1" style="color:var(--brand-neutral);"></i>' + esc(parts[0].replace(/\.\s*$/, '').trim()) + '.</div>';
+        html += '<div class="osce-views-alt"><i class="fas fa-plus-circle me-1" style="color:#9ca3af;"></i>';
+        html += parts.slice(1).map(function(p) { return esc(p.replace(/\.\s*$/, '').trim()) + '.'; }).join(' ');
+        html += '</div>';
+      } else {
+        html += '<div class="osce-views-primary">' + esc(text) + '</div>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
   // Format normal landmarks as a table
   function formatLandmarks(text) {
     if (!text) return '';
@@ -1061,14 +1100,12 @@ body.is-admin .osce-admin-edit-btn:hover {
     }
 
     // Views detail (inside findings reveal)
-    if (views.notes || views.why_this_view || views.additional_views) {
+    if (views.obtained || views.notes || views.why_this_view || views.additional_views) {
       findingsHtml += '<div class="osce-card-section osce-card-section--views">'
         + '<div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div>'
-        + '<div class="osce-card-section-body">';
-      if (views.notes) findingsHtml += '<p class="mb-0">' + esc(views.notes) + '</p>';
-      if (views.why_this_view) findingsHtml += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
-      if (views.additional_views) findingsHtml += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
-      findingsHtml += '</div></div>';
+        + '<div class="osce-card-section-body">'
+        + formatViews(views.obtained, views.notes, views.why_this_view, views.additional_views)
+        + '</div></div>';
     }
 
     // ── Step 2 reveal: Diagnosis + explanation + teaching ──
@@ -1951,12 +1988,10 @@ body.is-admin .osce-admin-edit-btn:hover {
       html += '<div class="osce-card-section"><div class="osce-card-section-label osce-card-section-label--finding"><i class="fas fa-search me-1"></i>Key Finding</div>'
         + '<div class="osce-card-section-body">' + formatExplText(answer.key_finding) + '</div></div>';
     }
-    if (views.notes || views.why_this_view || views.additional_views) {
-      html += '<div class="osce-card-section osce-card-section--views"><div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div><div class="osce-card-section-body">';
-      if (views.notes) html += '<p class="mb-0">' + esc(views.notes) + '</p>';
-      if (views.why_this_view) html += '<p class="mb-1"><strong>Why this view:</strong> ' + esc(views.why_this_view) + '</p>';
-      if (views.additional_views) html += '<p class="mb-0"><strong>Additional views:</strong> ' + esc(views.additional_views) + '</p>';
-      html += '</div></div>';
+    if (views.obtained || views.notes || views.why_this_view || views.additional_views) {
+      html += '<div class="osce-card-section osce-card-section--views"><div class="osce-card-section-label"><i class="fas fa-eye me-1"></i>Views</div><div class="osce-card-section-body">'
+        + formatViews(views.obtained, views.notes, views.why_this_view, views.additional_views)
+        + '</div></div>';
     }
     // Dive deeper in step 1 reveal
     if (linkedIds.length === 1) {
