@@ -225,7 +225,7 @@ def create_checkout_session():
         customer_id = _ensure_stripe_customer(current_user)
     except Exception as e:
         logger.error(f"Stripe ensure_customer error: {e}", exc_info=True)
-        return jsonify({'error': f'Customer error: {str(e)}'}), 500
+        return jsonify({'error': 'Could not set up payment profile. Please try again.'}), 500
 
     if not customer_id:
         return jsonify({'error': 'Could not create payment profile'}), 500
@@ -243,7 +243,7 @@ def create_checkout_session():
         return jsonify({'checkout_url': session.url})
     except Exception as e:
         logger.error(f"Stripe checkout error: {e}", exc_info=True)
-        return jsonify({'error': f'Checkout error: {str(e)}'}), 500
+        return jsonify({'error': 'Could not start checkout. Please try again.'}), 500
 
 
 @stripe_bp.route('/buy-credits', methods=['POST'])
@@ -265,7 +265,7 @@ def buy_credits():
         customer_id = _ensure_stripe_customer(current_user)
     except Exception as e:
         logger.error(f"Stripe ensure_customer error: {e}", exc_info=True)
-        return jsonify({'error': f'Customer error: {str(e)}'}), 500
+        return jsonify({'error': 'Could not set up payment profile. Please try again.'}), 500
 
     if not customer_id:
         return jsonify({'error': 'Could not create payment profile'}), 500
@@ -286,7 +286,7 @@ def buy_credits():
         return jsonify({'checkout_url': session.url})
     except Exception as e:
         logger.error(f"Stripe credit purchase error: {e}", exc_info=True)
-        return jsonify({'error': f'Checkout error: {str(e)}'}), 500
+        return jsonify({'error': 'Could not start checkout. Please try again.'}), 500
 
 
 @stripe_bp.route('/success')
@@ -391,7 +391,7 @@ def change_plan():
 
     except stripe.StripeError as e:
         logger.error(f"Stripe change-plan error for user {current_user.id}: {e}", exc_info=True)
-        return jsonify({'error': f'Could not change plan: {str(e)}'}), 500
+        return jsonify({'error': 'Could not change plan. Please try again.'}), 500
 
 
 @stripe_bp.route('/preview-change', methods=['POST'])
@@ -461,7 +461,7 @@ def preview_change():
 
     except stripe.StripeError as e:
         logger.error(f"Preview change error for user {current_user.id}: {e}", exc_info=True)
-        return jsonify({'error': f'Could not preview: {str(e)}'}), 500
+        return jsonify({'error': 'Could not preview plan change. Please try again.'}), 500
 
 
 @stripe_bp.route('/cancel-pending-change', methods=['POST'])
@@ -497,7 +497,7 @@ def cancel_pending_change():
 
     except stripe.StripeError as e:
         logger.error(f"Cancel pending change error for user {current_user.id}: {e}", exc_info=True)
-        return jsonify({'error': f'Could not cancel: {str(e)}'}), 500
+        return jsonify({'error': 'Could not cancel pending change. Please try again.'}), 500
 
 
 @stripe_bp.route('/create-portal-session', methods=['POST'])
