@@ -7076,6 +7076,11 @@ body {
     border: 1px solid #c6c8ca;
     color: #41464b;
 }
+.cmv-trust-review {
+    background: linear-gradient(135deg, #fff3cd 0%, #fff8e1 100%);
+    border: 1px solid #ffda6a;
+    color: #664d03;
+}
 .cmv-info-btn {
     font-size: 0.75rem;
     color: inherit;

@@ -294,13 +294,76 @@ SHORTHAND_SYSTEM_PROMPT = (
 )
 
 
-def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles=None):
+_QUICK_CLEAN_SYSTEM = (
+    "You are a consultant radiologist. Clean up a clinical referral: "
+    "fix typos, expand abbreviations, standardise formatting, identify the study. "
+    "UK NHS context. British English. Return ONLY valid JSON."
+)
+
+
+def _quick_clean_analysis(referral_text, modality_hint=None):
+    """Lightweight analysis — text cleanup + study identification only.
+
+    Skips guideline blocks, protocol catalogue, and evidence references
+    to keep the prompt small and fast (~500 tokens vs ~8000).
+    """
+    hint_line = ""
+    if modality_hint:
+        hint_line = f"\nModality selected by referrer: {modality_hint}. Use this modality.\n"
+
+    user_prompt = (
+        "Clean this clinical referral and return JSON.\n\n"
+        f"REFERRAL TEXT:\n{referral_text.strip()}\n{hint_line}\n"
+        "Return ONLY valid JSON:\n"
+        "{\n"
+        '  "cleaned_clinical_text": "cleaned version — one clinical fact per line, '
+        'separated by \\n. Fix typos, expand abbreviations, preserve meaning.",\n'
+        '  "study_type": "short study identifier e.g. CTPA, CT AP, MRI BRAIN",\n'
+        '  "study_name_full": "full name e.g. CT Pulmonary Angiography",\n'
+        '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
+        '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem",\n'
+        '  "contrast": "none or iv",\n'
+        '  "is_paediatric": false,\n'
+        '  "baseline_checks": {"requires_egfr": false, "pregnancy_check_required": false, "allergy_check_required": false, "metformin_check_required": false},\n'
+        '  "ai_flags": []\n'
+        "}\n"
+    )
+
+    text, model_used, tokens = call_claude(
+        system_prompt=_QUICK_CLEAN_SYSTEM,
+        user_prompt=user_prompt,
+        max_tokens=800,
+        temperature=0.1,
+        timeout=20,
+        error_class=VettingAIError,
+        skip_preamble=True,
+    )
+
+    result = parse_json_response(text, error_class=VettingAIError)
+
+    for field in ('cleaned_clinical_text', 'study_type', 'modality'):
+        if not result.get(field):
+            raise VettingAIError(f"AI response missing required field: {field}")
+
+    result['model'] = model_used
+    result['output_tokens'] = tokens
+
+    logger.info("Quick clean complete: study=%s modality=%s tokens=%d",
+                result.get('study_type'), result.get('modality'), tokens)
+
+    return result
+
+
+def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles=None,
+                              quick_clean=False):
     """
     Analyse a clinical referral — clean text, identify study, flag missing info.
 
     Args:
         referral_text: Raw clinical referral text from the request form
         modality_hint: Optional modality hint from the user (CT, MRI, US, XR)
+        protocol_titles: Optional list of (slug, description) for protocol matching
+        quick_clean: If True, use a lightweight prompt (text cleanup only)
 
     Returns:
         dict: {cleaned_clinical_text, study_type, study_name_full, modality,
@@ -311,6 +374,10 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
     """
     if not referral_text or not referral_text.strip():
         raise VettingAIError("Referral text cannot be empty.")
+
+    # ── Quick clean: lightweight prompt, no guideline blocks ──
+    if quick_clean:
+        return _quick_clean_analysis(referral_text, modality_hint)
 
     hint_line = ""
     if modality_hint:

@@ -308,51 +308,57 @@ def vetting_analyse():
     if not ok:
         return err
 
+    # Quick clean mode: skip the protocol catalogue entirely (saves ~2000 tokens
+    # of prompt and the DB query) — the AI only needs to clean text, not match protocols
+    quick_clean = data.get('quick_clean', False)
+
     # Build protocol title catalogue for AI matching — includes shorthand
     # so the model can see contrast/non-contrast and coverage info
     # Includes admin protocols + current user's personal protocols
     _protocol_titles = []
-    try:
-        _all_protocols = ImagingProtocol.query.filter(
-            db.or_(
-                db.and_(ImagingProtocol.origin == 'admin', ImagingProtocol.is_published == True),
-                db.and_(ImagingProtocol.origin == 'personal', ImagingProtocol.user_id == current_user.id),
-            )
-        ).with_entities(
-            ImagingProtocol.slug, ImagingProtocol.title,
-            ImagingProtocol.modality, ImagingProtocol.shorthand_text,
-        ).all()
-        # Derive contrast status from shorthand text for unambiguous AI matching
-        _CONTRAST_KEYWORDS = ('contrast', 'ml @', 'ml@', 'ml/s', 'bolus', 'delay', 'phase',
-                              'arterial', 'portal', 'venous', 'injection rate',
-                              'hand inject', 'inject')
-        _NON_CONTRAST_KEYWORDS = ('non-contrast', 'non contrast', 'plain', 'no contrast',
-                                  'none (plain', 'ncct', 'unenhanced')
-        def _contrast_label(shorthand):
-            s = (shorthand or '').lower()
-            if any(kw in s for kw in _NON_CONTRAST_KEYWORDS):
-                return 'NON-CONTRAST'
-            if any(kw in s for kw in _CONTRAST_KEYWORDS):
-                if 'if required' in s or 'if indicated' in s or 'if mass' in s:
-                    return 'NON-CONTRAST (contrast only if clinically indicated)'
-                return 'IV CONTRAST'
-            return ''
+    if not quick_clean:
+        try:
+            _all_protocols = ImagingProtocol.query.filter(
+                db.or_(
+                    db.and_(ImagingProtocol.origin == 'admin', ImagingProtocol.is_published == True),
+                    db.and_(ImagingProtocol.origin == 'personal', ImagingProtocol.user_id == current_user.id),
+                )
+            ).with_entities(
+                ImagingProtocol.slug, ImagingProtocol.title,
+                ImagingProtocol.modality, ImagingProtocol.shorthand_text,
+            ).all()
+            # Derive contrast status from shorthand text for unambiguous AI matching
+            _CONTRAST_KEYWORDS = ('contrast', 'ml @', 'ml@', 'ml/s', 'bolus', 'delay', 'phase',
+                                  'arterial', 'portal', 'venous', 'injection rate',
+                                  'hand inject', 'inject')
+            _NON_CONTRAST_KEYWORDS = ('non-contrast', 'non contrast', 'plain', 'no contrast',
+                                      'none (plain', 'ncct', 'unenhanced')
+            def _contrast_label(shorthand):
+                s = (shorthand or '').lower()
+                if any(kw in s for kw in _NON_CONTRAST_KEYWORDS):
+                    return 'NON-CONTRAST'
+                if any(kw in s for kw in _CONTRAST_KEYWORDS):
+                    if 'if required' in s or 'if indicated' in s or 'if mass' in s:
+                        return 'NON-CONTRAST (contrast only if clinically indicated)'
+                    return 'IV CONTRAST'
+                return ''
 
-        for p in _all_protocols:
-            short = (p.shorthand_text or '')[:80].replace('\n', ' | ')
-            contrast = _contrast_label(p.shorthand_text)
-            desc = f"[{p.modality}] {p.title}"
-            if contrast:
-                desc += f" [{contrast}]"
-            if short:
-                desc += f" — {short}"
-            _protocol_titles.append((p.slug, desc))
-    except Exception:
-        pass  # non-fatal — AI will work without it
+            for p in _all_protocols:
+                short = (p.shorthand_text or '')[:80].replace('\n', ' | ')
+                contrast = _contrast_label(p.shorthand_text)
+                desc = f"[{p.modality}] {p.title}"
+                if contrast:
+                    desc += f" [{contrast}]"
+                if short:
+                    desc += f" — {short}"
+                _protocol_titles.append((p.slug, desc))
+        except Exception:
+            pass  # non-fatal — AI will work without it
 
     try:
         result = generate_vetting_analysis(referral_text, modality_hint=modality_hint,
-                                           protocol_titles=_protocol_titles)
+                                           protocol_titles=_protocol_titles,
+                                           quick_clean=quick_clean)
     except VettingAIError as e:
         logger.error("Vetting analysis failed: %s", e)
         log_ai_usage(current_user.id, 'vetting_analyse', provider='anthropic',
@@ -368,8 +374,6 @@ def vetting_analyse():
                  input_tokens=_usage.get('input_tokens'),
                  output_tokens=result.get('output_tokens'))
 
-    # Quick clean mode: skip protocol/algorithm search (saves DB queries)
-    quick_clean = data.get('quick_clean', False)
     matched_protocols = []
     matched_algorithms = []
 

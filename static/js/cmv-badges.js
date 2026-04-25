@@ -200,8 +200,21 @@
             }
         });
 
-        // Don't show trust badge if there are unresolved disputes
-        if (unresolvedDisputes > 0) return;
+        // If there are unresolved disputes, show a warning badge instead of hiding
+        if (unresolvedDisputes > 0) {
+            var verifiedCount = aiConfirmed + expertReviewed;
+            containerEl.insertAdjacentHTML('afterbegin',
+                '<div class="cmv-trust-badge cmv-trust-review mb-2"><div class="cmv-trust-header">' +
+                '<i class="fas fa-exclamation-triangle me-2"></i>' +
+                '<strong>Under Review</strong> ' +
+                '<span class="cmv-trust-detail">' + unresolvedDisputes + ' claim' + (unresolvedDisputes > 1 ? 's' : '') + ' flagged for expert review' +
+                (verifiedCount > 0 ? ' — ' + verifiedCount + ' verified' : '') + '</span>' +
+                '<button class="cmv-info-btn btn btn-link btn-sm p-0 ms-2" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" ' +
+                'data-bs-content="Our Cross-Model Verification system flagged ' + unresolvedDisputes + ' claim' + (unresolvedDisputes > 1 ? 's' : '') + ' for expert review. ' +
+                'These are highlighted in the Peer Review Log below. We advise extra caution with flagged claims until our expert panel has reviewed them.">' +
+                '<i class="fas fa-info-circle"></i></button></div></div>');
+            return;
+        }
 
         var total = aiConfirmed + expertReviewed;
         if (total === 0) return;
@@ -227,14 +240,15 @@
     function _renderVerificationTable(containerEl, claims) {
         if (!claims || claims.length === 0) return;
 
-        // Filter: show agreed (high conf), admin_verified, and resolved disputed claims
+        // Filter: show agreed (high conf), admin_verified, and ALL disputed claims
+        // (both resolved and unresolved — users need to see what's flagged)
         // Skip: dismissed, uncertain, pending, low-confidence agreed
         var tableClaims = claims.filter(function(c) {
             if (c.badge_state === 'dismissed') return false;
             if (c.badge_state === 'admin_verified') return true;
             if (c.badge_state === 'agreed' && (c.gemini_confidence || '').toLowerCase() === 'high') return true;
-            // Show disputed only if admin has reviewed (resolved)
-            if (c.badge_state === 'disputed' && c.admin_override === 'incorrect') return true;
+            // Show ALL disputed claims — resolved (admin reviewed) and unresolved (pending review)
+            if (c.badge_state === 'disputed') return true;
             return false;
         });
 
@@ -281,6 +295,22 @@
             } else if (c.badge_state === 'agreed') {
                 statusHtml = '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>CMV Verified</span>';
                 detailHtml = '<small class="text-muted">Cross-model verified with high confidence</small>';
+            } else if (c.badge_state === 'disputed' && !c.admin_override) {
+                // Unresolved dispute — pending expert review
+                statusHtml = '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Under Review</span>';
+                var unresolvedDetail = '';
+                if (c.gemini_reasoning) {
+                    unresolvedDetail += '<div class="cmv-vlog-history-block cmv-vlog-flag">' +
+                        '<small class="fw-semibold text-danger"><i class="fas fa-flag me-1"></i>Flagged</small>' +
+                        '<small class="text-muted d-block">' + _escHtml(c.gemini_reasoning) + '</small></div>';
+                }
+                if (c.gemini_correction) {
+                    unresolvedDetail += '<div class="cmv-vlog-history-block cmv-vlog-suggestion">' +
+                        '<small class="fw-semibold" style="color:var(--brand-neutral)"><i class="fas fa-lightbulb me-1"></i>Suggested</small>' +
+                        '<small class="text-muted d-block">' + _escHtml(c.gemini_correction) + '</small></div>';
+                }
+                unresolvedDetail += '<div class="small text-muted mt-1"><i class="fas fa-clock me-1"></i>Awaiting expert review</div>';
+                detailHtml = unresolvedDetail;
             } else if (c.badge_state === 'disputed' && c.admin_override === 'incorrect') {
                 // Resolved dispute — show full version history
                 statusHtml = '<span class="badge bg-info text-white"><i class="fas fa-history me-1"></i>Refined</span>';
