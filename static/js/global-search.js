@@ -9,7 +9,6 @@
         case:         { icon: 'fa-book-medical',    color: '#5E899E', bg: 'rgba(94,137,158,0.12)',  label: 'Case' },
         oncologic:    { icon: 'fa-dna',             color: '#6b46c1', bg: 'rgba(107,70,193,0.12)',  label: 'TNM Calculator' },
         tnm_case:     { icon: 'fa-layer-group',     color: '#6b46c1', bg: 'rgba(107,70,193,0.12)',  label: 'TNM Essentials' },
-        protocol:     { icon: 'fa-shield-alt',      color: '#dc3545', bg: 'rgba(220,53,69,0.12)',   label: 'Protocol' },
         incidental:   { icon: 'fa-tools',           color: '#e96304', bg: 'rgba(233,99,4,0.12)',    label: 'Tool' },
         reporting:    { icon: 'fa-project-diagram', color: '#5E899E', bg: 'rgba(94,137,158,0.12)',  label: 'Algorithm' },
         template:     { icon: 'fa-clipboard-list',  color: '#2e7d5e', bg: 'rgba(168,213,186,0.18)', label: 'Template' },

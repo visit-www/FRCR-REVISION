@@ -1,10 +1,11 @@
 """
-Vetting Tool AI Module — Clinical referral analysis and protocol generation.
+Vetting Tool AI Module — Clinical referral analysis and advisory.
 
-Three functions:
+Single function:
 1. generate_vetting_analysis() — parse referral, identify study, flag missing info
-2. generate_vetting_protocol() — generate shorthand + detailed protocol (when no library match)
-3. extract_shorthand() — extract consultant-style shorthand from detailed protocol text
+
+Protocol library removed Apr 2026 — AI analysis now handles study identification,
+contrast detection, and safety checks directly without a stored protocol catalogue.
 
 Uses shared ai_client.call_claude() for API calls.
 Model: Sonnet (default) — fast structured output for classification tasks.
@@ -84,9 +85,6 @@ _REFERENCE_LAYER_BLOCK = (
     "- Cite the specific layer and document you follow for each recommendation "
     "(e.g. 'NICE NG143 — non-contrast CT KUB').\n"
     "- Where a UK NICE or RCR document directly answers the question, PREFER it over ACR.\n"
-    "- For protocol parameters (contrast volume, phases, delays), follow the internal "
-    "protocol library served by the calling code. If no library match, cite the physiology "
-    "principle (e.g. 'PV 70 s per standard abdominal CT physiology').\n"
     "- Do NOT invent document numbers or editions. If unsure of the exact NICE guideline "
     "number, cite the generic source ('NICE stroke guidance') rather than guess.\n"
     "- Do NOT recommend OBSOLETE practices. Examples of obsolete practice the AI must AVOID:\n"
@@ -101,10 +99,6 @@ _REFERENCE_LAYER_BLOCK = (
 
 # ── ACR Contrast Block — authoritative numeric reference ─────────────
 # Distilled from ACR Manual on Contrast Media (2025 ed., Jan 2025, 122 pp).
-# Source of truth: docs/vetting/ACR_CONTRAST_BLOCK_2025.md — when that file
-# is updated, copy the block below verbatim. Same numbers are surfaced in
-# templates/partials/_contrast_reaction_card.html so the vetting AI and the
-# visible Contrast Reaction Card never drift apart.
 
 _ACR_CONTRAST_BLOCK = """
 
@@ -176,11 +170,6 @@ ACR MANUAL ON CONTRAST MEDIA (2025 ed.) — AUTHORITATIVE REFERENCE FOR CONTRAST
 
 
 # ── RCR Whole-Body CT Trauma Triage Block ────────────────────────────
-# Distilled from the Royal College of Radiologists' Major Adult Trauma
-# Guidance (2024). Used only in ANALYSIS_SYSTEM_PROMPT (indication-level
-# vetting) — NOT in the protocol prompt where scanner parameters live.
-# Purpose: give the AI the exact triage thresholds so it does not
-# paraphrase or miss specific vital-sign cut-offs when advising WBCT.
 
 _WBCT_CRITERIA_BLOCK = """
 
@@ -227,7 +216,7 @@ RULES FOR THE AI:
 """
 
 
-# ── System Prompts ─────────────────────────────────────────────────────
+# ── System Prompt ─────────────────────────────────────────────────────
 
 ANALYSIS_SYSTEM_PROMPT = (
     "You are a consultant radiologist vetting imaging requests in an NHS department. "
@@ -262,37 +251,8 @@ ANALYSIS_SYSTEM_PROMPT = (
     + _WBCT_CRITERIA_BLOCK
 )
 
-PROTOCOL_SYSTEM_PROMPT = (
-    "You are a consultant radiologist generating imaging protocols for an NHS department. "
-    "Your task is to produce a complete imaging protocol for the specified study.\n\n"
-    "RULES:\n"
-    "- Shorthand: brief consultant vetting-box style (what goes on the request card). "
-    "Include study name, coverage, contrast info, key phases. 2-4 lines max.\n"
-    "Where studies have a special name, provide them in brackets along with the more generic "
-    "name (e.g. 4D CT for parathyroid adenoma or Camp Bastion Protocol for trauma).\n"
-    "- Detailed protocol: full technical specification as an HTML table. Include specific "
-    "technical parameters (kVp, mAs, slice thickness, reconstruction kernels for CT; "
-    "sequences, FOV, slice thickness for MRI) with a note 'Verify parameters for your department'.\n"
-    "Include any medications to be given (e.g. Buscopan in gynaecological imaging) and their "
-    "required safety checks.\n"
-    "The detailed protocol should be in the format a radiographer would want as imaging protocol text.\n"
-    "- Special notes: BRIEF (3 sentences max) — only patient prep, timing, or contrast precautions. "
-    "Do NOT restate the clinical indication, algorithm pathway, or referral details.\n"
-    "- Validation config: specify which safety checks the protocol requires. "
-    "If any safety checks are needed, include them in the validation config.\n"
-    "- UK NHS context. British English.\n"
-    + _EVIDENCE_BLOCK
-    + _REFERENCE_LAYER_BLOCK
-    + _ACR_CONTRAST_BLOCK
-)
 
-SHORTHAND_SYSTEM_PROMPT = (
-    "You are a consultant radiologist. Extract a brief consultant-style shorthand "
-    "from the given protocol — the format a consultant radiologist would write in the "
-    "vetting box on a request card. 2-4 lines: study name, coverage, contrast, key phases. "
-    "No preamble."
-)
-
+# ── Quick Clean (lightweight) ────────────────────────────────────────
 
 _QUICK_CLEAN_SYSTEM = (
     "You are a consultant radiologist. Clean up a clinical referral: "
@@ -304,7 +264,7 @@ _QUICK_CLEAN_SYSTEM = (
 def _quick_clean_analysis(referral_text, modality_hint=None):
     """Lightweight analysis — text cleanup + study identification only.
 
-    Skips guideline blocks, protocol catalogue, and evidence references
+    Skips guideline blocks and evidence references
     to keep the prompt small and fast (~500 tokens vs ~8000).
     """
     hint_line = ""
@@ -354,15 +314,15 @@ def _quick_clean_analysis(referral_text, modality_hint=None):
     return result
 
 
-def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles=None,
-                              quick_clean=False):
+# ── Full Vetting Analysis ─────────────────────────────────────────────
+
+def generate_vetting_analysis(referral_text, modality_hint=None, quick_clean=False):
     """
     Analyse a clinical referral — clean text, identify study, flag missing info.
 
     Args:
         referral_text: Raw clinical referral text from the request form
         modality_hint: Optional modality hint from the user (CT, MRI, US, XR)
-        protocol_titles: Optional list of (slug, description) for protocol matching
         quick_clean: If True, use a lightweight prompt (text cleanup only)
 
     Returns:
@@ -383,25 +343,15 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
     if modality_hint:
         hint_line = (
             f"\nModality SELECTED by referrer: {modality_hint}. "
-            "You MUST use this modality for study_type and matched_protocol_slug. "
+            "You MUST use this modality for study_type. "
             "If a different modality would be more appropriate, note this in ai_flags "
             "but still return the selected modality."
-        )
-
-    # Build protocol catalogue line if titles provided
-    protocol_line = ""
-    if protocol_titles:
-        protocol_line = (
-            "\nAVAILABLE PROTOCOL LIBRARY (slug → title):\n"
-            + "\n".join(f"  {slug}: {title}" for slug, title in protocol_titles)
-            + "\n"
         )
 
     user_prompt = (
         "Analyse this clinical referral and return a JSON object.\n\n"
         f"REFERRAL TEXT:\n{referral_text.strip()}\n"
         f"{hint_line}\n"
-        f"{protocol_line}\n"
         "Return ONLY valid JSON with these fields:\n"
         "{\n"
         '  "cleaned_clinical_text": "cleaned version of the referral (fix formatting, '
@@ -414,8 +364,7 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
         '  "study_name_full": "full human-readable study name e.g. CT Pulmonary Angiography",\n'
         '  "modality": "CT or MRI or US or XR or NM or Fluoro",\n'
         '  "body_section": "one of: Thorax, Abdomen, Pelvis, Head and Neck, Brain, Spine, MSK, Cardiovascular, Breast, Multisystem (use Multisystem for e.g. CT CAP)",\n'
-        '  "matched_protocol_slug": "slug of the BEST matching protocol from the AVAILABLE PROTOCOL LIBRARY above. Pick the most specific match for this clinical scenario. null if no library provided or no good match.",\n'
-        '  "contrast": "none or iv — whether this study requires IV contrast based on clinical indication and matched protocol",\n'
+        '  "contrast": "none or iv — whether this study requires IV contrast based on the clinical indication",\n'
         '  "is_paediatric": true/false (true if patient age < 16 years, or described as child/infant/neonate/paediatric/toddler; false if adult, unknown age, or not stated),\n'
         '  "baseline_checks": {\n'
         '    "requires_egfr": true/false,\n'
@@ -437,21 +386,17 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
         '"search_terms": "PubMed search terms to verify this claim"}\n'
         "  ]\n"
         "}\n\n"
-        "PROTOCOL MATCHING:\n"
-        "- The AVAILABLE PROTOCOL LIBRARY includes shorthand text showing contrast, "
-        "coverage, and technique. Use this to pick the most clinically appropriate protocol "
-        "for the referral scenario.\n\n"
         "GUIDELINES FOR ai_flags:\n"
-        "- A flag is ONLY valid if the radiologist would need clarification BEFORE selecting "
-        "the imaging protocol.\n"
+        "- A flag is ONLY valid if the radiologist would need clarification BEFORE approving "
+        "the imaging request.\n"
         "- MAXIMUM 3 flags. Each flag must represent ONE DISTINCT clinical decision gap. "
         "Do NOT split closely related missing details into separate flags.\n"
-        "- Return [] if the referral contains sufficient information to protocol the study.\n"
+        "- Return [] if the referral contains sufficient information.\n"
         "- Include a flag ONLY if the missing information would directly affect: "
-        "(a) imaging modality selection, (b) protocol/sequence/phase selection, "
+        "(a) imaging modality selection, (b) contrast/phase decisions, "
         "(c) anatomical coverage/extent, or (d) urgency/triage.\n"
         "- PRIORITISATION — select ONLY the highest-impact gaps in this order: "
-        "1. Modality decisions, 2. Protocol/contrast decisions, "
+        "1. Modality decisions, 2. Contrast/phase decisions, "
         "3. Coverage/extent decisions, 4. Urgency.\n"
         "- If more than 3 valid gaps exist, include the TOP 3 only.\n"
         "- Each flag must be specific, actionable, and non-overlapping.\n"
@@ -485,130 +430,3 @@ def generate_vetting_analysis(referral_text, modality_hint=None, protocol_titles
                 result.get('study_type'), result.get('modality'), model_used, tokens)
 
     return result
-
-
-def generate_vetting_protocol(study_type, modality, clinical_context=None, algorithm_context=None):
-    """
-    Generate an imaging protocol when no library match exists.
-
-    Args:
-        study_type: Study identifier from analysis step (e.g. CTPA)
-        modality: CT, MRI, US, XR, etc.
-        clinical_context: Optional clinical context for tailoring the protocol
-        algorithm_context: Optional algorithm pathway text from VettingAlgorithm.to_ai_context()
-
-    Returns:
-        dict: {shorthand, detailed_protocol_html, special_notes, validation,
-               model, output_tokens}
-
-    Raises:
-        VettingAIError on validation or API failure
-    """
-    if not study_type:
-        raise VettingAIError("Study type is required.")
-
-    context_line = f"\nClinical context: {clinical_context}" if clinical_context else ""
-    algorithm_line = ""
-    if algorithm_context:
-        algorithm_line = (
-            f"\n\nCLINICAL ALGORITHM (guideline-based pathway):\n"
-            f"{algorithm_context}\n"
-            f"Follow this pathway to guide protocol recommendation."
-        )
-
-    user_prompt = (
-        f"Generate a complete imaging protocol for: {study_type} ({modality})\n"
-        f"{context_line}{algorithm_line}\n\n"
-        "Return ONLY valid JSON with these fields:\n"
-        "{\n"
-        '  "shorthand": "Consultant vetting-box shorthand (2-4 lines).\\n'
-        'Example for CTPA: CTPA\\nChest — diaphragm to apices\\nIV contrast, PA phase\\nBolus tracking aorta",\n'
-        '  "detailed_protocol_html": "<table class=\'table table-sm vetting-protocol-table\'>'
-        '<thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>...</tbody></table>'
-        '<p class=\'text-muted small mt-2\'><em>Verify parameters for your department.</em></p>",\n'
-        '  "special_notes": "Brief clinical notes ONLY — patient prep, timing, contrast precautions. '
-        '3 sentences max. Do NOT repeat algorithm pathway text or restate the clinical indication. '
-        'null if none relevant.",\n'
-        '  "validation": {\n'
-        '    "requires_egfr": true/false,\n'
-        '    "egfr_threshold": 30 or 45 or null,\n'
-        '    "pregnancy_check_required": true/false,\n'
-        '    "allergy_check_required": true/false\n'
-        '  },\n'
-        '  "guideline_citation": "specific UK guideline layer and document anchoring '
-        'this protocol, e.g. NICE NG143 — non-contrast CT KUB first-line, or '
-        'Swansea NHS Trust CT protocol library — standard triphasic liver. Use null '
-        'only if no named guideline applies."\n'
-        "}\n\n"
-        "SHORTHAND STYLE EXAMPLES:\n"
-        "CT Head: CT Brain / Non-contrast / Skull base to vertex\n"
-        "CT CAP: CT Chest Abdomen Pelvis / IV contrast / Portal venous phase / "
-        "Thoracic inlet to symphysis pubis\n"
-        "MRI Brain: MRI Brain / Axial T1, T2, FLAIR, DWI / Sag T1 / +Gd if indicated\n\n"
-        "DETAILED PROTOCOL: Use an HTML table with Parameter and Value columns. "
-        "Include modality-specific technical parameters.\n"
-        "For CT: kVp, mAs/dose modulation, slice thickness, reconstruction kernel, "
-        "contrast volume, injection rate, scan delay/phases, coverage.\n"
-        "For MRI: sequences (with plane), FOV, slice thickness, contrast agent, "
-        "special prep.\n"
-    )
-
-    text, model_used, tokens = call_claude(
-        system_prompt=PROTOCOL_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        max_tokens=2500,
-        temperature=0.1,
-        timeout=45,
-        error_class=VettingAIError,
-        skip_preamble=True,
-    )
-
-    result = parse_json_response(text, error_class=VettingAIError)
-
-    if not result.get('shorthand'):
-        raise VettingAIError("AI response missing protocol shorthand.")
-
-    result['model'] = model_used
-    result['output_tokens'] = tokens
-
-    logger.info("Vetting protocol generated: study=%s modality=%s tokens=%d",
-                study_type, modality, tokens)
-
-    return result
-
-
-def extract_shorthand(detailed_protocol_text):
-    """
-    Extract consultant-style shorthand from detailed protocol text.
-    Used during batch import of protocols.
-
-    Args:
-        detailed_protocol_text: Full protocol text (plain text or HTML)
-
-    Returns:
-        str: Shorthand text (2-4 lines)
-
-    Raises:
-        VettingAIError on failure
-    """
-    if not detailed_protocol_text or not detailed_protocol_text.strip():
-        raise VettingAIError("Protocol text cannot be empty.")
-
-    user_prompt = (
-        "Extract a consultant-style vetting shorthand from this protocol.\n"
-        "Return ONLY the shorthand text (2-4 lines, no JSON, no explanation).\n\n"
-        f"PROTOCOL:\n{detailed_protocol_text.strip()}\n"
-    )
-
-    text, model_used, tokens = call_claude(
-        system_prompt=SHORTHAND_SYSTEM_PROMPT,
-        user_prompt=user_prompt,
-        max_tokens=200,
-        temperature=0.1,
-        timeout=20,
-        error_class=VettingAIError,
-        skip_preamble=True,
-    )
-
-    logger.info("Shorthand extracted: model=%s tokens=%d", model_used, tokens)
-    return text.strip()

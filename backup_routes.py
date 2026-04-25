@@ -39,8 +39,8 @@ from models import (
     RadiologyPearl,
     # Knowledge linking tables
     case_algorithm_links, case_template_links, case_pearl_links,
-    # Imaging protocols and vetting
-    ImagingProtocol, VettingSession, VettingAlgorithm,
+    # Vetting
+    VettingSession, VettingAlgorithm,
     # Admin docs and memory sync
     AdminDocument, ClaudeMemoryUpdate, TourCapture,
     # Peer review / CMV
@@ -211,8 +211,7 @@ def _build_backup_data():
         'radiology_pearls': [],
         # Import staging
         'imported_case_staging': [],
-        # Imaging protocols and vetting
-        'imaging_protocols': [],
+        # Vetting
         'vetting_sessions': [],
         'vetting_algorithms': [],
         # Admin docs and memory sync
@@ -958,30 +957,7 @@ def _build_backup_data():
             'updated_at': ics.updated_at.isoformat() if ics.updated_at else None,
         })
 
-    # ==================== IMAGING PROTOCOLS & VETTING ====================
-
-    for proto in ImagingProtocol.query.all():
-        backup_data['imaging_protocols'].append({
-            'id': proto.id, 'title': proto.title, 'slug': proto.slug,
-            'modality': proto.modality, 'body_section': proto.body_section,
-            'keywords': proto.keywords, 'shorthand_text': proto.shorthand_text,
-            'detailed_protocol_html': proto.detailed_protocol_html,
-            'special_notes': proto.special_notes,
-            'indication_json': proto.indication_json,
-            'validation_json': proto.validation_json,
-            'search_config_json': proto.search_config_json,
-            'origin': proto.origin,
-            'user_id': proto.user_id,
-            'copied_from_id': proto.copied_from_id,
-            'is_published': proto.is_published,
-            'is_verified': proto.is_verified,
-            'verified_by_user_id': proto.verified_by_user_id,
-            'verified_at': proto.verified_at.isoformat() if proto.verified_at else None,
-            'is_emergency': proto.is_emergency,
-            'is_paediatric': proto.is_paediatric,
-            'created_at': proto.created_at.isoformat() if proto.created_at else None,
-            'updated_at': proto.updated_at.isoformat() if proto.updated_at else None,
-        })
+    # ==================== VETTING ====================
 
     for vs in VettingSession.query.all():
         backup_data['vetting_sessions'].append({
@@ -4251,45 +4227,6 @@ def restore_backup():
             db.session.add(ics)
             stats['imported_case_staging']['added'] += 1
 
-        # ==================== IMAGING PROTOCOLS ====================
-        stats['imaging_protocols'] = {'added': 0, 'skipped': 0}
-        for ip_data in backup_data.get('imaging_protocols', []):
-            if not isinstance(ip_data, dict):
-                continue
-            slug = ip_data.get('slug', '')
-            if not slug:
-                stats['imaging_protocols']['skipped'] += 1
-                continue
-            existing = ImagingProtocol.query.filter_by(slug=slug).first()
-            if existing:
-                stats['imaging_protocols']['skipped'] += 1
-                continue
-            proto = ImagingProtocol(
-                title=ip_data.get('title', ''), slug=slug,
-                modality=ip_data.get('modality'), body_section=ip_data.get('body_section'),
-                keywords=ip_data.get('keywords'), shorthand_text=ip_data.get('shorthand_text'),
-                detailed_protocol_html=ip_data.get('detailed_protocol_html'),
-                special_notes=ip_data.get('special_notes'),
-                indication_json=ip_data.get('indication_json'),
-                validation_json=ip_data.get('validation_json'),
-                search_config_json=ip_data.get('search_config_json'),
-                origin=ip_data.get('origin', 'admin'),
-                user_id=user_id_map.get(ip_data.get('user_id')),
-                is_published=ip_data.get('is_published', True),
-                is_verified=ip_data.get('is_verified', False),
-                verified_by_user_id=user_id_map.get(ip_data.get('verified_by_user_id')),
-                is_emergency=ip_data.get('is_emergency', False),
-                is_paediatric=ip_data.get('is_paediatric', False),
-            )
-            if ip_data.get('verified_at'):
-                proto.verified_at = _parse_datetime_for_sqlite(ip_data['verified_at'])
-            if ip_data.get('created_at'):
-                proto.created_at = _parse_datetime_for_sqlite(ip_data['created_at']) or datetime.utcnow()
-            if ip_data.get('updated_at'):
-                proto.updated_at = _parse_datetime_for_sqlite(ip_data['updated_at'])
-            db.session.add(proto)
-            stats['imaging_protocols']['added'] += 1
-
         # ==================== VETTING SESSIONS ====================
         stats['vetting_sessions'] = {'added': 0, 'skipped': 0}
         for vs_data in backup_data.get('vetting_sessions', []):
@@ -4935,7 +4872,7 @@ def restore_backup():
         # Final commit for new tables
         try:
             db.session.commit()
-            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators, {stats.get('content_requests', {}).get('added', 0)} content requests, {stats.get('imported_case_staging', {}).get('added', 0)} staging cases, {stats.get('imaging_protocols', {}).get('added', 0)} imaging protocols, {stats.get('peer_review_claims', {}).get('added', 0)} peer review claims, {stats.get('admin_documents', {}).get('added', 0)} admin docs, {stats.get('mdt_meetings', {}).get('added', 0)} MDT meetings")
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators, {stats.get('content_requests', {}).get('added', 0)} content requests, {stats.get('imported_case_staging', {}).get('added', 0)} staging cases, {stats.get('peer_review_claims', {}).get('added', 0)} peer review claims, {stats.get('admin_documents', {}).get('added', 0)} admin docs, {stats.get('mdt_meetings', {}).get('added', 0)} MDT meetings")
         except Exception as new_tables_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
@@ -5058,7 +4995,6 @@ def backup_status():
         'reporting_algorithms': ReportingAlgorithm.query.count(),
         'incidental_finding_calculators': IncidentalFindingCalculator.query.count(),
         # New tables (v3.0)
-        'imaging_protocols': ImagingProtocol.query.count(),
         'vetting_sessions': VettingSession.query.count(),
         'peer_review_claims': PeerReviewClaim.query.count(),
         'admin_documents': AdminDocument.query.count(),

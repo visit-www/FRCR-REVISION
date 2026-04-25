@@ -74,11 +74,6 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="/vetting/admin/protocols">
-                <i class="fas fa-check-double"></i> Imaging Protocols
-            </a>
-        </li>
-        <li class="nav-item">
             <a class="nav-link" href="/vetting/admin/algorithms">
                 <i class="fas fa-project-diagram"></i> Vetting Algorithms
             </a>
@@ -464,7 +459,7 @@
                         <option value="viva_question">Viva</option>
                         <option value="reporting_algorithm">Algorithm</option>
                         <option value="radiology_template">Template</option>
-                        <option value="imaging_protocol">Protocol</option>
+
                         <option value="radiology_pearl">Pearl</option>
                     </select>
                     <select id="flagFilterSeverity" class="form-select form-select-sm" style="width: auto; font-size: .8rem;">
@@ -2409,7 +2404,7 @@
             if (type === 'template') return '/admin/radiology-templates';
             if (type === 'algorithm') return '/admin/reporting-algorithms';
             if (type === 'tool') return '/incidental-findings/admin';
-            if (type === 'protocol') return '/radiology-protocols/admin';
+
             return null;
         }
 

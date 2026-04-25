@@ -16,7 +16,7 @@ from flask import Blueprint, render_template
 
 from models import db, Case, CaseImage, CaseStatus
 
-# ── Load protocol reference JSON at import time (static data, read once) ──
+# ── Static data directory ──
 _DATA_DIR = os.path.join(os.path.dirname(__file__), 'static', 'data')
 
 def _load_json(filename):
@@ -26,8 +26,6 @@ def _load_json(filename):
             return json.load(f)
     return {}
 
-CT_PROTOCOLS = _load_json('ct_protocols.json')
-MRI_PROTOCOLS = _load_json('mri_protocols.json')
 # OSCE guide data loaded per-request (admin can edit via static content editor)
 _OSCE_GUIDE_JSON = os.path.join(_DATA_DIR, 'osce_guide.json')
 _osce_cache = {'data': None, 'mtime': 0}
@@ -195,20 +193,3 @@ def osce_radiology_guide():
                            osce_data=guide_data)
 
 
-@public_bp.route('/imaging-protocols-reference')
-def imaging_protocols_reference():
-    """Public imaging protocols reference — CT + MRI master protocol library."""
-    # Build category → protocols map for CT (flat structure)
-    ct_protocols = CT_PROTOCOLS.get('protocols', {})
-    # Build category → protocols map for MRI (nested by category)
-    mri_categories = {}
-    for key, val in MRI_PROTOCOLS.items():
-        if key == '_meta' or not isinstance(val, dict):
-            continue
-        mri_categories[key] = val
-
-    return render_template('imaging_protocols_reference.html',
-                           ct_protocols=ct_protocols,
-                           mri_categories=mri_categories,
-                           ct_meta=CT_PROTOCOLS.get('_meta', {}),
-                           mri_meta=MRI_PROTOCOLS.get('_meta', {}))

@@ -2783,14 +2783,14 @@ def ai_costs():
         # Actions that are admin/content generation (one-time setup cost)
         _ADMIN_ACTIONS = {
             'generate_algorithm', 'generate_radiology_template', 'generate_anatomy',
-            'generate_pearl', 'generate_tnm', 'generate_protocol', 'regenerate_protocol',
+            'generate_pearl', 'generate_tnm',
             'generate_if_calculator', 'generate_case_data', 'generate_tree',
             'cost_tracking_reset_v1',
         }
         # Actions that are user interaction (per-user recurring cost)
         _USER_ACTIONS = {
             'ai_assist', 'ask_claude', 'review_report', 'quick_review',
-            'radiq_query', 'vetting_analyse', 'vetting_protocol',
+            'radiq_query', 'vetting_analyse',
             'generate_mdt_summary',
         }
         # report_action_* are user interactions

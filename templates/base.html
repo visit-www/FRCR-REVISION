@@ -184,9 +184,6 @@
                             <a href="/incidental-findings" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_if %}{% endblock %}">
                                 <i class="fas fa-tools me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Radiology Tools
                             </a>
-                            <a href="/radiology-protocols" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_protocols %}{% endblock %}">
-                                <i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Clinical Guidelines & Safety
-                            </a>
                             <a href="/tnm-calculator" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {% block mobile_active_tnm %}{% endblock %}">
                                 <i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators
                             </a>
@@ -204,6 +201,9 @@
                             <i class="fas fa-chevron-down float-end mt-1" style="font-size: 0.7rem; opacity: 0.6;"></i>
                         </a>
                         <div class="collapse" id="mobileQuickRefCollapse">
+                            <a href="/radiology-protocols" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item">
+                                <i class="fas fa-book-medical me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Clinical Guidelines &amp; Safety
+                            </a>
                             <a href="/vetting-essentials" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item">
                                 <i class="fas fa-graduation-cap me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Vetting Essentials
                             </a>
@@ -408,7 +408,6 @@
                     </a>
                     <ul class="dropdown-menu tool-nav-dropdown-menu">
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_if() }}" href="/incidental-findings"><i class="fas fa-tools me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Radiology Tools</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_protocols() }}" href="/radiology-protocols"><i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Clinical Guidelines & Safety</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm() }}" href="/tnm-calculator"><i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_vetting() }}" href="/vetting"><i class="fas fa-check-double me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Vetting Tool</a></li>
                         <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_mdt() }}" href="/mdt"><i class="fas fa-users me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>MDT Suite</a></li>
@@ -422,6 +421,7 @@
                         <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
                     </a>
                     <ul class="dropdown-menu tool-nav-dropdown-menu">
+                        <li><a class="dropdown-item" href="/radiology-protocols"><i class="fas fa-book-medical me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Clinical Guidelines &amp; Safety</a></li>
                         <li><a class="dropdown-item" href="/vetting-essentials"><i class="fas fa-graduation-cap me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Vetting Essentials</a></li>
                         <li><a class="dropdown-item" href="/contrast-reaction-card"><i class="fas fa-flask me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Contrast Card</a></li>
                         <li><a class="dropdown-item" href="/paediatric-ct-protocols"><i class="fas fa-child me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Paediatric CT Protocols</a></li>

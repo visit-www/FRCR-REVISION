@@ -28,7 +28,6 @@
         '#caseFindingsText',
         '.algorithm-content',
         '.template-content',
-        '.protocol-content',
         '.pearl-content',
         '.doc-content',
         '.markdown-body',
@@ -99,7 +98,6 @@
         if (el.closest('#caseDiscussion, #caseFindingsText')) return 'case_discussion';
         if (el.closest('.algorithm-content')) return 'reporting_algorithm';
         if (el.closest('.template-content')) return 'radiology_template';
-        if (el.closest('.protocol-content')) return 'imaging_protocol';
         if (el.closest('.pearl-content')) return 'radiology_pearl';
         if (el.closest('.anatomy-content')) return 'anatomy_snippet';
         if (el.closest('#detailContent')) {
@@ -696,7 +694,6 @@
                 '#caseDiscussion': 'case_discussion',
                 '.algorithm-content': 'reporting_algorithm',
                 '.template-content': 'radiology_template',
-                '.protocol-content': 'imaging_protocol',
                 '.pearl-content': 'radiology_pearl',
                 '.anatomy-content': 'anatomy_snippet',
                 '#detailContent': 'anatomy_snippet',

@@ -1701,27 +1701,7 @@ with app.app_context():
             db.session.rollback()
             logger.warning('PR4 C2 paediatric removal skipped: %s', _paed_err)
 
-        # -- PR4 / C3: sync master CT + MRI protocol JSON to ImagingProtocol table --
-        # Idempotent per row via sentinel <!-- migrated:master-v1 -->.
-        # - Loads static/data/{ct,mri}_protocols.json
-        # - Upserts admin rows by slug (insert new, update existing without sentinel)
-        # - Deletes admin rows whose slug is NOT in master JSON (orphans)
-        # - Personal rows (origin='personal') are never touched
-        # - To force re-sync: bump _SYNC_VERSION in protocol_master_sync.py
-        try:
-            if 'imaging_protocol' in _table_names:
-                from protocol_master_sync import sync_master_protocols_to_db
-                from models import ImagingProtocol as _IPSync
-                _sync_result = sync_master_protocols_to_db(db, _IPSync, logger)
-                logger.info(
-                    'PR4 C3: master protocol sync — inserted=%d updated=%d skipped=%d deleted=%d errors=%d',
-                    _sync_result['inserted'], _sync_result['updated'],
-                    _sync_result['skipped'], _sync_result['deleted'],
-                    _sync_result['errors'],
-                )
-        except Exception as _sync_err:
-            db.session.rollback()
-            logger.warning('PR4 C3 master protocol sync skipped: %s', _sync_err)
+        # -- PR4 / C3: master protocol sync REMOVED (protocol library removed) --
 
         # -- PR4 / C4: create MDT Suite tables (mdt_meeting + mdt_case) --
         # See docs/plans/MDT_SUITE_PLAN.md
@@ -2115,10 +2095,8 @@ match specific statistical claims to paper abstracts.</p>
         _ensure_superadmin_exists()
 
         # -- Ensure contrast reaction card protocols (IDs 1 & 11) are
-        #    present, published, and categorised. Content is rendered from
-        #    the shared partial via route override in protocol_routes.py;
-        #    the DB rows just need to exist so the view_protocol() route
-        #    finds them. Idempotent.
+        #    present, published, and categorised. The DB rows just need
+        #    to exist so the view route finds them. Idempotent.
         try:
             from models import ClinicalProtocol
             _crc_rows = [
@@ -2161,6 +2139,35 @@ match specific statistical claims to paper abstracts.</p>
         except Exception as _crc_err:
             db.session.rollback()
             logger.warning('Contrast reaction card protocol migration skipped: %s', _crc_err)
+
+        # -- Delete obsolete contrast protocols replaced by Contrast Reaction Card --
+        # These 4 protocols are superseded by the 6-tab CRC (IDs 1 & 11).
+        try:
+            from models import ClinicalProtocol as _CP
+            _obsolete_titles = [
+                '%premedication%',
+                '%renal impairment%',
+                '%metformin%iodinated%',
+                '%thyroid%iodinated%',
+            ]
+            _del_ids = []
+            for _pat in _obsolete_titles:
+                _old = _CP.query.filter(
+                    _CP.title.ilike(_pat),
+                    _CP.id.notin_([1, 11]),  # never touch CRC rows
+                ).all()
+                for _p in _old:
+                    _del_ids.append(_p.id)
+                    db.session.delete(_p)
+            if _del_ids:
+                ContentIntelligence.query.filter(
+                    ContentIntelligence.content_type == 'protocol',
+                    ContentIntelligence.content_id.in_(_del_ids),
+                ).delete(synchronize_session=False)
+            db.session.commit()
+        except Exception as _del_err:
+            db.session.rollback()
+            logger.warning('Obsolete contrast protocol cleanup skipped: %s', _del_err)
 
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
@@ -2317,7 +2324,6 @@ app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
 app.register_blueprint(tnm_calc_bp)  # TNM Calculator - standalone clinical-grade calculator
 init_case_dicom(app)
 app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
-app.register_blueprint(protocol_bp)  # Clinical Protocols + On-Call Helper
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
 app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
@@ -2330,6 +2336,8 @@ app.register_blueprint(content_bp)  # Generic notes/highlights/forum for any con
 
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
+
+app.register_blueprint(protocol_bp)  # Clinical Protocols + On-Call Helper
 
 from vetting_routes import vetting_bp
 app.register_blueprint(vetting_bp)  # Vetting Tool - imaging request workflow
@@ -3249,7 +3257,6 @@ def view_revision_case(session_id, case_index):
 
 
 
-# Radiology protocols routes moved to protocol_routes.py (protocol_bp blueprint)
 
 
 # ==================== SPACED REPETITION STUDY SYSTEM ====================
@@ -8929,19 +8936,18 @@ Allow: /reporting-template/
 Allow: /reporting-templates
 Allow: /radiology-template/view/
 Allow: /incidental-findings/
-Allow: /radiology-protocols
-Allow: /radiology-protocols/view/
 Allow: /knowledge-hub
 Allow: /anatomy-snippets/
 Allow: /contrast-reaction-card
 Allow: /vetting-essentials
+Allow: /radiology-protocols
+Allow: /radiology-protocols/view/
 Allow: /paediatric-ct-protocols
 Allow: /osce-radiology-guide
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
 Disallow: /stripe/
-Disallow: /radiology-protocols/admin/
 Disallow: /incidental-findings/admin/
 Disallow: /incidental-findings/embed/
 Disallow: /on-call-helper/admin/
@@ -9032,8 +9038,8 @@ def sitemap_xml():
         (f'{BASE}/reporting-algorithms', '0.8', 'weekly'),
         (f'{BASE}/reporting-templates', '0.7', 'weekly'),
         (f'{BASE}/incidental-findings/', '0.8', 'weekly'),     # trailing slash (Flask 308 without)
-        (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
         # /radiology-pearls removed — 301 redirects to /knowledge-hub (already listed)
+        (f'{BASE}/radiology-protocols', '0.7', 'weekly'),
         (f'{BASE}/contrast-reaction-card', '0.8', 'monthly'),
         (f'{BASE}/vetting-essentials', '0.8', 'monthly'),
         (f'{BASE}/paediatric-ct-protocols', '0.8', 'monthly'),
@@ -9088,6 +9094,7 @@ def sitemap_xml():
         for tool in tools:
             if tool.slug:
                 pages.append((f'{BASE}/incidental-findings/{tool.slug}', '0.6', 'monthly', _lastmod(tool)))
+
 
         # Clinical Protocols (published)
         protocols = ClinicalProtocol.query.filter_by(is_published=True).with_entities(
