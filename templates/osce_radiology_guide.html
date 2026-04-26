@@ -506,6 +506,13 @@
 .osce-teaching-points ul { margin-bottom: 0; padding-left: 1.2rem; }
 .osce-teaching-points li { margin-bottom: 0.3rem; font-size: 0.82rem; line-height: 1.45; }
 
+/* ── Teaching tables ── */
+.osce-teaching-table { font-size: 0.8rem; margin-bottom: 0.5rem; }
+.osce-teaching-table th { background: var(--brand-neutral); color: #fff; font-weight: 600; font-size: 0.78rem; white-space: nowrap; }
+.osce-teaching-table td { font-size: 0.78rem; line-height: 1.4; }
+.osce-card-teaching-list + .table-responsive,
+.table-responsive + .osce-card-teaching-list { margin-top: 0.4rem; }
+
 /* ── Quick Reference cards ── */
 .osce-ref-card {
   border-radius: 10px; border: 1px solid #e5e7eb; background: #fff;
@@ -1059,6 +1066,37 @@ body.is-admin .osce-admin-edit-btn:hover {
     }
   })();
 
+  // ── Render teaching points (strings as bullets, objects as tables) ──
+  function renderTeachingPoints(pts) {
+    if (!pts || !pts.length) return '';
+    var html = '';
+    var inList = false;
+    pts.forEach(function(p) {
+      if (typeof p === 'string') {
+        if (!inList) { html += '<ul class="osce-card-teaching-list">'; inList = true; }
+        html += '<li>' + esc(p) + '</li>';
+      } else if (p && p.type === 'table') {
+        if (inList) { html += '</ul>'; inList = false; }
+        if (p.title) html += '<p class="fw-semibold mb-1 mt-2" style="font-size:0.82rem;">' + esc(p.title) + '</p>';
+        html += '<div class="table-responsive"><table class="table table-sm table-bordered osce-teaching-table">';
+        if (p.headers && p.headers.length) {
+          html += '<thead><tr>';
+          p.headers.forEach(function(h) { html += '<th>' + esc(String(h)) + '</th>'; });
+          html += '</tr></thead>';
+        }
+        html += '<tbody>';
+        (p.rows || []).forEach(function(row) {
+          html += '<tr>';
+          (Array.isArray(row) ? row : [row]).forEach(function(cell) { html += '<td>' + esc(String(cell)) + '</td>'; });
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+    });
+    if (inList) html += '</ul>';
+    return html;
+  }
+
   // ── Render case cards ──
   function renderCaseCard(c) {
     var mod = MODS[c.modality] || {};
@@ -1154,10 +1192,7 @@ body.is-admin .osce-admin-edit-btn:hover {
     }
 
     // Teaching points
-    var ptsHtml = '';
-    if (pts.length) {
-      ptsHtml = '<ul class="osce-card-teaching-list">' + pts.map(function(p){ return '<li>' + esc(p) + '</li>'; }).join('') + '</ul>';
-    }
+    var ptsHtml = renderTeachingPoints(pts);
 
     // ── Images: only non-annotated in card thumbnails ──
     var caseImages = c.images || [];
@@ -2045,8 +2080,7 @@ body.is-admin .osce-admin-edit-btn:hover {
     }
     // Teaching points
     if (pts.length) {
-      html += '<div class="osce-teaching-points"><ul class="osce-card-teaching-list">'
-        + pts.map(function(p) { return '<li>' + esc(p) + '</li>'; }).join('') + '</ul></div>';
+      html += '<div class="osce-teaching-points">' + renderTeachingPoints(pts) + '</div>';
     }
     // Reference links
     if (refLinks.length) {

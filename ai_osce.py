@@ -192,11 +192,14 @@ Return valid JSON with this exact structure:
   }},
 
   "teaching_points": [
-    "3-5 high-yield, memorable teaching points",
+    "3-5 high-yield, memorable teaching points as strings",
     "Include classic signs, named signs, measurement thresholds where relevant",
     "Include common examiner follow-up questions with brief answers",
     "Include key differentials if relevant (1-2 main mimics)",
-    "Do NOT repeat information already covered in approach or explanation"
+    "Do NOT repeat information already covered in approach or explanation",
+    "For structured data (staging, grading, classifications, differentials comparison, measurement criteria), use a TABLE object instead of a string:",
+    {{"type": "table", "title": "Table title", "headers": ["Column1", "Column2"], "rows": [["row1col1", "row1col2"], ["row2col1", "row2col2"]]}},
+    "Mix freely: strings for bullet points, table objects for tabular data. Use tables only when data is genuinely tabular."
   ],
 
   "visual_hook": "One memorable sentence: the single visual pattern that makes this diagnosis click. Something a student remembers at 2am on call."
@@ -301,11 +304,14 @@ Return valid JSON with this exact structure:
   }},
 
   "teaching_points": [
-    "3-5 teaching points about reading normal studies",
+    "3-5 teaching points about reading normal studies as strings",
     "Include 'always check' review areas that are commonly missed",
     "Include normal variants that trap students in OSCEs",
     "Include the examiner's likely follow-up: 'What would make you worried on this image?'",
-    "Do NOT repeat information already covered in approach or explanation"
+    "Do NOT repeat information already covered in approach or explanation",
+    "For structured data (normal measurements, review area checklists, variant comparison tables), use a TABLE object instead of a string:",
+    {{"type": "table", "title": "Table title", "headers": ["Column1", "Column2"], "rows": [["row1col1", "row1col2"], ["row2col1", "row2col2"]]}},
+    "Mix freely: strings for bullet points, table objects for tabular data. Use tables only when data is genuinely tabular."
   ],
 
   "visual_hook": "One memorable sentence about what makes a normal study convincingly normal -- what pattern of normality should the student recognise."
@@ -464,17 +470,23 @@ def generate_osce_case(case_context):
     parsed.setdefault("explanation", {})
     parsed.setdefault("teaching_points", [])
 
-    # Validate teaching_points is a list of strings
+    # Validate teaching_points: list of strings and/or table objects
     if isinstance(parsed.get("teaching_points"), list):
-        parsed["teaching_points"] = [
-            item.strip() for item in parsed["teaching_points"]
-            if isinstance(item, str) and item.strip()
-        ]
+        cleaned = []
+        for item in parsed["teaching_points"]:
+            if isinstance(item, str) and item.strip():
+                cleaned.append(item.strip())
+            elif isinstance(item, dict) and item.get("type") == "table":
+                # Validate table structure
+                if (isinstance(item.get("headers"), list)
+                        and isinstance(item.get("rows"), list)):
+                    cleaned.append(item)
+        parsed["teaching_points"] = cleaned
 
     return {
         "provider": "claude",
         "model": model,
-        "prompt_version": "osce-v9",
+        "prompt_version": "osce-v10",
         "generated_at": datetime.utcnow().isoformat(),
         "output": parsed,
         "raw_response": text,
@@ -615,16 +627,43 @@ def render_osce_html(osce_data):
             f'</div>'
         )
 
-    # -- Teaching Points --
+    # -- Teaching Points (strings as bullets, dicts as tables) --
     points = osce_data.get("teaching_points", [])
     if points:
         parts.append('<div class="osce-section" data-section="teaching_points">')
         parts.append('<h4>Teaching Points</h4>')
-        parts.append('<ul>')
+        # Group consecutive strings into <ul>, render tables inline
+        in_list = False
         for pt in points:
             if isinstance(pt, str) and pt.strip():
+                if not in_list:
+                    parts.append('<ul>')
+                    in_list = True
                 parts.append(f'<li>{_esc(pt.strip())}</li>')
-        parts.append('</ul>')
+            elif isinstance(pt, dict) and pt.get("type") == "table":
+                if in_list:
+                    parts.append('</ul>')
+                    in_list = False
+                title = pt.get("title", "")
+                headers = pt.get("headers", [])
+                rows = pt.get("rows", [])
+                if title:
+                    parts.append(f'<p class="fw-semibold mb-1">{_esc(title)}</p>')
+                parts.append('<div class="table-responsive"><table class="table table-sm table-bordered osce-teaching-table">')
+                if headers:
+                    parts.append('<thead><tr>')
+                    for h in headers:
+                        parts.append(f'<th>{_esc(str(h))}</th>')
+                    parts.append('</tr></thead>')
+                parts.append('<tbody>')
+                for row in rows:
+                    parts.append('<tr>')
+                    for cell in (row if isinstance(row, list) else [row]):
+                        parts.append(f'<td>{_esc(str(cell))}</td>')
+                    parts.append('</tr>')
+                parts.append('</tbody></table></div>')
+        if in_list:
+            parts.append('</ul>')
         parts.append('</div>')
 
     return "\n".join(parts)
