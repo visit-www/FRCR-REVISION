@@ -47,15 +47,13 @@
 
   <!-- ═══════════ HEADER ═══════════ -->
   <div class="mb-4">
-    <div class="d-flex align-items-start justify-content-between">
-      <div class="text-center flex-grow-1">
-        <i class="fas fa-x-ray" style="font-size: 2.5rem; color: var(--brand-primary);"></i>
-        <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Basic Radiology for 3rd Year OSCE</h1>
-        <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
-      </div>
+    <div class="text-center">
+      <i class="fas fa-x-ray" style="font-size: 2.5rem; color: var(--brand-primary);"></i>
+      <h1 class="mt-2 mb-1" style="font-size: 1.75rem;">Basic Radiology for 3rd Year OSCE</h1>
+      <p class="text-muted mb-2">Pattern recognition &middot; Systematic approaches &middot; Exam-ready scripts &middot; 7 modalities</p>
       {% if current_user.is_authenticated %}
-      <button class="btn btn-sm osce-header-notes-btn" id="osceNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);">
-        <i class="fas fa-comments me-1"></i><span class="d-none d-md-inline">Notes & Discussion</span>
+      <button class="btn btn-sm" id="osceNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);">
+        <i class="fas fa-comments me-1"></i>Notes & Discussion
       </button>
       {% endif %}
     </div>
