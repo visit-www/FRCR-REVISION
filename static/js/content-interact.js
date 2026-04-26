@@ -69,7 +69,10 @@ var ContentInteract = (function() {
     } else if (body) {
       opts.body = body;
     }
-    return fetch(API_BASE + path, opts).then(function(r) { return r.json(); });
+    return fetch(API_BASE + path, opts).then(function(r) {
+      if (!r.ok) return r.text().then(function() { return { success: false, error: r.status }; });
+      return r.json();
+    }).catch(function() { return { success: false, error: 'network' }; });
   }
 
   function _contentPath() {
@@ -204,8 +207,17 @@ var ContentInteract = (function() {
   function _saveNotes() {
     var textarea = document.getElementById('ciPanelNotes');
     if (!textarea) return;
-    var raw = textarea.dataset.rawNotes || textarea.value;
-    if (!raw.trim()) return;
+    var raw = textarea.value;
+    // Sync rawNotes so linked-note metadata stays in dataset
+    textarea.dataset.rawNotes = raw;
+    if (!raw.trim()) {
+      // User cleared all text — delete note on server
+      _api('DELETE', _contentPath() + '/note').then(function() {
+        var statusEl = document.getElementById('ciPanelStatus');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle text-muted me-1"></i>Cleared';
+      });
+      return;
+    }
     _api('POST', _contentPath() + '/note', { note_text: raw }).then(function(data) {
       if (data.success) {
         var now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -590,6 +602,7 @@ var ContentInteract = (function() {
     });
 
     imgRemove.addEventListener('click', function() {
+      if (imgThumb.src.startsWith('blob:')) URL.revokeObjectURL(imgThumb.src);
       _forumImageFile = null;
       imgInput.value = '';
       imgPreview.style.display = 'none';
@@ -765,6 +778,8 @@ var ContentInteract = (function() {
     },
 
     reinit: function(config) {
+      // Remember if panel was open before cleanup closes it
+      var wasOpen = _panelOpen;
       // Clean up previous state but keep panel DOM
       _cleanup();
       // Re-init with new config
@@ -782,10 +797,9 @@ var ContentInteract = (function() {
         }
       }
 
-      // If panel was open, reload content for new context
-      if (_panelOpen) {
-        _loadNotes();
-        _initForum();
+      // If panel was open, reopen and reload content for new context
+      if (wasOpen) {
+        _togglePanel(true);
       }
     },
 

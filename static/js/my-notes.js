@@ -45,7 +45,10 @@
   function api(method, url, body) {
     var opts = { method: method, headers: {} };
     if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-    return fetch(url, opts).then(function(r) { return r.json(); });
+    return fetch(url, opts).then(function(r) {
+      if (!r.ok) return r.text().then(function() { return { success: false, error: r.status }; });
+      return r.json();
+    }).catch(function() { return { success: false, error: 'network' }; });
   }
 
   // ── Load data ──
@@ -62,7 +65,7 @@
     if (_currentFilter.bodySection) { params.push('body_section=' + encodeURIComponent(_currentFilter.bodySection)); }
 
     var url = '/api/my-notes' + (params.length ? '?' + params.join('&') : '');
-    api('GET', url).then(function(data) {
+    return api('GET', url).then(function(data) {
       if (!data.success) return;
       _notes = data.notes;
       _applySort();
@@ -253,7 +256,7 @@
 
     // Meta
     var meta = [];
-    if (note.body_section) meta.push('<i class="fas fa-body me-1"></i>' + esc(note.body_section));
+    if (note.body_section) meta.push('<i class="fas fa-person me-1"></i>' + esc(note.body_section));
     if (note.modality) meta.push('<i class="fas fa-x-ray me-1"></i>' + esc(note.modality));
     if (note.created_at) meta.push('Created ' + new Date(note.created_at).toLocaleDateString());
     document.getElementById('mnDetailMeta').innerHTML = meta.join(' &middot; ');
@@ -353,12 +356,15 @@
       var noteId = _selectedId;
       var text = this.value;
       _saveTimer = setTimeout(function() {
-        if (!noteId) return;
+        if (!noteId || !text.trim()) return;
         api('PUT', '/api/my-notes/' + noteId, { note_text: text }).then(function(data) {
+          if (_selectedId !== noteId) return; // user switched notes
           if (data.success) {
             statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved ' + timeAgo(data.updated_at);
             var n = _findNote(noteId);
             if (n) { n.note_text = text; n.updated_at = data.updated_at; renderList(); }
+          } else {
+            statusEl.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Save failed';
           }
         });
       }, 1500);
@@ -381,9 +387,8 @@
     tagAddBtn.addEventListener('click', addTag);
     tagInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') addTag(); });
 
-    // Initial load
-    loadNotes();
-    loadStats();
+    // Initial load — loadStats needs _notes populated, so chain after loadNotes
+    loadNotes().then(function() { loadStats(); });
     loadTags();
   }
 

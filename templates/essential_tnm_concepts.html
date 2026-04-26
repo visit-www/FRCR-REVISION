@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Essential TNM Concepts for Registrars | RadInsights</title>
+    <title>How TNM Staging Works — A Radiologist's Guide | RadInsights</title>
     <link rel="icon" type="image/png" sizes="32x32" href="https://res.cloudinary.com/dx7b7chvn/image/upload/f_png,q_auto,w_32,h_32,c_fill/v1769503549/frcr-rev-logo-solid_wnltqf.png">
     <link rel="icon" type="image/png" sizes="16x16" href="https://res.cloudinary.com/dx7b7chvn/image/upload/f_png,q_auto,w_16,h_16,c_fill/v1769503549/frcr-rev-logo-solid_wnltqf.png">
-    <meta name="description" content="Core TNM staging concepts every radiology registrar must know. AJCC 8th Edition rules, common pitfalls, and high-yield staging pearls.">
+    <meta name="description" content="Comprehensive AJCC 8th edition TNM staging guide for radiology registrars. Concept-driven teaching with imaging correlation, MDT communication, and structured reporting.">
     <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
     <link rel="canonical" href="https://www.radinsights.xyz/essential-tnm-concepts" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Essential TNM Concepts for Registrars | RadInsights">
-    <meta property="og:description" content="Core TNM staging concepts every radiology registrar must know. AJCC 8th Edition rules, common pitfalls, and high-yield staging pearls.">
+    <meta property="og:title" content="How TNM Staging Works — A Radiologist's Guide | RadInsights">
+    <meta property="og:description" content="AJCC 8th edition TNM staging concepts for radiology registrars. Imaging-to-staging mapping, MDT communication, structured reporting.">
     <meta property="og:image" content="https://res.cloudinary.com/dx7b7chvn/image/upload/v1774977837/og-im-radinsights_q5slrb.png">
     <meta property="og:url" content="https://www.radinsights.xyz/essential-tnm-concepts">
     <meta property="og:site_name" content="RadInsights">
@@ -21,8 +21,8 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Essential TNM Concepts for Registrars | RadInsights">
-    <meta name="twitter:description" content="Core TNM staging concepts every radiology registrar must know. AJCC 8th Edition rules, common pitfalls, and high-yield staging pearls.">
+    <meta name="twitter:title" content="How TNM Staging Works — A Radiologist's Guide | RadInsights">
+    <meta name="twitter:description" content="AJCC 8th edition TNM staging concepts for radiology registrars. Imaging-to-staging mapping, MDT communication, structured reporting.">
     <meta name="twitter:image" content="https://res.cloudinary.com/dx7b7chvn/image/upload/v1774977837/og-im-radinsights_q5slrb.png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -34,243 +34,129 @@
             --brand-gold: #F2CC8F;
             --brand-cream: #FFF8E7;
         }
-        
-        * {
-            box-sizing: border-box;
-        }
-        
+
+        * { box-sizing: border-box; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
             background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%);
             color: #2c3e50;
             line-height: 1.7;
-            padding: 0;
-            margin: 0;
+            padding: 0; margin: 0;
         }
-        
+
         .header-banner {
             background: linear-gradient(135deg, var(--brand-teal) 0%, #4A6F7F 100%);
-            color: white;
-            padding: 1.5rem 2rem;
-            margin-bottom: 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            color: white; padding: 1.5rem 2rem; margin-bottom: 2rem;
+            position: sticky; top: 0; z-index: 100;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
-        
-        .header-banner h1 {
-            font-size: 1.5rem;
-            margin: 0;
-            font-weight: 600;
-        }
-        
-        .header-banner .subtitle {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            margin-top: 0.25rem;
-        }
-        
-        .content-wrapper {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 0 1.5rem 3rem;
-        }
-        
+        .header-banner h1 { font-size: 1.5rem; margin: 0; font-weight: 600; }
+        .header-banner .subtitle { font-size: 0.9rem; opacity: 0.9; margin-top: 0.25rem; }
+
+        .content-wrapper { max-width: 900px; margin: 0 auto; padding: 0 1.5rem 3rem; }
+
         .section-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: white; border-radius: 12px; padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border-left: 5px solid var(--brand-teal);
         }
-        
-        .section-card.highlight {
-            border-left-color: var(--brand-orange);
-            background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%);
-        }
-        
-        .section-card.important {
-            border-left-color: var(--brand-green);
-        }
-        
+        .section-card.highlight { border-left-color: var(--brand-orange); background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%); }
+        .section-card.important { border-left-color: var(--brand-green); }
+
         .section-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--brand-teal);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            font-size: 1.2rem; font-weight: 600; color: var(--brand-teal);
+            margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
         }
-        
-        .section-title i {
-            color: var(--brand-orange);
-        }
-        
+        .section-title i { color: var(--brand-orange); }
+
         .code-box {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 2px solid var(--brand-teal);
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin: 1rem 0;
+            border: 2px solid var(--brand-teal); border-radius: 8px;
+            padding: 1rem 1.25rem; margin: 0.75rem 0;
             font-family: 'SFMono-Regular', Consolas, monospace;
         }
-        
-        .code-box .code {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--brand-orange);
-        }
-        
-        .code-box .meaning {
-            color: #495057;
-            margin-left: 0.5rem;
-        }
-        
+        .code-box .code { font-size: 1.1rem; font-weight: 700; color: var(--brand-orange); }
+        .code-box .meaning { color: #495057; margin-left: 0.5rem; }
+
         .note-callout {
-            background: linear-gradient(135deg, rgba(242, 204, 143, 0.3) 0%, rgba(242, 204, 143, 0.15) 100%);
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin: 1rem 0;
+            background: linear-gradient(135deg, rgba(242,204,143,0.3) 0%, rgba(242,204,143,0.15) 100%);
+            border-radius: 8px; padding: 1rem 1.25rem; margin: 1rem 0;
             border-left: 4px solid var(--brand-gold);
         }
-        
-        .note-callout-title {
-            font-weight: 600;
-            color: #856404;
-            margin-bottom: 0.5rem;
-        }
-        
+        .note-callout-title { font-weight: 600; color: #856404; margin-bottom: 0.5rem; }
+
         .rule-box {
             background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
-            border: 2px dashed var(--brand-green);
-            border-radius: 8px;
-            padding: 1rem 1.25rem;
-            margin: 1rem 0;
+            border: 2px dashed var(--brand-green); border-radius: 8px;
+            padding: 1rem 1.25rem; margin: 1rem 0;
         }
-        
-        .rule-title {
-            font-weight: 600;
-            color: #2e7d32;
-            margin-bottom: 0.5rem;
-        }
-        
-        ul.styled-list {
-            padding-left: 1.5rem;
-            margin: 0.75rem 0;
-        }
-        
-        ul.styled-list li {
-            margin-bottom: 0.5rem;
-            position: relative;
-        }
-        
-        ul.styled-list li::marker {
-            color: var(--brand-orange);
-        }
-        
+        .rule-title { font-weight: 600; color: #2e7d32; margin-bottom: 0.5rem; }
+
+        ul.styled-list { padding-left: 1.5rem; margin: 0.75rem 0; }
+        ul.styled-list li { margin-bottom: 0.5rem; position: relative; }
+        ul.styled-list li::marker { color: var(--brand-orange); }
+
         .stage-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 1rem 0;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem; margin: 1rem 0;
         }
-        
         .stage-item {
-            background: white;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-            transition: all 0.2s ease;
+            background: white; border: 2px solid #dee2e6; border-radius: 8px;
+            padding: 1rem; text-align: center; transition: all 0.2s ease;
         }
-        
-        .stage-item:hover {
-            border-color: var(--brand-teal);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .stage-item .stage-number {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--brand-teal);
-        }
-        
-        .stage-item .stage-desc {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.25rem;
-        }
-        
+        .stage-item:hover { border-color: var(--brand-teal); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .stage-item .stage-number { font-size: 1.5rem; font-weight: 700; color: var(--brand-teal); }
+        .stage-item .stage-desc { font-size: 0.9rem; color: #666; margin-top: 0.25rem; }
+
         .toc {
-            background: white;
-            border-radius: 12px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: white; border-radius: 12px; padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        
-        .toc-title {
-            font-weight: 600;
-            color: var(--brand-teal);
-            margin-bottom: 0.75rem;
-            font-size: 1rem;
-        }
-        
-        .toc-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
-            padding: 0;
-            margin: 0;
-            list-style: none;
-        }
-        
+        .toc-title { font-weight: 600; color: var(--brand-teal); margin-bottom: 0.75rem; font-size: 1rem; }
+        .toc-list { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0; margin: 0; list-style: none; }
         .toc-list a {
-            color: var(--brand-orange);
-            text-decoration: none;
-            font-size: 0.9rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            transition: all 0.2s;
+            color: var(--brand-orange); text-decoration: none; font-size: 0.9rem;
+            padding: 0.25rem 0.5rem; border-radius: 4px; transition: all 0.2s;
         }
-        
-        .toc-list a:hover {
-            background: rgba(233, 99, 4, 0.1);
-        }
-        
+        .toc-list a:hover { background: rgba(233,99,4,0.1); }
+
         .footer-credit {
-            text-align: center;
-            padding: 1.5rem;
-            color: #6c757d;
-            font-size: 0.85rem;
-            border-top: 1px solid #dee2e6;
-            margin-top: 2rem;
+            text-align: center; padding: 1.5rem; color: #6c757d; font-size: 0.85rem;
+            border-top: 1px solid #dee2e6; margin-top: 2rem;
         }
-        
-        .footer-credit a {
-            color: var(--brand-teal);
+        .footer-credit a { color: var(--brand-teal); }
+
+        /* TNM-specific additions */
+        .tnm-flow-step {
+            display: flex; align-items: flex-start; gap: 1rem;
+            padding: 0.75rem 0; border-bottom: 1px solid #f0f0f0;
         }
-        
+        .tnm-flow-step:last-child { border-bottom: none; }
+        .tnm-flow-num {
+            min-width: 36px; height: 36px; border-radius: 50%;
+            background: var(--brand-teal); color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+        }
+        .tnm-flow-num.urgent { background: #dc3545; }
+        .tnm-component-card {
+            background: #f8f9fa; border-radius: 8px; padding: 1.25rem;
+            margin-bottom: 1rem; border-left: 4px solid var(--brand-teal);
+        }
+        .tnm-component-card h5 { color: var(--brand-teal); font-weight: 700; margin-bottom: 0.75rem; }
+        .tnm-pitfall { background: #fff3cd; border-radius: 6px; padding: 0.75rem 1rem; margin: 0.5rem 0; font-size: 0.92rem; }
+        .tnm-pitfall i { color: #856404; }
+
+        .table-tnm { font-size: 0.9rem; }
+        .table-tnm th { background: var(--brand-teal); color: white; font-weight: 600; white-space: nowrap; }
+        .table-tnm td { vertical-align: top; }
+
         @media (max-width: 768px) {
-            .header-banner {
-                padding: 1rem 1.25rem;
-            }
-            
-            .header-banner h1 {
-                font-size: 1.25rem;
-            }
-            
-            .content-wrapper {
-                padding: 0 1rem 2rem;
-            }
-            
-            .section-card {
-                padding: 1.25rem 1.5rem;
-            }
+            .header-banner { padding: 1rem 1.25rem; }
+            .header-banner h1 { font-size: 1.25rem; }
+            .content-wrapper { padding: 0 1rem 2rem; }
+            .section-card { padding: 1.25rem 1.5rem; }
         }
     </style>
 </head>
@@ -281,229 +167,546 @@
         <span style="color:rgba(255,255,255,0.3);">/</span>
         <a href="/tnm" style="color:rgba(255,255,255,0.7);text-decoration:none;font-weight:600;"><i class="fas fa-layer-group me-1"></i>Oncology</a>
         <span style="color:rgba(255,255,255,0.3);">/</span>
-        <span style="color:#F2CC8F;font-weight:600;">Essential TNM</span>
+        <span style="color:#F2CC8F;font-weight:600;">How TNM Staging Works</span>
     </div>
+
     <!-- Header -->
     <div class="header-banner">
-        <h1><i class="fas fa-book-medical me-2"></i>Essential TNM Concepts for Registrars</h1>
-        <div class="subtitle">IARC Essential TNM Classification Guide</div>
+        <h1><i class="fas fa-book-medical me-2"></i>How TNM Staging Works</h1>
+        <div class="subtitle">AJCC 8th Edition &mdash; A Concept-Driven Guide for Radiologists</div>
         {% if current_user.is_authenticated %}
         <button class="btn btn-sm mt-2" id="ciNotesToggle" title="Notes & Discussion" style="background:#a8d5ba;color:#fff;border:none;border-radius:16px;padding:0.3rem 0.8rem;font-size:0.8rem;font-weight:600;">
             <i class="fas fa-comments me-1"></i>Notes & Discussion
         </button>
         {% endif %}
     </div>
-    
+
     <div class="content-wrapper">
-        <!-- Table of Contents -->
+
+        <!-- ═══════════════ TABLE OF CONTENTS ═══════════════ -->
         <div class="toc">
-            <div class="toc-title"><i class="fas fa-list me-2"></i>Quick Navigation</div>
+            <div class="toc-title"><i class="fas fa-list me-2"></i>Contents</div>
             <ul class="toc-list">
-                <li><a href="#overview"><i class="fas fa-info-circle me-1"></i>Overview</a></li>
-                <li><a href="#metastasis"><i class="fas fa-virus me-1"></i>M – Metastasis</a></li>
-                <li><a href="#nodes"><i class="fas fa-circle-nodes me-1"></i>N – Regional Nodes</a></li>
-                <li><a href="#tumour"><i class="fas fa-disease me-1"></i>T – Tumour</a></li>
-                <li><a href="#lower-code"><i class="fas fa-arrow-down me-1"></i>Lower Code Rule</a></li>
-                <li><a href="#staging"><i class="fas fa-layer-group me-1"></i>Stage Groups</a></li>
+                <li><a href="#definition"><i class="fas fa-bullseye me-1"></i>Definition</a></li>
+                <li><a href="#why"><i class="fas fa-question-circle me-1"></i>Why TNM Exists</a></li>
+                <li><a href="#core"><i class="fas fa-layer-group me-1"></i>The Core Model</a></li>
+                <li><a href="#design"><i class="fas fa-drafting-compass me-1"></i>How It Was Designed</a></li>
+                <li><a href="#terminology"><i class="fas fa-book me-1"></i>Essential Terminology</a></li>
+                <li><a href="#not"><i class="fas fa-times-circle me-1"></i>What TNM Is NOT</a></li>
+                <li><a href="#algorithm"><i class="fas fa-project-diagram me-1"></i>Thinking Algorithm</a></li>
+                <li><a href="#radiology"><i class="fas fa-x-ray me-1"></i>The Radiologist's View</a></li>
+                <li><a href="#practice"><i class="fas fa-hospital me-1"></i>Clinical Practice</a></li>
+                <li><a href="#pearls"><i class="fas fa-star me-1"></i>Clinical Pearls</a></li>
+                <li><a href="#memory"><i class="fas fa-brain me-1"></i>Memory Aids</a></li>
+                <li><a href="#iarc"><i class="fas fa-database me-1"></i>IARC Reference</a></li>
+                <li><a href="#synthesis"><i class="fas fa-check-circle me-1"></i>Synthesis</a></li>
             </ul>
         </div>
-        
-        <!-- Overview Section -->
-        <div class="section-card highlight" id="overview">
-            <h2 class="section-title"><i class="fas fa-info-circle"></i>How and When to Use Essential TNM</h2>
-            <p>If T, N, and/or M have been explicitly recorded by the treating clinician, these should be abstracted by the registrar. However, if one or more of these components are based on clinical evaluation (cTNM) and if surgical/pathological information has become available at a later date, the registrar may record the appropriate Essential TNM code if it differs from that in the patient's record.</p>
-            
+
+
+        <!-- ═══════════════ 1. DEFINITION ═══════════════ -->
+        <div class="section-card highlight" id="definition">
+            <h2 class="section-title"><i class="fas fa-bullseye"></i>One-Line Definition</h2>
+            <p style="font-size:1.1rem;"><strong>TNM</strong> is a standardised anatomical classification (AJCC 8th edition) that describes the extent of cancer by three axes: the <strong>primary Tumour (T)</strong>, <strong>regional lymph Nodes (N)</strong>, and <strong>distant Metastasis (M)</strong>.</p>
             <div class="note-callout">
-                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>Key Concept</div>
-                <p class="mb-0">Essential TNM is composed of <strong>three key components</strong> that together summarize the extent of cancer in the patient at the time of diagnosis:</p>
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>The Core Idea</div>
+                <p class="mb-0">TNM answers one question: <em>"How far has this cancer spread?"</em> &mdash; locally, regionally, and distantly. Everything else (stage group, prognosis, treatment intent) follows from that answer.</p>
             </div>
-            
+        </div>
+
+
+        <!-- ═══════════════ 2. WHY TNM EXISTS ═══════════════ -->
+        <div class="section-card" id="why">
+            <h2 class="section-title"><i class="fas fa-question-circle"></i>Why TNM Exists (Foundational Logic)</h2>
+
+            <p>Before TNM, cancer descriptions were inconsistent across institutions and countries. A "Stage 3 lung cancer" in one hospital might mean something different in another. TNM solved this by creating a <strong>universal anatomical language</strong> tied to three biological questions:</p>
+
+            <div class="stage-grid mt-3">
+                <div class="stage-item">
+                    <div class="stage-number">T</div>
+                    <div class="stage-desc"><strong>How large and invasive is the primary tumour?</strong></div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">N</div>
+                    <div class="stage-desc"><strong>Has it reached regional lymph nodes?</strong></div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">M</div>
+                    <div class="stage-desc"><strong>Has it spread to distant sites?</strong></div>
+                </div>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">The Principle of Stepwise Spread</h5>
+            <p>Most solid cancers follow a predictable biological progression:</p>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">1</div>
+                <div><strong>Local growth</strong> &mdash; tumour enlarges within the organ of origin, then invades through tissue boundaries (serosa, capsule, fascial planes).</div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">2</div>
+                <div><strong>Regional spread</strong> &mdash; cancer cells travel via lymphatics to regional draining nodes. More nodes involved and more distant stations = worse prognosis.</div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">3</div>
+                <div><strong>Distant metastasis</strong> &mdash; haematogenous or transcoelomicspread to remote organs (liver, lung, bone, brain, peritoneum). This usually shifts treatment intent from curative to palliative.</div>
+            </div>
+
+            <p class="mt-2">TNM maps directly onto this biological hierarchy. Understanding the <em>why</em> makes the classification intuitive rather than a memorisation exercise.</p>
+        </div>
+
+
+        <!-- ═══════════════ 3. THE CORE TNM MODEL ═══════════════ -->
+        <div class="section-card" id="core">
+            <h2 class="section-title"><i class="fas fa-layer-group"></i>The Core TNM Model</h2>
+
+            <div class="tnm-component-card">
+                <h5><i class="fas fa-disease me-2"></i>T &mdash; Primary Tumour</h5>
+                <ul class="styled-list">
+                    <li><strong>What it represents:</strong> Local tumour burden &mdash; size, depth of invasion, and extension into adjacent structures.</li>
+                    <li><strong>Universal pattern:</strong> T0 (no evidence) &rarr; Tis (in situ) &rarr; T1&ndash;T4 (increasing size or invasion depth). Higher T = greater local aggressiveness.</li>
+                    <li><strong>How it varies:</strong> Some sites use size thresholds (breast: T1 &le;2 cm, T2 &le;5 cm), others use invasion depth (colorectal: T3 = through muscularis propria), and some use both (lung: size + chest wall involvement).</li>
+                    <li><strong>Clinical insight:</strong> T stage drives surgical planning &mdash; organ-confined (T1&ndash;T2) often means resectable; T4 may mean unresectable or needing neoadjuvant therapy.</li>
+                    <li><strong>Determination:</strong> cT by imaging/clinical exam; pT by histopathological examination of the resected specimen.</li>
+                </ul>
+            </div>
+
+            <div class="tnm-component-card" style="border-left-color: var(--brand-green);">
+                <h5 style="color:var(--brand-green);"><i class="fas fa-circle-nodes me-2"></i>N &mdash; Regional Lymph Nodes</h5>
+                <ul class="styled-list">
+                    <li><strong>What it represents:</strong> Lymphatic spread within the defined drainage basin of the primary tumour.</li>
+                    <li><strong>Universal pattern:</strong> N0 (no nodal metastasis) &rarr; N1&ndash;N3 (increasing number, size, or anatomical extent of involved nodes). NX = cannot be assessed.</li>
+                    <li><strong>Key distinction:</strong> Only nodes within the <em>defined regional basin</em> count for N. Nodes outside this basin are classified as M1 (distant metastasis). For example, supraclavicular nodes are N3 in lung cancer but M1 in colorectal cancer.</li>
+                    <li><strong>Clinical insight:</strong> N status is one of the strongest independent prognostic factors. N0 &rarr; N1 often shifts stage group significantly and may change surgical approach (e.g., axillary clearance in breast).</li>
+                    <li><strong>Determination:</strong> cN by imaging (CT, MRI, PET-CT) or clinical examination; pN by surgical pathology with a minimum number of nodes examined (site-specific).</li>
+                </ul>
+            </div>
+
+            <div class="tnm-component-card" style="border-left-color: #dc3545;">
+                <h5 style="color:#dc3545;"><i class="fas fa-virus me-2"></i>M &mdash; Distant Metastasis</h5>
+                <ul class="styled-list">
+                    <li><strong>What it represents:</strong> Spread beyond the regional nodal basin to distant organs or non-regional nodes, via haematogenous, lymphatic, or transcoelomic routes.</li>
+                    <li><strong>Universal pattern:</strong> M0 (no distant metastasis) or M1 (distant metastasis present). Some sites subdivide: M1a/M1b/M1c by site or burden.</li>
+                    <li><strong>Clinical insight:</strong> M1 almost always = Stage IV, regardless of T or N. This single finding typically shifts intent from curative to systemic/palliative. It is therefore the <strong>first thing to assess</strong> when staging.</li>
+                    <li><strong>Determination:</strong> Predominantly clinical/imaging (cM). Pathological confirmation (pM) requires histological proof of the metastatic deposit. Importantly, <strong>pM0 does not exist</strong> &mdash; absence of metastasis cannot be pathologically proven.</li>
+                </ul>
+            </div>
+
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>The Universal Pattern</div>
+                <p class="mb-0">Across all cancer sites: <strong>higher number = more advanced disease = worse prognosis</strong>. T4 is always worse than T1. N3 is always worse than N1. This consistency is by design &mdash; it makes TNM learnable without memorising every site's specific criteria.</p>
+            </div>
+        </div>
+
+
+        <!-- ═══════════════ 4. HOW TNM WAS DESIGNED ═══════════════ -->
+        <div class="section-card" id="design">
+            <h2 class="section-title"><i class="fas fa-drafting-compass"></i>How TNM Was Designed</h2>
+
+            <p>TNM is not an arbitrary coding system. Each category boundary was drawn to <strong>separate groups with meaningfully different survival outcomes</strong>:</p>
+
             <ul class="styled-list">
-                <li><strong>M</strong> – Presence or absence of distant metastasis</li>
-                <li><strong>N</strong> – Presence or absence of regional lymph node metastasis or involvement</li>
-                <li><strong>T</strong> – Extent of invasion and/or size of the tumour</li>
+                <li><strong>Survival correlation:</strong> Large outcome datasets showed that certain tumour sizes, invasion depths, and nodal counts predict different 5-year survival rates. TNM boundaries were placed at the points where survival curves diverge most.</li>
+                <li><strong>Anatomical pathways:</strong> The T&rarr;N&rarr;M hierarchy mirrors real routes of spread &mdash; direct extension, lymphatic drainage, and haematogenous dissemination. This is why the system works across almost all solid tumours.</li>
+                <li><strong>Reproducibility:</strong> Definitions are deliberately objective (size in cm, number of nodes, named structures invaded) so that two clinicians examining the same patient would assign the same stage.</li>
+                <li><strong>Edition updates:</strong> TNM is revised approximately every 7&ndash;8 years as new survival data accumulates. The current 8th edition (2017) reclassified several sites. Always check which edition your MDT uses.</li>
             </ul>
-            
-            <p>The essential TNM derivation is facilitated through the use of <strong>algorithmic approach (flow charts)</strong> that include relevant questions and refrence diagrams to help identify the extent of disease in different cancer sites. These flow charts correspond to the <em>eighth edition</em> of the Union for International Cancer Control (UICC) TNM classification (Brierley et al., 2017).</p>
-        </div>
-        
-        <!-- M Component -->
-        <div class="section-card" id="metastasis">
-            <h2 class="section-title"><i class="fas fa-virus"></i>Metastasis (M)</h2>
-            
-            <div class="code-box">
-                <span class="code">M+</span>
-                <span class="meaning">Presence of distant metastasis, clinically or pathologically</span>
-            </div>
-            
-            <div class="code-box">
-                <span class="code">M−</span>
-                <span class="meaning">No distant metastasis present</span>
-            </div>
-            
-            <div class="note-callout">
-                <div class="note-callout-title"><i class="fas fa-exclamation-triangle me-2"></i>Notes on M Code</div>
-                <ul class="styled-list mb-0">
-                    <li>For coding M, <strong>clinical signs and findings are enough</strong> to justify metastasis (M+) in the absence of pathological confirmation of metastatic deposits.</li>
-                    <li><strong>Do not code</strong> metastasis that is known to have developed after the diagnosis was established.</li>
-                    <li>If there is <strong>no mention</strong> of distant metastasis, code as <strong>M−</strong>.</li>
-                    <li>If distant metastasis can be established, <strong>there is no need</strong> to look further in the record for regional node involvement or tumour size or extension.</li>
-                </ul>
-            </div>
-        </div>
-        
-        <!-- N Component -->
-        <div class="section-card" id="nodes">
-            <h2 class="section-title"><i class="fas fa-circle-nodes"></i>Regional Lymph Node Metastasis (N)</h2>
-            
-            <div class="code-box">
-                <span class="code">R+</span>
-                <span class="meaning">Presence of regional node metastasis or involvement, clinically or pathologically</span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">R2</span>
-                <span class="meaning">Regional node metastasis is advanced</span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">R1</span>
-                <span class="meaning">Regional node metastasis is limited</span>
-            </div>
-            
-            <div class="code-box">
-                <span class="code">R−</span>
-                <span class="meaning">No mention of regional node metastasis</span>
-            </div>
-            
-            <div class="note-callout">
-                <div class="note-callout-title"><i class="fas fa-stethoscope me-2"></i>Notes on Regional Nodes</div>
-                <ul class="styled-list mb-0">
-                    <li>Involvement of lymph nodes implies that the tumour has spread via the lymphatic system and cancer cells are found in the lymph nodes that drain the specific organ.</li>
-                    <li>An <strong>"enlarged" or "palpable" node does not constitute involvement</strong> on the basis of those words alone – pathological confirmation is usually required.</li>
-                    <li>However, N can be coded from the clinical record, typically from <strong>imaging or during surgical observation</strong>, in the absence of pathological confirmation.</li>
-                    <li>Code as <strong>R+</strong> in the presence of documented regional lymph node involvement and as <strong>R−</strong> otherwise.</li>
-                    <li>If more detailed information is available and it is relevant for a given cancer site, R+ can be further classified as <strong>R2</strong> (advanced) or <strong>R1</strong> (limited).</li>
-                    <li>If lymph node involvement (R+) has been established but no further information is available about the number and location of nodes, <strong>R+ is assumed</strong>. The case will be allotted to the lower stage category (Rule 4).</li>
-                </ul>
-            </div>
-        </div>
-        
-        <!-- T Component -->
-        <div class="section-card" id="tumour">
-            <h2 class="section-title"><i class="fas fa-disease"></i>Extent of Invasion / Tumour Size (T)</h2>
-            
-            <div class="code-box">
-                <span class="code">A</span>
-                <span class="meaning">Extent of invasion and/or tumour size is <strong>advanced</strong></span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">A2</span>
-                <span class="meaning">Extent of invasion and/or tumour size is very advanced</span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">A1</span>
-                <span class="meaning">Extent of invasion and/or tumour size is advanced</span>
-            </div>
-            
-            <div class="code-box">
-                <span class="code">L</span>
-                <span class="meaning">Extent of invasion and/or tumour size is <strong>limited</strong></span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">L2</span>
-                <span class="meaning">Extent of invasion and/or tumour size is limited</span>
-            </div>
-            
-            <div class="code-box" style="margin-left: 2rem;">
-                <span class="code">L1</span>
-                <span class="meaning">Extent of invasion and/or tumour size is very limited</span>
-            </div>
-            
-            <div class="code-box">
-                <span class="code">X</span>
-                <span class="meaning">Extent of invasion and/or tumour size <strong>cannot be assessed</strong></span>
-            </div>
-            
-            <div class="note-callout">
-                <div class="note-callout-title"><i class="fas fa-microscope me-2"></i>Notes on T Codes</div>
-                <ul class="styled-list mb-0">
-                    <li>T is based on the most specific data available to confirm the extent of invasion within or through the involved organ and/or the size of the primary tumour (depending on the cancer site).</li>
-                    <li>T is generally coded from the <strong>pathology report</strong> or, in the absence of pathological confirmation, from the clinical record (endoscopy, imaging, palpation, etc.).</li>
-                    <li><strong>Hierarchy of evidence:</strong> Pathological examination of surgical specimens takes precedence over imaging, and imaging takes precedence over cytology or biopsy.</li>
-                </ul>
-            </div>
-        </div>
-        
-        <!-- Lower Code Rule -->
-        <div class="section-card important" id="lower-code">
-            <h2 class="section-title"><i class="fas fa-arrow-down"></i>The Lower Code Rule (Rule 4 of the TNM System)</h2>
-            
+
             <div class="rule-box">
-                <div class="rule-title"><i class="fas fa-gavel me-2"></i>When Information is Missing</div>
-                <p class="mb-0">If appropriate information about a specific code (T, N or M) is not available, follow the rule of lower code:</p>
+                <div class="rule-title"><i class="fas fa-gavel me-2"></i>Why This Matters to You</div>
+                <p class="mb-0">When you report a staging scan, you are not just measuring a tumour &mdash; you are placing the patient into a prognostic group that determines treatment intent. Understanding the design makes your measurements more purposeful.</p>
             </div>
-            
-            <ul class="styled-list">
-                <li>For <strong>M and N</strong>: if there is no information on their presence, assume that they are absent (<strong>M−, R−</strong>).</li>
-                <li>If regional nodes are mentioned but it is not possible to distinguish between advanced and limited metastasis, code as <strong>R+</strong>.</li>
-                <li>For <strong>T</strong>: if it is not possible to distinguish degrees of tumour extension (2 vs 1), code T as simply <strong>A</strong> or <strong>L</strong> (depending on the cancer site).</li>
-                <li>For T, <strong>X</strong> should be recorded if there is known to be a primary tumour but there is no description of its size or extent of invasion.</li>
-                <li>Refer to the specific cancer sites for assessing advanced or limited status.</li>
-            </ul>
         </div>
-        
-        <!-- Stage Groups -->
-        <div class="section-card" id="staging">
-            <h2 class="section-title"><i class="fas fa-layer-group"></i>Assigning Stage Groups – General Rules</h2>
-            
-            <p>Once the Essential TNM components have been coded, the components can be combined into <strong>stage groups ranging from I to IV</strong> with increasing severity of disease.</p>
-            
+
+
+        <!-- ═══════════════ 5. ESSENTIAL TERMINOLOGY ═══════════════ -->
+        <div class="section-card important" id="terminology">
+            <h2 class="section-title"><i class="fas fa-book"></i>Essential Terminology</h2>
+
+            <h5 style="color:var(--brand-teal);">Core Components</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th style="width:15%;">Code</th><th>Meaning</th><th style="width:35%;">Notes</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>TX</strong></td><td>Primary tumour cannot be assessed</td><td>Insufficient information; not "no tumour"</td></tr>
+                        <tr><td><strong>T0</strong></td><td>No evidence of primary tumour</td><td>Rare; e.g., unknown primary with nodal disease</td></tr>
+                        <tr><td><strong>Tis</strong></td><td>Carcinoma in situ</td><td>Intraepithelial; no basement membrane invasion</td></tr>
+                        <tr><td><strong>T1&ndash;T4</strong></td><td>Increasing size or local extent</td><td>Site-specific criteria (size, invasion depth, structures)</td></tr>
+                        <tr><td><strong>NX</strong></td><td>Regional nodes cannot be assessed</td><td>E.g., prior nodal dissection</td></tr>
+                        <tr><td><strong>N0</strong></td><td>No regional node metastasis</td><td>pN0 requires minimum node count (site-specific)</td></tr>
+                        <tr><td><strong>N1&ndash;N3</strong></td><td>Increasing regional node involvement</td><td>By number, size, or station (site-specific)</td></tr>
+                        <tr><td><strong>M0</strong></td><td>No distant metastasis</td><td>Clinical assessment; pM0 does not exist</td></tr>
+                        <tr><td><strong>M1</strong></td><td>Distant metastasis present</td><td>Some sites subdivide: M1a/M1b/M1c</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">Prefixes &mdash; When Was the Stage Determined?</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th style="width:15%;">Prefix</th><th>Meaning</th><th style="width:40%;">When Used</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>c</strong></td><td>Clinical</td><td>Based on imaging, physical exam, endoscopy &mdash; <strong>this is your staging as a radiologist</strong></td></tr>
+                        <tr><td><strong>p</strong></td><td>Pathological</td><td>Post-resection histology; the "gold standard" stage</td></tr>
+                        <tr><td><strong>y</strong></td><td>Post-treatment</td><td>After neoadjuvant chemo/radiotherapy; prefixed as ycTNM or ypTNM</td></tr>
+                        <tr><td><strong>r</strong></td><td>Recurrence</td><td>Restaging after a disease-free interval</td></tr>
+                        <tr><td><strong>a</strong></td><td>Autopsy</td><td>Stage determined at post-mortem</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">Stage Grouping (I&ndash;IV)</h5>
+            <p>TNM combinations are mapped to <strong>overall stage groups</strong> via site-specific tables:</p>
             <div class="stage-grid">
                 <div class="stage-item">
-                    <div class="stage-number">Stage IV</div>
-                    <div class="stage-desc">Distant metastasis (M+)</div>
+                    <div class="stage-number">I</div>
+                    <div class="stage-desc">Small, localised, no nodes, no mets</div>
                 </div>
                 <div class="stage-item">
-                    <div class="stage-number">Stage III</div>
-                    <div class="stage-desc">Increasing local & regional node involvement</div>
+                    <div class="stage-number">II</div>
+                    <div class="stage-desc">Larger local or limited nodal spread</div>
                 </div>
                 <div class="stage-item">
-                    <div class="stage-number">Stage II</div>
-                    <div class="stage-desc">Intermediate local/regional spread</div>
+                    <div class="stage-number">III</div>
+                    <div class="stage-desc">Advanced local and/or significant nodal disease</div>
                 </div>
-                <div class="stage-item">
-                    <div class="stage-number">Stage I</div>
-                    <div class="stage-desc">Localized within organ of origin</div>
+                <div class="stage-item" style="border-color:#dc3545;">
+                    <div class="stage-number" style="color:#dc3545;">IV</div>
+                    <div class="stage-desc">Distant metastasis (M1) &mdash; nearly always</div>
                 </div>
             </div>
-            
-            <div class="note-callout">
-                <div class="note-callout-title"><i class="fas fa-info-circle me-2"></i>Key Points</div>
-                <ul class="styled-list mb-0">
-                    <li>The rules for combining the Essential TNM components into stage groups (I–IV) are provided on a <strong>site-specific basis</strong>.</li>
-                    <li>The stage groups were designed to group patients with cancer with <strong>similar prognosis</strong>.</li>
-                </ul>
+
+            <div class="rule-box mt-3">
+                <div class="rule-title"><i class="fas fa-gavel me-2"></i>R Classification &ne; TNM</div>
+                <p class="mb-0"><strong>R0 / R1 / R2</strong> describe <strong>residual disease after surgical treatment</strong> (R0 = clear margins, R1 = microscopic residual, R2 = macroscopic residual). This is a separate classification and must <strong>never</strong> be confused with N staging. R classification is assessed post-operatively, not at initial staging.</p>
             </div>
         </div>
-        
+
+
+        <!-- ═══════════════ 6. WHAT TNM IS NOT ═══════════════ -->
+        <div class="section-card" id="not">
+            <h2 class="section-title"><i class="fas fa-times-circle"></i>What TNM Is NOT</h2>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Common Confusion</th><th>Reality</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>TNM = tumour grade</td><td><strong>No.</strong> Grade (G1&ndash;G4) reflects histological differentiation. A small T1 tumour can be high-grade (G3) and aggressive. TNM and grade are independent variables that together inform prognosis.</td></tr>
+                        <tr><td>TNM = performance status</td><td><strong>No.</strong> ECOG/WHO performance status reflects patient fitness. A patient can have early-stage cancer (Stage I) but be unfit for surgery (ECOG 3). TNM describes the tumour, not the patient.</td></tr>
+                        <tr><td>TNM dictates treatment</td><td><strong>Not directly.</strong> TNM informs treatment decisions alongside grade, patient fitness, molecular markers, and MDT consensus. Stage IIIA lung cancer might be treated with surgery or chemoradiotherapy depending on the specific T and N combination.</td></tr>
+                        <tr><td>TNM = IARC Essential TNM</td><td><strong>Different systems.</strong> IARC Essential TNM uses simplified codes (R+/R&minus; for nodes, A/L/X for tumour) designed for cancer registrars. Clinical practice uses the full AJCC system (T1&ndash;T4, N0&ndash;N3, M0/M1). See <a href="#iarc">IARC section</a> below.</td></tr>
+                        <tr><td>TNM is fixed at diagnosis</td><td><strong>No.</strong> TNM can be reassessed. Post-treatment staging (yTNM) may differ from initial (cTNM). Pathological staging (pTNM) supersedes clinical when available.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+
+        <!-- ═══════════════ 7. THE THINKING ALGORITHM ═══════════════ -->
+        <div class="section-card highlight" id="algorithm">
+            <h2 class="section-title"><i class="fas fa-project-diagram"></i>The TNM Thinking Algorithm</h2>
+
+            <p>When reviewing a staging scan, always think in this order:</p>
+
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num urgent">M</div>
+                <div>
+                    <strong>Check M first: Is there distant disease?</strong><br>
+                    Search the liver, lungs, bones, brain, peritoneum &mdash; guided by the tumour's known metastatic pattern. If <strong>M1</strong>, you have usually established Stage IV regardless of T and N. This single finding changes treatment intent from curative to systemic. <em>This is why M comes first.</em>
+                </div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">N</div>
+                <div>
+                    <strong>Then N: Are regional nodes involved?</strong><br>
+                    Assess the defined regional nodal stations. Count suspicious nodes, note their stations, and describe morphological features (short axis, shape, necrosis, enhancement pattern). N status is the key discriminator between Stage II and Stage III in most cancers.
+                </div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">T</div>
+                <div>
+                    <strong>Finally T: Define the local tumour.</strong><br>
+                    Measure maximum dimension, assess invasion depth, and identify involvement of named structures. T stage drives surgical approach &mdash; is this organ-confined? Is it resectable? Which structures need to be sacrificed?
+                </div>
+            </div>
+
+            <div class="note-callout mt-3">
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>Why This Order Works</div>
+                <p class="mb-0">M1 makes detailed T/N assessment less urgent (though still needed for some protocols). By contrast, spending 20 minutes measuring a primary tumour only to discover liver metastases at the end wastes cognitive effort and may bias your reading. <strong>Start with the question that most changes management.</strong></p>
+            </div>
+        </div>
+
+
+        <!-- ═══════════════ 8. RADIOLOGIST'S PERSPECTIVE ═══════════════ -->
+        <div class="section-card highlight" id="radiology">
+            <h2 class="section-title"><i class="fas fa-x-ray"></i>TNM From the Radiologist's Perspective</h2>
+
+            <p>This is the section that matters most to your daily practice. As a radiologist, you are the primary contributor to <strong>cTNM</strong> &mdash; the clinical stage that drives initial management decisions.</p>
+
+            <h5 style="color:var(--brand-teal);"><i class="fas fa-users me-2"></i>What the MDT Needs From Your Report</h5>
+            <ul class="styled-list">
+                <li><strong>Explicit cT, cN, cM assignment</strong> (or your best estimate with stated uncertainty)</li>
+                <li><strong>Measurements that map to staging thresholds</strong> &mdash; if the T2/T3 boundary is 5 cm, measure and state the number</li>
+                <li><strong>Named structures invaded or threatened</strong> &mdash; "tumour abuts the SMA with loss of the fat plane" is staging-relevant; "large mass" is not</li>
+                <li><strong>Resectability statement</strong> where appropriate &mdash; especially for pancreatic, hepatobiliary, and locally advanced tumours</li>
+                <li><strong>Honest uncertainty</strong> &mdash; "equivocal 8 mm node in station 4R, recommend PET-CT for N staging" is more helpful than a forced N0/N1 call</li>
+            </ul>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-ruler-combined me-2"></i>Imaging &rarr; T (Primary Tumour)</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Assessment</th><th>What to Do</th><th>Example</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Size</strong></td><td>Measure maximum dimension in the plane used by the staging system (usually axial). Be consistent between baseline and follow-up.</td><td>Breast: longest diameter. Lung: longest axial dimension on lung window.</td></tr>
+                        <tr><td><strong>Invasion depth</strong></td><td>Assess extension through tissue layers &mdash; mucosa, submucosa, muscularis, serosa, adjacent organs.</td><td>Colorectal on MRI: T3 if tumour extends through muscularis propria into perirectal fat (measure depth of extramural invasion in mm).</td></tr>
+                        <tr><td><strong>Organ confinement</strong></td><td>Is the tumour contained within the organ capsule/boundary? Loss of the surrounding fat plane suggests extension.</td><td>Renal: T3a if extending into perinephric fat or renal sinus. T3b if into renal vein.</td></tr>
+                        <tr><td><strong>Adjacent structures</strong></td><td>Name the specific structures involved &mdash; the MDT needs to know exactly what is at risk.</td><td>Lung: T3 if chest wall, T4 if mediastinal structures (heart, great vessels, trachea, oesophagus, vertebral body).</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-circle-nodes me-2"></i>Imaging &rarr; N (Regional Nodes)</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Criterion</th><th>What to Assess</th><th>Pitfalls</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Short-axis diameter</strong></td><td>Site-specific thresholds (commonly 10 mm, but varies: 8 mm for upper mediastinum, 5 mm for mesorectal). Always measure short axis.</td><td>Reactive nodes can be &gt;10 mm; small nodes can harbour metastasis. Size alone has ~70% accuracy.</td></tr>
+                        <tr><td><strong>Morphology</strong></td><td>Round shape (L:S ratio &lt;2), loss of fatty hilum, central necrosis, heterogeneous enhancement, irregular border.</td><td>Morphological criteria improve specificity. A 7 mm round node with necrosis is more suspicious than a 12 mm oval node with preserved hilum.</td></tr>
+                        <tr><td><strong>Station anatomy</strong></td><td>Map nodes to named stations (e.g., IASLC mediastinal stations for lung; mesorectal, internal iliac for rectal). Station determines N subcategory.</td><td>Nodes outside the regional basin = M1, not N. Know the boundaries for each tumour type.</td></tr>
+                        <tr><td><strong>Number and distribution</strong></td><td>Count suspicious nodes per station. Some systems use total nodal count (gastric: N1 = 1&ndash;2, N2 = 3&ndash;6, N3 = &ge;7).</td><td>PET-CT improves nodal staging in many tumours (lung, head and neck) but has limited sensitivity for micrometastasis.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-globe me-2"></i>Imaging &rarr; M (Distant Metastasis)</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Tumour Type</th><th>Common Metastatic Sites</th><th>Imaging Approach</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Lung</td><td>Brain, bone, adrenals, liver, contralateral lung</td><td>CT chest/abdomen/pelvis + MRI brain (or PET-CT)</td></tr>
+                        <tr><td>Colorectal</td><td>Liver, lung, peritoneum</td><td>CT CAP; MRI liver if considering hepatic resection</td></tr>
+                        <tr><td>Breast</td><td>Bone, liver, lung, brain</td><td>CT CAP + bone scan (or PET-CT); MRI brain if symptoms</td></tr>
+                        <tr><td>Renal</td><td>Lung, bone, brain, contralateral kidney</td><td>CT CAP; MRI brain if advanced</td></tr>
+                        <tr><td>Melanoma</td><td>Lung, liver, brain, skin, subcutaneous</td><td>PET-CT + MRI brain</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-clipboard-list me-2"></i>Structured Reporting for Staging</h5>
+            <p>Every staging report should include a <strong>summary line</strong>. Aim for this format:</p>
+            <div class="code-box">
+                <span class="code">Imaging stage: cT2 cN1 cM0</span>
+                <span class="meaning">&mdash; Stage IIIA (AJCC 8th ed., lung)</span>
+            </div>
+            <p>Structure your report body as:</p>
+            <ul class="styled-list">
+                <li><strong>Primary tumour:</strong> Site, size (mm), invasion depth/extent, named structures involved</li>
+                <li><strong>Regional nodes:</strong> Number of suspicious nodes, stations, largest short-axis diameter, morphological features</li>
+                <li><strong>Distant metastases:</strong> Present/absent; if present, list sites and burden</li>
+                <li><strong>Additional findings:</strong> Incidental findings, anatomical variants, surgical considerations</li>
+                <li><strong>Summary and stage:</strong> cTNM assignment with stated edition and any caveats</li>
+            </ul>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-exclamation-triangle me-2"></i>Common Staging Pitfalls on Imaging</h5>
+            <div class="tnm-pitfall"><i class="fas fa-exclamation-triangle me-2"></i><strong>Reactive vs malignant nodes:</strong> Size criteria alone are insufficient. Always assess morphology. A post-infective reactive node can be 15 mm with a preserved hilum.</div>
+            <div class="tnm-pitfall"><i class="fas fa-exclamation-triangle me-2"></i><strong>Partial volume artefact:</strong> A small peripheral lung nodule adjacent to a rib may falsely suggest chest wall invasion. Multiplanar reformats help.</div>
+            <div class="tnm-pitfall"><i class="fas fa-exclamation-triangle me-2"></i><strong>Motion artefact:</strong> Respiratory and cardiac motion can mimic invasion of mediastinal structures. ECG-gated or breath-hold acquisitions may be needed.</div>
+            <div class="tnm-pitfall"><i class="fas fa-exclamation-triangle me-2"></i><strong>Post-treatment change vs residual disease:</strong> After neoadjuvant therapy, fibrosis and oedema can mimic residual tumour. MRI with DWI and PET-CT improve discrimination.</div>
+            <div class="tnm-pitfall"><i class="fas fa-exclamation-triangle me-2"></i><strong>Peritoneal disease:</strong> Small-volume peritoneal metastases are easily missed on CT. Look for subtle omental thickening, ascites, and nodular peritoneal enhancement.</div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);"><i class="fas fa-redo me-2"></i>The Radiologist's Role in Restaging (yTNM)</h5>
+            <p>After neoadjuvant therapy, you assess treatment response. Report using the <strong>yc</strong> prefix (imaging-based) or <strong>yp</strong> (post-resection). Key points:</p>
+            <ul class="styled-list">
+                <li>Compare directly with the baseline staging scan using the <strong>same measurement technique</strong></li>
+                <li>Report response category if applicable (RECIST, mRECIST, Mandard for oesophageal)</li>
+                <li>Residual tumour may be smaller but still invade critical structures &mdash; report the anatomy, not just the size change</li>
+                <li>Complete radiological response does not always mean complete pathological response &mdash; state this uncertainty</li>
+            </ul>
+        </div>
+
+
+        <!-- ═══════════════ 9. CLINICAL PRACTICE ═══════════════ -->
+        <div class="section-card" id="practice">
+            <h2 class="section-title"><i class="fas fa-hospital"></i>TNM in Clinical Practice</h2>
+
+            <h5 style="color:var(--brand-teal);">The Staging Workflow</h5>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">1</div>
+                <div><strong>Protocol selection:</strong> Choose the imaging protocol based on the suspected primary (e.g., CT CAP with contrast for colorectal, MRI pelvis for rectal T staging).</div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">2</div>
+                <div><strong>Systematic review:</strong> Apply the M &rarr; N &rarr; T algorithm. Search for metastases first, then nodes, then characterise the primary.</div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">3</div>
+                <div><strong>Structured report:</strong> Document findings with staging-relevant measurements and explicit cTNM assignment.</div>
+            </div>
+            <div class="tnm-flow-step">
+                <div class="tnm-flow-num">4</div>
+                <div><strong>MDT presentation:</strong> Present the imaging stage with images. Flag uncertainties and recommend further imaging where needed.</div>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">MDT Communication</h5>
+            <p>Your MDT colleagues need <strong>actionable information</strong>, not a descriptive essay. Frame your presentation as:</p>
+            <ul class="styled-list">
+                <li><em>"The primary tumour measures X cm, invades [structure], making this at least cT3."</em></li>
+                <li><em>"There are N suspicious nodes in [station], largest short axis Y mm, consistent with cN1."</em></li>
+                <li><em>"No distant metastatic disease identified &mdash; cM0."</em></li>
+                <li><em>"Overall imaging stage: cTNM, equating to Stage [X]. However, I have uncertainty about [specific finding] and recommend [further investigation]."</em></li>
+            </ul>
+        </div>
+
+
+        <!-- ═══════════════ 10. CLINICAL PEARLS ═══════════════ -->
+        <div class="section-card important" id="pearls">
+            <h2 class="section-title"><i class="fas fa-star"></i>High-Yield Clinical Pearls</h2>
+            <ul class="styled-list">
+                <li><strong>M1 trumps everything.</strong> A single liver metastasis makes a T1N0 patient Stage IV. Always search for metastases before investing time in detailed T staging.</li>
+                <li><strong>Measure what the staging system uses.</strong> If the T2/T3 boundary is 4 cm, and your tumour measures 3.8 cm, that number matters. Do not round up or approximate.</li>
+                <li><strong>Node morphology &gt; size.</strong> A 7 mm round node with necrosis is more concerning than a 12 mm oval node with a fatty hilum. Report morphology alongside size.</li>
+                <li><strong>Know your regional basins.</strong> Supraclavicular nodes are regional (N3) for lung but distant (M1) for colorectal. This single distinction can change stage by two groups.</li>
+                <li><strong>pM0 does not exist.</strong> You can only prove metastasis is present (pM1), not prove its absence. Absence of metastasis is always a clinical assessment (cM0).</li>
+                <li><strong>State uncertainty explicitly.</strong> "Equivocal" is better than a forced call. The MDT can decide whether to act on uncertainty; they cannot un-act on a false-positive staging call.</li>
+                <li><strong>Check the edition.</strong> AJCC 7th and 8th editions differ significantly for several sites (lung, gastric, pancreas). Ensure your report uses the edition your MDT follows.</li>
+                <li><strong>cTNM &ne; pTNM.</strong> Imaging understages ~30% and overstages ~15% of cases compared to pathology. This is expected. Your job is the best possible clinical stage, not perfection.</li>
+            </ul>
+        </div>
+
+
+        <!-- ═══════════════ 11. MEMORY & RETENTION ═══════════════ -->
+        <div class="section-card" id="memory">
+            <h2 class="section-title"><i class="fas fa-brain"></i>Memory and Retention Aids</h2>
+
+            <h5 style="color:var(--brand-teal);">The TNM Mnemonic Framework</h5>
+            <div class="stage-grid">
+                <div class="stage-item">
+                    <div class="stage-number">T</div>
+                    <div class="stage-desc"><strong>Territory</strong> &mdash; how much local territory has the tumour claimed?</div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">N</div>
+                    <div class="stage-desc"><strong>Neighbourhood</strong> &mdash; has it spread to the local neighbourhood (nodes)?</div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">M</div>
+                    <div class="stage-desc"><strong>Migration</strong> &mdash; has it migrated to distant lands?</div>
+                </div>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">Prefix Mnemonic: "Can Pathologists Yield Results at Autopsy?"</h5>
+            <div class="code-box">
+                <span class="code">c &middot; p &middot; y &middot; r &middot; a</span>
+                <span class="meaning">Clinical &middot; Pathological &middot; Post-treatment (Yield) &middot; Recurrence &middot; Autopsy</span>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">The "Stage IV Shortcut"</h5>
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>If&ndash;Then Rule</div>
+                <p class="mb-0"><strong>If M1 &rarr; Stage IV.</strong> This is true for almost every solid tumour. One distant metastasis overrides all local findings. Start your staging read by looking for mets.</p>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">Quick-Recall Comparison Table</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Concept</th><th>TNM Staging</th><th>Tumour Grade</th><th>Performance Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Measures</strong></td><td>Anatomical extent of spread</td><td>Histological differentiation</td><td>Patient functional capacity</td></tr>
+                        <tr><td><strong>Scale</strong></td><td>T0&ndash;T4, N0&ndash;N3, M0&ndash;M1</td><td>G1 (well) &ndash; G4 (undifferentiated)</td><td>ECOG 0 (fully active) &ndash; 4 (bedbound)</td></tr>
+                        <tr><td><strong>Determined by</strong></td><td>Imaging + pathology</td><td>Histology only</td><td>Clinical assessment</td></tr>
+                        <tr><td><strong>Describes</strong></td><td>The tumour's geography</td><td>The tumour's biology</td><td>The patient</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h5 class="mt-3" style="color:var(--brand-teal);">The "Staging Scan Checklist" Pattern</h5>
+            <p>For every staging scan, apply this mental checklist in order:</p>
+            <ul class="styled-list">
+                <li><strong>M:</strong> Liver &rarr; Lungs &rarr; Bones &rarr; Brain &rarr; Peritoneum (modify by tumour type)</li>
+                <li><strong>N:</strong> Regional stations (name them) &rarr; short axis &rarr; morphology &rarr; number</li>
+                <li><strong>T:</strong> Size &rarr; invasion depth &rarr; organ confinement &rarr; named structures</li>
+                <li><strong>Summary:</strong> cT? cN? cM? &rarr; Stage? &rarr; Uncertainties? &rarr; Recommendations?</li>
+            </ul>
+        </div>
+
+
+        <!-- ═══════════════ 12. IARC ESSENTIAL TNM ═══════════════ -->
+        <div class="section-card" id="iarc">
+            <h2 class="section-title"><i class="fas fa-database"></i>IARC Essential TNM &mdash; Brief Reference</h2>
+
+            <p>You may encounter the <strong>IARC Essential TNM</strong> system in cancer registry queries, population data reports, or audit meetings. It is <em>not</em> the same as AJCC TNM and should not be used for clinical staging.</p>
+
+            <h5 style="color:var(--brand-teal);">How IARC Essential TNM Differs</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered table-tnm">
+                    <thead>
+                        <tr><th>Component</th><th>AJCC TNM (Clinical)</th><th>IARC Essential TNM (Registry)</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Tumour</strong></td><td>T0, Tis, T1&ndash;T4, TX</td><td>A (Advanced), A1/A2, L (Limited), L1/L2, X (Cannot assess)</td></tr>
+                        <tr><td><strong>Nodes</strong></td><td>N0, N1&ndash;N3, NX</td><td>R+ (Regional involvement), R1/R2, R&minus; (No involvement)</td></tr>
+                        <tr><td><strong>Metastasis</strong></td><td>M0, M1 (with subdivisions)</td><td>M+, M&minus;</td></tr>
+                        <tr><td><strong>Purpose</strong></td><td>Clinical decision-making, treatment planning, prognosis</td><td>Population-level cancer surveillance, registry abstraction</td></tr>
+                        <tr><td><strong>Used by</strong></td><td>Clinicians, radiologists, surgeons, oncologists</td><td>Cancer registrars, epidemiologists</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="rule-box mt-2">
+                <div class="rule-title"><i class="fas fa-gavel me-2"></i>The Key Takeaway</div>
+                <p class="mb-0">If someone asks you to "stage" a patient, they mean AJCC TNM. IARC Essential TNM exists for a different purpose and should never appear in a clinical radiology report.</p>
+            </div>
+        </div>
+
+
+        <!-- ═══════════════ 13. FINAL SYNTHESIS ═══════════════ -->
+        <div class="section-card highlight" id="synthesis">
+            <h2 class="section-title"><i class="fas fa-check-circle"></i>Final Synthesis</h2>
+
+            <p>TNM is a <strong>structured model of anatomical cancer spread</strong> built on a single biological principle: cancers spread from local &rarr; regional &rarr; distant, and each step worsens prognosis.</p>
+
+            <p>As a radiologist, you are the <strong>primary author of the clinical stage (cTNM)</strong>. Your staging report directly determines whether a patient is offered surgery, chemotherapy, radiotherapy, or palliation. This is not just a classification exercise &mdash; it is a clinical decision with real consequences.</p>
+
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>The One Thing to Remember</div>
+                <p class="mb-0">TNM mastery comes from understanding <strong>patterns of spread</strong>, not memorising staging tables. Know the M &rarr; N &rarr; T hierarchy, report with precision, state your uncertainties, and let the staging system do its job: translating anatomy into prognosis.</p>
+            </div>
+        </div>
+
+
         <!-- Footer -->
         <div class="footer-credit">
-            <p class="mb-1">Content derived from <strong>IARC Essential TNM Guide</strong></p>
+            <p class="mb-1">AJCC 8th Edition TNM Staging Guide &mdash; Concept-driven teaching for radiology registrars</p>
             <p class="mb-0">
-                <a href="https://publications.iarc.who.int/" target="_blank" rel="noopener">
-                    <i class="fas fa-external-link-alt me-1"></i>IARC Publications
+                <a href="https://www.facs.org/quality-programs/cancer-programs/american-joint-committee-on-cancer/" target="_blank" rel="noopener">
+                    <i class="fas fa-external-link-alt me-1"></i>AJCC / FACS
                 </a>
                 <span class="mx-2">|</span>
                 <a href="https://www.uicc.org/what-we-do/sharing-knowledge/tnm" target="_blank" rel="noopener">
                     <i class="fas fa-external-link-alt me-1"></i>UICC TNM Classification
                 </a>
+                <span class="mx-2">|</span>
+                <a href="https://publications.iarc.who.int/" target="_blank" rel="noopener">
+                    <i class="fas fa-external-link-alt me-1"></i>IARC Publications
+                </a>
             </p>
         </div>
+
     </div>
+
     <!-- Google Analytics 4 (deferred to avoid blocking render) -->
     <script>
     window.addEventListener('load', function() {
@@ -526,7 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
     contentType: 'tnm_essentials', contentKey: 'main',
     contentArea: '.content-wrapper',
     notesToggleBtn: '#ciNotesToggle',
-    highlightContainers: ['.content-wrapper section', '.content-wrapper p', '.content-wrapper li'],
+    highlightContainers: ['.content-wrapper section', '.content-wrapper .section-card', '.content-wrapper p', '.content-wrapper li', '.content-wrapper td'],
   });
 });
 </script>

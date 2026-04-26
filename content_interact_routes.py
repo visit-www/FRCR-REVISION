@@ -73,6 +73,12 @@ def save_note(content_type, content_key):
             user_id=current_user.id,
             note_text=note_text,
         )
+        # Reverse dual-write: keep legacy case_id in sync
+        if content_type == 'case':
+            try:
+                note.case_id = int(content_key)
+            except (ValueError, TypeError):
+                pass
         db.session.add(note)
 
     db.session.commit()
@@ -141,6 +147,12 @@ def create_highlight(content_type, content_key):
         context_before=data.get('context_before', '')[:100],
         context_after=data.get('context_after', '')[:100],
     )
+    # Reverse dual-write: keep legacy case_id in sync
+    if content_type == 'case':
+        try:
+            highlight.case_id = int(content_key)
+        except (ValueError, TypeError):
+            pass
     db.session.add(highlight)
     db.session.commit()
 
@@ -229,6 +241,12 @@ def post_forum_message(content_type, content_key):
         user_id=current_user.id,
         content=content_text,
     )
+    # Reverse dual-write: keep legacy case_id in sync
+    if content_type == 'case':
+        try:
+            msg.case_id = int(content_key)
+        except (ValueError, TypeError):
+            pass
 
     # Handle image upload
     if image_file and image_file.filename:
