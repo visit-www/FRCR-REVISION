@@ -196,6 +196,11 @@
           <span class="osce-focus-case-title" id="osceFocusTitle"></span>
         </div>
         <div class="osce-focus-header-right">
+          {% if current_user.is_authenticated %}
+          <button class="btn btn-sm" id="osceFocusNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);margin-right:0.5rem;font-size:0.75rem;">
+            <i class="fas fa-comments me-1"></i><span class="d-none d-md-inline">Notes</span>
+          </button>
+          {% endif %}
           <button class="osce-focus-close-btn" id="osceFocusClose" title="Close (Esc)"><i class="fas fa-times"></i></button>
         </div>
       </div>
@@ -1813,11 +1818,36 @@ body.is-admin .osce-admin-edit-btn:hover {
     _renderFocusCase();
     focusOverlay.classList.add('osce-focus-open');
     document.body.style.overflow = 'hidden';
+    // Switch ContentInteract to per-case context
+    if (window.ContentInteract && window.ContentInteract.reinit) {
+      var c = _getCaseById(focusFilteredList[focusCurrentIdx]);
+      if (c) {
+        ContentInteract.reinit({
+          contentType: 'osce_case', contentKey: c.id,
+          contentArea: '#osceGuideRoot',
+          notesToggleBtn: '#osceFocusNotesToggle',
+          highlightContainers: []  // skip highlights in focus view (dynamic innerHTML)
+        });
+      }
+    }
   }
 
   function closeFocusView() {
     focusOverlay.classList.remove('osce-focus-open');
     document.body.style.overflow = '';
+    // Restore ContentInteract to guide-level context
+    if (window.ContentInteract && window.ContentInteract.reinit) {
+      ContentInteract.reinit({
+        contentType: 'osce_guide', contentKey: 'guide',
+        contentArea: '#osceGuideRoot',
+        notesToggleBtn: '#osceNotesToggle',
+        highlightContainers: [
+          '.osce-case-body', '.osce-ref-card-body', '.osce-ref-step-items',
+          '.osce-tech-body', '.osce-bys-content',
+          '.osce-card-section-body', '.osce-card-expl-text'
+        ],
+      });
+    }
   }
 
   function focusNav(dir) {
@@ -1826,6 +1856,18 @@ body.is-admin .osce-admin-edit-btn:hover {
     if (focusCurrentIdx < 0) focusCurrentIdx = focusFilteredList.length - 1;
     if (focusCurrentIdx >= focusFilteredList.length) focusCurrentIdx = 0;
     _renderFocusCase();
+    // Switch ContentInteract to new case
+    if (window.ContentInteract && window.ContentInteract.reinit) {
+      var c = _getCaseById(focusFilteredList[focusCurrentIdx]);
+      if (c) {
+        ContentInteract.reinit({
+          contentType: 'osce_case', contentKey: c.id,
+          contentArea: '#osceGuideRoot',
+          notesToggleBtn: '#osceFocusNotesToggle',
+          highlightContainers: []
+        });
+      }
+    }
   }
 
   function _renderFocusCase() {

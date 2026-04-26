@@ -18,7 +18,7 @@ import cloudinary.uploader
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 
-from models import db, CandidateNote, TextHighlight, ForumMessage, ForumMessageVote, User
+from models import db, CandidateNote, TextHighlight, ForumMessage, ForumMessageVote, ForumMessageFlag, User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -304,5 +304,46 @@ def delete_forum_message(message_id):
     if msg.user_id != current_user.id and not getattr(current_user, 'is_admin', False):
         return jsonify({'error': 'Not authorized'}), 403
     msg.is_deleted = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@content_bp.route('/forum/<int:message_id>/pin', methods=['POST'])
+@login_required
+def pin_forum_message(message_id):
+    """Toggle pin on a forum message (admin only)."""
+    if getattr(current_user, 'role', None) != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    msg = ForumMessage.query.get_or_404(message_id)
+    msg.is_pinned = not msg.is_pinned
+    db.session.commit()
+    return jsonify({'success': True, 'is_pinned': msg.is_pinned})
+
+
+@content_bp.route('/forum/<int:message_id>/flag', methods=['POST'])
+@login_required
+def flag_forum_message(message_id):
+    """Flag a forum message for moderation."""
+    msg = ForumMessage.query.get_or_404(message_id)
+    if msg.user_id == current_user.id:
+        return jsonify({'error': 'Cannot flag your own message'}), 400
+
+    existing = ForumMessageFlag.query.filter_by(
+        message_id=message_id, user_id=current_user.id
+    ).first()
+    if existing:
+        return jsonify({'error': 'Already flagged'}), 400
+
+    data = request.get_json() or {}
+    reason = (data.get('reason') or 'other')[:50]
+
+    flag = ForumMessageFlag(
+        message_id=message_id,
+        user_id=current_user.id,
+        reason=reason,
+        details=data.get('details', '')[:500] if data.get('details') else None,
+    )
+    db.session.add(flag)
+    msg.flag_count = (msg.flag_count or 0) + 1
     db.session.commit()
     return jsonify({'success': True})

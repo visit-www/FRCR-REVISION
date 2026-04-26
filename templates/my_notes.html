@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}My Study Notes — RadInsights{% endblock %}
+{% block meta_description %}Your personal study notes across all RadInsights content — cases, OSCE, TNM staging, protocols, anatomy, and more.{% endblock %}
+
+{% block content %}
+<div class="mn-layout" id="mnLayout">
+  <!-- Sidebar -->
+  <aside class="mn-sidebar" id="mnSidebar">
+    <div class="mn-sidebar-header">
+      <h6 class="mn-sidebar-title"><i class="fas fa-book-open me-1"></i>My Study Notes</h6>
+      <button class="mn-sidebar-close d-lg-none" id="mnSidebarClose"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- Navigation -->
+    <div class="mn-sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="mn-sidebar-nav-link"><i class="fas fa-home me-2"></i>Dashboard</a>
+    </div>
+
+    <!-- Notebooks -->
+    <div class="mn-sidebar-section">
+      <div class="mn-sidebar-label">Notebooks</div>
+      <a class="mn-sidebar-item mn-sidebar-item-active" data-filter="all" href="#">
+        <i class="fas fa-layer-group me-2"></i>All Notes <span class="mn-count" id="mnCountAll">0</span>
+      </a>
+      <div id="mnNotebooks"></div>
+    </div>
+
+    <!-- Tags -->
+    <div class="mn-sidebar-section">
+      <div class="mn-sidebar-label">Tags</div>
+      <div id="mnTags"><span class="mn-sidebar-empty">No tags yet</span></div>
+    </div>
+
+    <!-- Starred -->
+    <div class="mn-sidebar-section">
+      <a class="mn-sidebar-item" data-filter="starred" href="#">
+        <i class="fas fa-star me-2" style="color:#f59e0b;"></i>Starred <span class="mn-count" id="mnCountStarred">0</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="mn-main">
+    <!-- Toolbar -->
+    <div class="mn-toolbar">
+      <button class="btn btn-sm d-lg-none me-2" id="mnSidebarToggle" style="border:1px solid #ddd;">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div class="mn-search-wrapper">
+        <i class="fas fa-search mn-search-icon"></i>
+        <input type="text" class="mn-search" id="mnSearch" placeholder="Search notes..." autocomplete="off">
+      </div>
+      <select class="mn-sort" id="mnSort">
+        <option value="recent">Recent</option>
+        <option value="oldest">Oldest</option>
+        <option value="alpha">A-Z</option>
+        <option value="starred">Starred first</option>
+      </select>
+    </div>
+
+    <!-- Content area: list + detail -->
+    <div class="mn-content">
+      <!-- Note list -->
+      <div class="mn-list" id="mnList">
+        <div class="mn-empty" id="mnEmpty">
+          <i class="fas fa-sticky-note" style="font-size:2.5rem;color:#d1d5db;"></i>
+          <p class="mt-2 text-muted">No notes yet.</p>
+          <p class="small text-muted">Take notes on any content page using the <i class="fas fa-comments"></i> Notes button.</p>
+        </div>
+      </div>
+
+      <!-- Note detail -->
+      <div class="mn-detail" id="mnDetail">
+        <div class="mn-detail-placeholder" id="mnDetailPlaceholder">
+          <i class="fas fa-arrow-left" style="font-size:1.5rem;color:#d1d5db;"></i>
+          <p class="mt-2 text-muted small">Select a note to view details</p>
+        </div>
+        <div class="mn-detail-content" id="mnDetailContent" style="display:none;">
+          <!-- Header -->
+          <div class="mn-detail-header">
+            <div class="mn-detail-badge" id="mnDetailBadge"></div>
+            <a class="mn-detail-source" id="mnDetailSource" href="#" target="_self">
+              <i class="fas fa-external-link-alt me-1"></i><span id="mnDetailTitle"></span>
+            </a>
+            <div class="mn-detail-actions">
+              <button class="mn-star-btn" id="mnDetailStar" title="Star"><i class="fas fa-star"></i></button>
+              <button class="mn-delete-btn" id="mnDetailDelete" title="Delete note"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <!-- Note text (editable) -->
+          <div class="mn-detail-body">
+            <textarea class="mn-detail-textarea" id="mnDetailText" placeholder="Your notes..."></textarea>
+            <div class="mn-detail-status" id="mnDetailStatus"></div>
+          </div>
+          <!-- Tags -->
+          <div class="mn-detail-tags">
+            <div class="mn-detail-tags-label"><i class="fas fa-tags me-1"></i>Tags</div>
+            <div class="mn-detail-tags-list" id="mnDetailTags"></div>
+            <div class="mn-detail-tag-add">
+              <input type="text" class="mn-tag-input" id="mnTagInput" placeholder="Add tag..." maxlength="50">
+              <button class="mn-tag-add-btn" id="mnTagAddBtn"><i class="fas fa-plus"></i></button>
+            </div>
+          </div>
+          <!-- Metadata -->
+          <div class="mn-detail-meta" id="mnDetailMeta"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/my-notes.css') }}">
+<script src="{{ url_for('static', filename='js/my-notes.js') }}"></script>
+{% endblock %}

@@ -1,5 +1,5 @@
 /**
- * Content Interact v2 — Notes side panel, highlights, linked notes, discussion forum.
+ * Content Interact v3 — Notes side panel, highlights, linked notes, discussion forum.
  *
  * Usage:
  *   ContentInteract.init({
@@ -12,10 +12,11 @@
  *   });
  *
  * Features:
- *   - Side panel (20% width) with notes, toggled via button
- *   - Text selection → popup with Highlight + Add Note buttons
+ *   - Side panel (22% width) with notes, toggled via button
+ *   - Text selection -> popup with Highlight + Add Note buttons
  *   - Linked notes: selected text is captured as reference, superscript markers in content
- *   - Discussion forum with voting
+ *   - Discussion forum with voting, image upload, pinning, flagging
+ *   - destroy() / reinit() for dynamic contexts (e.g. OSCE focus view)
  */
 var ContentInteract = (function() {
   'use strict';
@@ -25,6 +26,11 @@ var ContentInteract = (function() {
   var _noteSaveTimer = null;
   var _noteCounter = 0;
   var _panelOpen = false;
+  var _selectionListenerAttached = false;
+  var _toggleBtnHandler = null;
+  var _toggleBtnEl = null;
+  var _forumImageFile = null;
+  var _isAdmin = document.body.classList.contains('is-admin');
 
   // ── Helpers ──
   function _esc(s) {
@@ -75,6 +81,16 @@ var ContentInteract = (function() {
     return 'n' + Date.now().toString(36) + _noteCounter;
   }
 
+  /** Vote tone styling — matches legacy case view */
+  function _voteToneStyle(votes) {
+    var v = Number(votes || 0);
+    if (v >= 5) return 'border-left: 3px solid var(--brand-success, #a8d5ba); background: rgba(168,213,186,0.16);';
+    if (v >= 1) return 'border-left: 3px solid rgba(168,213,186,0.9); background: rgba(168,213,186,0.10);';
+    if (v <= -3) return 'border-left: 3px solid #e89580; background: rgba(232,149,128,0.10);';
+    if (v <= -1) return 'border-left: 3px solid rgba(232,149,128,0.8); background: rgba(232,149,128,0.06);';
+    return '';
+  }
+
 
   // =========================================================================
   // SIDE PANEL
@@ -84,7 +100,6 @@ var ContentInteract = (function() {
   var _contentArea = null;
 
   function _createSidePanel() {
-    // Create the panel element
     _panel = document.getElementById('ciSidePanel');
     if (_panel) return; // already created
 
@@ -167,6 +182,7 @@ var ContentInteract = (function() {
     _api('GET', _contentPath() + '/note').then(function(data) {
       var textarea = document.getElementById('ciPanelNotes');
       var status = document.getElementById('ciPanelStatus');
+      if (!textarea) return;
       if (data.note_text) {
         // Store raw notes (with tags) and display formatted
         textarea.dataset.rawNotes = data.note_text;
@@ -176,24 +192,30 @@ var ContentInteract = (function() {
         }
         // Render markers in content
         setTimeout(function() { _renderNoteMarkers(data.note_text); }, 500);
+      } else {
+        textarea.value = '';
+        textarea.dataset.rawNotes = '';
+        status.innerHTML = '';
       }
     });
   }
 
   function _saveNotes() {
     var textarea = document.getElementById('ciPanelNotes');
+    if (!textarea) return;
     var raw = textarea.dataset.rawNotes || textarea.value;
     if (!raw.trim()) return;
     _api('POST', _contentPath() + '/note', { note_text: raw }).then(function(data) {
       if (data.success) {
         var now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-        document.getElementById('ciPanelStatus').innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved at ' + now;
+        var statusEl = document.getElementById('ciPanelStatus');
+        if (statusEl) statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved at ' + now;
       }
     });
   }
 
   function _formatNotesForDisplay(rawNotes) {
-    // Convert [note:ID][from CTX][text:SEL] content [/note:ID] → bullet points
+    // Convert [note:ID][from CTX][text:SEL] content [/note:ID] -> bullet points
     return rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, function(match, ctx, content) {
       return '\n\u2022 ' + content.trim();
     }).trim();
@@ -275,7 +297,7 @@ var ContentInteract = (function() {
 
 
   // =========================================================================
-  // TEXT SELECTION → POPUP (Highlight + Add Note)
+  // TEXT SELECTION -> POPUP (Highlight + Add Note)
   // =========================================================================
 
   function _initSelection() {
@@ -288,8 +310,11 @@ var ContentInteract = (function() {
       }
     });
 
-    // Listen for text selection
-    document.addEventListener('mouseup', _handleSelection);
+    // Listen for text selection (only attach once)
+    if (!_selectionListenerAttached) {
+      document.addEventListener('mouseup', _handleSelection);
+      _selectionListenerAttached = true;
+    }
   }
 
   function _handleSelection(e) {
@@ -504,6 +529,8 @@ var ContentInteract = (function() {
     var container = document.getElementById('ciPanelForum');
     if (!container) return;
 
+    _forumImageFile = null;
+
     container.innerHTML =
       '<div class="ci-forum-header">'
       + '<span class="ci-forum-title"><i class="fas fa-comments me-1"></i>Discussion</span>'
@@ -512,22 +539,73 @@ var ContentInteract = (function() {
       + '<div class="ci-forum-messages" id="ciForumMessages"></div>'
       + '<div class="ci-forum-compose">'
       + '<textarea class="ci-forum-input" id="ciForumInput" placeholder="Join the discussion..." rows="2"></textarea>'
+      + '<div class="ci-forum-image-preview" id="ciForumImagePreview" style="display:none;">'
+      +   '<img id="ciForumImageThumb" src="" alt="Preview" style="max-height:50px;border-radius:4px;">'
+      +   '<span id="ciForumImageName" style="font-size:0.7rem;color:#6b7280;margin-left:4px;"></span>'
+      +   '<button type="button" class="ci-btn ci-btn-sm ci-btn-danger" id="ciForumImageRemove" style="margin-left:auto;"><i class="fas fa-times"></i></button>'
+      + '</div>'
       + '<div class="ci-forum-compose-actions">'
-      + '<button class="ci-btn ci-btn-sm ci-btn-primary" id="ciForumSend"><i class="fas fa-paper-plane me-1"></i>Post</button>'
+      +   '<label class="ci-btn ci-btn-sm ci-forum-img-btn" title="Attach image" style="cursor:pointer;margin-right:auto;">'
+      +     '<i class="fas fa-image"></i>'
+      +     '<input type="file" id="ciForumImageInput" accept="image/*" style="display:none;">'
+      +   '</label>'
+      +   '<button class="ci-btn ci-btn-sm ci-btn-primary" id="ciForumSend"><i class="fas fa-paper-plane me-1"></i>Post</button>'
       + '</div></div>';
 
     _loadForumMessages();
 
+    // Image upload handling
+    var imgInput = document.getElementById('ciForumImageInput');
+    var imgPreview = document.getElementById('ciForumImagePreview');
+    var imgThumb = document.getElementById('ciForumImageThumb');
+    var imgName = document.getElementById('ciForumImageName');
+    var imgRemove = document.getElementById('ciForumImageRemove');
+
+    imgInput.addEventListener('change', function() {
+      var file = this.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) { _flash('Image must be under 2MB', 'warning'); this.value = ''; return; }
+      _forumImageFile = file;
+      imgThumb.src = URL.createObjectURL(file);
+      imgName.textContent = file.name;
+      imgPreview.style.display = 'flex';
+    });
+
+    imgRemove.addEventListener('click', function() {
+      _forumImageFile = null;
+      imgInput.value = '';
+      imgPreview.style.display = 'none';
+    });
+
+    // Post message
     document.getElementById('ciForumSend').addEventListener('click', function() {
       var input = document.getElementById('ciForumInput');
       var text = input.value.trim();
-      if (!text) return;
+      if (!text && !_forumImageFile) return;
       this.disabled = true;
-      _api('POST', _contentPath() + '/forum', { content: text }).then(function(data) {
-        document.getElementById('ciForumSend').disabled = false;
-        if (data.success) { input.value = ''; _loadForumMessages(); }
-        else _flash(data.error || 'Failed', 'error');
-      }).catch(function() { document.getElementById('ciForumSend').disabled = false; });
+
+      if (_forumImageFile) {
+        // Multipart with image
+        var fd = new FormData();
+        fd.append('content', text || '(image)');
+        fd.append('image', _forumImageFile);
+        _api('POST', _contentPath() + '/forum', fd).then(function(data) {
+          document.getElementById('ciForumSend').disabled = false;
+          if (data.success) {
+            input.value = '';
+            _forumImageFile = null;
+            imgInput.value = '';
+            imgPreview.style.display = 'none';
+            _loadForumMessages();
+          } else { _flash(data.error || 'Failed', 'error'); }
+        }).catch(function() { document.getElementById('ciForumSend').disabled = false; });
+      } else {
+        _api('POST', _contentPath() + '/forum', { content: text }).then(function(data) {
+          document.getElementById('ciForumSend').disabled = false;
+          if (data.success) { input.value = ''; _loadForumMessages(); }
+          else _flash(data.error || 'Failed', 'error');
+        }).catch(function() { document.getElementById('ciForumSend').disabled = false; });
+      }
     });
   }
 
@@ -535,7 +613,7 @@ var ContentInteract = (function() {
     _api('GET', _contentPath() + '/forum').then(function(data) {
       var msgDiv = document.getElementById('ciForumMessages');
       var countEl = document.getElementById('ciForumCount');
-      if (!data.success) return;
+      if (!data.success || !msgDiv) return;
       if (countEl) countEl.textContent = data.total ? '(' + data.total + ')' : '';
       if (!data.messages || !data.messages.length) {
         msgDiv.innerHTML = '<p class="ci-forum-empty">No messages yet.</p>';
@@ -544,20 +622,96 @@ var ContentInteract = (function() {
       msgDiv.innerHTML = data.messages.map(function(m) {
         var voteUp = m.user_vote === 1 ? ' ci-vote-active' : '';
         var voteDown = m.user_vote === -1 ? ' ci-vote-active' : '';
-        return '<div class="ci-forum-msg' + (m.is_pinned ? ' ci-forum-msg-pinned' : '') + '">'
+        var tone = _voteToneStyle(m.vote_score);
+        var pinnedBadge = m.is_pinned ? '<i class="fas fa-thumbtack ci-pin-badge" title="Pinned"></i> ' : '';
+
+        // Image thumbnail
+        var imageHtml = '';
+        if (m.image_thumbnail_url || m.image_url) {
+          var imgSrc = m.image_thumbnail_url || m.image_url;
+          imageHtml = '<div class="ci-forum-msg-image"><img src="' + _esc(imgSrc) + '" alt="Attached image" '
+            + (m.image_url ? 'onclick="window.open(\'' + _esc(m.image_url) + '\',\'_blank\')" style="cursor:pointer;" title="Click to view full size"' : '')
+            + '></div>';
+        }
+
+        // Action buttons
+        var actions = ''
+          + '<button class="ci-vote-btn' + voteUp + '" onclick="ContentInteract.vote(' + m.id + ', 1)"><i class="fas fa-arrow-up"></i></button>'
+          + '<span class="ci-vote-score">' + m.vote_score + '</span>'
+          + '<button class="ci-vote-btn' + voteDown + '" onclick="ContentInteract.vote(' + m.id + ', -1)"><i class="fas fa-arrow-down"></i></button>';
+        // Pin button (admin only)
+        if (_isAdmin) {
+          actions += '<button class="ci-pin-btn' + (m.is_pinned ? ' ci-pin-active' : '') + '" onclick="ContentInteract.pin(' + m.id + ')" title="' + (m.is_pinned ? 'Unpin' : 'Pin') + '"><i class="fas fa-thumbtack"></i></button>';
+        }
+        // Flag button (not own message)
+        if (!m.is_own) {
+          actions += '<button class="ci-flag-btn" onclick="ContentInteract.flag(' + m.id + ')" title="Flag"><i class="fas fa-flag"></i></button>';
+        }
+        // Delete button (own or admin)
+        if (m.is_own || _isAdmin) {
+          actions += '<button class="ci-delete-btn" onclick="ContentInteract.deleteMsg(' + m.id + ')"><i class="fas fa-trash"></i></button>';
+        }
+
+        return '<div class="ci-forum-msg' + (m.is_pinned ? ' ci-forum-msg-pinned' : '') + '" style="' + tone + '">'
           + '<div class="ci-forum-msg-header">'
-          + '<span class="ci-forum-msg-author">' + _esc(m.user_name) + (m.is_admin ? ' <span class="ci-badge-admin">Admin</span>' : '') + '</span>'
+          + '<span class="ci-forum-msg-author">' + pinnedBadge + _esc(m.user_name) + (m.is_admin ? ' <span class="ci-badge-admin">Admin</span>' : '') + '</span>'
           + '<span class="ci-forum-msg-time">' + _timeAgo(m.created_at) + '</span>'
           + '</div>'
           + '<div class="ci-forum-msg-body">' + _esc(m.content) + '</div>'
-          + '<div class="ci-forum-msg-actions">'
-          + '<button class="ci-vote-btn' + voteUp + '" onclick="ContentInteract.vote(' + m.id + ', 1)"><i class="fas fa-arrow-up"></i></button>'
-          + '<span class="ci-vote-score">' + m.vote_score + '</span>'
-          + '<button class="ci-vote-btn' + voteDown + '" onclick="ContentInteract.vote(' + m.id + ', -1)"><i class="fas fa-arrow-down"></i></button>'
-          + (m.is_own ? '<button class="ci-delete-btn" onclick="ContentInteract.deleteMsg(' + m.id + ')"><i class="fas fa-trash"></i></button>' : '')
-          + '</div></div>';
+          + imageHtml
+          + '<div class="ci-forum-msg-actions">' + actions + '</div></div>';
       }).join('');
     });
+  }
+
+
+  // =========================================================================
+  // CLEANUP
+  // =========================================================================
+
+  function _cleanup() {
+    // Remove mouseup listener
+    if (_selectionListenerAttached) {
+      document.removeEventListener('mouseup', _handleSelection);
+      _selectionListenerAttached = false;
+    }
+
+    // Clear timers
+    clearTimeout(_noteSaveTimer);
+    _noteSaveTimer = null;
+
+    // Remove any popups
+    ['ciSelectionPopup', 'ciNotePopup'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.remove();
+    });
+
+    // Remove toggle button handler
+    if (_toggleBtnEl && _toggleBtnHandler) {
+      _toggleBtnEl.removeEventListener('click', _toggleBtnHandler);
+      _toggleBtnEl = null;
+      _toggleBtnHandler = null;
+    }
+
+    // Remove content area shift
+    if (_contentArea) {
+      _contentArea.classList.remove('ci-content-shifted');
+      _contentArea = null;
+    }
+
+    // Close panel
+    if (_panel) {
+      _panel.classList.remove('ci-side-panel-open');
+    }
+    _panelOpen = false;
+
+    // Remove existing highlights and markers from DOM
+    document.querySelectorAll('.ci-user-highlight').forEach(function(mark) { _unwrapMark(mark); });
+    document.querySelectorAll('.ci-note-marker').forEach(function(marker) { marker.remove(); });
+
+    // Reset state
+    _forumImageFile = null;
+    _cfg = {};
   }
 
 
@@ -579,8 +733,41 @@ var ContentInteract = (function() {
       if (_cfg.notesToggleBtn) {
         var btn = document.querySelector(_cfg.notesToggleBtn);
         if (btn) {
-          btn.addEventListener('click', function() { _togglePanel(); });
+          _toggleBtnHandler = function() { _togglePanel(); };
+          _toggleBtnEl = btn;
+          btn.addEventListener('click', _toggleBtnHandler);
         }
+      }
+    },
+
+    destroy: function() {
+      _cleanup();
+      // Remove panel DOM
+      if (_panel) { _panel.remove(); _panel = null; }
+    },
+
+    reinit: function(config) {
+      // Clean up previous state but keep panel DOM
+      _cleanup();
+      // Re-init with new config
+      _cfg = config;
+      if (!_cfg.contentType || !_cfg.contentKey) return;
+      _initSelection();
+
+      // Re-bind toggle button
+      if (_cfg.notesToggleBtn) {
+        var btn = document.querySelector(_cfg.notesToggleBtn);
+        if (btn) {
+          _toggleBtnHandler = function() { _togglePanel(); };
+          _toggleBtnEl = btn;
+          btn.addEventListener('click', _toggleBtnHandler);
+        }
+      }
+
+      // If panel was open, reload content for new context
+      if (_panelOpen) {
+        _loadNotes();
+        _initForum();
       }
     },
 
@@ -589,6 +776,21 @@ var ContentInteract = (function() {
     vote: function(msgId, value) {
       _api('POST', '/forum/' + msgId + '/vote', { vote: value }).then(function(data) {
         if (data.success) _loadForumMessages();
+      });
+    },
+
+    pin: function(msgId) {
+      _api('POST', '/forum/' + msgId + '/pin').then(function(data) {
+        if (data.success) _loadForumMessages();
+      });
+    },
+
+    flag: function(msgId) {
+      var reason = prompt('Why are you flagging this message?\n(spam, inappropriate, incorrect, other)');
+      if (!reason) return;
+      _api('POST', '/forum/' + msgId + '/flag', { reason: reason.substring(0, 50) }).then(function(data) {
+        if (data.success) _flash('Message flagged', 'success');
+        else _flash(data.error || 'Already flagged', 'warning');
       });
     },
 

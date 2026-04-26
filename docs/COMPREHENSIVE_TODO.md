@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **69** / 108 |
-| WONTFIX | 2 / 108 |
-| TODO | **37** / 108 |
-| **Completion** | **66%** |
+| DONE | **72** / 111 |
+| WONTFIX | 2 / 111 |
+| TODO | **37** / 111 |
+| **Completion** | **67%** |
 
 ---
 
@@ -126,6 +126,9 @@
 | 46 | Bulk admin operations | TODO | No bulk delete, publish, or reassign for cases/algorithms. |
 | 47 | Content moderation queue | DONE | "Moderation" tab in admin dashboard with badge counter. Shows pending/completed/declined content requests + user algorithm drafts. Publish/decline/delete actions. Lazy-loads on tab click. Endpoints: `/api/admin/moderation/counts`, `/moderation/user-drafts`, `/moderation/user-drafts/<id>/publish`. |
 | 48 | Notion image caching | TODO | Notion-hosted image URLs expire after ~1 hour. Need to re-host to Cloudinary on fetch. **File:** `notes_integration_routes.py:76, 188, 341` |
+| 109 | ContentInteract unification | DONE | Unified two notes/highlights/forum systems into one. ContentInteract v3 with destroy/reinit, forum image upload, pinning, flagging, vote tones. Legacy case routes dual-write content_type/content_key. |
+| 110 | Wire ContentInteract to all content areas | DONE | Added to: OSCE focus view, TNM essentials, TNM disease, protocols, contrast card, anatomy snippets, pearls, vetting essentials (8 pages). |
+| 111 | My Study Notes page | DONE | Evernote-like `/my-notes` page with notebooks (auto from content_type), tags, starred, search, inline editing, navbar button. New `NoteTag` model, `my_notes_routes.py` blueprint. |
 
 ### 3.4 Additional GDPR Items
 

@@ -22,6 +22,11 @@
                     <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
                         <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
                     </a>
+                    {% if current_user.is_authenticated %}
+                    <button class="btn btn-sm" id="ciNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);">
+                        <i class="fas fa-comments me-1"></i><span class="d-none d-sm-inline">Notes</span>
+                    </button>
+                    {% endif %}
                     {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                     <button class="btn btn-sm btn-brand-neutral" onclick="addNewPearl()">
                         <i class="fas fa-plus me-1"></i>Add Pearl
@@ -373,4 +378,19 @@ function deletePearl(id) {
         });
 }
 </script>
+
+{% if current_user.is_authenticated %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">
+<script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  ContentInteract.init({
+    contentType: 'pearl', contentKey: 'browse',
+    contentArea: '.container-fluid',
+    notesToggleBtn: '#ciNotesToggle',
+    highlightContainers: ['.pearl-card-body', '.pearl-text'],
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

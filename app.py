@@ -866,6 +866,76 @@ with app.app_context():
         _add_col_if_missing('clinical_protocol', 'updated_at', 'updated_at TIMESTAMP')
         _widen_col_to_text('clinical_protocol', 'source_citation')
 
+        # -- candidate_note: My Study Notes columns --
+        _add_col_if_missing('candidate_note', 'is_starred', 'is_starred BOOLEAN DEFAULT false')
+        _add_col_if_missing('candidate_note', 'source_title', 'source_title VARCHAR(200)')
+        _add_col_if_missing('candidate_note', 'body_section', 'body_section VARCHAR(50)')
+        _add_col_if_missing('candidate_note', 'modality', 'modality VARCHAR(50)')
+
+        # -- note_tags table --
+        if 'note_tags' not in _table_names:
+            try:
+                db.session.execute(db.text('''
+                    CREATE TABLE IF NOT EXISTS note_tags (
+                        id SERIAL PRIMARY KEY,
+                        note_id INTEGER NOT NULL REFERENCES candidate_note(id) ON DELETE CASCADE,
+                        tag VARCHAR(50) NOT NULL,
+                        user_id INTEGER NOT NULL REFERENCES "user"(id),
+                        is_auto BOOLEAN DEFAULT false,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        CONSTRAINT uq_note_tag UNIQUE (note_id, tag)
+                    )
+                '''))
+                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS idx_note_tag ON note_tags (note_id, tag)'))
+                db.session.execute(db.text('CREATE INDEX IF NOT EXISTS idx_user_tag ON note_tags (user_id, tag)'))
+                db.session.commit()
+                logger.info('Created note_tags table')
+            except Exception as _e:
+                db.session.rollback()
+                logger.warning('note_tags table creation: %s', _e)
+
+        # -- One-time: clean test data from notes/highlights/forum (ContentInteract unification) --
+        if 'candidate_note' in _table_names:
+            _ci_sentinel = db.session.execute(db.text(
+                "SELECT id FROM candidate_note WHERE content_type = '__migration_v1__' LIMIT 1"
+            )).fetchone()
+            if not _ci_sentinel:
+                try:
+                    db.session.execute(db.text('DELETE FROM forum_message_vote'))
+                    db.session.execute(db.text('DELETE FROM forum_message_flag'))
+                    db.session.execute(db.text('DELETE FROM forum_message'))
+                    db.session.execute(db.text('DELETE FROM note_tags')) if 'note_tags' in _table_names else None
+                    db.session.execute(db.text('DELETE FROM text_highlight'))
+                    db.session.execute(db.text('DELETE FROM candidate_note'))
+                    db.session.execute(db.text(
+                        "INSERT INTO candidate_note (user_id, note_text, content_type, content_key) "
+                        "VALUES (1, 'ContentInteract unification sentinel', '__migration_v1__', 'sentinel')"
+                    ))
+                    db.session.commit()
+                    logger.info('ContentInteract unification: cleaned test data, inserted sentinel')
+                except Exception as _e:
+                    db.session.rollback()
+                    logger.warning('ContentInteract test data cleanup: %s', _e)
+
+        # -- Backfill content_type/content_key on legacy rows (case_id set, content_type NULL) --
+        try:
+            db.session.execute(db.text(
+                "UPDATE candidate_note SET content_type = 'case', content_key = CAST(case_id AS VARCHAR) "
+                "WHERE case_id IS NOT NULL AND content_type IS NULL"
+            ))
+            db.session.execute(db.text(
+                "UPDATE text_highlight SET content_type = 'case', content_key = CAST(case_id AS VARCHAR) "
+                "WHERE case_id IS NOT NULL AND content_type IS NULL"
+            ))
+            db.session.execute(db.text(
+                "UPDATE forum_message SET content_type = 'case', content_key = CAST(case_id AS VARCHAR) "
+                "WHERE case_id IS NOT NULL AND content_type IS NULL"
+            ))
+            db.session.commit()
+        except Exception as _e:
+            db.session.rollback()
+            logger.debug('Legacy backfill (may be no-op): %s', _e)
+
         # -- imaging_protocol --
         _add_col_if_missing('imaging_protocol', 'is_paediatric', 'is_paediatric BOOLEAN DEFAULT false NOT NULL')
 
@@ -1780,6 +1850,7 @@ with app.app_context():
                 ('ai-documentation', 'AI Documentation', 'technical', 'templates/admin_ai_documentation.html'),
                 ('marketing', 'Marketing & Business Intelligence', 'marketing', 'templates/admin_marketing.html'),
                 ('seo-audit', 'SEO Audit', 'seo', 'templates/admin_seo_audit.html'),
+                ('content-interact-test', 'ContentInteract & My Study Notes — Test Plan', 'qa', 'docs/tests/content_interact_test.md'),
             ]
             # One-time cleanup: remove old duplicates + stale template docs for fresh re-extraction
             # Sentinel: only run if the sentinel doc doesn't exist yet
@@ -2333,6 +2404,9 @@ from content_interact_routes import content_bp
 app.register_blueprint(public_bp)  # Public preview pages for SEO (case library, etc.)
 app.register_blueprint(osce_admin_bp)  # OSCE guide admin CRUD
 app.register_blueprint(content_bp)  # Generic notes/highlights/forum for any content
+
+from my_notes_routes import my_notes_bp
+app.register_blueprint(my_notes_bp)  # My Study Notes — unified notes dashboard
 
 from radiq_routes import radiq_bp
 app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
@@ -7093,12 +7167,18 @@ def search_cases_for_linking():
 def get_candidate_note(case_id):
     """Get user's note for a specific case"""
     from models import CandidateNote
-    
-    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
-    
+
+    # Query by generic content_type/content_key (unified with ContentInteract)
+    note = CandidateNote.query.filter_by(
+        content_type='case', content_key=str(case_id), user_id=current_user.id
+    ).first()
+    # Fallback: legacy rows that only have case_id
+    if not note:
+        note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+
     if not note:
         return jsonify({'note_text': ''}), 200
-    
+
     return jsonify({
         'id': note.id,
         'note_text': note.note_text,
@@ -7112,18 +7192,39 @@ def get_candidate_note(case_id):
 @login_required
 def save_candidate_note(case_id):
     """Create or update user's note for a specific case"""
-    from models import CandidateNote
+    from models import CandidateNote, Case
     data = request.get_json()
     note_text = (data.get('note_text') or '').strip()
     if not note_text and note_text != '':
         return jsonify({'error': 'No note_text provided'}), 400
-    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    # Query by generic content_type/content_key first, fallback to legacy case_id
+    note = CandidateNote.query.filter_by(
+        content_type='case', content_key=str(case_id), user_id=current_user.id
+    ).first()
+    if not note:
+        note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
     if note:
         note.note_text = note_text
         note.updated_at = datetime.utcnow()
+        # Backfill content_type/content_key on legacy rows
+        if not note.content_type:
+            note.content_type = 'case'
+            note.content_key = str(case_id)
         action = 'updated'
     else:
-        note = CandidateNote(case_id=case_id, user_id=current_user.id, note_text=note_text, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+        # Populate source_title + body_section from the case for My Study Notes
+        _src_title = None
+        _body_sec = None
+        _case = Case.query.get(case_id)
+        if _case:
+            _src_title = _case.diagnosis[:200] if _case.diagnosis else None
+            _body_sec = _case.body_part.value if _case.body_part else None
+        note = CandidateNote(
+            case_id=case_id, user_id=current_user.id, note_text=note_text,
+            content_type='case', content_key=str(case_id),
+            source_title=_src_title, body_section=_body_sec,
+            created_at=datetime.utcnow(), updated_at=datetime.utcnow(),
+        )
         db.session.add(note)
         action = 'created'
     try:
@@ -8228,8 +8329,12 @@ def reload_preliminary_case_data(case_id):
 def delete_candidate_note(case_id):
     """Delete user's note for a case"""
     from models import CandidateNote
-    
-    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+
+    note = CandidateNote.query.filter_by(
+        content_type='case', content_key=str(case_id), user_id=current_user.id
+    ).first()
+    if not note:
+        note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
     
     if note:
         db.session.delete(note)
@@ -8282,8 +8387,13 @@ def get_tnm_references_public(disease_site_id):
 def get_highlights(case_id):
     """Get all highlights for a case by current user"""
     from models import TextHighlight
-    
-    highlights = TextHighlight.query.filter_by(case_id=case_id, user_id=current_user.id).all()
+
+    # Query by generic content_type/content_key, with legacy fallback
+    highlights = TextHighlight.query.filter_by(
+        content_type='case', content_key=str(case_id), user_id=current_user.id
+    ).all()
+    if not highlights:
+        highlights = TextHighlight.query.filter_by(case_id=case_id, user_id=current_user.id).all()
     
     return jsonify({
         'success': True,
@@ -8330,7 +8440,9 @@ def add_highlight(case_id):
         highlight_color=highlight_color,
         field_name=field_name,
         context_before=context_before,
-        context_after=context_after
+        context_after=context_after,
+        content_type='case',
+        content_key=str(case_id),
     )
     
     db.session.add(highlight)
@@ -8378,11 +8490,12 @@ def get_forum_messages(case_id):
     """Get all forum messages for a case, sorted by votes (pinned first)"""
     from models import ForumMessage, ForumMessageVote
     
-    # Get all non-deleted messages for this case
+    # Get all non-deleted messages for this case (generic content_type/content_key with legacy fallback)
     messages = ForumMessage.query.filter_by(
-        case_id=case_id, 
-        is_deleted=False
+        content_type='case', content_key=str(case_id), is_deleted=False
     ).all()
+    if not messages:
+        messages = ForumMessage.query.filter_by(case_id=case_id, is_deleted=False).all()
     
     # Get current user's votes for these messages
     user_votes = {}
@@ -8451,7 +8564,9 @@ def post_forum_message(case_id):
         is_pinned=False,
         image_url=image_url,
         image_public_id=image_public_id,
-        image_thumbnail_url=image_thumbnail_url
+        image_thumbnail_url=image_thumbnail_url,
+        content_type='case',
+        content_key=str(case_id),
     )
     
     db.session.add(message)
@@ -9033,6 +9148,7 @@ def sitemap_xml():
         (f'{BASE}/about', '0.7', 'monthly'),
         (f'{BASE}/tnm-calculator/', '0.9', 'weekly'),          # trailing slash (Flask 308 without)
         (f'{BASE}/essential-tnm-concepts', '0.6', 'monthly'),
+        (f'{BASE}/my-notes', '0.5', 'weekly'),
         (f'{BASE}/knowledge-hub', '0.8', 'weekly'),
         (f'{BASE}/case-library', '0.8', 'weekly'),
         (f'{BASE}/reporting-algorithms', '0.8', 'weekly'),

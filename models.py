@@ -795,8 +795,14 @@ class CandidateNote(db.Model):
     tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
 
     # Generic content association (for OSCE guide, learning modules, etc.)
-    content_type = db.Column(db.String(30), nullable=True, index=True)   # e.g. 'osce_case', 'osce_ref', 'osce_technique'
-    content_key = db.Column(db.String(100), nullable=True)               # e.g. 'cxr', 'timing', case code
+    content_type = db.Column(db.String(30), nullable=True, index=True)   # e.g. 'case', 'osce_case', 'tnm_staging', 'protocol'
+    content_key = db.Column(db.String(100), nullable=True)               # e.g. '42', 'CXR-001', 'lung', case code
+
+    # My Study Notes metadata (cached from source content for filtering)
+    is_starred = db.Column(db.Boolean, default=False, index=True)
+    source_title = db.Column(db.String(200), nullable=True)   # e.g. "CXR-001: Pneumothorax"
+    body_section = db.Column(db.String(50), nullable=True)     # e.g. "Thorax", "Abdomen"
+    modality = db.Column(db.String(50), nullable=True)         # e.g. "CT", "MRI", "X-ray"
 
     # Relationships
     tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('student_notes', lazy=True))
@@ -810,6 +816,25 @@ class CandidateNote(db.Model):
 
     def __repr__(self):
         return f'<CandidateNote Case:{self.case_id} User:{self.user_id}>'
+
+
+class NoteTag(db.Model):
+    """Tags for notes — enables cross-content retrieval in My Study Notes."""
+    __tablename__ = 'note_tags'
+    id = db.Column(db.Integer, primary_key=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('candidate_note.id', ondelete='CASCADE'), nullable=False, index=True)
+    tag = db.Column(db.String(50), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    is_auto = db.Column(db.Boolean, default=False)  # auto-generated from content metadata vs user-created
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    note = db.relationship('CandidateNote', backref=db.backref('tags', lazy=True, cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.Index('idx_note_tag', 'note_id', 'tag'),
+        db.Index('idx_user_tag', 'user_id', 'tag'),
+        db.UniqueConstraint('note_id', 'tag', name='uq_note_tag'),
+    )
 
 
 class TextHighlight(db.Model):

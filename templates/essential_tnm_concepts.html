@@ -279,6 +279,11 @@
     <div class="header-banner">
         <h1><i class="fas fa-book-medical me-2"></i>Essential TNM Concepts for Registrars</h1>
         <div class="subtitle">IARC Essential TNM Classification Guide</div>
+        {% if current_user.is_authenticated %}
+        <button class="btn btn-sm mt-2" id="ciNotesToggle" title="Notes & Discussion" style="background:#a8d5ba;color:#fff;border:none;border-radius:16px;padding:0.3rem 0.8rem;font-size:0.8rem;font-weight:600;">
+            <i class="fas fa-comments me-1"></i>Notes & Discussion
+        </button>
+        {% endif %}
     </div>
     
     <div class="content-wrapper">
@@ -504,5 +509,19 @@
         gtag('config', 'G-ZSSC3PLZFN');
     });
     </script>
+{% if current_user.is_authenticated %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">
+<script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  ContentInteract.init({
+    contentType: 'tnm_essentials', contentKey: 'main',
+    contentArea: '.content-wrapper',
+    notesToggleBtn: '#ciNotesToggle',
+    highlightContainers: ['.content-wrapper section', '.content-wrapper p', '.content-wrapper li'],
+  });
+});
+</script>
+{% endif %}
 </body>
 </html>

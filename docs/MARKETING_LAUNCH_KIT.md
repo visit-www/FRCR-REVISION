@@ -83,6 +83,15 @@
 - **Reporting Templates**: PACS-ready structured templates
 - **Global Intelligent Search**: Searches across all 7 content types simultaneously
 
+### My Study Notes
+- **Evernote-like organisation**: Notes automatically grouped into Notebooks by content type (Cases, OSCE, TNM, Protocols, etc.)
+- **Cross-content retrieval**: Search and filter all your notes from one unified dashboard
+- **Notes & Discussion on every page**: Side panel with notes, text highlights, and discussion forum available on 10+ content types
+- **Tagging system**: Auto-tags from content metadata (body section, modality) + custom user tags
+- **Starred notes**: Pin important notes for quick access during revision
+- **Inline editing**: Edit notes directly in the dashboard with auto-save
+- **Source linking**: Every note links back to its original content for one-click navigation
+
 ### MDT Suite
 - Multi-disciplinary team meeting preparation
 - AI-generated MDT summaries

@@ -61,6 +61,8 @@ from models import (
     PiiOverrideLog, RateLimitEntry, ErasureLog, AdminActionLog,
     # OSCE Guide
     OsceCase, OsceCaseImage,
+    # Note tags (My Study Notes)
+    NoteTag,
     # Additional association tables
     case_learning_links, content_links,
 )
@@ -160,6 +162,7 @@ def _build_backup_data():
         'case_flags': [],
         'highlights': [],
         'notes': [],
+        'note_tags': [],
         # Forum data (critical for discussions)
         'forum_messages': [],
         'forum_votes': [],
@@ -366,8 +369,24 @@ def _build_backup_data():
             'user_id': note.user_id,
             'case_id': note.case_id,
             'note_text': note.note_text or '',
+            'content_type': note.content_type,
+            'content_key': note.content_key,
+            'is_starred': note.is_starred or False,
+            'source_title': note.source_title,
+            'body_section': note.body_section,
+            'modality': note.modality,
             'created_at': note.created_at.isoformat() if note.created_at else None,
             'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+        })
+
+    # Export note tags
+    for tag in NoteTag.query.all():
+        backup_data['note_tags'].append({
+            'note_id': tag.note_id,
+            'tag': tag.tag,
+            'user_id': tag.user_id,
+            'is_auto': tag.is_auto or False,
+            'created_at': tag.created_at.isoformat() if tag.created_at else None,
         })
     
     # Export revision history (user progress tracking)
@@ -2593,6 +2612,12 @@ def restore_backup():
                     user_id=user_id,
                     case_id=case_id,
                     note_text=note_data.get('note_text', ''),
+                    content_type=note_data.get('content_type'),
+                    content_key=note_data.get('content_key'),
+                    is_starred=note_data.get('is_starred', False),
+                    source_title=note_data.get('source_title'),
+                    body_section=note_data.get('body_section'),
+                    modality=note_data.get('modality'),
                 )
                 if note_data.get('created_at'):
                     try:
@@ -2638,6 +2663,31 @@ def restore_backup():
             else:
                 raise
         
+        # Import note tags (requires notes to be imported first)
+        stats['note_tags'] = {'added': 0, 'skipped': 0}
+        if not is_frcr_examiner:
+            note_tags_list = backup_data.get('note_tags', [])
+            for tag_data in note_tags_list:
+                old_user_id = tag_data.get('user_id')
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                note_id = tag_data.get('note_id')
+                if not user_id or not note_id or not tag_data.get('tag'):
+                    stats['note_tags']['skipped'] += 1
+                    continue
+                try:
+                    nt = NoteTag(
+                        note_id=note_id, tag=tag_data['tag'],
+                        user_id=user_id, is_auto=tag_data.get('is_auto', False),
+                    )
+                    db.session.add(nt)
+                    stats['note_tags']['added'] += 1
+                except Exception:
+                    stats['note_tags']['skipped'] += 1
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
         # Import revision history
         stats['revision_history'] = {'added': 0, 'skipped': 0}
         if not is_frcr_examiner:
@@ -5001,6 +5051,7 @@ def backup_status():
         'radiq_queries': RadIQQuery.query.count(),
         'mdt_meetings': MdtMeeting.query.count(),
         'learning_questions': LearningQuestion.query.count(),
+        'note_tags': NoteTag.query.count(),
     }
     
     return jsonify({

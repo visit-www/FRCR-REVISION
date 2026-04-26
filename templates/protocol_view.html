@@ -42,6 +42,11 @@
                     <i class="fas fa-file-medical me-1"></i>Use in Report
                 </a>
                 {% endif %}
+                {% if current_user.is_authenticated %}
+                <button class="btn btn-sm" id="ciNotesToggle" title="Notes & Discussion" style="background:var(--brand-success);color:#fff;border-color:var(--brand-success);">
+                    <i class="fas fa-comments me-1"></i><span class="d-none d-sm-inline">Notes</span>
+                </button>
+                {% endif %}
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                 <a href="/radiology-protocols/admin/edit/{{ protocol.id }}" class="btn btn-outline-warning btn-sm ms-auto">
                     <i class="fas fa-edit me-1"></i>Edit Protocol
@@ -468,5 +473,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <style>
     #viewLinkChevron { transition: transform 0.2s ease; }
 </style>
+{% endif %}
+
+{% if current_user.is_authenticated %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">
+<script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  ContentInteract.init({
+    contentType: 'protocol', contentKey: '{{ protocol.id }}',
+    contentArea: '.container-fluid',
+    notesToggleBtn: '#ciNotesToggle',
+    highlightContainers: ['.calculator-integrated-wrapper'],
+  });
+});
+</script>
 {% endif %}
 {% endblock %}
