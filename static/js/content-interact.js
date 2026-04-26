@@ -152,18 +152,19 @@ var ContentInteract = (function() {
   function _togglePanel(forceState) {
     _panelOpen = (forceState !== undefined) ? forceState : !_panelOpen;
 
-    _contentArea = document.querySelector(_cfg.contentArea);
-    if (!_contentArea) return;
+    if (!_panel) return;
+
+    _contentArea = _cfg.contentArea ? document.querySelector(_cfg.contentArea) : null;
 
     if (_panelOpen) {
       _panel.classList.add('ci-side-panel-open');
-      _contentArea.classList.add('ci-content-shifted');
+      if (_contentArea) _contentArea.classList.add('ci-content-shifted');
       // Load notes + forum
       _loadNotes();
       _initForum();
     } else {
       _panel.classList.remove('ci-side-panel-open');
-      _contentArea.classList.remove('ci-content-shifted');
+      if (_contentArea) _contentArea.classList.remove('ci-content-shifted');
     }
 
     // Update toggle button state
