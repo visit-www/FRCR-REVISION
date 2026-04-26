@@ -144,7 +144,8 @@
   font-size: 0.7em; margin-left: 2px; vertical-align: super;
   transition: color 0.15s;
 }
-.ci-note-marker:hover { color: #b45309; }
+.ci-note-marker:hover { color: #b45309; text-decoration: none; }
+/* Native tooltip is used for hover preview — enhanced via title attribute in JS */
 
 /* ══════════════ HIGHLIGHTS ══════════════ */
 .ci-user-highlight { border-radius: 2px; padding: 0 1px; transition: background 0.2s; }

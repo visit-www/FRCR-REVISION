@@ -216,8 +216,12 @@ var ContentInteract = (function() {
   }
 
   function _formatNotesForDisplay(rawNotes) {
-    // Convert [note:ID][from CTX][text:SEL] content [/note:ID] -> bullet points
-    return rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, function(match, ctx, content) {
+    // Convert [note:ID][from CTX][text:SEL] content [/note:ID] -> readable format with source reference
+    return rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:([^\]]*)\])?\s*(.*?)\[\/note:[^\]]+\]/gs, function(match, ctx, selText, content) {
+      var ref = selText ? selText.replace(/\\\]/g, ']') : '';
+      if (ref) {
+        return '\n\u2022 \u201c' + ref.substring(0, 60) + (ref.length > 60 ? '...' : '') + '\u201d \u2192 ' + content.trim();
+      }
       return '\n\u2022 ' + content.trim();
     }).trim();
   }
@@ -236,8 +240,8 @@ var ContentInteract = (function() {
     textarea.value = _formatNotesForDisplay(raw);
     _saveNotes();
 
-    // Add marker in content
-    _addSingleMarker(selectedText, noteId);
+    // Add marker in content (with note text for hover tooltip)
+    _addSingleMarker(selectedText, noteId, userNote);
     _flash('Note added!', 'success');
   }
 
@@ -253,22 +257,23 @@ var ContentInteract = (function() {
     while ((match = pattern.exec(rawNotes)) !== null) {
       var noteId = match[1];
       var selectedText = match[3] ? match[3].replace(/\\\]/g, ']') : null;
+      var noteText = match[4] ? match[4].trim() : '';
       if (!selectedText || document.querySelector('[data-note-id="' + noteId + '"]')) continue;
-      _addSingleMarker(selectedText, noteId);
+      _addSingleMarker(selectedText, noteId, noteText);
     }
   }
 
-  function _addSingleMarker(text, noteId) {
+  function _addSingleMarker(text, noteId, noteText) {
     var containers = [];
     (_cfg.highlightContainers || []).forEach(function(sel) {
       document.querySelectorAll(sel).forEach(function(el) { containers.push(el); });
     });
     for (var i = 0; i < containers.length; i++) {
-      if (_insertMarkerInElement(containers[i], text, noteId)) break;
+      if (_insertMarkerInElement(containers[i], text, noteId, noteText)) break;
     }
   }
 
-  function _insertMarkerInElement(container, text, noteId) {
+  function _insertMarkerInElement(container, text, noteId, noteText) {
     var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
     var node;
     while ((node = walker.nextNode())) {
@@ -282,12 +287,24 @@ var ContentInteract = (function() {
         marker.className = 'ci-note-marker';
         marker.dataset.noteId = noteId;
         marker.innerHTML = '<i class="fas fa-sticky-note"></i>';
-        marker.title = 'Click to view note';
+        // Show note text on hover
+        marker.title = noteText ? ('\ud83d\udcdd ' + noteText.substring(0, 120) + (noteText.length > 120 ? '...' : '')) : 'Click to view note';
         marker.addEventListener('click', function(e) {
           e.stopPropagation();
-          // Open panel and scroll to note
           if (!_panelOpen) _togglePanel(true);
-          _flash('Note is in the side panel', 'info');
+          // Flash the source text in the panel briefly
+          var textarea = document.getElementById('ciPanelNotes');
+          if (textarea) {
+            var displayText = textarea.value;
+            var searchText = noteText ? noteText.substring(0, 30) : '';
+            if (searchText) {
+              var pos = displayText.indexOf(searchText);
+              if (pos >= 0) {
+                textarea.focus();
+                textarea.setSelectionRange(pos, pos + searchText.length);
+              }
+            }
+          }
         });
         range.insertNode(marker);
         return true;
