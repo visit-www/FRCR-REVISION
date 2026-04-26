@@ -2848,7 +2848,8 @@ def dashboard():
     from models import CandidateNote, TextHighlight, Case
     
     # Get user statistics
-    notes_count = CandidateNote.query.filter_by(user_id=current_user.id).count()
+    notes_count = CandidateNote.query.filter_by(user_id=current_user.id)\
+        .filter(CandidateNote.content_type != '__migration_v1__').count()
     highlights_count = TextHighlight.query.filter_by(user_id=current_user.id).count()
     
     # Count of cases with notes (reviewed cases)
