@@ -50,7 +50,7 @@ ABC_PREAMBLE = (
 
 def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
                 temperature=0.3, timeout=60, error_class=None,
-                skip_preamble=False):
+                skip_preamble=False, assistant_prefill=None):
     """
     Call the Anthropic Messages API.
 
@@ -64,9 +64,18 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
         error_class: Exception class to raise on failure (default: AIClientError)
         skip_preamble: If True, omit the ABC_PREAMBLE (for classification
                        or structural tasks that don't generate clinical content)
+        assistant_prefill: If set, seed the assistant turn with this partial
+                       text so the model CONTINUES from where it left off.
+                       Used to recover from max_tokens truncation — call again
+                       with the truncated output and concatenate the result.
+                       The returned text is ONLY the continuation, not the seed.
 
     Returns:
         tuple: (response_text: str, model_used: str, token_count: int)
+
+    After each call, `call_claude.last_stop_reason` holds the API stop_reason
+    ("end_turn", "max_tokens", etc.) so callers can detect truncation without
+    breaking the 3-tuple return contract.
 
     Raises:
         error_class (or AIClientError) on any failure
@@ -83,12 +92,17 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     if not skip_preamble:
         effective_system = ABC_PREAMBLE + system_prompt
 
+    messages = [{"role": "user", "content": user_prompt}]
+    if assistant_prefill:
+        # Anthropic rejects assistant turns ending in trailing whitespace.
+        messages.append({"role": "assistant", "content": assistant_prefill.rstrip()})
+
     payload = {
         "model": effective_model,
         "max_tokens": max_tokens,
         "temperature": temperature,
         "system": effective_system,
-        "messages": [{"role": "user", "content": user_prompt}],
+        "messages": messages,
     }
 
     try:
@@ -122,6 +136,8 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
 
     # Check if output was truncated due to max_tokens
     stop_reason = result.get("stop_reason", "")
+    # Expose to callers (e.g. continuation loops) without breaking the 3-tuple.
+    call_claude.last_stop_reason = stop_reason
     if stop_reason == "max_tokens":
         logger.warning(
             "API output truncated (hit max_tokens=%d). Output may be incomplete.",
@@ -282,10 +298,19 @@ def parse_json_response(text, error_class=None):
         if m:
             candidate = candidate[m.start():]
     if candidate.startswith('{') and not candidate.rstrip().endswith('}'):
+        candidate = candidate.rstrip()
+        # If truncation happened mid-string, the final value has an unterminated
+        # quote — close it before balancing brackets. Count UNESCAPED quotes;
+        # an odd count means we're inside a string literal.
+        unescaped_quotes = len(re.findall(r'(?<!\\)"', candidate))
+        if unescaped_quotes % 2 == 1:
+            candidate += '"'
+        else:
+            # Not mid-string: a dangling key/comma can't be repaired — drop it.
+            candidate = candidate.rstrip(',')
         # Count unclosed braces/brackets and close them
         opens = candidate.count('{') - candidate.count('}')
         open_brackets = candidate.count('[') - candidate.count(']')
-        candidate = candidate.rstrip().rstrip(',')
         candidate += ']' * max(0, open_brackets) + '}' * max(0, opens)
         try:
             result = json.loads(candidate)

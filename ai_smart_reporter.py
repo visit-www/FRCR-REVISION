@@ -76,12 +76,14 @@ class SmartReporterError(AIClientError):
 # ==================== SHARED API HELPERS (delegated to ai_client) ====================
 
 def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
-                 temperature=0.3, timeout=60, skip_preamble=False):
+                 temperature=0.3, timeout=60, skip_preamble=False,
+                 assistant_prefill=None):
     """Wrapper that raises SmartReporterError instead of AIClientError."""
     return _call_claude_raw(system_prompt, user_prompt, model=model,
                             max_tokens=max_tokens, temperature=temperature,
                             timeout=timeout, error_class=SmartReporterError,
-                            skip_preamble=skip_preamble)
+                            skip_preamble=skip_preamble,
+                            assistant_prefill=assistant_prefill)
 
 
 def _parse_json_response(text):
@@ -1587,11 +1589,21 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     # Sonnet (advisory/follow-up): slightly higher for natural knowledge responses
     _temperature = 0.1 if (model_override and 'opus' in model_override) else 0.3
 
+    # Dynamic output budget: finalize/redo echo the FULL corrected report plus
+    # structured insights/corrections, so a fixed cap truncates long reports
+    # (the JSON then fails to parse and leaks raw to the user). Scale to the
+    # input length — a report N words long needs at least N words back, plus
+    # headroom for the answer, corrections, and insights. Floor 4000, ceil 8000;
+    # the continuation loop below is the backstop beyond the ceiling.
+    _report_words = len((report_text or '').split())
+    _dynamic_max = 2000 + int(_report_words * 4)
+    _max_tokens = max(4000, min(_dynamic_max, 8000))
+
     text, model, tokens = _call_claude(
         system_prompt=selected_system_prompt,
         user_prompt=user_prompt,
         model=effective_model,
-        max_tokens=4000,
+        max_tokens=_max_tokens,
         temperature=_temperature,
         timeout=90,
     )
@@ -1599,6 +1611,29 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     # Capture input tokens from last API call for cost tracking
     _last_usage = getattr(_call_claude_raw, 'last_usage', {})
     _input_tokens = _last_usage.get('input_tokens', 0)
+
+    # Continuation backstop: if the model still hit the cap, resume from the
+    # truncated output (assistant prefill) and concatenate, so we never surface
+    # a half-finished JSON envelope. Bounded to 2 continuations.
+    _cont_attempts = 0
+    while getattr(_call_claude_raw, 'last_stop_reason', '') == 'max_tokens' and _cont_attempts < 2:
+        _cont_attempts += 1
+        logger.warning(
+            "ai-assist output truncated — continuation attempt %d (model=%s)",
+            _cont_attempts, model,
+        )
+        _cont_text, model, _cont_tokens = _call_claude(
+            system_prompt=selected_system_prompt,
+            user_prompt=user_prompt,
+            model=effective_model,
+            max_tokens=_max_tokens,
+            temperature=_temperature,
+            timeout=90,
+            assistant_prefill=text,
+        )
+        text += _cont_text
+        tokens += _cont_tokens
+        _input_tokens += getattr(_call_claude_raw, 'last_usage', {}).get('input_tokens', 0)
 
     parsed = _parse_assist_response(text, question)
     parsed['model'] = model
@@ -2506,18 +2541,56 @@ def generate_report_action(report_text, action, clinical_question='',
 
 # ==================== RESPONSE PARSERS ====================
 
+def _salvage_assist_fields(text):
+    """Best-effort extraction of readable fields from a malformed/truncated
+    AI-assist JSON envelope, so the clinician sees prose, never raw JSON.
+
+    Handles mid-string truncation: a value may be cut off with no closing
+    quote. Returns whatever of response_type/answer/report_text it can recover,
+    decoding JSON escapes (\\n, \\", \\uXXXX). Falls back to a clean message if
+    nothing usable is found.
+    """
+    out = {}
+    cleaned = strip_markdown_fences(text or '')
+    for field in ('response_type', 'answer', 'report_text'):
+        # Capture the string value: escaped pairs or any non-quote/non-backslash
+        # char, up to an unescaped closing quote or end-of-(truncated)-string.
+        m = re.search(r'"' + field + r'"\s*:\s*"((?:\\.|[^"\\])*)', cleaned)
+        if not m:
+            continue
+        raw = m.group(1)
+        for candidate in (raw, raw.rstrip('\\')):
+            try:
+                out[field] = json.loads('"' + candidate + '"')
+                break
+            except (ValueError, json.JSONDecodeError):
+                out[field] = candidate  # leave escapes literal as last resort
+    # If the answer is empty but a corrected report survived, show that instead.
+    if not out.get('answer') and out.get('report_text'):
+        out['answer'] = out['report_text']
+    if not out.get('answer') and not out.get('report_text'):
+        out['answer'] = (
+            "The review response was incomplete and could not be displayed. "
+            "Please try again."
+        )
+    return out
+
+
 def _parse_assist_response(text, original_question):
     """Parse unified AI assist JSON response with graceful fallbacks."""
     try:
         parsed = _parse_json_response(text)
     except SmartReporterError:
-        # Graceful fallback: return the raw text as the answer
-        logger.warning("AI assist response was not valid JSON; returning raw text as answer.")
+        # Last-resort salvage: even after the JSON repair in parse_json_response
+        # failed, NEVER surface a raw JSON blob to the clinician. Pull the
+        # human-readable fields out by hand so the user sees prose, not braces.
+        logger.warning("AI assist response unparseable as JSON; salvaging readable fields.")
+        salvaged = _salvage_assist_fields(text)
         return {
-            'response_type': 'advisory',
+            'response_type': salvaged.get('response_type', 'advisory'),
             'corrections': [],
-            'answer': text,
-            'report_text': '',
+            'answer': salvaged.get('answer', ''),
+            'report_text': salvaged.get('report_text', ''),
             'fill_ins': [],
             'insights': {},
         }
