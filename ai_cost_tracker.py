@@ -34,18 +34,23 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Anthropic pricing per million tokens (as of April 2026)
+# Anthropic pricing per million tokens (verified June 2026)
+# NOTE: The Opus 4.5+ generation is $5/$25 — NOT the legacy Opus 3/4.0/4.1
+# rate of $15/$75. The old table priced Opus 4.5/4.6 at $15/$75, which
+# over-counted Opus cost ~3x in all reporting. Corrected below.
 # ---------------------------------------------------------------------------
 MODEL_COSTS = {
     # Sonnet family (current + legacy for historical cost tracking)
     'claude-sonnet-4-6':          {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
     'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
-    # Opus family
-    'claude-opus-4-6':            {'input': 15.00, 'output': 75.00},
-    'claude-opus-4-5-20251101':   {'input': 15.00, 'output': 75.00},
+    # Opus family (4.5+ generation: $5/$25)
+    'claude-opus-4-8':            {'input': 5.00, 'output': 25.00},
+    'claude-opus-4-7':            {'input': 5.00, 'output': 25.00},
+    'claude-opus-4-6':            {'input': 5.00, 'output': 25.00},
+    'claude-opus-4-5-20251101':   {'input': 5.00, 'output': 25.00},
     # Haiku family
-    'claude-haiku-4-5-20251001':  {'input': 0.80, 'output': 4.00},
+    'claude-haiku-4-5-20251001':  {'input': 1.00, 'output': 5.00},
     # Gemini (for CMV peer review cost tracking)
     'gemini-2.5-flash':           {'input': 0.15, 'output': 0.60},
 }
