@@ -5564,7 +5564,7 @@ def get_case_images(case_id):
         'id': img.id,
         'filename': img.image_filename,
         'description': img.image_description if img.image_description else '',
-        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S') if img.created_at else None,
         # Include Cloudinary URLs if available, else clients use /api/case-image/<id>
         'image_url': img.image_url,
         'thumbnail_url': img.image_thumbnail_url,

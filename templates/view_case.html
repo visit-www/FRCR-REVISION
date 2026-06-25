@@ -4433,11 +4433,17 @@
 
         // Detect JSON discussion (stored as JSON string in DB) → render via standalone renderer
         if (typeof JsonContentRenderer !== 'undefined' && JsonContentRenderer.isJson(rawDiscussion)) {
-            const discData = JSON.parse(rawDiscussion);
-            JsonContentRenderer.renderInto(discussionDiv, discData);
-            discussionDiv.classList.remove('plain-text-formatted');
-            if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
-            return;
+            try {
+                const discData = JSON.parse(rawDiscussion);
+                JsonContentRenderer.renderInto(discussionDiv, discData);
+                discussionDiv.classList.remove('plain-text-formatted');
+                if (typeof CmvBadges !== 'undefined') CmvBadges.load(discussionDiv, 'case', '{{ case.id }}');
+                return;
+            } catch (e) {
+                // Malformed JSON (e.g. an edit corrupted the structure) — fall through to
+                // the legacy HTML/plain-text path instead of leaving the panel on "Loading…"
+                console.error('Discussion JSON render failed, falling back to HTML:', e);
+            }
         }
 
         // Legacy: HTML or plain text discussion
