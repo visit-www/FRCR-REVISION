@@ -3,7 +3,7 @@ Admin Routes - User Management & Case Management API Endpoints
 Provides CRUD operations for user management and case management with role-based access control
 """
 
-from flask import Blueprint, request, jsonify, render_template_string, render_template
+from flask import Blueprint, request, jsonify, render_template_string, render_template, current_app
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case, AdminActionLog, log_admin_action
 from access_control import require_admin, require_role, delete_user_completely, can_delete_user, upgrade_to_paid, downgrade_to_free
@@ -1532,19 +1532,24 @@ def add_case_reference(case_id):
     from models import Case, CaseReference, db
     
     case = Case.query.get_or_404(case_id)
-    data = request.get_json()
-    
+    data = request.get_json(silent=True)
+
     if not data:
         return jsonify({'success': False, 'error': 'No data provided'}), 400
-    
-    title = data.get('title', '').strip()
-    url = data.get('url', '').strip()
-    
+
+    # Coerce to string defensively — callers (search/AI imports) may send year
+    # or other fields as numbers or null, which would crash a bare .strip().
+    def _clean(v):
+        return str(v).strip() if v is not None else ''
+
+    title = _clean(data.get('title'))
+    url = _clean(data.get('url'))
+
     if not title:
         return jsonify({'success': False, 'error': 'Title is required'}), 400
     if not url:
         return jsonify({'success': False, 'error': 'URL is required'}), 400
-    
+
     # Check if URL already exists for this case
     existing = CaseReference.query.filter_by(case_id=case_id, url=url).first()
     if existing:
@@ -1554,25 +1559,39 @@ def add_case_reference(case_id):
             'is_duplicate': True,
             'message': f'Reference already exists as [{existing.ref_number}]'
         })
-    
+
     # Get next ref_number
     max_ref = db.session.query(db.func.max(CaseReference.ref_number)).filter_by(case_id=case_id).scalar()
     next_ref_number = (max_ref or 0) + 1
-    
+
     # Create new reference
     reference = CaseReference(
         case_id=case_id,
         ref_number=next_ref_number,
         title=title,
         url=url,
-        journal=data.get('journal', '').strip() or None,
-        year=data.get('year', '').strip() or None,
-        is_inline=data.get('is_inline', False)
+        journal=_clean(data.get('journal')) or None,
+        year=_clean(data.get('year')) or None,
+        is_inline=bool(data.get('is_inline', False))
     )
-    
-    db.session.add(reference)
-    db.session.commit()
-    
+
+    try:
+        db.session.add(reference)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f'[References] Failed to add reference to case {case_id}: {e}')
+        # Likely a race on ref_number/url uniqueness — surface the existing row if present
+        dup = CaseReference.query.filter_by(case_id=case_id, url=url).first()
+        if dup:
+            return jsonify({
+                'success': True,
+                'reference': dup.to_dict(),
+                'is_duplicate': True,
+                'message': f'Reference already exists as [{dup.ref_number}]'
+            })
+        return jsonify({'success': False, 'error': f'Could not save reference: {e}'}), 500
+
     return jsonify({
         'success': True,
         'reference': reference.to_dict(),
