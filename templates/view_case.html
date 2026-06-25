@@ -10074,29 +10074,20 @@
         }
         
         try {
-            // Get API key
-            const apiKey = await getScienceDirectApiKey();
-            
-            // Build Elsevier API URL
-            const apiUrl = 'https://api.elsevier.com/content/search/sciencedirect';
+            // Search via server-side proxy (avoids browser CORS; key stays server-side)
             const params = new URLSearchParams({
                 query: searchQuery,
                 count: '25',
                 sort: 'relevance',
                 view: 'STANDARD'
             });
-            
-            // Make client-side API call to Elsevier
-            console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
-            console.log('[SCIENCEDIRECT] URL:', `${apiUrl}?${params.toString()}`);
-            console.log('[SCIENCEDIRECT] Origin:', window.location.origin);
-            
-            const response = await fetch(`${apiUrl}?${params.toString()}`, {
+            const proxyUrl = `/resources/api/sciencedirect/search?${params.toString()}`;
+            console.log('[SCIENCEDIRECT] Searching via proxy:', proxyUrl);
+
+            const response = await fetch(proxyUrl, {
                 method: 'GET',
-                headers: {
-                    'X-ELS-APIKey': apiKey,
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
             });
             
             console.log('[SCIENCEDIRECT] Response status:', response.status);
@@ -10251,29 +10242,20 @@
         }
         
         try {
-            // Get API key
-            const apiKey = await getScienceDirectApiKey();
-            
-            // Build Elsevier API URL
-            const apiUrl = 'https://api.elsevier.com/content/search/sciencedirect';
+            // Search via server-side proxy (avoids browser CORS; key stays server-side)
             const params = new URLSearchParams({
                 query: searchQuery,
                 count: '25',
                 sort: 'relevance',
                 view: 'STANDARD'
             });
-            
-            // Make client-side API call to Elsevier
-            console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
-            console.log('[SCIENCEDIRECT] URL:', `${apiUrl}?${params.toString()}`);
-            console.log('[SCIENCEDIRECT] Origin:', window.location.origin);
-            
-            const response = await fetch(`${apiUrl}?${params.toString()}`, {
+            const proxyUrl = `/resources/api/sciencedirect/search?${params.toString()}`;
+            console.log('[SCIENCEDIRECT] Searching via proxy:', proxyUrl);
+
+            const response = await fetch(proxyUrl, {
                 method: 'GET',
-                headers: {
-                    'X-ELS-APIKey': apiKey,
-                    'Accept': 'application/json'
-                }
+                headers: { 'Accept': 'application/json' },
+                credentials: 'include'
             });
             
             console.log('[SCIENCEDIRECT] Response status:', response.status);

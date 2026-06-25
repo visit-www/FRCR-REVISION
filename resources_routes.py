@@ -340,6 +340,69 @@ def sciencedirect_apikey():
     return jsonify({'api_key': get_api_key()})
 
 
+@resources_bp.route('/api/sciencedirect/search')
+@login_required
+def sciencedirect_search():
+    """Server-side proxy for the Elsevier ScienceDirect Search API.
+
+    The browser cannot call api.elsevier.com directly (CORS), so we proxy it
+    here. This also keeps the API key server-side. Upstream auth/quota failures
+    are returned as 502 (never 401/403) so the global session-manager fetch
+    interceptor does not mistake them for the user's session expiring.
+    """
+    import requests
+    from sciencedirect_service import get_api_key, build_search_query
+
+    api_key = get_api_key()
+    if not api_key:
+        return jsonify({'error': 'ScienceDirect is not configured (missing SCIDIRECT_API_KEY).'}), 503
+
+    query = (request.args.get('query') or '').strip()
+    if not query:
+        diagnosis = (request.args.get('diagnosis') or '').strip()
+        custom = (request.args.get('custom_query') or '').strip()
+        if diagnosis or custom:
+            query = build_search_query(diagnosis, custom)
+    if not query:
+        return jsonify({'error': 'No query provided'}), 400
+
+    try:
+        resp = requests.get(
+            'https://api.elsevier.com/content/search/sciencedirect',
+            params={
+                'query': query,
+                'count': request.args.get('count', '25'),
+                'sort': request.args.get('sort', 'relevance'),
+                'view': request.args.get('view', 'STANDARD'),
+            },
+            headers={'X-ELS-APIKey': api_key, 'Accept': 'application/json'},
+            timeout=15,
+        )
+    except requests.RequestException as e:
+        current_app.logger.error(f'[SCIDIRECT] Upstream request failed: {e}')
+        return jsonify({'error': f'Could not reach ScienceDirect: {e}'}), 502
+
+    try:
+        payload = resp.json()
+    except ValueError:
+        current_app.logger.error(f'[SCIDIRECT] Non-JSON upstream {resp.status_code}: {resp.text[:300]}')
+        return jsonify({'error': f'ScienceDirect returned HTTP {resp.status_code}'}), 502
+
+    if resp.status_code >= 400:
+        service_error = payload.get('service-error') if isinstance(payload, dict) else None
+        msg = 'ScienceDirect API error'
+        try:
+            msg = service_error['status']['statusText'] or msg
+        except (TypeError, KeyError):
+            pass
+        current_app.logger.warning(f'[SCIDIRECT] Upstream {resp.status_code}: {str(payload)[:300]}')
+        # Map all upstream errors to 502 so the same-origin response never
+        # triggers session-expiry handling in the browser.
+        return jsonify({'error': msg, 'upstream_status': resp.status_code, 'service-error': service_error}), 502
+
+    return jsonify(payload), 200
+
+
 @resources_bp.route('/api/sciencedirect/connect', methods=['POST'])
 @login_required
 def sciencedirect_connect():
