@@ -228,6 +228,7 @@
                                         <option value="Fluoroscopy">Fluoroscopy</option>
                                         <option value="Nuclear Medicine">Nuclear Medicine</option>
                                         <option value="PET-CT">PET-CT</option>
+                                        <option value="CBCT">CBCT (Dentoalveolar Cone Beam CT)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -248,8 +249,20 @@
                                         <option value="Trauma">Trauma</option>
                                         <option value="Vascular">Vascular</option>
                                         <option value="Paediatric">Paediatric</option>
+                                        <option value="Dental / Maxillofacial">Dental / Maxillofacial</option>
                                     </select>
                                 </div>
+                            </div>
+                            <!-- CBCT module toggle -->
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="inputCbctMode" onchange="_onCbctToggle()">
+                                <label class="form-check-label fw-semibold" for="inputCbctMode">
+                                    <i class="fas fa-tooth me-1" style="color: var(--brand-primary);"></i>
+                                    Dentoalveolar CBCT scan
+                                </label>
+                                <small class="text-muted d-block ms-4">
+                                    Uses the specialist Dental &amp; Maxillofacial reporting style (tooth notation, house terminology) instead of general radiology.
+                                </small>
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-brand-primary" id="btnGenerateTree" onclick="generateTree()">
@@ -606,6 +619,9 @@
                             <!-- Clinical Context Bar (editable inline) -->
                             <div id="clinicalContextBar" class="d-none" style="background: #f0f7fa; border-bottom: 1px solid #d0e3f0; padding: 0.3rem 0.75rem; font-size: 0.78rem; color: #1a3a4a;">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span id="ctxBarCbctBadge" class="d-none" style="background: var(--brand-primary); color: #fff; font-weight: 700; font-size: 0.7rem; padding: 0.12rem 0.5rem; border-radius: 10px; letter-spacing: 0.02em;">
+                                        <i class="fas fa-tooth me-1"></i>CBCT MODE
+                                    </span>
                                     <i class="fas fa-stethoscope" style="color: #5E899E; font-size: 0.7rem;"></i>
                                     <span class="context-field-group"><strong>CQ:</strong> <span id="ctxBarCQ" contenteditable="true" class="context-editable" data-target="inputClinicalQuestion" data-placeholder="e.g. R/O pancreatitis"></span></span>
                                     <span style="color: #d0e3f0;">|</span>
@@ -1237,6 +1253,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     clinicalQuestion: _aCtx.clinicalQuestion,
                     modality: _aCtx.modality,
                     bodySection: _aCtx.bodySection,
+                    isCbct: _aCtx.isCbct,
                     ts: Date.now(),
                     uid: _currentUserId
                 }));
@@ -1336,12 +1353,66 @@ document.addEventListener('DOMContentLoaded', function() {
         var elCQ = document.getElementById('ctxBarCQ');
         var elMod = document.getElementById('ctxBarModality');
         var elBS = document.getElementById('ctxBarBodySection');
+        var mod = elMod ? elMod.textContent.trim() : '';
+        var bs = elBS ? elBS.textContent.trim() : '';
         return {
             clinicalQuestion: elCQ ? elCQ.textContent.trim() : '',
-            modality: elMod ? elMod.textContent.trim() : '',
-            bodySection: elBS ? elBS.textContent.trim() : ''
+            modality: mod,
+            bodySection: bs,
+            isCbct: _isCbctActive(mod, bs)
         };
     }
+
+    // Pure string test: does the modality/region indicate a dentoalveolar CBCT scan?
+    function _cbctFromStrings(mod, bs) {
+        var m = (mod || '').toLowerCase();
+        var b = (bs || '').toLowerCase();
+        return m.indexOf('cbct') !== -1 || m.indexOf('cone beam') !== -1 ||
+               b.indexOf('dental') !== -1 || b.indexOf('maxillofacial') !== -1 ||
+               b.indexOf('dentoalveolar') !== -1;
+    }
+
+    // CBCT module is active if the checkbox is ticked OR the modality/region
+    // string indicates a dentoalveolar CBCT scan (auto-detect fallback).
+    function _isCbctActive(mod, bs) {
+        var cb = document.getElementById('inputCbctMode');
+        if (cb && cb.checked) return true;
+        return _cbctFromStrings(mod, bs);
+    }
+
+    // Reflect CBCT mode in the persistent context bar badge.
+    function _updateCbctBadge() {
+        var badge = document.getElementById('ctxBarCbctBadge');
+        if (!badge) return;
+        var mod = (document.getElementById('inputModality') || {}).value || '';
+        var bs = (document.getElementById('inputBodySection') || {}).value || '';
+        badge.classList.toggle('d-none', !_isCbctActive(mod, bs));
+    }
+
+    // Checkbox toggle: when turned on, set modality to CBCT for consistency.
+    function _onCbctToggle() {
+        var cb = document.getElementById('inputCbctMode');
+        var modSel = document.getElementById('inputModality');
+        if (cb && cb.checked && modSel && modSel.value.toLowerCase().indexOf('cbct') === -1) {
+            var hasCbct = Array.prototype.some.call(modSel.options, function(o){ return o.value === 'CBCT'; });
+            if (hasCbct) modSel.value = 'CBCT';
+        }
+        _updateContextBar();
+        _updateCbctBadge();
+    }
+
+    // Sync the checkbox to the chosen modality/region: auto-tick for a CBCT
+    // modality / dental region, and auto-UNtick when the user switches to a
+    // non-dental modality — so a general scan never routes to the dental prompt.
+    // (Manual ticks set modality to CBCT via _onCbctToggle, so they survive here.)
+    document.addEventListener('change', function(e) {
+        if (!e.target || (e.target.id !== 'inputModality' && e.target.id !== 'inputBodySection')) return;
+        var cb = document.getElementById('inputCbctMode');
+        var mod = (document.getElementById('inputModality') || {}).value || '';
+        var bs = (document.getElementById('inputBodySection') || {}).value || '';
+        if (cb) cb.checked = _cbctFromStrings(mod, bs);
+        _updateCbctBadge();
+    });
 
     function _updateContextBar() {
         var cq = (document.getElementById('inputClinicalQuestion') || {}).value || '';
@@ -1356,6 +1427,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (elCQ) elCQ.textContent = cq || '';
         if (elMod) elMod.textContent = mod || '';
         if (elBS) elBS.textContent = bs || '';
+        _updateCbctBadge();
     }
 
     // Sync contenteditable context fields back to hidden form inputs
@@ -3721,6 +3793,7 @@ document.addEventListener('DOMContentLoaded', function() {
             modality: ctx.modality,
             body_section: ctx.bodySection,
             use_opus: _useOpus,
+            is_cbct: ctx.isCbct,
         };
         // Include external context if user arrived from another tool
         if (state.externalContext) {
@@ -6522,6 +6595,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (savedData.clinicalQuestion) { var cq = document.getElementById('inputClinicalQuestion'); if (cq) cq.value = savedData.clinicalQuestion; }
             if (savedData.modality) { var mod = document.getElementById('inputModality'); if (mod) mod.value = savedData.modality; }
             if (savedData.bodySection) { var bs = document.getElementById('inputBodySection'); if (bs) bs.value = savedData.bodySection; }
+            // Restore CBCT module state (explicit flag or auto-detected from modality/region)
+            var _rCbct = document.getElementById('inputCbctMode');
+            if (_rCbct) _rCbct.checked = !!savedData.isCbct || _isCbctActive(savedData.modality || '', savedData.bodySection || '');
+            _updateCbctBadge();
             _clearAutosave();
             updateActionButtonState();
         } else {

@@ -65,6 +65,8 @@ _MODALITY_MAP = {
     'scintigraphy': 'Nuclear Medicine',
     'pet': 'PET-CT', 'pet-ct': 'PET-CT', 'pet ct': 'PET-CT', 'petct': 'PET-CT',
     'fluoroscopy': 'Fluoroscopy', 'fluoro': 'Fluoroscopy',
+    'cbct': 'CBCT', 'cone beam ct': 'CBCT', 'cone beam computed tomography': 'CBCT',
+    'dental ct': 'CBCT', 'dentoalveolar cbct': 'CBCT',
 }
 
 # ==================== SEARCH SYNONYM EXPANSION ====================
@@ -3046,6 +3048,7 @@ def smart_reporter_ai_assist():
     external_context = data.get('external_context')
     has_finalized_report = bool(data.get('has_finalized_report', False))
     use_opus = bool(data.get('use_opus', False))  # Opus for Review & Finalize
+    is_cbct = bool(data.get('is_cbct', False))  # CBCT dentoalveolar module toggle
     previous_review_insights = data.get('previous_review_insights')  # Opus/V2 insights for hybrid
 
     try:
@@ -3063,6 +3066,7 @@ def smart_reporter_ai_assist():
             has_finalized_report=has_finalized_report,
             previous_insights=previous_review_insights,
             model_override=model_override,
+            is_cbct=is_cbct,
         )
     except Exception as exc:
         logger.error(f"Smart Reporter AI assist failed: {exc}")
