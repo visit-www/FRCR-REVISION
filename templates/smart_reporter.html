@@ -651,6 +651,7 @@
                                         <span id="draftChipsContainer"></span>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="openChipSettings()" title="Customise insert chips" style="font-size: 0.72rem;"><i class="fas fa-cog"></i></button>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="openAutotextSettings()" title="Autotext shortcuts — type a shortcut then press Space to expand" style="font-size: 0.72rem;"><i class="fas fa-keyboard me-1"></i>Autotext</button>
+                                        <button id="btnCbctToggle" class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" onclick="_toggleCbctMode()" title="Toggle dentoalveolar CBCT reporting style (Dental & Maxillofacial house style)" style="font-size: 0.72rem;"><i class="fas fa-tooth me-1"></i>CBCT: Off</button>
                                     </div>
                                     <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
@@ -1380,14 +1381,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return _cbctFromStrings(mod, bs);
     }
 
-    // Reflect CBCT mode in the persistent context bar badge.
+    // Reflect CBCT mode in the persistent context bar badge + editor toggle button.
     function _updateCbctBadge() {
-        var badge = document.getElementById('ctxBarCbctBadge');
-        if (!badge) return;
         var mod = (document.getElementById('inputModality') || {}).value || '';
         var bs = (document.getElementById('inputBodySection') || {}).value || '';
-        badge.classList.toggle('d-none', !_isCbctActive(mod, bs));
+        // The context-bar Mod/Region are editable inline on the editor scene —
+        // read them too so live edits reflect immediately.
+        var elMod = document.getElementById('ctxBarModality');
+        var elBS = document.getElementById('ctxBarBodySection');
+        if (elMod && elMod.textContent.trim()) mod = elMod.textContent.trim();
+        if (elBS && elBS.textContent.trim()) bs = elBS.textContent.trim();
+        var active = _isCbctActive(mod, bs);
+        var badge = document.getElementById('ctxBarCbctBadge');
+        if (badge) badge.classList.toggle('d-none', !active);
+        var btn = document.getElementById('btnCbctToggle');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-tooth me-1"></i>CBCT: ' + (active ? 'On' : 'Off');
+            btn.classList.toggle('btn-outline-secondary', !active);
+            btn.classList.toggle('btn-brand-primary', active);
+        }
     }
+
+    // Editor-scene toggle: flip the (possibly off-scene) CBCT checkbox and,
+    // when turning on, set modality to CBCT for consistency.
+    window._toggleCbctMode = function() {
+        var cb = document.getElementById('inputCbctMode');
+        if (!cb) return;
+        cb.checked = !cb.checked;
+        var elMod = document.getElementById('ctxBarModality');
+        var modSel = document.getElementById('inputModality');
+        if (cb.checked) {
+            if (modSel) { var hc = Array.prototype.some.call(modSel.options, function(o){return o.value==='CBCT';}); if (hc) modSel.value = 'CBCT'; }
+            if (elMod) elMod.textContent = 'CBCT';
+        }
+        _updateContextBar();
+        _updateCbctBadge();
+    };
 
     // Checkbox toggle: when turned on, set modality to CBCT for consistency.
     function _onCbctToggle() {
@@ -1436,6 +1465,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var targetId = e.target.getAttribute('data-target');
         var targetEl = targetId ? document.getElementById(targetId) : null;
         if (targetEl) targetEl.value = e.target.textContent.trim();
+        if (targetId === 'inputModality' || targetId === 'inputBodySection') _updateCbctBadge();
     });
     // Prevent Enter in contenteditable (keep single line)
     document.addEventListener('keydown', function(e) {
