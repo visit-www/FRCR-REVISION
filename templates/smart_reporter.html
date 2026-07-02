@@ -397,6 +397,25 @@
                     </div>
                 </div>
 
+                <!-- Reporting mode selector (prominent) -->
+                <div id="reportModeBar" class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 rounded"
+                     style="background: #f0f7fa; border: 1px solid #d0e3f0;">
+                    <span class="fw-semibold" style="font-size: 0.85rem; color: #1a3a4a;">
+                        <i class="fas fa-microscope me-1" style="color: var(--brand-neutral);"></i>Reporting mode:
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Reporting mode">
+                        <button type="button" id="btnModeGeneral" class="btn btn-brand-neutral" onclick="_setCbctMode(false)">
+                            General Radiology
+                        </button>
+                        <button type="button" id="btnModeCbct" class="btn btn-outline-secondary" onclick="_setCbctMode(true)">
+                            <i class="fas fa-tooth me-1"></i>CBCT (Dental)
+                        </button>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.75rem;">
+                        CBCT uses the Dental &amp; Maxillofacial house style (tooth notation, house terminology).
+                    </small>
+                </div>
+
                 <!-- Quick navigation row -->
                 <div class="d-flex flex-wrap gap-2 mb-3 align-items-start">
                     <button class="btn btn-sm btn-outline-secondary" onclick="pasteMyReport(); return false;">
@@ -1400,7 +1419,30 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.classList.toggle('btn-outline-secondary', !active);
             btn.classList.toggle('btn-brand-primary', active);
         }
+        // Prominent segmented mode selector in the editor header
+        var bGen = document.getElementById('btnModeGeneral');
+        var bCbct = document.getElementById('btnModeCbct');
+        if (bGen && bCbct) {
+            bGen.classList.toggle('btn-brand-neutral', !active);
+            bGen.classList.toggle('btn-outline-secondary', active);
+            bCbct.classList.toggle('btn-brand-primary', active);
+            bCbct.classList.toggle('btn-outline-secondary', !active);
+        }
     }
+
+    // Explicit mode setter used by the prominent segmented selector.
+    window._setCbctMode = function(on) {
+        var cb = document.getElementById('inputCbctMode');
+        if (cb) cb.checked = !!on;
+        if (on) {
+            var modSel = document.getElementById('inputModality');
+            if (modSel) { var hc = Array.prototype.some.call(modSel.options, function(o){return o.value==='CBCT';}); if (hc) modSel.value = 'CBCT'; }
+            var elMod = document.getElementById('ctxBarModality');
+            if (elMod) elMod.textContent = 'CBCT';
+        }
+        _updateContextBar();
+        _updateCbctBadge();
+    };
 
     // Editor-scene toggle: flip the (possibly off-scene) CBCT checkbox and,
     // when turning on, set modality to CBCT for consistency.
