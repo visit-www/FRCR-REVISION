@@ -273,6 +273,17 @@ if DATABASE_URL:
             'pool_pre_ping': True,  # Verify connections before using
         }
 else:
+    # No PostgreSQL URL resolved. On Vercel, refuse to fall back to SQLite:
+    # the serverless filesystem is ephemeral, so writes would silently vanish
+    # between invocations (this is what made edits/images disappear). Fail loudly
+    # instead so a missing DATABASE_URL is caught at deploy time, not in prod data.
+    if os.getenv('VERCEL') or os.getenv('VERCEL_ENV'):
+        raise RuntimeError(
+            "No database URL resolved in this Vercel environment. Refusing to fall "
+            "back to ephemeral SQLite (data would be lost between requests). Set "
+            "DATABASE_URL or DATABASE_POSTGRES_URL_NON_POOLING in the Vercel project "
+            "environment variables."
+        )
     # SQLite for local development
     logger.info(f"Using SQLite: {instance_path}/RadInsights_db.db")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "RadInsights_db.db")}'
@@ -2446,7 +2457,7 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://upload.wikimedia.org https://*.wikimedia.org https://prod-images-static.radiopaedia.org; "
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
-        "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://res.cloudinary.com https://*.cloudinary.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com https://*.google.com; "
+        "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://res.cloudinary.com https://*.cloudinary.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.google.com https://*.google.com https://api.elsevier.com; "
         "frame-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'"
@@ -5564,7 +5575,7 @@ def get_case_images(case_id):
         'id': img.id,
         'filename': img.image_filename,
         'description': img.image_description if img.image_description else '',
-        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S') if img.created_at else None,
         # Include Cloudinary URLs if available, else clients use /api/case-image/<id>
         'image_url': img.image_url,
         'thumbnail_url': img.image_thumbnail_url,
@@ -7267,6 +7278,43 @@ def verify_case_ownership(case_id):
             return None
     return None
 
+def _recover_wrapped_discussion_json(text):
+    """Recover a structured-JSON discussion that was round-tripped through the
+    rich-text editor.
+
+    AI case discussions are stored as JSON (detected by the frontend renderer
+    via a leading '{' + diagnosis_summary/sections keys). When an admin opens a
+    case in the TinyMCE editor and saves, the editor wraps the raw JSON in
+    <p>...</p> and HTML-escapes the quotes, so the stored value no longer starts
+    with '{' and the renderer can no longer detect it as JSON. This unwraps that
+    common case so the discussion keeps rendering as structured content.
+
+    Returns the cleaned JSON string when recovery succeeds, otherwise the
+    original text unchanged (genuine HTML/plain-text edits are left alone).
+    """
+    if not text or not isinstance(text, str):
+        return text
+    stripped = text.strip()
+    # Already clean JSON — nothing to recover.
+    if stripped.startswith('{'):
+        return text
+    # Only attempt recovery when it plausibly wraps a JSON object.
+    if '{' not in stripped or '}' not in stripped:
+        return text
+    import re
+    import html as _html
+    candidate = _html.unescape(re.sub(r'<[^>]+>', '', stripped)).strip()
+    if not candidate.startswith('{'):
+        return text
+    try:
+        obj = json.loads(candidate)
+    except (ValueError, TypeError):
+        return text
+    if isinstance(obj, dict) and ('diagnosis_summary' in obj or 'sections' in obj):
+        return candidate
+    return text
+
+
 @app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])
 @login_required
 def get_case(case_id):
@@ -7305,7 +7353,7 @@ def get_case(case_id):
         if 'diagnosis' in data:
             case.diagnosis = data['diagnosis']
         if 'discussion' in data:
-            case.discussion = data['discussion']
+            case.discussion = _recover_wrapped_discussion_json(data['discussion'])
         if 'module' in data:
             from models import FRCRModule
             try:

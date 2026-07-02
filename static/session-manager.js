@@ -364,6 +364,18 @@ class SessionManager {
             const url = (typeof args[0] === 'string') ? args[0] : args[0]?.url || '';
             const isSessionCall = url.includes('/auth/session/');
 
+            // Only treat OUR OWN (same-origin) responses as session signals.
+            // Third-party APIs called directly from the browser (e.g. the
+            // ScienceDirect/Elsevier search) can legitimately return 401/403
+            // without the user's session having expired — intercepting those
+            // would wrongly log the user out.
+            let isSameOrigin = true;
+            try {
+                isSameOrigin = new URL(url, window.location.href).origin === window.location.origin;
+            } catch (e) {
+                isSameOrigin = true; // relative/unparseable URL → treat as same-origin
+            }
+
             let response;
             try {
                 response = await originalFetch.apply(this, args);
@@ -375,15 +387,16 @@ class SessionManager {
             if (self.expired) return response;
 
             // Handle 401 Unauthorized — session manager only runs for
-            // authenticated users, so any 401 means session expired.
-            // Skip for session manager's own calls (handled by caller directly).
-            if (response.status === 401 && !isSessionCall) {
+            // authenticated users, so any same-origin 401 means session expired.
+            // Skip for session manager's own calls (handled by caller directly)
+            // and for cross-origin calls (not our session).
+            if (response.status === 401 && !isSessionCall && isSameOrigin) {
                 self.handleSessionExpired();
                 return response;
             }
 
             // Handle 403 Forbidden (might be session issue)
-            if (response.status === 403 && !isSessionCall) {
+            if (response.status === 403 && !isSessionCall && isSameOrigin) {
                 try {
                     const cloned = response.clone();
                     const data = await cloned.json().catch(() => ({}));
