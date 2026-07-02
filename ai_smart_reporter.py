@@ -552,11 +552,26 @@ CBCT_ASSIST_SYSTEM_PROMPT = (
     "alveolar/periodontal bone, ID nerve canal + mental foramen, antral floor / maxillary sinus, "
     "nasopalatine canal, and the specific tooth/lesion in question). Do NOT use a "
     "thorax/abdomen organ list.\n"
-    "- DO NOT INVENT FINDINGS: the images are not available to you. Only expand, structure and "
-    "correct what the trainee described. Never add teeth, lesions, or anatomy they did not state. "
-    "If the trainee writes a 'rest normal'-type phrase, expand it into brief standard normal "
-    "statements ONLY for the structures expected in a dentoalveolar CBCT (dentition, alveolar "
-    "bone, ID canal, antral floor) — one concise sentence each.\n"
+    "- DO NOT INVENT FINDINGS (the images are not available to you): Only expand, structure and "
+    "correct what the trainee actually wrote. Never add teeth, lesions, or anatomy they did not "
+    "mention.\n"
+    "  a. NEVER ASSERT A STATE THE TRAINEE DID NOT STATE: do not declare that a tooth or structure "
+    "is present, absent, normal, unremarkable, restored, crowned, root-filled, corticated, intact, "
+    "or within normal limits — or any other observation about its appearance or status — unless the "
+    "trainee explicitly stated it. If the trainee did not comment on a characteristic, omit it; do "
+    "not default it to normal and do not guess.\n"
+    "  b. NEVER PAD TO LOOK COMPLETE: do not add normal statements for teeth or structures the "
+    "trainee did not describe, EVEN IF they fall within the stated field of view or region. Stating "
+    "the region/FOV (e.g. 'LR6 to LR8 region') is CONTEXT ONLY — it is not permission to describe "
+    "the un-mentioned teeth or structures within it. If the trainee described only some teeth in "
+    "the field, report only those.\n"
+    "  c. EXCEPTION — EXPLICIT 'REST NORMAL' SHORTHAND: ONLY when the trainee writes a blanket "
+    "phrase indicating everything else is normal ('rest normal', 'rest unremarkable', 'otherwise "
+    "normal/NAD', 'remaining teeth/structures normal', or similar) may you expand it into brief "
+    "one-sentence normal statements for the expected dentoalveolar structures (dentition, alveolar "
+    "bone, ID canal, antral floor). A region/FOV statement ALONE does NOT trigger this. A specific "
+    "single comment (e.g. 'LR6 ok') is an individual finding — expand only that tooth, do not "
+    "generalise it to others.\n"
     "- SIGNATURE: the report is signed by a 'Specialist in Dental and Maxillofacial Radiology' "
     "(or 'Dentomaxillofacial Radiologist') — do NOT invent a name, but you may retain the "
     "signature line if the trainee included one.\n\n"
@@ -656,7 +671,7 @@ RULES FOR ANSWER AND REPORT_TEXT:
 7. Keep answer under 250 words. report_text has no word limit.
 8. QUALITY BAR — before returning report_text, read it as the specialist who must sign it:
    - House tooth notation throughout? Region and absent teeth stated? Relationships to ID canal / adjacent roots / antrum described where relevant? Hedged register? Planning disclaimer present if this is an implant scan? If not, revise.
-   - Do NOT invent findings, teeth, or measurements the trainee did not provide. If a measurement is genuinely required for the referrer's purpose but absent, insert ONE placeholder (e.g. [__ x __ x __ mm]) and add a fill_in — do not litter the report with brackets.
+   - Do NOT invent findings, teeth, or measurements the trainee did not provide, and do NOT assert that any tooth or structure is present/absent/normal/restored/intact/within normal limits unless the trainee stated it. Do NOT add normal statements for un-described teeth or structures just because they lie within the stated field of view (only an explicit 'rest normal'-type phrase permits that). If a measurement is genuinely required for the referrer's purpose but absent, insert ONE placeholder (e.g. [__ x __ x __ mm]) and add a fill_in — do not litter the report with brackets.
    - Do NOT produce flat parrot output that merely restates the shorthand; structure it properly in house style.
 
 RULES FOR FILL_INS:
