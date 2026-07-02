@@ -1430,46 +1430,41 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Explicit mode setter used by the prominent segmented selector.
+    // Single source of truth for CBCT mode. ON: tick checkbox + set modality
+    // to CBCT. OFF: untick checkbox AND clear any CBCT/dental modality/region
+    // strings, otherwise string auto-detect would immediately turn it back on.
     window._setCbctMode = function(on) {
         var cb = document.getElementById('inputCbctMode');
+        var modSel = document.getElementById('inputModality');
+        var bsSel = document.getElementById('inputBodySection');
+        var elMod = document.getElementById('ctxBarModality');
+        var elBS = document.getElementById('ctxBarBodySection');
         if (cb) cb.checked = !!on;
         if (on) {
-            var modSel = document.getElementById('inputModality');
             if (modSel) { var hc = Array.prototype.some.call(modSel.options, function(o){return o.value==='CBCT';}); if (hc) modSel.value = 'CBCT'; }
-            var elMod = document.getElementById('ctxBarModality');
             if (elMod) elMod.textContent = 'CBCT';
+        } else {
+            if (modSel && _cbctFromStrings(modSel.value, '')) modSel.value = '';
+            if (bsSel && _cbctFromStrings('', bsSel.value)) bsSel.value = '';
+            if (elMod && _cbctFromStrings(elMod.textContent, '')) elMod.textContent = '';
+            if (elBS && _cbctFromStrings('', elBS.textContent)) elBS.textContent = '';
         }
         _updateContextBar();
         _updateCbctBadge();
     };
 
-    // Editor-scene toggle: flip the (possibly off-scene) CBCT checkbox and,
-    // when turning on, set modality to CBCT for consistency.
+    // Footer button + walkthrough checkbox both route through _setCbctMode.
     window._toggleCbctMode = function() {
-        var cb = document.getElementById('inputCbctMode');
-        if (!cb) return;
-        cb.checked = !cb.checked;
         var elMod = document.getElementById('ctxBarModality');
-        var modSel = document.getElementById('inputModality');
-        if (cb.checked) {
-            if (modSel) { var hc = Array.prototype.some.call(modSel.options, function(o){return o.value==='CBCT';}); if (hc) modSel.value = 'CBCT'; }
-            if (elMod) elMod.textContent = 'CBCT';
-        }
-        _updateContextBar();
-        _updateCbctBadge();
+        var elBS = document.getElementById('ctxBarBodySection');
+        var mod = elMod ? elMod.textContent.trim() : ((document.getElementById('inputModality') || {}).value || '');
+        var bs = elBS ? elBS.textContent.trim() : ((document.getElementById('inputBodySection') || {}).value || '');
+        _setCbctMode(!_isCbctActive(mod, bs));
     };
 
-    // Checkbox toggle: when turned on, set modality to CBCT for consistency.
     function _onCbctToggle() {
         var cb = document.getElementById('inputCbctMode');
-        var modSel = document.getElementById('inputModality');
-        if (cb && cb.checked && modSel && modSel.value.toLowerCase().indexOf('cbct') === -1) {
-            var hasCbct = Array.prototype.some.call(modSel.options, function(o){ return o.value === 'CBCT'; });
-            if (hasCbct) modSel.value = 'CBCT';
-        }
-        _updateContextBar();
-        _updateCbctBadge();
+        _setCbctMode(cb ? cb.checked : false);
     }
 
     // Sync the checkbox to the chosen modality/region: auto-tick for a CBCT
