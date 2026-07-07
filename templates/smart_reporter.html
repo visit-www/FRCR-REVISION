@@ -2496,6 +2496,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Render the claims Gemini (Cross-Model Verification) disputed, so the
+    // trainee can see WHICH claims failed and why — not just the summary count.
+    function _renderDisputedClaimsHtml(claims) {
+        if (!claims || !claims.length) return '';
+        var items = claims.map(function(c) {
+            var reasoning = c.reasoning
+                ? '<div class="small text-muted mt-1"><strong>Why:</strong> ' + escapeHtml(c.reasoning) + '</div>'
+                : '';
+            var correction = c.correction
+                ? '<div class="small mt-1" style="color:var(--brand-success,#198754);"><strong>Suggested correction:</strong> ' + escapeHtml(c.correction) + '</div>'
+                : '';
+            return '<li class="mb-2 pb-2 border-bottom">' +
+                   '<div><i class="fas fa-triangle-exclamation me-1 text-danger"></i>' +
+                   '<span class="fw-semibold">' + escapeHtml(c.claim_text || '') + '</span></div>' +
+                   reasoning + correction +
+                   '</li>';
+        }).join('');
+        var n = claims.length;
+        return '<div class="peer-review-disputed cmv-disputed mt-3">' +
+               '<div class="card border-danger">' +
+               '<div class="card-header bg-light py-2 d-flex align-items-center" ' +
+               'style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#cmvDisputedBody" ' +
+               'role="button" aria-expanded="true">' +
+               '<i class="fas fa-shield-halved me-2 text-danger"></i>' +
+               '<strong class="text-danger">Cross-Model Verification &mdash; ' + n +
+               ' disputed claim' + (n === 1 ? '' : 's') + '</strong>' +
+               '<i class="fas fa-chevron-down ms-auto text-muted small"></i>' +
+               '</div>' +
+               '<div class="collapse show" id="cmvDisputedBody">' +
+               '<div class="card-body p-3">' +
+               '<p class="small text-muted mb-2">An independent model (Gemini) flagged the following ' +
+               'claim' + (n === 1 ? '' : 's') + ' in the answer/teaching content. Review before relying on ' +
+               (n === 1 ? 'it' : 'them') + '.</p>' +
+               '<ul class="list-unstyled mb-0">' + items + '</ul>' +
+               '</div></div></div></div>';
+    }
+
     // Old openPeerReviewFlagModal removed — now uses global openGlobalFlagModal() from _flag_modal.html
 
     window.toggleAnatomySnippet = function(index) {
@@ -5252,6 +5289,7 @@ document.addEventListener('DOMContentLoaded', function() {
             state.latestPeerReview.verification_summary.total > 0) {
             prContainer.innerHTML =
                 (state.latestPeerReview.disclaimer_html || '') +
+                _renderDisputedClaimsHtml(state.latestPeerReview.disputed_claims) +
                 (state.latestPeerReview.references_html || '');
             prContainer.classList.remove('d-none');
             _initPeerReviewTooltips(prContainer);

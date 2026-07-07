@@ -3112,11 +3112,25 @@ def smart_reporter_ai_assist():
                 body_section=body_section,
                 modality=modality,
             )
+            # Surface the individual claims Gemini disputed so the frontend can
+            # show WHICH claims failed and why (not just the summary count).
+            # Normalise both key schemes (persisted to_dict uses gemini_*; the
+            # non-persisted fallback uses bare reasoning/correction).
+            disputed_claims = []
+            for _c in pr_result.get('claims', []):
+                if _c.get('badge_state') != 'disputed':
+                    continue
+                disputed_claims.append({
+                    'claim_text': _c.get('claim_text', ''),
+                    'reasoning': _c.get('gemini_reasoning') or _c.get('reasoning') or '',
+                    'correction': _c.get('gemini_correction') or _c.get('correction') or '',
+                })
             peer_review_data = {
                 'verification_summary': pr_result.get('verification_summary'),
                 'references_html': pr_result.get('references_html', ''),
                 'disclaimer_html': pr_result.get('disclaimer_html', ''),
                 'content_trust_badge_html': pr_result.get('content_trust_badge_html', ''),
+                'disputed_claims': disputed_claims,
             }
     except Exception as exc:
         logger.debug("Peer review on ai-assist failed: %s", exc)
