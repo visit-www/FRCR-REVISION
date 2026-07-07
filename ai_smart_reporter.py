@@ -1867,7 +1867,10 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         model=effective_model,
         max_tokens=_max_tokens,
         temperature=_temperature,
-        timeout=90,
+        # 240s: Opus finalize/CBCT can generate up to 8000 tokens non-streaming;
+        # 90s was cutting off legitimate long generations. Vercel maxDuration
+        # is 300s, so this leaves headroom for peer review + response handling.
+        timeout=240,
     )
 
     # Capture input tokens from last API call for cost tracking
@@ -1890,7 +1893,7 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
             model=effective_model,
             max_tokens=_max_tokens,
             temperature=_temperature,
-            timeout=90,
+            timeout=240,
             assistant_prefill=text,
         )
         text += _cont_text
