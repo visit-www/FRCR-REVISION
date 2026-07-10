@@ -328,7 +328,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 historyEmpty.classList.add('d-none');
 
-                const items = queries.map(q => {
+                const escHtml = s => String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                const items = queries.map((q, idx) => {
                     const date = new Date(q.created_at);
                     const timeStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
                                     ' ' + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -336,9 +339,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         '<i class="fas fa-exclamation-triangle text-warning"></i>' :
                         '<i class="fas fa-check-circle text-success"></i>';
                     return `
-                        <div class="history-item px-3 py-2 border-bottom" style="cursor: pointer;"
-                             onclick="document.getElementById('queryInput').value='${q.query_text.replace(/'/g, "\\'")}'; document.getElementById('submitBtn').click();">
-                            <div class="small fw-semibold text-truncate">${q.query_text}</div>
+                        <div class="history-item px-3 py-2 border-bottom" style="cursor: pointer;" data-query-idx="${idx}">
+                            <div class="small fw-semibold text-truncate">${escHtml(q.query_text)}</div>
                             <div class="text-muted" style="font-size: 0.7rem;">
                                 ${sourceIcon} ${timeStr}
                             </div>
@@ -350,6 +352,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const existingItems = historyList.querySelectorAll('.history-item');
                 existingItems.forEach(el => el.remove());
                 historyList.insertAdjacentHTML('afterbegin', items);
+                // Re-run stored queries via the data index — never inline stored text into onclick
+                historyList.querySelectorAll('.history-item').forEach(el => {
+                    el.onclick = () => {
+                        const q = queries[parseInt(el.dataset.queryIdx, 10)];
+                        if (!q) return;
+                        document.getElementById('queryInput').value = q.query_text;
+                        document.getElementById('submitBtn').click();
+                    };
+                });
             })
             .catch(() => {});
     }

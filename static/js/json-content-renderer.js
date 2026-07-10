@@ -21,9 +21,14 @@
     // ── Helpers ──
 
     function esc(s) {
-        var d = document.createElement('div');
-        d.textContent = s || '';
-        return d.innerHTML;
+        // String-based escape: also covers quotes, so output is safe in
+        // attribute context (data-section-title etc.), unlike textContent tricks
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // ── ALL CAPS styling ──

@@ -35,9 +35,13 @@ var ContentInteract = (function() {
   // ── Helpers ──
   function _esc(s) {
     if (!s) return '';
-    var d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
+    // Quote-aware escape — safe in both text and attribute contexts
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   function _timeAgo(isoStr) {
@@ -660,8 +664,9 @@ var ContentInteract = (function() {
         var imageHtml = '';
         if (m.image_thumbnail_url || m.image_url) {
           var imgSrc = m.image_thumbnail_url || m.image_url;
+          // data attribute + delegated handler — never build JS strings from URLs
           imageHtml = '<div class="ci-forum-msg-image"><img src="' + _esc(imgSrc) + '" alt="Attached image" '
-            + (m.image_url ? 'onclick="window.open(\'' + _esc(m.image_url) + '\',\'_blank\')" style="cursor:pointer;" title="Click to view full size"' : '')
+            + (m.image_url ? 'data-full-url="' + _esc(m.image_url) + '" class="ci-img-zoom" style="cursor:pointer;" title="Click to view full size"' : '')
             + '></div>';
         }
 
@@ -692,6 +697,13 @@ var ContentInteract = (function() {
           + imageHtml
           + '<div class="ci-forum-msg-actions">' + actions + '</div></div>';
       }).join('');
+      // Fresh nodes each render, so direct property assignment can't stack
+      msgDiv.querySelectorAll('.ci-img-zoom').forEach(function(img) {
+        img.onclick = function() {
+          var u = img.getAttribute('data-full-url') || '';
+          if (/^(https?:)?\/\//i.test(u) || u.charAt(0) === '/') window.open(u, '_blank');
+        };
+      });
     });
   }
 

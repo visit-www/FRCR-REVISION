@@ -11,7 +11,23 @@
 
     function _checkAdmin() { return document.body && document.body.classList.contains('is-admin'); }
 
-    function _escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    // Only allow http(s)/relative URLs in generated hrefs (blocks javascript: etc.)
+    function _safeUrl(u) {
+        u = String(u == null ? '' : u).trim();
+        if (!u) return '#';
+        if (/^(https?:)?\/\//i.test(u) || u.charAt(0) === '/' || u.charAt(0) === '#') return u;
+        return '#';
+    }
+
+    // Quote-aware escape — safe in both text and attribute contexts
+    function _escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
 
     // ── Badge injection (tiered search) — admin only ──
 
@@ -33,35 +49,36 @@
             };
             var bc = cfgMap[claim.badge_state] || cfgMap.uncertain;
 
-            // Build tooltip
-            var confLabel = (claim.gemini_confidence || '').toUpperCase();
+            // Build tooltip — escape all dynamic fields: the tooltip is rendered
+            // with data-bs-html="true", so raw claim/Gemini/admin text would be HTML
+            var confLabel = _escHtml((claim.gemini_confidence || '').toUpperCase());
             var tooltip = '';
             if (claim.badge_state === 'admin_verified') {
                 tooltip = 'Admin verified.';
                 if (confLabel) tooltip += ' [' + confLabel + ']';
-                if (claim.gemini_reasoning) tooltip += ' RadInsights CMV: ' + claim.gemini_reasoning;
-                if (claim.admin_reference_title) tooltip += ' | Ref: ' + claim.admin_reference_title;
-                if (claim.admin_notes) tooltip += ' | Notes: ' + claim.admin_notes;
+                if (claim.gemini_reasoning) tooltip += ' RadInsights CMV: ' + _escHtml(claim.gemini_reasoning);
+                if (claim.admin_reference_title) tooltip += ' | Ref: ' + _escHtml(claim.admin_reference_title);
+                if (claim.admin_notes) tooltip += ' | Notes: ' + _escHtml(claim.admin_notes);
                 if (claim.admin_reference_url) tooltip += ' | Click to view.';
             } else if (claim.badge_state === 'disputed') {
                 tooltip = 'Disputed.';
                 if (confLabel) tooltip += ' [' + confLabel + ']';
-                if (claim.admin_notes) tooltip += ' ' + claim.admin_notes;
-                if (claim.gemini_correction) tooltip += ' | Correction: ' + claim.gemini_correction;
+                if (claim.admin_notes) tooltip += ' ' + _escHtml(claim.admin_notes);
+                if (claim.gemini_correction) tooltip += ' | Correction: ' + _escHtml(claim.gemini_correction);
             } else if (claim.badge_state === 'dismissed') {
                 tooltip = 'Dismissed.';
-                if (claim.admin_notes) tooltip += ' ' + claim.admin_notes;
+                if (claim.admin_notes) tooltip += ' ' + _escHtml(claim.admin_notes);
             } else {
                 if (confLabel) tooltip = '[' + confLabel + '] ';
-                tooltip += claim.gemini_reasoning || '';
-                if (claim.admin_notes) tooltip += ' | Admin: ' + claim.admin_notes;
+                tooltip += _escHtml(claim.gemini_reasoning || '');
+                if (claim.admin_notes) tooltip += ' | Admin: ' + _escHtml(claim.admin_notes);
             }
 
             // Create badge element
             var el;
             if (claim.badge_state === 'admin_verified' && claim.admin_reference_url) {
                 el = document.createElement('a');
-                el.href = claim.admin_reference_url;
+                el.href = _safeUrl(claim.admin_reference_url);
                 el.target = '_blank';
                 el.rel = 'noopener noreferrer';
             } else {
@@ -287,7 +304,7 @@
             if (c.badge_state === 'admin_verified') {
                 statusHtml = '<span class="badge bg-primary"><i class="fas fa-shield-alt me-1"></i>Expert Verified</span>';
                 if (c.admin_reference_title) {
-                    detailHtml = '<a href="' + (c.admin_reference_url || '#') + '" target="_blank" rel="noopener" class="small text-decoration-none">' +
+                    detailHtml = '<a href="' + _escHtml(_safeUrl(c.admin_reference_url)) + '" target="_blank" rel="noopener" class="small text-decoration-none">' +
                         '<i class="fas fa-external-link-alt me-1"></i>' + _escHtml(c.admin_reference_title) + '</a>';
                 } else {
                     detailHtml = '<small class="text-muted">Verified by expert panel</small>';
@@ -341,7 +358,7 @@
                 }
                 // Reference
                 if (c.admin_reference_title) {
-                    detail += '<a href="' + (c.admin_reference_url || '#') + '" target="_blank" rel="noopener" class="small text-decoration-none d-block mt-1">' +
+                    detail += '<a href="' + _escHtml(_safeUrl(c.admin_reference_url)) + '" target="_blank" rel="noopener" class="small text-decoration-none d-block mt-1">' +
                         '<i class="fas fa-external-link-alt me-1"></i>' + _escHtml(c.admin_reference_title) + '</a>';
                 }
                 // Review date
@@ -420,7 +437,7 @@
             '<div class="card-body p-3"><ul class="list-unstyled mb-0">';
         refs.forEach(function(r) {
             html += '<li class="mb-2"><i class="fas fa-file-medical me-1 text-success"></i>' +
-                '<a href="' + r.admin_reference_url + '" target="_blank" rel="noopener noreferrer">' +
+                '<a href="' + _escHtml(_safeUrl(r.admin_reference_url)) + '" target="_blank" rel="noopener noreferrer">' +
                 _escHtml(r.admin_reference_title || r.admin_reference_url) + '</a></li>';
         });
         html += '</ul></div></div></div>';
@@ -501,7 +518,7 @@
                 if (claim.gemini_correction) info += ' | Correction: ' + claim.gemini_correction;
 
                 // Pre-fill corrected text with existing correction or gemini suggestion
-                var correctedPrefill = (claim.corrected_claim_text || claim.gemini_correction || '').replace(/"/g,'&quot;');
+                var correctedPrefill = claim.corrected_claim_text || claim.gemini_correction || '';
 
                 panel.innerHTML =
                     '<div style="background:linear-gradient(135deg,#5E899E,#4a7285);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">' +

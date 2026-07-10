@@ -15,8 +15,23 @@
     var _isAdmin = false;
     var _currentSelection = { text: '', contentType: '', contentId: '' };
 
-    function _escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-    function _escAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    // Quote-aware escape — safe in both text and attribute contexts
+    function _escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    function _escAttr(s) { return _escHtml(s); }
+    // Only allow http(s)/relative URLs in generated hrefs (blocks javascript: etc.)
+    function _safeUrl(u) {
+        u = String(u == null ? '' : u).trim();
+        if (!u) return '#';
+        if (/^(https?:)?\/\//i.test(u) || u.charAt(0) === '/' || u.charAt(0) === '#') return u;
+        return '#';
+    }
 
     var CONTENT_SELECTORS = [
         '#anatomyHistory',
@@ -78,8 +93,12 @@
     function _detectContentType(el) {
         var node = el;
         while (node && node !== document.body) {
+            // Record contentId before the contentType early-return — the same
+            // element often carries both data attributes
+            if (node.dataset && node.dataset.contentId && !_currentSelection.contentId) {
+                _currentSelection.contentId = node.dataset.contentId;
+            }
             if (node.dataset && node.dataset.contentType) return node.dataset.contentType;
-            if (node.dataset && node.dataset.contentId) _currentSelection.contentId = node.dataset.contentId;
             node = node.parentElement;
         }
         if (el.closest('#anatomyHistory')) return 'anatomy_snippet';
@@ -119,8 +138,8 @@
             if (!el || !(el.closest(CONTENT_SELECTORS) || el.closest('#detailPanel'))) { _hide(); return; }
 
             _currentSelection.text = text.substring(0, 500);
+            _currentSelection.contentId = '';  // reset BEFORE detection — _detectContentType fills it
             _currentSelection.contentType = _detectContentType(el);
-            _currentSelection.contentId = '';
 
             var range = sel.getRangeAt(0);
             var rect = range.getBoundingClientRect();
@@ -233,8 +252,8 @@
                 ? '<span class="badge" style="font-size:.5rem;background:var(--brand-primary);color:#fff;">Manual</span>'
                 : '<span class="badge" style="font-size:.5rem;background:#1a5276;color:#fff;">PubMed</span>';
             html += '<div class="d-flex justify-content-between align-items-center p-1 mb-1 rounded" style="background:rgba(25,135,84,.06);border:1px solid rgba(25,135,84,.2);">' +
-                '<small><strong>' + (p.title || 'Untitled').substring(0, 50) + '</strong> ' + srcBadge +
-                '<br><span class="text-muted">' + shortAuth + (p.year ? ' (' + p.year + ')' : '') + '</span></small>' +
+                '<small><strong>' + _escHtml((p.title || 'Untitled').substring(0, 50)) + '</strong> ' + srcBadge +
+                '<br><span class="text-muted">' + _escHtml(shortAuth) + (p.year ? ' (' + _escHtml(p.year) + ')' : '') + '</span></small>' +
                 '<button class="btn btn-sm py-0 px-1" style="font-size:.7rem;color:#dc3545;" onclick="SelectionVerify._removeRef(' + i + ')" title="Remove"><i class="fas fa-times"></i></button>' +
                 '</div>';
         });
@@ -302,11 +321,11 @@
                             'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
                             'onclick="SelectionVerify._pickPaper(' + i + ')" data-paper-idx="' + i + '">' +
                             '<div class="d-flex justify-content-between align-items-start">' +
-                            '<div><strong style="font-size:.8rem;">' + title + '</strong> ' + srcBadge + '</div>' +
-                            '<a href="' + link + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" ' +
+                            '<div><strong style="font-size:.8rem;">' + _escHtml(title) + '</strong> ' + srcBadge + '</div>' +
+                            '<a href="' + _escHtml(_safeUrl(link)) + '" target="_blank" rel="noopener" onclick="event.stopPropagation();" ' +
                             'style="font-size:.7rem;white-space:nowrap;margin-left:8px;" title="Open reference">' +
                             '<i class="fas fa-external-link-alt"></i></a></div>' +
-                            '<small class="text-muted">' + (authors ? authors + ' — ' : '') + (r.journal || '') + (r.year ? ' (' + r.year + ')' : '') +
+                            '<small class="text-muted">' + (authors ? _escHtml(authors) + ' — ' : '') + _escHtml(r.journal || '') + (r.year ? ' (' + _escHtml(r.year) + ')' : '') +
                             (r.has_free_full_text ? ' <span class="badge bg-success" style="font-size:.6rem;">Free</span>' : '') +
                             '</small></div>';
                     });

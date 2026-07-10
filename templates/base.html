@@ -628,10 +628,12 @@
             toast.innerHTML = `
                 <div style="display: flex; align-items: center; flex: 1;">
                     ${icon}
-                    <span>${message}</span>
+                    <span></span>
                 </div>
                 <button type="button" class="btn-close" onclick="this.parentElement.remove()" style="margin-left: 12px; opacity: 0.7;" aria-label="Close"></button>
             `;
+            // Message set via textContent — server error strings may contain markup
+            toast.querySelector('span').textContent = message;
             
             toastContainer.appendChild(toast);
             

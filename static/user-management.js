@@ -223,7 +223,7 @@ class UserManagement {
                             <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
-                            <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
+                            <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id})" title="Delete user">
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         `}
@@ -344,7 +344,7 @@ class UserManagement {
                             <button class="btn btn-sm btn-outline-warning" onclick="userMgmt.resetQuota(${user.id})">
                                 <i class="fas fa-redo me-1"></i>Reset AI Quota
                             </button>
-                            <button class="btn btn-sm btn-outline-danger" onclick="userMgmt.sendPasswordReset(${user.id}, '${this.escapeHtml(user.email)}')">
+                            <button class="btn btn-sm btn-outline-danger" onclick="userMgmt.sendPasswordReset(${user.id})">
                                 <i class="fas fa-key me-1"></i>Send Password Reset
                             </button>
                         </div>
@@ -916,7 +916,14 @@ class UserManagement {
         }
     }
 
+    _emailForUser(userId) {
+        if (this.selectedUser && this.selectedUser.id === userId) return this.selectedUser.email;
+        const u = (this.users || []).find(x => x.id === userId);
+        return u ? u.email : 'this user';
+    }
+
     async sendPasswordReset(userId, email) {
+        email = email || this._emailForUser(userId);
         if (!confirm(`Send password reset email to ${email}?`)) return;
         try {
             const resp = await fetch(`/api/admin/users/${userId}/send-password-reset`, { method: 'POST' });
@@ -1003,6 +1010,7 @@ class UserManagement {
     }
     
     async deleteUserFromTable(userId, userEmail) {
+        userEmail = userEmail || this._emailForUser(userId);
         // Show confirmation dialog
         if (confirm(`Delete user: ${userEmail}?\n\nThis will permanently remove the user and their private data.\nForum comments will be preserved (anonymized).`)) {
             await this.deleteUser(userId);
@@ -1050,8 +1058,8 @@ class UserManagement {
         const alert = document.createElement('div');
         alert.className = 'alert alert-success alert-dismissible fade show';
         alert.innerHTML = `
-            ${message}
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            ${this.escapeHtml(message)}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.insertBefore(alert, document.body.firstChild);
         setTimeout(() => alert.remove(), 4000);
@@ -1061,17 +1069,21 @@ class UserManagement {
         const alert = document.createElement('div');
         alert.className = 'alert alert-danger alert-dismissible fade show';
         alert.innerHTML = `
-            ${message}
-            <button type="button" class="close" data-dismiss="alert">&times;</button>
+            ${this.escapeHtml(message)}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         document.body.insertBefore(alert, document.body.firstChild);
         setTimeout(() => alert.remove(), 5000);
     }
     
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        // Quote-aware escape — safe in both text and attribute contexts
+        return String(text == null ? '' : text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }
 
