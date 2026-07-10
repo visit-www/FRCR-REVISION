@@ -105,7 +105,7 @@
             <!-- Logo & Home -->
             <a class="navbar-brand d-flex align-items-center" href="/" style="font-size: 1.2rem;">
                 <div class="m-2">
-                    <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/f_auto,q_auto,w_300/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="app-logo" style="width: 72px; height: 72px; object-fit: contain;">
+                    <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/f_auto,q_auto,w_300/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadInsights logo" style="width: 72px; height: 72px; object-fit: contain;">
                 </div>
                 <span style="font-weight: 500;font-size: larger; color: #fff;margin-left:auto;">RadInsights</span>
             </a>
@@ -451,7 +451,8 @@
     {% endif %}
 
     <!-- Toast Notification Container -->
-    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;"></div>
+    <!-- z-index 10600: above every overlay in the app (tour 10002, PII 10300, cookie banner 10500) so toasts are never buried -->
+<div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10600; max-width: 400px;"></div>
 
     <!-- PWA Install Banner (shown when app can be installed) -->
     <div id="pwa-install-banner" class="alert alert-info alert-dismissible fade show d-none" role="alert" style="margin: 0; border-radius: 0; background: linear-gradient(135deg, #5E899E 0%, #4D7A8D 100%); color: #fff; border: none; padding: 12px 20px;">

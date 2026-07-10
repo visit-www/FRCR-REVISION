@@ -533,8 +533,10 @@
     </div>
 </div>
 
-<!-- Image Search Modal (admin only) -->
-{% if is_admin %}
+<!-- Image Search Modal — DISABLED with its JS (openImageSearchModal/searchSnippetImages
+     live in the {% if false %} dead-code block below); nothing could open this modal and
+     its Search button threw ReferenceError. Re-enable both together if the feature returns. -->
+{% if false %}
 <div class="modal fade app-content-modal" id="snippetImageSearchModal" tabindex="-1" data-bs-focus="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -865,7 +867,10 @@
 {% endblock %}
 
 {% block scripts %}
+{% if is_admin %}
+{# TinyMCE is only used by the admin edit modals — don't ship it to every visitor #}
 <script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+{% endif %}
 <script>
     var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
     var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
