@@ -868,16 +868,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ── After Generate: backend returns HTML. initCaseForm sets textarea.value
-    // programmatically (no 'input' event), so we re-render the preview manually
-    // on a schedule that matches the fetch resolve time.
-    if (genBtn) {
-        genBtn.addEventListener('click', function() {
-            [1000, 3000, 6000].forEach(function(ms) {
-                setTimeout(renderPreviewFromTextarea, ms);
-            });
-        });
-    }
+    // ── After Generate: mdt-suite.js sets textarea.value programmatically (no
+    // 'input' event) and dispatches this event when the fetch actually resolves.
+    // (The old fixed 1s/3s/6s timeouts missed any generation slower than 6s —
+    // users thought it failed and clicked Generate again, paying twice.)
+    document.addEventListener('mdt:summary-updated', renderPreviewFromTextarea);
 
     // ── PII Guard v2 — wire to all clinical textareas + the case_reference field ──
     // Renders dotted underlines on detected PII, red shield in the page card header,
@@ -886,7 +881,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window._piiCtrl = PIIGuard.protect({
             textareas: [
                 '#mdtCaseRef',
-                'textarea[data-field="diagnosis"]',
+                'input[data-field="diagnosis"]',  /* diagnosis is an <input>, not a textarea — the old selector matched nothing, so names typed here were never scanned */
                 'textarea[data-field="clinical_history"]',
                 'textarea[data-field="imaging_findings"]',
                 'textarea[data-field="histology_biopsy"]',

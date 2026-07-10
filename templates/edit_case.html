@@ -3352,6 +3352,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ==================== DIRTY-STATE GUARD ====================
+// Warn before navigating away with unsaved edits (form fields or TinyMCE).
+// This editor previously had no guard at all — long editing sessions were
+// silently lost on a stray click. Same pattern as edit_protocol.html.
+window._caseDirty = false;
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('caseEditForm');
+    if (form) {
+        form.addEventListener('input', function() { window._caseDirty = true; });
+        form.addEventListener('change', function() { window._caseDirty = true; });
+    }
+    // Wrap the main save (assigned late by edit-case-modal.js) so saving clears the flag
+    function wrapSave() {
+        if (typeof window.saveEditedCase === 'function' && !window.saveEditedCase._dirtyWrapped) {
+            const orig = window.saveEditedCase;
+            const wrapped = function() {
+                window._caseDirty = false;
+                try {
+                    if (window.tinymce && typeof tinymce.get === 'function') {
+                        (tinymce.get() || []).forEach(function(ed) { if (ed && ed.setDirty) ed.setDirty(false); });
+                    }
+                } catch (err) {}
+                return orig.apply(this, arguments);
+            };
+            wrapped._dirtyWrapped = true;
+            window.saveEditedCase = wrapped;
+        }
+    }
+    wrapSave();
+    setTimeout(wrapSave, 2000);
+});
+window.addEventListener('beforeunload', function(e) {
+    let tinyDirty = false;
+    try {
+        if (window.tinymce && typeof tinymce.get === 'function') {
+            const eds = tinymce.get() || [];
+            tinyDirty = Array.prototype.some.call(eds, function(ed) { return ed && ed.isDirty && ed.isDirty(); });
+        }
+    } catch (err) {}
+    if (window._caseDirty || tinyDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
 // Status-based visibility control (replaces is_public toggle)
 // Make updateVisibilityUI globally accessible so it can be called from other scripts
 function updateVisibilityUI(status) {

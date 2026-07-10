@@ -601,6 +601,9 @@
                     .then(function(d) {
                         var summaryEl = $('#mdtPreSummary');
                         if (summaryEl) summaryEl.value = d.summary || '';
+                        // Tell the page to re-render the preview NOW — fixed
+                        // 1s/3s/6s timeouts missed generations slower than 6s
+                        document.dispatchEvent(new CustomEvent('mdt:summary-updated'));
                         showSaved();
                         // Admin cost badge
                         if (window.showAdminCostBadge && d.api_cost_usd != null) {

@@ -4,7 +4,7 @@
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
 const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;
@@ -148,8 +148,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Cache successful responses
-          if (response && response.status === 200 && response.type === 'basic') {
+          // Cache ONLY the public allowlisted pages — caching every HTML
+          // response stored authenticated, personalised pages (dashboard etc.)
+          // that could be served to a different user of the same device offline
+          if (response && response.status === 200 && response.type === 'basic' &&
+              CACHEABLE_PAGES.includes(url.pathname)) {
             const responseToCache = response.clone();
             caches.open(PAGES_CACHE).then((cache) => {
               cache.put(request, responseToCache);
@@ -228,51 +231,26 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // For static assets: Cache first, then network (stale-while-revalidate)
+  // For static assets: NETWORK first, cache fallback.
+  // Stale-while-revalidate served the PREVIOUS deploy's JS/CSS on the first
+  // visit after every release (scripts are loaded without version params), so
+  // fixes looked "not deployed" until a second reload. Network-first trades a
+  // little latency for correctness; the cache still covers offline use.
   event.respondWith(
-    caches.match(request)
-      .then((cachedResponse) => {
-        // Return cached version immediately
-        if (cachedResponse) {
-          // Update cache in background (stale-while-revalidate)
-          fetch(request)
-            .then((response) => {
-              if (response && response.status === 200 && response.type === 'basic') {
-                const responseToCache = response.clone();
-                caches.open(STATIC_CACHE).then((cache) => {
-                  cache.put(request, responseToCache);
-                });
-              }
-            })
-            .catch(() => {
-              // Network failed, but we have cache, so that's fine
-            });
-          return cachedResponse;
-        }
-        
-        // Not in cache, fetch from network
-        return fetch(request)
-          .then((response) => {
-            // Don't cache non-successful responses
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-            
-            // Clone the response (can only be consumed once)
-            const responseToCache = response.clone();
-            
-            // Cache for future use
-            caches.open(STATIC_CACHE)
-              .then((cache) => {
-                cache.put(request, responseToCache);
-              });
-            
-            return response;
-          })
-          .catch(() => {
-            // Network failed and no cache
-            return new Response('Offline', { status: 503 });
+    fetch(request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, responseToCache);
           });
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(request).then((cachedResponse) => {
+          return cachedResponse || new Response('Offline', { status: 503 });
+        });
       })
   );
 });
