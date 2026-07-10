@@ -458,7 +458,10 @@
                     showAlert('Login successful! Redirecting...', 'success');
                     const urlParams = new URLSearchParams(window.location.search);
                     const planParam = urlParams.get('plan');
-                    const redirectUrl = planParam ? '/pricing?plan=' + encodeURIComponent(planParam) : '/';
+                    // Honour ?next= (public pages pass it) — relative paths only, no protocol-relative //
+                    const nextParam = urlParams.get('next');
+                    const safeNext = (nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')) ? nextParam : null;
+                    const redirectUrl = planParam ? '/pricing?plan=' + encodeURIComponent(planParam) : (safeNext || '/');
                     setTimeout(() => {
                         window.location.href = redirectUrl;
                     }, 500);

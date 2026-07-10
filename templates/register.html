@@ -611,7 +611,7 @@
                     },
                     credentials: 'include',
                     body: JSON.stringify({
-                        email: document.getElementById('email').value,
+                        email: document.getElementById('email').value.trim(),
                         full_name: document.getElementById('full_name').value,
                         password: passwordInput.value
                     })
@@ -623,7 +623,10 @@
                     showAlert('Account created successfully! Redirecting...', 'success');
                     const urlParams = new URLSearchParams(window.location.search);
                     const planParam = urlParams.get('plan');
-                    const redirectUrl = planParam ? '/pricing?plan=' + encodeURIComponent(planParam) : '/';
+                    // Honour ?next= (public pages pass it) — relative paths only, no protocol-relative //
+                    const nextParam = urlParams.get('next');
+                    const safeNext = (nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')) ? nextParam : null;
+                    const redirectUrl = planParam ? '/pricing?plan=' + encodeURIComponent(planParam) : (safeNext || '/');
                     setTimeout(() => {
                         window.location.href = redirectUrl;
                     }, 1000);
@@ -645,12 +648,22 @@
             alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // Pass plan param to Google OAuth
+        // Pass plan param to Google OAuth; forward plan/next to the login link
         (function() {
-            const p = new URLSearchParams(window.location.search).get('plan');
+            const params = new URLSearchParams(window.location.search);
+            const p = params.get('plan');
             if (p) {
                 const g = document.getElementById('googleBtn');
                 if (g) g.href = '/auth/google?plan=' + encodeURIComponent(p);
+            }
+            const nx = params.get('next');
+            const carry = new URLSearchParams();
+            if (p) carry.set('plan', p);
+            if (nx && nx.startsWith('/') && !nx.startsWith('//')) carry.set('next', nx);
+            if ([...carry].length) {
+                document.querySelectorAll('a[href="/auth/login"]').forEach(function(a) {
+                    a.href = '/auth/login?' + carry.toString();
+                });
             }
         })();
 
