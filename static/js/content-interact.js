@@ -581,6 +581,7 @@ var ContentInteract = (function() {
   function _deleteHighlight(id, markEl) {
     _api('DELETE', '/highlight/' + id).then(function(data) {
       if (data.success) { _unwrapMark(markEl); _flash('Highlight removed', 'success'); }
+      else _flash('Could not remove highlight — try again', 'error');
     });
   }
 
@@ -856,12 +857,14 @@ var ContentInteract = (function() {
     vote: function(msgId, value) {
       _api('POST', '/forum/' + msgId + '/vote', { vote: value }).then(function(data) {
         if (data.success) _loadForumMessages();
+        else _flash('Vote failed — try again', 'error');
       });
     },
 
     pin: function(msgId) {
       _api('POST', '/forum/' + msgId + '/pin').then(function(data) {
         if (data.success) _loadForumMessages();
+        else _flash('Pin failed — try again', 'error');
       });
     },
 
@@ -878,6 +881,7 @@ var ContentInteract = (function() {
       if (!confirm('Delete this message?')) return;
       _api('DELETE', '/forum/' + msgId).then(function(data) {
         if (data.success) _loadForumMessages();
+        else _flash('Delete failed — try again', 'error');
       });
     }
   };

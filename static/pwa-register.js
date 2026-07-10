@@ -164,7 +164,8 @@ function showIOSInstallInstructions() {
   const installBanner = document.getElementById('pwa-install-banner');
   if (installBanner) {
     // Check if dismissed recently
-    const installDismissed = localStorage.getItem('pwa-install-dismissed');
+    let installDismissed = null;
+    try { installDismissed = localStorage.getItem('pwa-install-dismissed'); } catch (e) {}
     const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
     const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
     
@@ -253,7 +254,8 @@ if (isPWA()) {
     // For other platforms, check if we should show install prompt after a delay
     setTimeout(() => {
       // Only show if not dismissed recently (check localStorage)
-      const installDismissed = localStorage.getItem('pwa-install-dismissed');
+      let installDismissed = null;
+    try { installDismissed = localStorage.getItem('pwa-install-dismissed'); } catch (e) {}
       const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
       const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
       
@@ -273,7 +275,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Use Bootstrap's alert close event
     installBanner.addEventListener('closed.bs.alert', () => {
       // Store dismissal time
-      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+      try { localStorage.setItem('pwa-install-dismissed', Date.now().toString()); } catch (e) {}
     });
     
     // Also handle manual close button clicks
@@ -281,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeBtn) {
       closeBtn.addEventListener('click', () => {
         setTimeout(() => {
-          localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+          try { localStorage.setItem('pwa-install-dismissed', Date.now().toString()); } catch (e) {}
         }, 300);
       });
     }

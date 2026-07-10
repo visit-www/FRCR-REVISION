@@ -23,12 +23,12 @@ class OnboardingTour {
 
     /** Has user already seen the tour? */
     hasSeen() {
-        return localStorage.getItem(this.STORAGE_KEY) === 'true';
+        try { return localStorage.getItem(this.STORAGE_KEY) === 'true'; } catch (e) { return false; }
     }
 
     /** Mark tour as seen */
     markSeen() {
-        localStorage.setItem(this.STORAGE_KEY, 'true');
+        try { localStorage.setItem(this.STORAGE_KEY, 'true'); } catch (e) {}
         if (this.notifyServer) {
             fetch('/api/tour/complete', {
                 method: 'POST',

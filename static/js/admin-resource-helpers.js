@@ -284,6 +284,8 @@ function searchContent(inputId, resultsId, chipsId) {
         fetch('/api/cases/search?type=all&q=' + encodeURIComponent(query) + '&limit=15')
             .then(function(r) { return r.json(); })
             .then(function(results) {
+                // Stale-response guard: a slow reply for "ab" must not clobber "abc" results
+                if (document.getElementById(inputId).value.trim() !== query) return;
                 var container = document.getElementById(resultsId);
                 container.innerHTML = '';
                 if (results.length === 0) {
@@ -335,6 +337,11 @@ function searchContent(inputId, resultsId, chipsId) {
                     container.appendChild(div);
                 });
                 container.classList.remove('d-none');
+            })
+            .catch(function() {
+                var container = document.getElementById(resultsId);
+                container.innerHTML = '<div class="search-result-item text-muted">Search unavailable — check connection</div>';
+                container.classList.remove('d-none');
             });
     }, 300);
 }
@@ -352,6 +359,8 @@ function searchItems(inputId, resultsId, type) {
         fetch('/api/cases/search?type=' + type + '&q=' + encodeURIComponent(query) + '&limit=10')
             .then(function(r) { return r.json(); })
             .then(function(results) {
+                // Stale-response guard (see searchContent)
+                if (document.getElementById(inputId).value.trim() !== query) return;
                 var container = document.getElementById(resultsId);
                 container.innerHTML = '';
                 if (results.length === 0) {
@@ -404,6 +413,11 @@ function searchItems(inputId, resultsId, type) {
                     };
                     container.appendChild(div);
                 });
+                container.classList.remove('d-none');
+            })
+            .catch(function() {
+                var container = document.getElementById(resultsId);
+                container.innerHTML = '<div class="search-result-item text-muted">Search unavailable — check connection</div>';
                 container.classList.remove('d-none');
             });
     }, 300);

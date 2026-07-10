@@ -37,8 +37,11 @@ class BackupReminder {
     }
     
     shouldCheckBackup() {
-        const lastCheck = localStorage.getItem(this.lastCheckKey);
-        const dismissed = sessionStorage.getItem(this.dismissedKey);
+        let lastCheck = null, dismissed = null;
+        try {
+            lastCheck = localStorage.getItem(this.lastCheckKey);
+            dismissed = sessionStorage.getItem(this.dismissedKey);
+        } catch (e) { /* storage blocked (private mode) */ }
         
         // Don't show if dismissed this session
         if (dismissed) return false;
@@ -60,7 +63,7 @@ class BackupReminder {
             const data = await response.json();
             
             // Update last check time
-            localStorage.setItem(this.lastCheckKey, Date.now().toString());
+            try { localStorage.setItem(this.lastCheckKey, Date.now().toString()); } catch (e) {}
             
             // Show reminder if backup needed
             if (data.needs_backup) {
@@ -126,7 +129,7 @@ class BackupReminder {
         setTimeout(() => element.remove(), 300);
         
         // Mark as dismissed for this session
-        sessionStorage.setItem(this.dismissedKey, 'true');
+        try { sessionStorage.setItem(this.dismissedKey, 'true'); } catch (e) {}
     }
     
     addStyles() {
