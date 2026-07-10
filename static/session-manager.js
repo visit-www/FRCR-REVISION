@@ -75,9 +75,12 @@ class SessionManager {
         const now = Date.now();
         const timeSinceLastActivity = now - this.lastActivity;
 
-        // Only refresh if at least 1 minute has passed since last activity
-        // This prevents excessive API calls
-        if (timeSinceLastActivity > 60000) {
+        // Only refresh if at least 10 minutes have passed since the last
+        // activity-triggered refresh. The periodic 14-min refresh already keeps
+        // active sessions alive — at 1 minute this fired a serverless request
+        // per minute of mouse movement per user (real cost on the Vercel
+        // Hobby CPU budget) for no UX benefit.
+        if (timeSinceLastActivity > 600000) {
             this.lastActivity = now;
             this.cancelExpiryCountdown(); // Cancel any pending expiry timer
             this.refreshSession();

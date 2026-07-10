@@ -215,6 +215,15 @@ function loadCards() {
         })
         .catch(err => {
             console.error('Error loading cards:', err);
+            // Hide the spinner and show the empty state — otherwise the page
+            // sits on "Loading study cards…" forever after a network error
+            document.getElementById('loadingState').style.display = 'none';
+            const noCards = document.getElementById('noCards');
+            if (noCards) {
+                noCards.style.display = 'block';
+                const msg = noCards.querySelector('p, .lead');
+                if (msg) msg.textContent = 'Could not load study cards. Check your connection and refresh the page.';
+            }
             if (typeof showToast === 'function') showToast('Failed to load study cards', 'error');
         });
 }

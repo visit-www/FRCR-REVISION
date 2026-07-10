@@ -151,6 +151,9 @@ def api_my_notes_stats():
 
     highlight_count = TextHighlight.query.filter_by(user_id=current_user.id).count()
 
+    starred_count = CandidateNote.query.filter_by(user_id=current_user.id, is_starred=True)\
+        .filter(CandidateNote.content_type != '__migration_v1__').count()
+
     notebooks = {}
     for ct, count in type_counts:
         meta = CONTENT_TYPE_META.get(ct, {})
@@ -166,6 +169,7 @@ def api_my_notes_stats():
         'notebooks': notebooks,
         'total_notes': sum(c for _, c in type_counts),
         'total_highlights': highlight_count,
+        'starred_count': starred_count,
     })
 
 

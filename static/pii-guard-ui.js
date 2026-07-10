@@ -321,9 +321,23 @@
                         btn.classList.add('pii-btn-blocked');
                         btn.setAttribute('data-pii-blocked', 'true');
                         btn.setAttribute('title', 'Resolve PHI issues before submitting');
+                        // Really disable — pointer-events:none alone lets
+                        // keyboard users Tab+Enter straight through the gate
+                        if (!btn.disabled) {
+                            btn.disabled = true;
+                            btn.setAttribute('data-pii-disabled', 'true');
+                        }
+                        btn.setAttribute('aria-disabled', 'true');
                     } else {
                         btn.classList.remove('pii-btn-blocked');
                         btn.removeAttribute('data-pii-blocked');
+                        // Only re-enable buttons WE disabled — don't clobber
+                        // loading states set by other code
+                        if (btn.getAttribute('data-pii-disabled')) {
+                            btn.disabled = false;
+                            btn.removeAttribute('data-pii-disabled');
+                        }
+                        btn.removeAttribute('aria-disabled');
                         var orig = btn.getAttribute('data-orig-title');
                         if (orig) btn.setAttribute('title', orig);
                     }

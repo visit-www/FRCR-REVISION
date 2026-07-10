@@ -94,11 +94,18 @@
       });
       container.innerHTML = html || '<span class="mn-sidebar-empty">No notebooks yet</span>';
 
-      // Starred count
-      var starredCount = 0;
-      _notes.forEach(function(n) { if (n.is_starred) starredCount++; });
+      // Starred count — use the server total; _notes only holds the currently
+      // filtered subset, which showed a wrong partial count after filtering
       var cs = document.getElementById('mnCountStarred');
-      if (cs) cs.textContent = starredCount;
+      if (cs) {
+        if (typeof data.starred_count === 'number') {
+          cs.textContent = data.starred_count;
+        } else {
+          var starredCount = 0;
+          _notes.forEach(function(n) { if (n.is_starred) starredCount++; });
+          cs.textContent = starredCount;
+        }
+      }
 
       // Bind clicks
       container.querySelectorAll('.mn-sidebar-item').forEach(function(el) {
@@ -356,7 +363,15 @@
       var noteId = _selectedId;
       var text = this.value;
       _saveTimer = setTimeout(function() {
-        if (!noteId || !text.trim()) return;
+        if (!noteId) return;
+        if (!text.trim()) {
+          // Backend rejects empty notes — tell the user instead of leaving the
+          // amber "Unsaved" dot stuck forever
+          if (_selectedId === noteId) {
+            statusEl.innerHTML = '<i class="fas fa-info-circle text-muted me-1"></i>Note is empty — not saved. Use the delete button to remove it.';
+          }
+          return;
+        }
         api('PUT', '/api/my-notes/' + noteId, { note_text: text }).then(function(data) {
           if (_selectedId !== noteId) return; // user switched notes
           if (data.success) {

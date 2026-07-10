@@ -3492,7 +3492,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Bold: **text** → <strong>text</strong>
         html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
         // Italic: *text* → <em>text</em>  (but not inside already-converted strong)
-        html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+        // No lookbehind — a lookbehind regex literal is a parse-time SyntaxError
+        // on Safari <16.4 and killed this entire inline script
+        html = html.replace(/(^|[^*])\*(?!\*)([^*]+?)\*(?!\*)/g, '$1<em>$2</em>');
         // Inline code: `text` → <code>text</code>
         html = html.replace(/`(.+?)`/g, '<code style="background:#f0f7fa;padding:1px 5px;border-radius:3px;font-size:0.82em;">$1</code>');
         // Split into lines for block-level processing
@@ -3850,6 +3852,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.askClaude = async function() {
+        // Block re-entry while a request is in flight (e.g. double-Enter):
+        // the old path client-aborted the first call and refired, but the
+        // server kept processing and billing the aborted request
+        if (activeAIController) {
+            showToast('An AI request is already running — cancel it or wait for it to finish.', 'info');
+            return;
+        }
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
@@ -4763,6 +4772,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Disable submit during the two sequential POSTs — a double-click
+        // created a duplicate meeting + case
+        var submitBtn = modal.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            if (submitBtn.disabled) return;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+        }
+        function _restoreSubmit() {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save case';
+            }
+        }
+
         // Create-or-find meeting, then create case
         fetch('/api/mdt/meetings', {
             method: 'POST',
@@ -4793,6 +4817,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!result.resp.ok || !result.data.case) {
                 throw new Error(result.data.error || 'Failed to save case');
             }
+            _restoreSubmit();
             bootstrap.Modal.getInstance(modal).hide();
             // Open the new case in an iframe overlay so the user doesn't
             // lose their Smart Reporter context. User can click "Open full
@@ -4800,6 +4825,7 @@ document.addEventListener('DOMContentLoaded', function() {
             openMdtCaseIframeOverlay(result.mid, result.data.case.id);
         })
         .catch(function(err) {
+            _restoreSubmit();
             showToast('Could not save: ' + err.message, 'error');
         });
     }
@@ -6672,9 +6698,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== PII GUARD v2 ====================
     if (window.PIIGuard && window.PIIGuard.protect) {
+        // Resolve the banner target up front and tag it with an id — a ':has()'
+        // selector throws in querySelector on browsers without :has support,
+        // which broke every subsequent PII scan
+        (function() {
+            var input = document.getElementById('editorInput');
+            var card = input ? input.closest('.card') : null;
+            var target = card ? card.querySelector('.card-header .d-flex') : null;
+            if (target && !target.id) target.id = 'srPiiBannerTarget';
+        })();
         window._piiCtrl = PIIGuard.protect({
             textareas: ['#editorInput', '#editorOutput'],
-            bannerTarget: '.card:has(#editorInput) .card-header .d-flex',
+            bannerTarget: '#srPiiBannerTarget',
             apiButtons: ['#btnAskClaude', '#btnFinalizeToolbar', '#btnReviewReport2', '.report-action-btn'],
             auditContext: 'smart-reporter'
         });

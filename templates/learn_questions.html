@@ -377,7 +377,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var details = div.querySelectorAll('details');
         var totalDetails = details.length;
-        if (totalDetails === 0) return;
+        // Questions without collapsible reveals have nothing to gate on —
+        // show the self-assessment panel straight away instead of never
+        if (totalDetails === 0) {
+            panel.classList.remove('d-none');
+            return;
+        }
 
         var threshold = questionType === 'sba' ? totalDetails : Math.ceil(totalDetails / 2);
         var opened = new Set();
