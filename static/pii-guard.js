@@ -458,7 +458,13 @@
     }
 
     // ======================== FETCH INTERCEPTOR ========================
-    // Thin pass-through: only adds X-PII-Override header when _overrideActive flag is set.
+    // Adds X-PII-Override header while the override state is active.
+    //
+    // STATE-BASED, not one-shot: the old consume-on-first-POST behaviour was
+    // stolen by whichever body'd POST fired next (autotext saves, the audit-log
+    // call itself...), re-blocking the AI request the user had just approved.
+    // The flag stays set while "all flagged PII dismissed" holds — the UI scan
+    // (pii-guard-ui _doScan) clears it the moment active PII reappears.
 
     var _overrideActive = false;
 
@@ -474,9 +480,8 @@
                 return originalFetch.call(this, url, options);
             }
 
-            // Add override header if flag is set
+            // Add override header while the dismissed-state holds
             if (_overrideActive) {
-                _overrideActive = false;
                 if (!options.headers) options.headers = {};
                 if (options.headers instanceof Headers) {
                     options.headers.set('X-PII-Override', '1');

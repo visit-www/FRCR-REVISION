@@ -654,17 +654,16 @@
             }
         }
         
-        // Global fetch interceptor — session expiry redirect + PII override
-        var _piiOverrideActive = false;
-        window._setPiiOverride = function() { _piiOverrideActive = true; };
+        // Global fetch interceptor — session expiry redirect.
+        // PII override header is handled solely by PIIGuard.attachToFetch()
+        // (state-based). The old flag here was never cleared, so one dismissal
+        // attached X-PII-Override to every POST for the rest of the page life.
+        window._setPiiOverride = function() {
+            if (window.PIIGuard && PIIGuard.setOverride) PIIGuard.setOverride(true);
+        };
         (function() {
             var _origFetch = window.fetch;
             window.fetch = function(url, opts) {
-                // Add PII override header when user has dismissed PII warnings
-                if (_piiOverrideActive && opts && opts.method === 'POST') {
-                    opts = Object.assign({}, opts);
-                    opts.headers = Object.assign({}, opts.headers || {}, { 'X-PII-Override': '1' });
-                }
                 return _origFetch.call(this, url, opts).then(function(response) {
                     if (response.status === 401) {
                         var ct = response.headers.get('content-type') || '';
