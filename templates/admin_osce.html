@@ -71,6 +71,12 @@
                 </div>
               </td>
             </tr>
+            {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-muted py-4">
+                <i class="fas fa-folder-open me-1"></i>No OSCE cases yet &mdash; click <strong>New Case</strong> to create the first one.
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -398,7 +404,12 @@
   window.deleteCase = function(id, code) {
     if (!confirm('Delete OSCE case ' + code + '? This cannot be undone.')) return;
     fetch(API + '/cases/' + id, { method: 'DELETE' })
-      .then(r => r.json()).then(function() { location.reload(); });
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+      .then(function(res) {
+        if (!res.ok || res.d.error) { alert('Delete failed: ' + (res.d.error || 'server error')); return; }
+        location.reload();
+      })
+      .catch(function() { alert('Delete failed: network error'); });
   };
 
   // ── Image modal ──
@@ -535,7 +546,12 @@
   window.deleteImage = function(imgId, caseId) {
     if (!confirm('Delete this image?')) return;
     fetch(API + '/images/' + imgId, { method: 'DELETE' })
-      .then(r => r.json()).then(function() { loadImages(caseId); });
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+      .then(function(res) {
+        if (!res.ok || res.d.error) { alert('Delete failed: ' + (res.d.error || 'server error')); return; }
+        loadImages(caseId);
+      })
+      .catch(function() { alert('Delete failed: network error'); });
   };
 
   // ── Auto-redirect to edit page if came from guide page ──

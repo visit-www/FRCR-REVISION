@@ -703,8 +703,12 @@ function togglePublic(id, title) {
 function deleteTemplate(id, title) {
     if (!confirm('Delete template "' + title + '"?')) return;
     fetch('/admin/radiology-templates/api/' + id, { method: 'DELETE' })
-        .then(function(r) { return r.json(); })
-        .then(function() { location.reload(); });
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+        .then(function(res) {
+            if (!res.ok || res.d.error) { alert('Delete failed: ' + (res.d.error || 'server error')); return; }
+            location.reload();
+        })
+        .catch(function() { alert('Delete failed: network error'); });
 }
 
 // ==================== MODAL CLEANUP ====================

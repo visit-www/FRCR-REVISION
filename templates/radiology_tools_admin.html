@@ -379,15 +379,23 @@ function addManual() {
 function verifyCalc(id) {
     if (!confirm('Verify and publish this radiology tool?')) return;
     fetch('/incidental-findings/admin/api/' + id + '/verify', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function() { location.reload(); });
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+        .then(function(res) {
+            if (!res.ok || res.d.error) { alert('Verify failed: ' + (res.d.error || 'server error')); return; }
+            location.reload();
+        })
+        .catch(function() { alert('Verify failed: network error'); });
 }
 
 function deleteCalc(id, name) {
     if (!confirm('Delete calculator "' + name + '"?')) return;
     fetch('/incidental-findings/admin/api/' + id, { method: 'DELETE' })
-        .then(function(r) { return r.json(); })
-        .then(function() { location.reload(); });
+        .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, d: d }; }); })
+        .then(function(res) {
+            if (!res.ok || res.d.error) { alert('Delete failed: ' + (res.d.error || 'server error')); return; }
+            location.reload();
+        })
+        .catch(function() { alert('Delete failed: network error'); });
 }
 </script>
 {% endblock %}
