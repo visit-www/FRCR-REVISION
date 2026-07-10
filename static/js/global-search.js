@@ -114,10 +114,12 @@
             }
         });
 
-        // Dismiss on Escape
+        // Dismiss on Escape — reset lastQuery so retyping the same text
+        // re-triggers the search instead of hitting the dedupe early-return
         input.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 resultsEl.classList.add('d-none');
+                lastQuery = '';
                 input.blur();
             }
         });
