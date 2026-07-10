@@ -61,10 +61,15 @@
                 var action = text.substring(prefix.length).trim();
                 // Try exact match first
                 if (_voiceCommands[action]) return _voiceCommands[action];
-                // Try fuzzy: check if action starts with a registered keyword
-                for (var key in _voiceCommands) {
-                    if (action.indexOf(key) === 0 || key.indexOf(action) === 0) {
-                        return _voiceCommands[key];
+                // Try fuzzy: check if action starts with a registered keyword.
+                // Require at least 3 chars — a misheard fragment like
+                // "command s" used to fire the first command starting with "s"
+                // (an SBA generation, burning an AI credit)
+                if (action.length >= 3) {
+                    for (var key in _voiceCommands) {
+                        if (action.indexOf(key) === 0 || key.indexOf(action) === 0) {
+                            return _voiceCommands[key];
+                        }
                     }
                 }
             }
@@ -176,8 +181,8 @@
             return { handled: true }; // Nothing to delete, consume silently
         }
 
-        // "new line" → insert \n
-        if (text === 'new line' || text === 'next line') {
+        // "new line" → insert \n  ("newline" — recognizers often emit it as one word)
+        if (text === 'new line' || text === 'newline' || text === 'next line') {
             _insertAtCursor(textarea, '\n', true);
             return { handled: true };
         }
@@ -189,7 +194,7 @@
         }
 
         // "full stop" / "stop" / "period" → insert "."
-        if (text === 'full stop' || text === 'stop' || text === 'period') {
+        if (text === 'full stop' || text === 'full-stop' || text === 'stop' || text === 'period') {
             _insertAtCursor(textarea, '.', true);
             return { handled: true };
         }
@@ -222,6 +227,37 @@
         return { handled: false, text: transcript };
     }
 
+    // Trailing embedded command: continuous recognition merges "...no pleural
+    // effusion stop" into ONE result, so whole-utterance matching typed the
+    // literal word "stop" (bug #98) and "new line" did nothing (bug #99).
+    var _TRAILING_CMD_RE = /^(.+?)\s+(stop|full stop|full-stop|period|comma|new line|newline|next line|new paragraph|new para|next paragraph|question mark|colon|semicolon|semi colon)[\s.,;:!?]*$/i;
+
+    /**
+     * Handle one final transcript: built-in commands, page voice commands,
+     * trailing embedded punctuation/new-line commands, or plain insertion.
+     */
+    function _handleFinalTranscript(transcript, textarea) {
+        var builtin = _processBuiltInCommands(transcript, textarea);
+        if (builtin.handled) return;
+
+        var cmd = _matchCommand(transcript);
+        if (cmd) {
+            _showCommandToast(cmd.label);
+            try { cmd.fn(); } catch (e) { console.warn('Voice command error:', e); }
+            return;
+        }
+
+        // "...text stop" → insert text, then apply the trailing command
+        var m = transcript.match(_TRAILING_CMD_RE);
+        if (m && m[1].trim()) {
+            _insertAtCursor(textarea, m[1]);
+            _processBuiltInCommands(m[2], textarea);
+            return;
+        }
+
+        _insertAtCursor(textarea, builtin.text);
+    }
+
     /**
      * Insert text at cursor position in textarea (or append if no saved position).
      * @param {boolean} raw - if true, insert exactly (no trimming/separator)
@@ -234,7 +270,7 @@
     function _saveCorrection(wrong, correct) {
         var map = _getCorrections();
         map[wrong.toLowerCase()] = correct;
-        localStorage.setItem(_CORRECTIONS_KEY, JSON.stringify(map));
+        try { localStorage.setItem(_CORRECTIONS_KEY, JSON.stringify(map)); } catch (e) { /* private mode */ }
     }
     function _applyCorrections(text) {
         var map = _getCorrections();
@@ -268,8 +304,9 @@
         if (_correctionMenu) _correctionMenu.remove();
         _correctionMenu = document.createElement('div');
         _correctionMenu.className = 'dictation-correction-menu';
+        var wordEsc = String(word).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         _correctionMenu.innerHTML =
-            '<div class="dictation-correction-label">Correct "<strong>' + word + '</strong>" to:</div>' +
+            '<div class="dictation-correction-label">Correct "<strong>' + wordEsc + '</strong>" to:</div>' +
             '<input type="text" class="dictation-correction-input" placeholder="Type correct word" autofocus>' +
             '<div class="dictation-correction-actions">' +
                 '<button type="button" class="dictation-correction-save">Save</button>' +
@@ -438,11 +475,11 @@
         var interimDiv = null;
         var currentInterim = ''; // Track current interim text
         var interimTimer = null; // Safari fallback: auto-commit after pause
-        // Safari double-insert guard: track the highest result-index already consumed
-        // by the 2s fallback commit, so when Safari later fires isFinal for the same
-        // utterance we skip it. resultIndex is a global counter across the session.
-        var _committedResultIdx = -1;
-        var _pendingCommitIdx = -1;
+        // Safari double-insert guard: the highest result-index already consumed
+        // lives ON the recognition instance (event.target). It used to be a
+        // closure variable shared across auto-restarts — but each new
+        // SpeechRecognition restarts resultIndex at 0, so after a restart the
+        // stale guard silently dropped everything the user dictated (bug #97).
 
         // Create interim display below textarea
         interimDiv = document.createElement('div');
@@ -469,47 +506,37 @@
         // Helper: commit interim text (used by insert button and Safari fallback)
         function _commitInterimText(text, ta) {
             if (interimTimer) { clearTimeout(interimTimer); interimTimer = null; }
-            var builtin = _processBuiltInCommands(text, ta);
-            if (builtin.handled) return;
-            var cmd = _matchCommand(text);
-            if (cmd) {
-                _showCommandToast(cmd.label);
-                try { cmd.fn(); } catch (e) { console.warn('Voice command error:', e); }
-                return;
-            }
-            _insertAtCursor(ta, builtin.text);
+            _handleFinalTranscript(text, ta);
         }
 
         recognition.onresult = function(event) {
+            // Per-instance guards — a new recognition (after auto-restart)
+            // starts fresh at -1 instead of inheriting a stale index
+            var rec = event.target;
+            if (rec._committedIdx === undefined) { rec._committedIdx = -1; rec._pendingCommitIdx = -1; }
+
             var interim = '';
             for (var i = event.resultIndex; i < event.results.length; i++) {
                 // Skip any result already consumed by the Safari 2s fallback
-                if (i <= _committedResultIdx) continue;
+                if (i <= rec._committedIdx) continue;
                 var transcript = event.results[i][0].transcript;
                 if (event.results[i].isFinal) {
                     // Clear any pending Safari fallback timer + pending commit idx
                     if (interimTimer) { clearTimeout(interimTimer); interimTimer = null; }
-                    _pendingCommitIdx = -1;
+                    rec._pendingCommitIdx = -1;
                     currentInterim = '';
                     // Mark this result index as committed to suppress any late duplicates
-                    if (i > _committedResultIdx) _committedResultIdx = i;
+                    if (i > rec._committedIdx) rec._committedIdx = i;
 
-                    // 1. Check built-in dictation commands (stop, new line, delete, punctuation)
-                    var builtin = _processBuiltInCommands(transcript, textarea);
-                    if (builtin.handled) continue;
-
-                    // 2. Check page-specific voice commands ("command finalise", etc.)
-                    var cmd = _matchCommand(transcript);
-                    if (cmd) {
-                        _showCommandToast(cmd.label);
-                        try { cmd.fn(); } catch (e) {
-                            console.warn('Voice command error:', e);
-                        }
+                    // Safari sometimes fires the corrected final at a HIGHER index
+                    // than the interim the 2s fallback already committed — drop it
+                    // by text comparison to avoid the double insert
+                    if (rec._lastFallbackText && transcript.trim() === rec._lastFallbackText.trim()) {
+                        rec._lastFallbackText = null;
                         continue;
                     }
 
-                    // 3. Normal text — insert at cursor position
-                    _insertAtCursor(textarea, builtin.text);
+                    _handleFinalTranscript(transcript, textarea);
                     insertBtn.classList.remove('has-text');
                 } else {
                     interim += transcript;
@@ -524,21 +551,22 @@
                 insertBtn.classList.add('has-text');
                 // Remember which result index range is represented by this interim,
                 // so when the Safari fallback commits we can mark it as consumed.
-                _pendingCommitIdx = event.results.length - 1;
+                rec._pendingCommitIdx = event.results.length - 1;
 
                 // Safari fallback: if interim text stops changing for 2s, auto-commit
                 // (Safari often doesn't fire isFinal in continuous mode)
                 if (interimTimer) clearTimeout(interimTimer);
                 interimTimer = setTimeout(function() {
                     if (currentInterim && _activeBtn === btn) {
-                        var committedIdx = _pendingCommitIdx;
+                        var committedIdx = rec._pendingCommitIdx;
+                        rec._lastFallbackText = currentInterim;
                         _commitInterimText(currentInterim, textarea);
                         // Suppress any late isFinal for the same result index(es)
-                        if (committedIdx > _committedResultIdx) {
-                            _committedResultIdx = committedIdx;
+                        if (committedIdx > rec._committedIdx) {
+                            rec._committedIdx = committedIdx;
                         }
                         currentInterim = '';
-                        _pendingCommitIdx = -1;
+                        rec._pendingCommitIdx = -1;
                         insertBtn.classList.remove('has-text');
                         if (span) span.textContent = 'Listening...';
                     }
