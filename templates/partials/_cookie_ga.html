@@ -1,0 +1,84 @@
+<!-- Cookie consent banner + consent-gated Google Analytics.
+     GA loads ONLY after the user accepts analytics (PECR/GDPR). "Essential only"
+     declines analytics; essential auth/session cookies are always used.
+     Included by base.html and every standalone page (pricing, about, auth pages). -->
+<!-- Layout uses inline styles only — some standalone pages (e.g. cv.html) don't load Bootstrap -->
+<div id="cookieConsentBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:10500; background:#2c3e50; color:#fff; padding:1rem 1.5rem; font-size:0.85rem; box-shadow:0 -2px 10px rgba(0,0,0,0.2);">
+    <div style="max-width:1140px; margin:0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem;">
+        <div style="flex:1; min-width:200px;">
+            We use essential cookies for authentication and session management. With your permission we also use
+            Google Analytics to understand how the site is used.
+            <a href="/privacy" style="color:#a8d5ba; text-decoration:underline;" target="_blank" rel="noopener">Privacy Policy</a>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="button" onclick="declineAnalyticsCookies()" style="background:transparent; color:#fff; border:1px solid rgba(255,255,255,0.5); border-radius:6px; padding:6px 14px; font-size:0.82rem; cursor:pointer; white-space:nowrap;">
+                Essential only
+            </button>
+            <button type="button" onclick="acceptCookies()" style="background:#e96304; color:#fff; border:none; border-radius:6px; padding:6px 16px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap;">
+                &#10003; Accept
+            </button>
+        </div>
+    </div>
+</div>
+<script>
+(function() {
+    var CONSENT_VERSION = 'v3';   // v3 = analytics opt-in (v2 was implied consent)
+    var GA_ID = 'G-ZSSC3PLZFN';
+
+    function readConsent() {
+        try { return JSON.parse(localStorage.getItem('cookieConsent')); } catch (e) { return null; }
+    }
+    function hasAnalyticsConsent() {
+        var st = readConsent();
+        return !!(st && st.version === CONSENT_VERSION && st.analytics);
+    }
+    function storeConsent(analytics) {
+        try {
+            localStorage.setItem('cookieConsent', JSON.stringify({
+                version: CONSENT_VERSION, accepted: true, analytics: !!analytics,
+                timestamp: new Date().toISOString()
+            }));
+        } catch (e) { /* private mode — banner will reappear next visit */ }
+    }
+    function loadGA() {
+        if (window._gaLoaded) return;
+        window._gaLoaded = true;
+        var s = document.createElement('script');
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+        s.async = true;
+        document.head.appendChild(s);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        window.gtag = window.gtag || gtag;
+        gtag('js', new Date());
+        gtag('config', GA_ID, { 'anonymize_ip': true });
+    }
+    function hideBanner() {
+        var b = document.getElementById('cookieConsentBanner');
+        if (b) b.style.display = 'none';
+    }
+
+    window.acceptCookies = function() {
+        storeConsent(true);
+        hideBanner();
+        loadGA();
+    };
+    window.declineAnalyticsCookies = function() {
+        storeConsent(false);
+        hideBanner();
+    };
+
+    // On load: honour a stored decision; otherwise show the banner.
+    // GA is NEVER loaded before explicit acceptance.
+    var stored = readConsent();
+    if (stored && stored.version === CONSENT_VERSION) {
+        if (stored.analytics) {
+            if (document.readyState === 'complete') loadGA();
+            else window.addEventListener('load', loadGA);
+        }
+    } else {
+        var banner = document.getElementById('cookieConsentBanner');
+        if (banner) banner.style.display = 'block';
+    }
+})();
+</script>

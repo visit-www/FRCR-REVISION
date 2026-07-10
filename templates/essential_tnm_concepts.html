@@ -707,19 +707,8 @@
 
     </div>
 
-    <!-- Google Analytics 4 (deferred to avoid blocking render) -->
-    <script>
-    window.addEventListener('load', function() {
-        var s = document.createElement('script');
-        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-ZSSC3PLZFN';
-        s.async = true;
-        document.head.appendChild(s);
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-ZSSC3PLZFN');
-    });
-    </script>
+    <!-- Cookie consent + consent-gated GA (PECR/UK GDPR compliance) -->
+    {% include 'partials/_cookie_ga.html' %}
 {% if current_user.is_authenticated %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/content-interact.css') }}">
 <script src="{{ url_for('static', filename='js/content-interact.js') }}"></script>
