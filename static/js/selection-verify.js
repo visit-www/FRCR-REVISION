@@ -684,19 +684,26 @@
                 });
             });
 
-            // CMV badges — admin click to edit/dismiss claim inline
-            document.querySelectorAll('.cmv-badge[data-claim-id]').forEach(function(badge) {
-                if (badge.dataset.adminReady) return;
-                badge.dataset.adminReady = 'true';
-                badge.style.cursor = 'pointer';
-                badge.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var claimId = badge.dataset.claimId;
-                    if (!claimId) return;
-                    SelectionVerify._showClaimActions(badge, claimId);
+            // CMV badges are handled by CmvBadges' container delegation
+            // (cmv-badges.js), which opens the full review panel including the
+            // Corrected Text field. Attaching per-badge listeners here used to
+            // stopPropagation and hijack every click into this legacy popup,
+            // making inline correction unreachable. Only fall back to the
+            // legacy popup when cmv-badges.js is not loaded on this page.
+            if (!window.CmvBadges) {
+                document.querySelectorAll('.cmv-badge[data-claim-id]').forEach(function(badge) {
+                    if (badge.dataset.adminReady) return;
+                    badge.dataset.adminReady = 'true';
+                    badge.style.cursor = 'pointer';
+                    badge.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var claimId = badge.dataset.claimId;
+                        if (!claimId) return;
+                        SelectionVerify._showClaimActions(badge, claimId);
+                    });
                 });
-            });
+            }
         },
 
         /**

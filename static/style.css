@@ -1699,32 +1699,33 @@ pre {
     color: #333;
 }
 
-/* Image Modal Styling */
-.modal {
+/* Image Modal Styling — scoped to the case image viewer (#imageModal).
+   These rules were previously global .modal-* with !important, which painted
+   every unbranded Bootstrap modal app-wide with a black 400px flex body. */
+#imageModal.modal {
     --bs-modal-bg: #000;
 }
 
-.modal-content {
-    background-color: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%) !important;
+#imageModal .modal-content {
     border: 2px solid #a8d5ba !important;
     box-shadow: 0 0 30px rgba(168, 213, 186, 0.25);
 }
 
-.modal-header {
+#imageModal .modal-header {
     background-color: #4a5361 !important;
     border-bottom: 1px solid #a8d5ba !important;
 }
 
-.modal-header .modal-title {
+#imageModal .modal-header .modal-title {
     color: #9ca3af !important;
     font-weight: 600;
 }
 
-.modal-header .btn-close {
+#imageModal .modal-header .btn-close {
     filter: invert(1) !important;
 }
 
-.modal-body {
+#imageModal .modal-body {
     background-color: #000 !important;
     padding: 2rem 1rem !important;
     display: flex;
@@ -1733,23 +1734,23 @@ pre {
     min-height: 400px;
 }
 
-.modal-body img {
+#imageModal .modal-body img {
     box-shadow: 0 0 20px rgba(92, 125, 158, 0.2) !important;
     border-radius: 0.5rem;
 }
 
-.modal-footer {
+#imageModal .modal-footer {
     background-color: #4a5361 !important;
     border-top: 1px solid #a8d5ba !important;
 }
 
-.modal-footer .btn {
+#imageModal .modal-footer .btn {
     background-color: #a8d5ba;
     color: white;
     border: none;
 }
 
-.modal-footer .btn:hover {
+#imageModal .modal-footer .btn:hover {
     background-color: #8bc9a3;
     color: white;
 }
@@ -3759,16 +3760,17 @@ pre {
 }
 
 /* ============================================================================ */
-/* MODAL - User Detail/Edit Modal */
+/* MODAL - User Detail/Edit Modal (scoped — was global .modal-*, conflicting
+   with the image-viewer block above on every plain Bootstrap modal) */
 /* ============================================================================ */
 
-.modal-content {
+#userDetailModal .modal-content {
     border: 1px solid #a8d5ba;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
 
-.modal-header {
+#userDetailModal .modal-header {
     background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
     color: white;
     border: none;
@@ -3776,17 +3778,17 @@ pre {
     padding: 1.5rem;
 }
 
-.modal-header .modal-title {
+#userDetailModal .modal-header .modal-title {
     font-weight: 700;
     font-size: 1.3rem;
 }
 
-.modal-body {
+#userDetailModal .modal-body {
     padding: 2rem;
     background: #fdfdfb;
 }
 
-.modal-footer {
+#userDetailModal .modal-footer {
     background: #f5f5f3;
     border-top: 1px solid #c5cad1;
     border-radius: 0 0 12px 12px;
