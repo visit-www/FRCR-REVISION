@@ -41,6 +41,21 @@
             --elite-green: #5a9e73;
         }
 
+        /* pricing.html does not load style.css — local copy of the brand button class */
+        .btn-brand-success {
+            background-color: var(--brand-success);
+            color: var(--brand-text-primary);
+            border: none;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .btn-brand-success:hover {
+            background-color: #8fc7a5;
+            color: var(--brand-text-primary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(168, 213, 186, 0.3);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -914,7 +929,7 @@
                                 <i class="fas fa-exchange-alt me-1"></i>Switch to Standard
                             </button>
                             {% else %}
-                            <button onclick="startCheckout('standard')" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">
+                            <button onclick="startCheckout('standard', this)" data-plan="standard" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">
                                 <i class="fas fa-arrow-up me-1"></i>Upgrade to Standard
                             </button>
                             {% endif %}
@@ -956,7 +971,7 @@
                                 <i class="fas fa-exchange-alt me-1"></i>Switch to Elite
                             </button>
                             {% else %}
-                            <button onclick="startCheckout('elite')" class="btn-pricing" style="background: var(--elite-green); color: #fff;">
+                            <button onclick="startCheckout('elite', this)" data-plan="elite" class="btn-pricing" style="background: var(--elite-green); color: #fff;">
                                 <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite
                             </button>
                             {% endif %}
@@ -990,7 +1005,7 @@
                                 <i class="fas fa-clock me-1"></i>Switching {{ user_data.pending_date or 'soon' }}
                             </button>
                             {% else %}
-                            <button onclick="startCheckout('elite_pro')" class="btn-pricing" style="background: #7c3aed; color: #fff;">
+                            <button onclick="startCheckout('elite_pro', this)" data-plan="elite_pro" class="btn-pricing" style="background: #7c3aed; color: #fff;">
                                 <i class="fas fa-arrow-up me-1"></i>Upgrade to Elite Pro
                             </button>
                             {% endif %}
@@ -1359,21 +1374,20 @@
     const PLAN_LABELS = { free: 'Free', standard: 'Standard', elite: 'Elite', elite_pro: 'Elite Pro' };
 
     // ── Free → paid: Stripe Checkout ──
-    function startCheckout(plan) {
-        const btn = event.target.closest('.btn-pricing');
-        const orig = btn.innerHTML;
-        btn.disabled = true;
+    function startCheckout(plan, btnEl) {
+        const btn = btnEl || document.querySelector('.btn-pricing[data-plan="' + plan + '"]');
+        const orig = btn ? btn.innerHTML : '';
+        if (btn) btn.disabled = true;
 
         // If user is a paid subscriber wanting an upgrade, show preview modal
         if (currentTier === 'standard' || currentTier === 'elite' || currentTier === 'elite_pro') {
-            btn.disabled = false;
-            btn.innerHTML = orig;
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
             startPlanChange(plan);
             return;
         }
 
         // Free user → Stripe Checkout
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...';
+        if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Redirecting...';
         fetch('/stripe/create-checkout-session', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1385,14 +1399,12 @@
             if (data.checkout_url) {
                 window.location.href = data.checkout_url;
             } else {
-                btn.disabled = false;
-                btn.innerHTML = orig;
+                if (btn) { btn.disabled = false; btn.innerHTML = orig; }
                 alert(data.error || 'Could not start checkout. Please try again.');
             }
         })
         .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = orig;
+            if (btn) { btn.disabled = false; btn.innerHTML = orig; }
             alert('Connection error. Please try again.');
         });
     }
@@ -1551,7 +1563,7 @@
     (function() {
         const params = new URLSearchParams(window.location.search);
         const plan = params.get('plan');
-        if (plan && (plan === 'standard' || plan === 'elite')) {
+        if (plan && (plan === 'standard' || plan === 'elite' || plan === 'elite_pro')) {
             const key = 'pricing_auto_checkout_' + plan;
             if (!sessionStorage.getItem(key)) {
                 sessionStorage.setItem(key, '1');
