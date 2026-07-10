@@ -25,6 +25,8 @@ var ContentInteract = (function() {
   var _cfg = {};
   var _noteSaveTimer = null;
   var _noteCounter = 0;
+  var _notesManuallyEdited = false;
+  var _flushListenersAttached = false;
   var _panelOpen = false;
   var _selectionListenerAttached = false;
   var _toggleBtnHandler = null;
@@ -65,7 +67,7 @@ var ContentInteract = (function() {
     setTimeout(function() { toast.classList.remove('ci-toast-show'); setTimeout(function() { toast.remove(); }, 300); }, 2500);
   }
 
-  function _api(method, path, body) {
+  function _api(method, path, body, keepalive) {
     var opts = { method: method, headers: {} };
     if (body && !(body instanceof FormData)) {
       opts.headers['Content-Type'] = 'application/json';
@@ -73,6 +75,7 @@ var ContentInteract = (function() {
     } else if (body) {
       opts.body = body;
     }
+    if (keepalive) opts.keepalive = true;  // survive page unload (flush-on-navigate)
     return fetch(API_BASE + path, opts).then(function(r) {
       if (!r.ok) return r.text().then(function() { return { success: false, error: r.status }; });
       return r.json();
@@ -148,12 +151,31 @@ var ContentInteract = (function() {
     // Auto-save on typing
     var textarea = document.getElementById('ciPanelNotes');
     textarea.addEventListener('input', function() {
+      _notesManuallyEdited = true;
       document.getElementById('ciPanelStatus').innerHTML = '<i class="fas fa-circle text-warning me-1" style="font-size:0.5rem;"></i>Unsaved';
       clearTimeout(_noteSaveTimer);
       _noteSaveTimer = setTimeout(function() {
         _saveNotes();
       }, 1500);
     });
+
+    // Flush a pending debounced save when the user navigates/switches away —
+    // otherwise an edit made <1.5s before leaving is silently lost
+    if (!_flushListenersAttached) {
+      _flushListenersAttached = true;
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'hidden') _flushPendingNoteSave();
+      });
+      window.addEventListener('pagehide', _flushPendingNoteSave);
+    }
+  }
+
+  function _flushPendingNoteSave() {
+    if (_noteSaveTimer) {
+      clearTimeout(_noteSaveTimer);
+      _noteSaveTimer = null;
+      _saveNotes(true);
+    }
   }
 
   function _togglePanel(forceState) {
@@ -166,6 +188,8 @@ var ContentInteract = (function() {
     if (_panelOpen) {
       _panel.classList.add('ci-side-panel-open');
       if (_contentArea) _contentArea.classList.add('ci-content-shifted');
+      // Flush any pending debounced save first — _loadNotes overwrites the textarea
+      _flushPendingNoteSave();
       // Load notes + forum
       _loadNotes();
       _initForum();
@@ -195,6 +219,7 @@ var ContentInteract = (function() {
         // Store raw notes (with tags) and display formatted
         textarea.dataset.rawNotes = data.note_text;
         textarea.value = _formatNotesForDisplay(data.note_text);
+        _notesManuallyEdited = false;
         if (data.updated_at) {
           status.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Saved';
         }
@@ -208,12 +233,20 @@ var ContentInteract = (function() {
     });
   }
 
-  function _saveNotes() {
+  function _saveNotes(useKeepalive) {
     var textarea = document.getElementById('ciPanelNotes');
     if (!textarea) return;
-    var raw = textarea.value;
-    // Sync rawNotes so linked-note metadata stays in dataset
-    textarea.dataset.rawNotes = raw;
+    // The textarea shows a lossy display form of the note; the raw form (with
+    // [note:ID] link tags) lives in dataset.rawNotes. Only treat the textarea
+    // text as the new source of truth if the user actually typed in it —
+    // otherwise saving the display form would permanently strip the link tags.
+    var raw;
+    if (_notesManuallyEdited || !textarea.dataset.rawNotes) {
+      raw = textarea.value;
+      textarea.dataset.rawNotes = raw;
+    } else {
+      raw = textarea.dataset.rawNotes;
+    }
     if (!raw.trim()) {
       // User cleared all text — delete note on server
       _api('DELETE', _contentPath() + '/note').then(function() {
@@ -222,7 +255,7 @@ var ContentInteract = (function() {
       });
       return;
     }
-    _api('POST', _contentPath() + '/note', { note_text: raw }).then(function(data) {
+    _api('POST', _contentPath() + '/note', { note_text: raw }, useKeepalive).then(function(data) {
       if (data.success) {
         var now = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         var statusEl = document.getElementById('ciPanelStatus');
@@ -251,9 +284,12 @@ var ContentInteract = (function() {
     var textarea = document.getElementById('ciPanelNotes');
     if (!textarea) return;
 
-    var raw = (textarea.dataset.rawNotes || textarea.value || '') + fragment;
+    // If the user has unsaved manual edits, adopt them as the raw base first
+    var base = _notesManuallyEdited ? textarea.value : (textarea.dataset.rawNotes || textarea.value || '');
+    var raw = base + fragment;
     textarea.dataset.rawNotes = raw;
     textarea.value = _formatNotesForDisplay(raw);
+    _notesManuallyEdited = false;  // display was just regenerated from raw
     _saveNotes();
 
     // Add marker in content (with note text for hover tooltip)

@@ -1240,6 +1240,7 @@ document.addEventListener('DOMContentLoaded', function() {
         aiAssistReportText: '',            // Separate report text (full_report mode)
         hasReceivedFinalizedReport: false, // Tracks if user has received a full_report (for advisory-only follow-ups)
         aiAssistCorrections: [],           // {original, suggested, reason, type, status}
+        aiAssistFillIns: [],               // [{...}] — dereferenced by diff/fill-in flows; must exist from the start
         aiAssistInsights: {},              // Persists across queries (accumulates)
         _lastAutoSavedPearl: '',           // Track last auto-saved teaching point
         // External context from "Use in Report" buttons
@@ -1705,6 +1706,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     window.pasteMyReport = function(contextQuery) {
+        // Guard: this destroys the draft AND its autosave irreversibly — it is
+        // reachable from 4 buttons plus the "new report" voice command
+        const existing = document.getElementById('editorInput');
+        if (existing && existing.value.trim() &&
+            !confirm('Start a new report?\n\nYour current report and its AI outputs will be cleared. This cannot be undone.')) {
+            return Promise.resolve();
+        }
         // Fully reset AI state and open a fresh editor
         resetEditorSession();
         showScene('editor');
@@ -3697,6 +3705,10 @@ document.addEventListener('DOMContentLoaded', function() {
         _checkOutputPII();
         const output = document.getElementById('editorOutput');
         const text = output ? output.value : getCurrentReportText();
+        if (!text || !text.trim()) {
+            showToast('Nothing to copy yet — generate or paste a report first.', 'warning');
+            return;
+        }
         const btn = document.getElementById('btnCopyReport');
         navigator.clipboard.writeText(text).then(() => {
             btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
@@ -3727,6 +3739,10 @@ document.addEventListener('DOMContentLoaded', function() {
         _checkOutputPII();
         const output = document.getElementById('editorOutput');
         const text = output ? output.value : getCurrentReportText();
+        if (!text || !text.trim()) {
+            showToast('Nothing to copy yet — generate or paste a report first.', 'warning');
+            return;
+        }
         const btn = document.getElementById('prominentCopyBtn');
         const label = document.getElementById('prominentCopyLabel');
         navigator.clipboard.writeText(text).then(function() {

@@ -501,7 +501,37 @@
                 });
         }
 
-        var save = debounce(attemptSave, 1000);
+        // One debouncer PER FIELD — a shared instance means typing in field A
+        // then field B within the window cancels A's save (silent data loss)
+        var _fieldSavers = {};
+        var _dirtyFields = {};   // field -> latest unsaved value
+        function save(field, value) {
+            _dirtyFields[field] = value;
+            if (!_fieldSavers[field]) {
+                _fieldSavers[field] = debounce(function(f, v) {
+                    delete _dirtyFields[f];
+                    attemptSave(f, v).catch(function() {});
+                }, 1000);
+            }
+            _fieldSavers[field](field, value);
+        }
+
+        // Flush unsaved fields when the user navigates/switches away
+        function _flushDirty() {
+            Object.keys(_dirtyFields).forEach(function(f) {
+                var v = _dirtyFields[f];
+                delete _dirtyFields[f];
+                var payload = {};
+                payload[f] = v;
+                // keepalive so the PUT survives page unload
+                fetchJson('/api/mdt/cases/' + caseId, { method: 'PUT', body: payload, keepalive: true })
+                    .catch(function() {});
+            });
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') _flushDirty();
+        });
+        window.addEventListener('pagehide', _flushDirty);
 
         // Wire all auto-save inputs
         $$('[data-mdt-autosave]', form).forEach(function(el) {
