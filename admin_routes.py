@@ -4050,15 +4050,16 @@ def verify_single_content():
             from models import Case
             obj = Case.query.get(int(cid))
             if obj:
-                content_text = obj.discussion or obj.ai_discussion or ''
-                topic = obj.title or ''
-                body_sec = getattr(obj, 'body_part', '') or ''
+                content_text = obj.discussion or ''
+                topic = obj.diagnosis or ''
+                body_sec = obj.body_part.value if obj.body_part else ''
+                mod = obj.module.name if obj.module else ''
         elif ctype == 'radiology_tool':
             from models import IncidentalFindingCalculator
             obj = IncidentalFindingCalculator.query.get(int(cid))
             if obj:
                 content_text = obj.algorithm_html or obj.description or ''
-                topic = obj.title or ''
+                topic = obj.finding_name or ''
                 body_sec = getattr(obj, 'body_section', '') or ''
         elif ctype == 'protocol':
             from models import ImagingProtocol
@@ -4095,19 +4096,31 @@ def verify_single_content():
     if gresult.get('error'):
         return jsonify({'error': f'Gemini verification failed: {gresult["error"]}'}), 502
 
-    # Persist claims
+    # Persist claims — then verify they actually landed. _persist_claims
+    # swallows DB errors and returns raw dicts, so without this check the
+    # endpoint reported "N claims" that were never saved.
+    persisted_count = 0
     if gresult.get('claims'):
         _persist_claims(
             gresult['claims'], ctype, str(cid),
             body_section=body_sec, modality=mod,
             topic=topic, model=gresult.get('model', ''),
         )
+        from models import PeerReviewClaim as _PRC
+        persisted_count = _PRC.query.filter_by(
+            content_type=ctype, content_id=str(cid)).count()
+        if persisted_count == 0:
+            return jsonify({
+                'error': ('Gemini verified %d claims but saving them to the '
+                          'database failed — check server logs.' % len(gresult['claims'])),
+            }), 500
 
     return jsonify({
         'success': True,
         'content_type': ctype,
         'content_id': cid,
         'claims_count': len(gresult.get('claims', [])),
+        'persisted_count': persisted_count,
         'summary': gresult.get('summary', {}),
     })
 
@@ -4175,16 +4188,17 @@ def bulk_verify_content():
             from models import Case
             for obj in Case.query.limit(max_items * 3).all():
                 if str(obj.id) not in verified_ids:
-                    text = obj.discussion or obj.ai_discussion or ''
-                    items_to_verify.append((str(obj.id), text, obj.title or '',
-                                            getattr(obj, 'body_part', '') or '', ''))
+                    text = obj.discussion or ''
+                    items_to_verify.append((str(obj.id), text, obj.diagnosis or '',
+                                            obj.body_part.value if obj.body_part else '',
+                                            obj.module.name if obj.module else ''))
 
         elif content_type == 'radiology_tool':
             from models import IncidentalFindingCalculator
             for obj in IncidentalFindingCalculator.query.limit(max_items * 3).all():
                 if str(obj.id) not in verified_ids:
                     text = obj.algorithm_html or obj.description or ''
-                    items_to_verify.append((str(obj.id), text, obj.title or '',
+                    items_to_verify.append((str(obj.id), text, obj.finding_name or '',
                                             getattr(obj, 'body_section', '') or '', ''))
 
         elif content_type == 'protocol':
