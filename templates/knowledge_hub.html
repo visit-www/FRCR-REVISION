@@ -1544,6 +1544,24 @@ var _snippetMode = 'ai';    // 'ai' or 'manual'
 var _genSnippetState = { html: '', algorithmId: null, editMode: false, tinyReady: false };
 
 {% if is_admin %}
+// Deep link: /knowledge-hub#anatomy-<id> or #pearl-<id> (used by the CMV
+// dashboard crosshair links). Without this handler the anchor did nothing —
+// admins clicking a claim's view link landed on an unopened hub page.
+document.addEventListener('DOMContentLoaded', function() {
+    var hash = window.location.hash || '';
+    var m = hash.match(/^#(anatomy|pearl)-(\d+)$/);
+    if (!m) return;
+    var card = document.querySelector('.kh-item[data-id="' + m[1] + '-' + m[2] + '"], [data-id="' + m[1] + '-' + m[2] + '"]');
+    if (!card) return;
+    // Open the detail panel, then scroll it into view. cmv-badges.js picks up
+    // ?claim=<id> separately and auto-scrolls to the badge once rendered.
+    setTimeout(function() {
+        try { selectItem(card); } catch (e) { return; }
+        var panel = document.getElementById('detailContent');
+        (panel || card).scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     // Pearl modal: init/destroy TinyMCE for manual mode
     var pearlModal = document.getElementById('addPearlModal');
