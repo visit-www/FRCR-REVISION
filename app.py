@@ -9215,7 +9215,7 @@ def sitemap_xml():
         (f'{BASE}/about', '0.7', 'monthly'),
         (f'{BASE}/tnm-calculator/', '0.9', 'weekly'),          # trailing slash (Flask 308 without)
         (f'{BASE}/essential-tnm-concepts', '0.6', 'monthly'),
-        (f'{BASE}/my-notes', '0.5', 'weekly'),
+        # /my-notes removed — auth-gated (302 to login); GSC flags it as "page with redirect"
         (f'{BASE}/knowledge-hub', '0.8', 'weekly'),
         (f'{BASE}/case-library', '0.8', 'weekly'),
         (f'{BASE}/reporting-algorithms', '0.8', 'weekly'),
