@@ -2020,6 +2020,24 @@ match specific statistical claims to paper abstracts.</p>
                 _pr_doc.content_html = (_pr_doc.content_html or '') + _cmv_pr_block
                 logger.info('Patched peer-review-v2 doc: added CMV update')
 
+            # One-time fix (Jul 2026): TNM calculator count "72" was never accurate
+            # (sitemap exposes 40) — align all docs to "40+" (more being added)
+            for _slug in ('marketing', 'seo-audit'):
+                _cnt_doc = _AD.query.filter_by(slug=_slug).first()
+                if _cnt_doc and '72' in (_cnt_doc.content_html or ''):
+                    _html = _cnt_doc.content_html
+                    for _old, _new in (
+                        ('72 TNM Calculators', '40+ TNM Calculators'),
+                        ('72 TNM staging calculators', '40+ TNM staging calculators'),
+                        ('72 TNM calculators', '40+ TNM calculators'),
+                        ('72 calculators', '40+ calculators'),
+                    ):
+                        _html = _html.replace(_old, _new)
+                    if _html != _cnt_doc.content_html:
+                        _cnt_doc.content_html = _html
+                        _docs_created += 1  # force commit below
+                        logger.info('Patched %s doc: TNM calculator count 72 -> 40+', _slug)
+
             if _docs_created:
                 db.session.commit()
                 logger.info('Auto-synced %d admin documents from manifest', _docs_created)
