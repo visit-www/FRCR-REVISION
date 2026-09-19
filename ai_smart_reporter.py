@@ -76,14 +76,12 @@ class SmartReporterError(AIClientError):
 # ==================== SHARED API HELPERS (delegated to ai_client) ====================
 
 def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
-                 temperature=0.3, timeout=60, skip_preamble=False,
-                 assistant_prefill=None):
+                 temperature=0.3, timeout=60, skip_preamble=False):
     """Wrapper that raises SmartReporterError instead of AIClientError."""
     return _call_claude_raw(system_prompt, user_prompt, model=model,
                             max_tokens=max_tokens, temperature=temperature,
                             timeout=timeout, error_class=SmartReporterError,
-                            skip_preamble=skip_preamble,
-                            assistant_prefill=assistant_prefill)
+                            skip_preamble=skip_preamble)
 
 
 def _parse_json_response(text):
@@ -1943,11 +1941,13 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     # structured insights/corrections, so a fixed cap truncates long reports
     # (the JSON then fails to parse and leaks raw to the user). Scale to the
     # input length — a report N words long needs at least N words back, plus
-    # headroom for the answer, corrections, and insights. Floor 4000, ceil 8000;
-    # the continuation loop below is the backstop beyond the ceiling.
+    # headroom for the answer, corrections, and insights. Floor 4000, ceil
+    # 16000 — high enough that truncation is unreachable for any real report
+    # (the old 8000 ceil + prefill-continuation backstop 400'd once the API
+    # removed assistant prefill on the 4.6 model family).
     _report_words = len((report_text or '').split())
     _dynamic_max = 2000 + int(_report_words * 4)
-    _max_tokens = max(4000, min(_dynamic_max, 8000))
+    _max_tokens = max(4000, min(_dynamic_max, 16000))
 
     text, model, tokens = _call_claude(
         system_prompt=selected_system_prompt,
@@ -1955,7 +1955,7 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         model=effective_model,
         max_tokens=_max_tokens,
         temperature=_temperature,
-        # 240s: Opus finalize/CBCT can generate up to 8000 tokens non-streaming;
+        # 240s: Opus finalize/CBCT can generate long reports non-streaming;
         # 90s was cutting off legitimate long generations. Vercel maxDuration
         # is 300s, so this leaves headroom for peer review + response handling.
         timeout=240,
@@ -1964,29 +1964,6 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     # Capture input tokens from last API call for cost tracking
     _last_usage = getattr(_call_claude_raw, 'last_usage', {})
     _input_tokens = _last_usage.get('input_tokens', 0)
-
-    # Continuation backstop: if the model still hit the cap, resume from the
-    # truncated output (assistant prefill) and concatenate, so we never surface
-    # a half-finished JSON envelope. Bounded to 2 continuations.
-    _cont_attempts = 0
-    while getattr(_call_claude_raw, 'last_stop_reason', '') == 'max_tokens' and _cont_attempts < 2:
-        _cont_attempts += 1
-        logger.warning(
-            "ai-assist output truncated — continuation attempt %d (model=%s)",
-            _cont_attempts, model,
-        )
-        _cont_text, model, _cont_tokens = _call_claude(
-            system_prompt=selected_system_prompt,
-            user_prompt=user_prompt,
-            model=effective_model,
-            max_tokens=_max_tokens,
-            temperature=_temperature,
-            timeout=240,
-            assistant_prefill=text,
-        )
-        text += _cont_text
-        tokens += _cont_tokens
-        _input_tokens += getattr(_call_claude_raw, 'last_usage', {}).get('input_tokens', 0)
 
     parsed = _parse_assist_response(text, question)
     parsed['model'] = model

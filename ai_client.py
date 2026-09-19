@@ -50,7 +50,7 @@ ABC_PREAMBLE = (
 
 def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
                 temperature=0.3, timeout=60, error_class=None,
-                skip_preamble=False, assistant_prefill=None):
+                skip_preamble=False):
     """
     Call the Anthropic Messages API.
 
@@ -64,11 +64,6 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
         error_class: Exception class to raise on failure (default: AIClientError)
         skip_preamble: If True, omit the ABC_PREAMBLE (for classification
                        or structural tasks that don't generate clinical content)
-        assistant_prefill: If set, seed the assistant turn with this partial
-                       text so the model CONTINUES from where it left off.
-                       Used to recover from max_tokens truncation — call again
-                       with the truncated output and concatenate the result.
-                       The returned text is ONLY the continuation, not the seed.
 
     Returns:
         tuple: (response_text: str, model_used: str, token_count: int)
@@ -92,10 +87,10 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     if not skip_preamble:
         effective_system = ABC_PREAMBLE + system_prompt
 
+    # NOTE: never append a trailing {"role": "assistant"} turn (prefill) here —
+    # the API removed assistant prefill on the 4.6+ model family and returns
+    # HTTP 400 ("conversation must end with a user message").
     messages = [{"role": "user", "content": user_prompt}]
-    if assistant_prefill:
-        # Anthropic rejects assistant turns ending in trailing whitespace.
-        messages.append({"role": "assistant", "content": assistant_prefill.rstrip()})
 
     payload = {
         "model": effective_model,
