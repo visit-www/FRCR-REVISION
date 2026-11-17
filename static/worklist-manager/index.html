@@ -18,7 +18,14 @@
        background:radial-gradient(1200px 600px at 50% -10%,#18232c 0%,var(--bg) 55%);
        color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
-  header{padding:28px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  header{padding:16px 0;display:flex;align-items:center;justify-content:space-between;gap:16px;
+         flex-wrap:wrap;position:sticky;top:0;z-index:50;
+         background:rgba(15,20,24,.86);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+         box-shadow:0 0 0 100vmax rgba(15,20,24,.86);clip-path:inset(0 -100vmax);
+         border-bottom:1px solid var(--sep)}
+  /* anchors land below the sticky bar, not under it */
+  section,details{scroll-margin-top:84px}
+  @media (max-width:640px){nav a{margin:0 14px 0 0}}
   .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px}
   /* The app's own icon (assets/ctdent-icon.png, from the same logo.ico the exe
      and installer use) - not an emoji, and no gradient behind it to fight with. */
@@ -102,6 +109,12 @@
   .whatsnew li{color:var(--muted);font-size:14px;list-style:none;padding-left:22px;position:relative;margin-top:7px}
   .whatsnew li::before{content:"→";color:var(--green);position:absolute;left:0;font-weight:700}
   .whatsnew li b{color:var(--text);font-weight:600}
+  .whatsnew summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between}
+  .whatsnew summary::-webkit-details-marker{display:none}
+  .whatsnew summary::after{content:"+";color:var(--green);font-size:20px;font-weight:700;margin-left:12px}
+  .whatsnew[open] summary::after{content:"–"}
+  .whatsnew summary h2{margin:0}
+  .whatsnew[open] summary{margin-bottom:10px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:48px 0}
   .card{background:var(--surface);border:1px solid var(--sep);border-radius:var(--radius);padding:22px}
@@ -175,13 +188,14 @@
       <a href="#requirements">Requirements</a>
       <a href="#setup">Setup</a>
       <a href="#faq">FAQ</a>
+      <a href="#history">Versions</a>
       <a href="#download">Download</a>
     </nav>
   </header>
 
   <section class="hero" id="download">
     <img class="heroicon" src="/static/worklist-manager/assets/ctdent-icon.png" alt="CT Dent Assistant" width="88" height="88">
-    <div class="pill">Windows app for CT Dent reporters · <b>v2.4.38</b></div>
+    <div class="pill">Windows app for CT Dent reporters · <b>v2.4.41</b></div>
     <h1>Your cases, ready to <span>open in one click</span></h1>
     <p class="sub">CT Dent Assistant sits next to the CT Dent portal and shows your case list.
       Click a case: it downloads the scan and opens it in your own viewer. It also keeps a note of
@@ -275,14 +289,6 @@
           keeps its browser profile on your encrypted drive too.</li>
         <li><b>Your month-end report</b> (in <b>ctdent-reports</b>, with your own log and the redacted appraisal log kept apart).</li>
       </ul>
-      <p class="fixnote">
-        <b>An honest word about older versions.</b> Version 2.1.3 and earlier got this wrong: some of
-        the above, the case log, the histories, the downloaded zips and the browser profile, was
-        left on your computer's <b>C: drive</b>, which may not be encrypted. <b>Version 2.2.0 fixes
-        it.</b> When you first run it, it moves all of that onto your encrypted drive and
-        <b>deletes the old copies from C:</b>. You do not need to do anything, but you deserved to
-        be told.
-      </p>
     </div>
 
     <div class="pblock">
@@ -335,157 +341,6 @@
           remains yours.</li>
       </ul>
     </div>
-  </section>
-
-  <section class="whatsnew">
-    <h2>What's new <span class="tag">v2.4.38</span></h2>
-    <ul>
-      <li><b>New in 2.4.38 — your own rates, VAT, and a sign-off name.</b> The app now ships with
-        no fee rates: enter yours once in <b>⚙ Advanced setup → Rates</b>. Until you do, cases
-        still log and month reports still export; only invoicing waits for rates. Upgrading keeps
-        every setting and record you have, and carries your rates over automatically from your
-        case log. Invoices can now show your <b>VAT number</b> and add <b>VAT</b> as a separate
-        line, and the invoice email can end with your name.</li>
-      <li><b>New in 2.4.37 — a fourth app in the footer.</b> The strip at the bottom of the window
-        now also links to <b>Notegral</b>, a study companion that turns scattered notes into
-        flashcards, quizzes, mind maps and spaced repetition. Nothing else changes: signing in,
-        syncing, downloading, pricing and reporting all work exactly as before.</li>
-      <li><b>New in 2.4.36 — patient names no longer appear in the app's diagnostic log.</b> The
-        technical log the app keeps on your system drive used to record patients by name. Names are
-        now replaced with initials and each case is identified by its Report Req ID instead, so the
-        log stays just as useful for diagnosing a problem while naming nobody. Your existing log is
-        cleaned automatically the first time you run this version.</li>
-      <li><b>New in 2.4.35 — your worklist is read in full, every time.</b> Occasionally a sync
-        stopped after the first page and showed 25 cases when the portal held 68. The app now
-        notices a page that failed to turn and tries again, and if a page still cannot be read it
-        keeps the cases it already knew about rather than dropping them off the list.</li>
-      <li><b>New in 2.4.33 — live cases no longer show a grey “Unknown” chip.</b> The portal
-        changed how it spells its in-progress status. Status wording is now read tolerantly, so
-        hyphens, run-together words and unusual spacing all match. The worklist is also sorted in
-        work order — pending first, then in progress, then drafts, then signed off — and a
-        <b>search box</b> on the action bar filters the list as you type by name, Report Req ID,
-        date, scan type or status.</li>
-      <li><b>New in 2.4.32 — patients with more than one scan open correctly.</b> Once the first
-        scan of a multi-scan patient was downloaded, clicking the second scan's button kept
-        reopening the first scan's copy instead of downloading the second. Each scan's button now
-        fetches and opens its own scan, and the study picker ticks the ones already done.</li>
-      <li><b>New in 2.4.31 — a stuck download can no longer stall the whole batch.</b> A transfer
-        the portal freezes is cancelled after two minutes; one throttled to a crawl is set aside
-        after five and retried at the end of the batch on a fresh link, which usually runs at full
-        speed. The Stop button now works even mid-transfer, an incomplete file is named plainly
-        instead of raising a cryptic error, and if several cases in a row fail the same way the
-        batch stops itself with one clear message rather than grinding through the rest. Finished
-        downloads also turn their button green silently — the list no longer visibly rebuilds
-        once per downloaded case.</li>
-      <li><b>New in 2.4.27 — keep an eye on storage, and clear space safely.</b> The app warns
-        when your storage drive drops below 10&nbsp;GB free, and ⚙ Advanced setup gained a
-        🧹 Storage tab that clears downloaded scans older than an age you choose. Fees, reports
-        and invoices are never touched — cleared scans simply become downloadable again.</li>
-      <li><b>New in 2.4.25 — i-CAT Vision downloads are supported.</b> Some cases are offered on
-        the portal under a single <i>i-CAT Vision</i> link — a cone-beam export that contains a
-        standard DICOM series. The DICOM button now downloads and opens these in your DICOM
-        viewer like any other case, and the app says plainly what it is doing. If a case ever
-        shows a download link the app does not recognise, it now tells you the label is new to it
-        rather than claiming the record has no files.</li>
-      <li><b>New in 2.4.24 — restoring a backup can no longer point the app at a lost drive.</b>
-        A restore now brings back your case log, fees and invoice record while keeping the storage
-        folder <i>you</i> chose on <i>this</i> machine — exactly what you need when the original
-        drive is gone, which is when restores happen. The app also warns you clearly if a backup
-        was taken while your drive was unplugged (it holds settings only, no case log), both when
-        it is written and if you try to restore one.</li>
-      <li><b>New in 2.4 — choose the format per case.</b> The single "Preferred Format" setting is
-        gone. Every row now has a <b>DICOM</b> and a <b>Volume Viewer</b> button — green when that
-        version is on your drive (opens instantly), blue when the portal offers it, greyed when
-        that patient has no such version. Both versions of one case can sit side by side, and
-        combined portal packages open correctly whichever button you press.</li>
-      <li><b>New in 2.4 — only one patient on screen, ever.</b> Opening a case now closes every
-        previous viewer window, whatever it is called and however it was started — the way a
-        report ends up written against the wrong patient is gone.</li>
-      <li><b>New in 2.4 — you can always see which case you are reporting.</b> Its row is
-        highlighted and marked, and the list scrolls back to it after the scan opens. The side
-        strip carries the whole loop now — open, Done reporting, set the fee — with an optional
-        fully see-through background so it floats over your viewer.</li>
-      <li><b>New in 2.4 — a tidier window.</b> Setup folds away once you are signed in (the ⚙
-        Setup button brings it back), permanent Start/Close session controls live in the header,
-        the app opens sized to your screen, and batch download counts each format honestly —
-        including cases that simply have no version in the format you asked for.</li>
-      <li><b>Fixed in 2.4 — an unplugged drive can no longer blank your records.</b> If your
-        encrypted drive disconnects mid-session, the app now refuses to trust — or save — what it
-        could not read, and everything returns by itself the moment the drive is back.</li>
-      <li><b>New in 2.3.8 — the worklist loads itself.</b> Signing in used to leave the list empty
-        until you pressed Sync. Now it appears on its own the moment your session is active — one
-        fewer click, every time.</li>
-      <li><b>New in 2.3.7 — Advanced setup, tidied.</b> Invoice details, where your files are saved,
-        and your encrypted backup are now three clear tabs instead of one long scroll, so the backup
-        settings are easy to find.</li>
-      <li><b>Fixed in 2.3.6 — a case is never counted twice.</b> When the portal updated a row —
-        a case being signed off, or a patient's title appearing — the app could stop recognising
-        it as the same case. Scans you had already downloaded looked missing, fees you had already
-        set went blank, and a patient could end up on your invoice <b>twice</b>. Cases are now
-        matched on their Report Req ID, which does not change, and any duplicates already recorded
-        are merged the first time you open this version. <b>Check any invoice you issued recently.</b></li>
-      <li><b>Fixed in 2.3.6 — a case can never open another patient's scan.</b> A rare consequence
-        of the same problem: one patient's row could end up pointing at a scan belonging to someone
-        else. The app now refuses that link and fetches the correct scan instead.</li>
-      <li><b>New in 2.3.6 — an encrypted backup, kept off your scan drive.</b> Your case log, fees
-        and invoice record are about 125 KB and cannot be downloaded again from the portal. The app
-        now writes them, encrypted with a passphrase you choose, to a folder you pick — OneDrive, a
-        second drive, anywhere — every time it closes. If the drive is lost or the computer dies,
-        <b>Restore</b> brings everything back. Only your passphrase opens it: keep it somewhere
-        safe, because nobody can recover it for you.</li>
-      <li><b>Your case log survives a power cut.</b> Saving the log used to empty the file before
-        writing the new one, so losing power at the wrong moment could leave it blank. It is now
-        written safely, keeps a spare copy, and will never overwrite a file it could not read.</li>
-      <li><b>Moving your storage folder no longer looks like losing everything.</b> Choose a new
-        folder and the app offers to bring your scans, case log and invoices across.</li>
-      <li><b>Invoices take other items.</b> Add an expense or a credit — an encrypted drive you are
-        recharging, say — as its own line. Months now read as <b>July 2026</b> rather than 2026-07.</li>
-      <li><b>The appraisal log no longer names the referring clinician.</b> Referral notes are
-        signed, and those names were reaching a document meant to be shared. They are now removed
-        along with the patient's.</li>
-      <li><b>Fixed in 2.3.3 — your worklist shows all of it.</b> On a worklist long enough to run to
-        a second page, the app could read just one page and report that as your whole list, and a
-        case you could see on screen might refuse to open. It now checks the portal's own case count
-        and tells you plainly if it ever comes up short.</li>
-      <li><b>New in 2.3.3 — reporting in one tab.</b> Opening a case takes you straight to that
-        patient's report page in the tab you are already in, instead of leaving a new tab behind
-        every time. When you have finished, <b>Done reporting</b> brings you back to the worklist and
-        refreshes just that patient, without re-reading the whole list.</li>
-      <li><b>Your scans are found again when the drive letter changes.</b> An encrypted USB drive
-        does not always come back as the same letter. The app now recognises your downloaded scans
-        wherever the drive has landed, so it stops offering to fetch cases you already have.</li>
-      <li><b>The month report is a spreadsheet too.</b> Alongside the CSV you get an <b>.xlsx</b>
-        with the columns already sized and the long history text wrapped, so it opens ready to read
-        instead of needing an hour of dragging column edges.</li>
-      <li><b>New in 2.3.2.</b> Opening a case now also opens that patient on the portal, ready to
-        report — so the scan is in your viewer and the report page is in front of you, without
-        hunting for the patient again.</li>
-      <li><b>Fixed in 2.3.1.</b> Opening a case now tells you what it is doing while it does it, and
-        a case already on your drive opens at once instead of queueing behind a batch download. The
-        row updates the moment a download finishes, without a redraw. Batch downloads no longer
-        surface in the browser window you are working in, and never fetch the same patient twice.</li>
-      <li><b>One fee per patient, not per study.</b> CT Dent's rates are written per patient: two
-        small volumes, or a single jaw, is one fee. Earlier versions priced each study separately,
-        so a patient scanned on both sides was billed twice. If you have used an earlier version,
-        it is worth checking any patient who had more than one study.</li>
-      <li><b>Batch download.</b> Fetch every case, or just the pending ones, in one go. It runs in
-        a browser you cannot see, skips anything already on your drive, and tells you what it did.</li>
-      <li><b>An appraisal log.</b> A PDF of your year's work with the patient names and references
-        redacted out of it and no fees anywhere in it, so you can hand it to an appraiser. Your own
-        CSV log, with the names and the money, stays on your encrypted drive.</li>
-      <li><b>Read the case before you price it.</b> Press <b>£ Log</b> on any row and the app reads
-        that patient from the portal, shows you the region and the scan type, and then asks the fee.
-        No download needed.</li>
-      <li><b>Your invoice, as a PDF.</b> Built from the fees you recorded, with no patient names on
-        it. The invoice number and its ledger now live with the invoices, so reinstalling the app
-        never restarts your numbering.</li>
-      <li><b>Bigger, clearer text.</b> The patient's name now leads each row, and you can scale the
-        whole interface up if you want to.</li>
-      <li><b>Uninstalling removes every patient record.</b> The scans, the case log, the clinical
-        histories, the browser profile. Your invoices and your appraisal logs are the only things it
-        asks about, because they are the only things that name nobody.
-        <a href="#privacy" style="color:var(--green)">Read how your data is protected</a></li>
-    </ul>
   </section>
 
   <section class="grid" id="features">
@@ -660,6 +515,171 @@
     </div>
   </section>
 
+
+  <details class="whatsnew" id="history">
+    <summary><h2>Version history <span class="tag">v2.4.41</span></h2></summary>
+    <ul>
+      <li><b>New in 2.4.41 — an appraisal log of reported work, with optional status and
+        sign-off.</b> The appraisal log now lists only cases whose draft was saved or that were
+        signed off (earlier cases are kept as they were). Tick <b>Include case status</b> to show
+        how each case was left, colour-coded, and <b>Add supervisor / verifying consultant</b> to
+        print their name and qualifications with a verification statement and signature lines.</li>
+      <li><b>New in 2.4.40 — a reporting log for each reporter.</b> Add your name and
+        qualifications in Setup. <b>Reports → Cases I reported</b> gives a colour-coded Excel log
+        headed with your name and date range, showing the status you left each case in:
+        Signed Off in green, Draft in orange, In Progress in red. Cases still Pending never appear,
+        and there are no patient names or fees in it.</li>
+      <li><b>New in 2.4.39 — a case counts as reported only when the portal says so.</b> After
+        saving a draft, press <b>Done reporting</b>: the app checks the portal and records the case
+        once its status has moved on, or tells you if the draft was not saved.</li>
+      <li><b>New in 2.4.38 — your own rates, VAT, and a sign-off name.</b> The app now ships with
+        no fee rates: enter yours once in <b>⚙ Advanced setup → Rates</b>. Until you do, cases
+        still log and month reports still export; only invoicing waits for rates. Upgrading keeps
+        every setting and record you have, and carries your rates over automatically from your
+        case log. Invoices can now show your <b>VAT number</b> and add <b>VAT</b> as a separate
+        line, and the invoice email can end with your name.</li>
+      <li><b>New in 2.4.37 — a fourth app in the footer.</b> The strip at the bottom of the window
+        now also links to <b>Notegral</b>, a study companion that turns scattered notes into
+        flashcards, quizzes, mind maps and spaced repetition. Nothing else changes: signing in,
+        syncing, downloading, pricing and reporting all work exactly as before.</li>
+      <li><b>New in 2.4.36 — patient names no longer appear in the app's diagnostic log.</b> The
+        technical log the app keeps on your system drive used to record patients by name. Names are
+        now replaced with initials and each case is identified by its Report Req ID instead, so the
+        log stays just as useful for diagnosing a problem while naming nobody. Your existing log is
+        cleaned automatically the first time you run this version.</li>
+      <li><b>New in 2.4.35 — your worklist is read in full, every time.</b> Occasionally a sync
+        stopped after the first page and showed 25 cases when the portal held 68. The app now
+        notices a page that failed to turn and tries again, and if a page still cannot be read it
+        keeps the cases it already knew about rather than dropping them off the list.</li>
+      <li><b>New in 2.4.33 — live cases no longer show a grey “Unknown” chip.</b> The portal
+        changed how it spells its in-progress status. Status wording is now read tolerantly, so
+        hyphens, run-together words and unusual spacing all match. The worklist is also sorted in
+        work order — pending first, then in progress, then drafts, then signed off — and a
+        <b>search box</b> on the action bar filters the list as you type by name, Report Req ID,
+        date, scan type or status.</li>
+      <li><b>New in 2.4.32 — patients with more than one scan open correctly.</b> Once the first
+        scan of a multi-scan patient was downloaded, clicking the second scan's button kept
+        reopening the first scan's copy instead of downloading the second. Each scan's button now
+        fetches and opens its own scan, and the study picker ticks the ones already done.</li>
+      <li><b>New in 2.4.31 — a stuck download can no longer stall the whole batch.</b> A transfer
+        the portal freezes is cancelled after two minutes; one throttled to a crawl is set aside
+        after five and retried at the end of the batch on a fresh link, which usually runs at full
+        speed. The Stop button now works even mid-transfer, an incomplete file is named plainly
+        instead of raising a cryptic error, and if several cases in a row fail the same way the
+        batch stops itself with one clear message rather than grinding through the rest. Finished
+        downloads also turn their button green silently — the list no longer visibly rebuilds
+        once per downloaded case.</li>
+      <li><b>New in 2.4.27 — keep an eye on storage, and clear space safely.</b> The app warns
+        when your storage drive drops below 10&nbsp;GB free, and ⚙ Advanced setup gained a
+        🧹 Storage tab that clears downloaded scans older than an age you choose. Fees, reports
+        and invoices are never touched — cleared scans simply become downloadable again.</li>
+      <li><b>New in 2.4.25 — i-CAT Vision downloads are supported.</b> Some cases are offered on
+        the portal under a single <i>i-CAT Vision</i> link — a cone-beam export that contains a
+        standard DICOM series. The DICOM button now downloads and opens these in your DICOM
+        viewer like any other case, and the app says plainly what it is doing. If a case ever
+        shows a download link the app does not recognise, it now tells you the label is new to it
+        rather than claiming the record has no files.</li>
+      <li><b>New in 2.4.24 — restoring a backup can no longer point the app at a lost drive.</b>
+        A restore now brings back your case log, fees and invoice record while keeping the storage
+        folder <i>you</i> chose on <i>this</i> machine — exactly what you need when the original
+        drive is gone, which is when restores happen. The app also warns you clearly if a backup
+        was taken while your drive was unplugged (it holds settings only, no case log), both when
+        it is written and if you try to restore one.</li>
+      <li><b>New in 2.4 — choose the format per case.</b> The single "Preferred Format" setting is
+        gone. Every row now has a <b>DICOM</b> and a <b>Volume Viewer</b> button — green when that
+        version is on your drive (opens instantly), blue when the portal offers it, greyed when
+        that patient has no such version. Both versions of one case can sit side by side, and
+        combined portal packages open correctly whichever button you press.</li>
+      <li><b>New in 2.4 — only one patient on screen, ever.</b> Opening a case now closes every
+        previous viewer window, whatever it is called and however it was started — the way a
+        report ends up written against the wrong patient is gone.</li>
+      <li><b>New in 2.4 — you can always see which case you are reporting.</b> Its row is
+        highlighted and marked, and the list scrolls back to it after the scan opens. The side
+        strip carries the whole loop now — open, Done reporting, set the fee — with an optional
+        fully see-through background so it floats over your viewer.</li>
+      <li><b>New in 2.4 — a tidier window.</b> Setup folds away once you are signed in (the ⚙
+        Setup button brings it back), permanent Start/Close session controls live in the header,
+        the app opens sized to your screen, and batch download counts each format honestly —
+        including cases that simply have no version in the format you asked for.</li>
+      <li><b>Fixed in 2.4 — an unplugged drive can no longer blank your records.</b> If your
+        encrypted drive disconnects mid-session, the app now refuses to trust — or save — what it
+        could not read, and everything returns by itself the moment the drive is back.</li>
+      <li><b>New in 2.3.8 — the worklist loads itself.</b> Signing in used to leave the list empty
+        until you pressed Sync. Now it appears on its own the moment your session is active — one
+        fewer click, every time.</li>
+      <li><b>New in 2.3.7 — Advanced setup, tidied.</b> Invoice details, where your files are saved,
+        and your encrypted backup are now three clear tabs instead of one long scroll, so the backup
+        settings are easy to find.</li>
+      <li><b>Fixed in 2.3.6 — a case is never counted twice.</b> When the portal updated a row —
+        a case being signed off, or a patient's title appearing — the app could stop recognising
+        it as the same case. Scans you had already downloaded looked missing, fees you had already
+        set went blank, and a patient could end up on your invoice <b>twice</b>. Cases are now
+        matched on their Report Req ID, which does not change, and any duplicates already recorded
+        are merged the first time you open this version. <b>Check any invoice you issued recently.</b></li>
+      <li><b>Fixed in 2.3.6 — a case can never open another patient's scan.</b> A rare consequence
+        of the same problem: one patient's row could end up pointing at a scan belonging to someone
+        else. The app now refuses that link and fetches the correct scan instead.</li>
+      <li><b>New in 2.3.6 — an encrypted backup, kept off your scan drive.</b> Your case log, fees
+        and invoice record are about 125 KB and cannot be downloaded again from the portal. The app
+        now writes them, encrypted with a passphrase you choose, to a folder you pick — OneDrive, a
+        second drive, anywhere — every time it closes. If the drive is lost or the computer dies,
+        <b>Restore</b> brings everything back. Only your passphrase opens it: keep it somewhere
+        safe, because nobody can recover it for you.</li>
+      <li><b>Your case log survives a power cut.</b> Saving the log used to empty the file before
+        writing the new one, so losing power at the wrong moment could leave it blank. It is now
+        written safely, keeps a spare copy, and will never overwrite a file it could not read.</li>
+      <li><b>Moving your storage folder no longer looks like losing everything.</b> Choose a new
+        folder and the app offers to bring your scans, case log and invoices across.</li>
+      <li><b>Invoices take other items.</b> Add an expense or a credit — an encrypted drive you are
+        recharging, say — as its own line. Months now read as <b>July 2026</b> rather than 2026-07.</li>
+      <li><b>The appraisal log no longer names the referring clinician.</b> Referral notes are
+        signed, and those names were reaching a document meant to be shared. They are now removed
+        along with the patient's.</li>
+      <li><b>Fixed in 2.3.3 — your worklist shows all of it.</b> On a worklist long enough to run to
+        a second page, the app could read just one page and report that as your whole list, and a
+        case you could see on screen might refuse to open. It now checks the portal's own case count
+        and tells you plainly if it ever comes up short.</li>
+      <li><b>New in 2.3.3 — reporting in one tab.</b> Opening a case takes you straight to that
+        patient's report page in the tab you are already in, instead of leaving a new tab behind
+        every time. When you have finished, <b>Done reporting</b> brings you back to the worklist and
+        refreshes just that patient, without re-reading the whole list.</li>
+      <li><b>Your scans are found again when the drive letter changes.</b> An encrypted USB drive
+        does not always come back as the same letter. The app now recognises your downloaded scans
+        wherever the drive has landed, so it stops offering to fetch cases you already have.</li>
+      <li><b>The month report is a spreadsheet too.</b> Alongside the CSV you get an <b>.xlsx</b>
+        with the columns already sized and the long history text wrapped, so it opens ready to read
+        instead of needing an hour of dragging column edges.</li>
+      <li><b>New in 2.3.2.</b> Opening a case now also opens that patient on the portal, ready to
+        report — so the scan is in your viewer and the report page is in front of you, without
+        hunting for the patient again.</li>
+      <li><b>Fixed in 2.3.1.</b> Opening a case now tells you what it is doing while it does it, and
+        a case already on your drive opens at once instead of queueing behind a batch download. The
+        row updates the moment a download finishes, without a redraw. Batch downloads no longer
+        surface in the browser window you are working in, and never fetch the same patient twice.</li>
+      <li><b>One fee per patient, not per study.</b> CT Dent's rates are written per patient: two
+        small volumes, or a single jaw, is one fee. Earlier versions priced each study separately,
+        so a patient scanned on both sides was billed twice. If you have used an earlier version,
+        it is worth checking any patient who had more than one study.</li>
+      <li><b>Batch download.</b> Fetch every case, or just the pending ones, in one go. It runs in
+        a browser you cannot see, skips anything already on your drive, and tells you what it did.</li>
+      <li><b>An appraisal log.</b> A PDF of your year's work with the patient names and references
+        redacted out of it and no fees anywhere in it, so you can hand it to an appraiser. Your own
+        CSV log, with the names and the money, stays on your encrypted drive.</li>
+      <li><b>Read the case before you price it.</b> Press <b>£ Log</b> on any row and the app reads
+        that patient from the portal, shows you the region and the scan type, and then asks the fee.
+        No download needed.</li>
+      <li><b>Your invoice, as a PDF.</b> Built from the fees you recorded, with no patient names on
+        it. The invoice number and its ledger now live with the invoices, so reinstalling the app
+        never restarts your numbering.</li>
+      <li><b>Bigger, clearer text.</b> The patient's name now leads each row, and you can scale the
+        whole interface up if you want to.</li>
+      <li><b>Uninstalling removes every patient record.</b> The scans, the case log, the clinical
+        histories, the browser profile. Your invoices and your appraisal logs are the only things it
+        asks about, because they are the only things that name nobody.
+        <a href="#privacy" style="color:var(--green)">Read how your data is protected</a></li>
+    </ul>
+  </details>
+
   <p class="note">CT Dent Assistant handles patient data entirely on your own machine, nothing is
     uploaded. Keep it on an encrypted drive and use it in line with UK GDPR and your CT Dent
     agreement. <a href="#privacy" style="color:var(--green)">How your data is protected →</a></p>
@@ -670,5 +690,10 @@
     © Eralight Limited. All rights reserved.
   </footer>
 </div>
+<script>
+  // 'Versions' in the bar opens the collapsed history card it jumps to.
+  function openHistory(){ if (location.hash === '#history') { var d = document.getElementById('history'); if (d) d.open = true; } }
+  window.addEventListener('hashchange', openHistory); openHistory();
+</script>
 </body>
 </html>
