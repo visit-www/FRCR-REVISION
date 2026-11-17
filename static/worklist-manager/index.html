@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="icon" href="/static/worklist-manager/assets/favicon.ico" sizes="any" />
+<link rel="apple-touch-icon" href="/static/worklist-manager/assets/ctdent-icon.png" />
+<title>CT Dent Assistant - Download for Windows</title>
+<meta name="description" content="A Windows app for CT Dent reporters. It shows your case list, opens each scan in your own viewer with one click, and keeps a record of what you reported for your month-end bill." />
+<style>
+  :root{
+    --bg:#0f1418; --surface:#161d23; --surface2:#1f2830; --sep:#2b353d;
+    --text:#ffffff; --muted:#9aa6b1; --accent:#0a84ff; --accent2:#0071e3;
+    --green:#30d158; --amber:#ff9f0a; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:radial-gradient(1200px 600px at 50% -10%,#18232c 0%,var(--bg) 55%);
+       color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  header{padding:28px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .brand{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px}
+  /* The app's own icon (assets/ctdent-icon.png, from the same logo.ico the exe
+     and installer use) - not an emoji, and no gradient behind it to fight with. */
+  .brand .dot{width:34px;height:34px;border-radius:9px;object-fit:contain;display:block}
+  nav a{color:var(--muted);text-decoration:none;margin-left:20px;font-size:14px}
+  nav a:hover{color:var(--text)}
+
+  .hero{padding:56px 0 8px;text-align:center}
+  .heroicon{width:88px;height:88px;object-fit:contain;margin:0 auto 20px;display:block;
+       filter:drop-shadow(0 10px 30px rgba(10,132,255,.28))}
+  .pill{display:inline-block;padding:6px 14px;border:1px solid var(--sep);border-radius:999px;
+       color:var(--muted);font-size:13px;margin-bottom:22px}
+  .pill b{color:var(--green);font-weight:600}
+  h1{font-size:clamp(32px,6vw,54px);line-height:1.1;letter-spacing:-.02em;margin-bottom:18px}
+  h1 span{background:linear-gradient(90deg,#5ac8fa,#0a84ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{font-size:clamp(16px,2.5vw,20px);color:var(--muted);max-width:680px;margin:0 auto 34px}
+
+  /* Download card - the point of the page. */
+  .dl{background:var(--surface);border:1px solid var(--sep);border-radius:20px;
+      padding:30px 28px 26px;max-width:560px;margin:0 auto;
+      box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .cta{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:var(--accent);color:#fff;
+       text-decoration:none;font-weight:700;font-size:17px;padding:16px 30px;border-radius:12px;width:100%;
+       transition:transform .12s ease,background .2s ease;box-shadow:0 10px 30px rgba(10,132,255,.35)}
+  .cta:hover{background:var(--accent2);transform:translateY(-1px)}
+  .filemeta{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:16px;
+       color:var(--muted);font-size:13px}
+  .filemeta span{display:inline-flex;align-items:center;gap:6px}
+  .filemeta code{background:var(--surface2);border:1px solid var(--sep);border-radius:6px;
+       padding:1px 7px;font-size:12.5px;color:var(--text)}
+  .after{margin-top:20px;padding-top:18px;border-top:1px solid var(--sep);text-align:left}
+  .after h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px}
+  .after li{list-style:none;color:var(--muted);font-size:14px;padding-left:24px;position:relative;margin-top:8px}
+  .after li::before{content:"✓";color:var(--green);position:absolute;left:0;font-weight:700}
+  .after li b{color:var(--text);font-weight:600}
+  .smartscreen{margin-top:18px;border-left:3px solid var(--amber);background:var(--surface2);
+       border-radius:10px;padding:13px 15px;color:var(--muted);font-size:13.5px;text-align:left}
+  .smartscreen b{color:var(--amber)}
+  /* The one-line promise, right under the download button. Links to #privacy. */
+  .privacystrip{margin-top:14px;background:rgba(48,209,88,.08);border:1px solid rgba(48,209,88,.35);
+       border-radius:10px;padding:12px 15px;color:var(--muted);font-size:13.5px;text-align:left}
+  .privacystrip b{color:var(--text)}
+  .privacystrip a{color:var(--green);text-decoration:none;font-weight:600}
+  .privacystrip a:hover{text-decoration:underline}
+
+  /* Data protection. The section a clinician must not miss: loud border, own colour. */
+  .privacy{background:linear-gradient(180deg,rgba(48,209,88,.07),rgba(48,209,88,0) 45%),var(--surface);
+       border:2px solid rgba(48,209,88,.45);border-radius:20px;padding:30px 28px 28px;margin:56px 0 0;
+       box-shadow:0 20px 50px rgba(0,0,0,.3)}
+  .privacy > h2{font-size:clamp(21px,3.2vw,27px);line-height:1.25;display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .privacy > .lead{color:var(--muted);font-size:15px;margin-bottom:22px;max-width:780px}
+  .pillars{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:8px}
+  .pillar{background:var(--surface2);border:1px solid rgba(48,209,88,.28);border-radius:12px;padding:18px}
+  .pillar .big{font-size:23px;display:block;margin-bottom:9px}
+  .pillar h3{font-size:15px;margin-bottom:5px}
+  .pillar p{color:var(--muted);font-size:13.5px}
+  .pblock{border-top:1px solid var(--sep);padding:17px 0 3px}
+  .pblock h3{font-size:16px;margin-bottom:7px;display:flex;align-items:center;gap:9px}
+  .pblock p{color:var(--muted);font-size:14px;margin-bottom:6px}
+  .pblock b{color:var(--text);font-weight:600}
+  .pblock ul{list-style:none;margin-top:10px}
+  .pblock li{color:var(--muted);font-size:14px;padding-left:22px;position:relative;margin-top:7px}
+  .pblock li::before{content:"•";color:var(--green);position:absolute;left:5px;font-weight:700}
+  .pblock li b{color:var(--text);font-weight:600}
+  .fixnote{margin:12px 0 4px;border-left:3px solid var(--amber);background:var(--surface2);
+       border-radius:10px;padding:13px 15px;color:var(--muted);font-size:13.5px}
+  .fixnote b{color:var(--amber)}
+  .yours{margin-top:22px;background:var(--surface2);border:1px solid var(--sep);border-radius:12px;padding:21px 22px}
+  .yours h3{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+  .yours .lead{color:var(--muted);font-size:13.5px;margin-bottom:12px}
+  .yours ul{list-style:none}
+  .yours li{color:var(--muted);font-size:14px;padding-left:24px;position:relative;margin-top:8px}
+  .yours li::before{content:"→";color:var(--amber);position:absolute;left:0;font-weight:700}
+  .yours li b{color:var(--text);font-weight:600}
+
+  .whatsnew{background:var(--surface);border:1px solid var(--sep);border-left:3px solid var(--green);
+       border-radius:var(--radius);padding:22px 24px;margin:56px 0 0;text-align:left}
+  .whatsnew h2{font-size:16px;margin-bottom:10px}
+  .whatsnew h2 .tag{background:rgba(48,209,88,.14);color:var(--green);font-size:12px;font-weight:700;
+       padding:2px 9px;border-radius:999px;margin-left:8px;vertical-align:middle}
+  .whatsnew li{color:var(--muted);font-size:14px;list-style:none;padding-left:22px;position:relative;margin-top:7px}
+  .whatsnew li::before{content:"→";color:var(--green);position:absolute;left:0;font-weight:700}
+  .whatsnew li b{color:var(--text);font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:48px 0}
+  .card{background:var(--surface);border:1px solid var(--sep);border-radius:var(--radius);padding:22px}
+  .card h3{font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:9px}
+  .card p{color:var(--muted);font-size:14px}
+  .ico{width:30px;height:30px;border-radius:8px;background:var(--surface2);display:grid;place-items:center;font-size:15px}
+
+  .req{background:var(--surface);border:1px solid var(--sep);border-radius:var(--radius);padding:26px;margin:20px 0 48px}
+  .req h2{font-size:20px;margin-bottom:6px}
+  .req .lead{color:var(--muted);font-size:14px;margin-bottom:16px}
+  .req ul{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+  .req li{color:var(--muted);font-size:14px;padding-left:22px;position:relative}
+  .req li::before{content:"✓";color:var(--green);position:absolute;left:0;font-weight:700}
+  .req li b{color:var(--text);font-weight:600}
+
+  .steps{margin:48px 0}
+  .steps h2{font-size:20px;margin-bottom:6px}
+  .steps .lead{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .steps ol{list-style:none;counter-reset:s}
+  .steps li{counter-increment:s;position:relative;padding:14px 0 14px 46px;border-bottom:1px solid var(--sep);
+       color:var(--muted);font-size:14px}
+  .steps li:last-child{border-bottom:0}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:13px;width:28px;height:28px;border-radius:8px;
+       background:var(--surface2);color:var(--text);display:grid;place-items:center;font-size:13px;font-weight:700}
+  .steps li b{color:var(--text);font-weight:600}
+
+  /* FAQ - the same answers the app shows as its tip of the day. */
+  .faq{margin:48px 0}
+  .faq h2{font-size:20px;margin-bottom:6px}
+  .faq .lead{color:var(--muted);font-size:14px;margin-bottom:18px}
+  .faq details{background:var(--surface);border:1px solid var(--sep);border-radius:12px;
+       padding:14px 18px;margin-bottom:10px}
+  .faq details[open]{border-color:var(--accent)}
+  .faq summary{cursor:pointer;font-size:15px;font-weight:600;color:var(--text);list-style:none;
+       display:flex;align-items:center;gap:10px}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::before{content:"+";color:var(--accent);font-weight:700;font-size:17px;width:14px}
+  .faq details[open] summary::before{content:"−"}
+  .faq p{color:var(--muted);font-size:14px;margin-top:10px;padding-left:24px}
+
+  /* More from the same developer. Mirrors the app's own footer.
+     Each card carries its product's brand colour via --ac/--ach/--tint/--bd. */
+  .apps{margin:56px 0 40px}
+  .apps h2{font-size:20px;margin-bottom:6px}
+  .apps .lead{color:var(--muted);font-size:14px;margin-bottom:20px}
+  .appgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+  .appcard{background:var(--tint);border:1px solid var(--bd);border-radius:var(--radius);padding:24px 22px;
+       display:flex;flex-direction:column;transition:transform .15s ease,box-shadow .2s ease}
+  .appcard:hover{transform:translateY(-3px);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+  .appicon{width:52px;height:52px;border-radius:13px;background:rgba(255,255,255,.06);
+       border:1px solid var(--bd);display:grid;place-items:center;font-size:26px;margin-bottom:14px;overflow:hidden}
+  .appicon img{width:100%;height:100%;object-fit:contain;padding:7px}
+  .appcard h4{font-size:17px;margin-bottom:4px}
+  .appcard p{color:var(--muted);font-size:13.5px;margin-bottom:18px}
+  .appbtn{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+       background:var(--ac);color:#fff;text-decoration:none;font-weight:600;font-size:14px;
+       padding:11px 18px;border-radius:10px;transition:background .18s ease}
+  .appbtn:hover{background:var(--ach)}
+
+  footer{border-top:1px solid var(--sep);margin-top:40px;padding:28px 0 48px;color:var(--muted);font-size:13px;text-align:center}
+  .note{font-size:12px;color:var(--muted);max-width:720px;margin:26px auto 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><img class="dot" src="/static/worklist-manager/assets/ctdent-icon.png" alt="CT Dent Assistant" width="34" height="34"> CT Dent Assistant</div>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#privacy">Your data</a>
+      <a href="#requirements">Requirements</a>
+      <a href="#setup">Setup</a>
+      <a href="#faq">FAQ</a>
+      <a href="#download">Download</a>
+    </nav>
+  </header>
+
+  <section class="hero" id="download">
+    <img class="heroicon" src="/static/worklist-manager/assets/ctdent-icon.png" alt="CT Dent Assistant" width="88" height="88">
+    <div class="pill">Windows app for CT Dent reporters · <b>v2.4.38</b></div>
+    <h1>Your cases, ready to <span>open in one click</span></h1>
+    <p class="sub">CT Dent Assistant sits next to the CT Dent portal and shows your case list.
+      Click a case: it downloads the scan and opens it in your own viewer. It also keeps a note of
+      what you reported, so your month-end bill writes itself.</p>
+
+    <div class="dl">
+      <!-- Version-agnostic: always the newest release. Every release MUST keep the
+           asset filename CT_Dent_Setup.exe or this link 404s. -->
+      <a class="cta" id="downloadBtn" href="https://github.com/visit-www/worklistmanager/releases/latest/download/CT_Dent_Setup.exe">
+        ⬇ Download for Windows
+      </a>
+      <div class="filemeta">
+        <span><code>CT_Dent_Setup.exe</code></span>
+        <span>~66 MB</span>
+        <span>Windows 10 / 11 · 64-bit</span>
+      </div>
+
+      <div class="after">
+        <h3>What to expect</h3>
+        <ul>
+          <li><b>No admin rights needed.</b> It installs just for you, with no permission prompt.</li>
+          <li><b>No browser to install.</b> It uses the Edge, Chrome or Brave you already have.</li>
+          <li><b>Setup takes about two minutes</b>, once. After that it reconnects on its own.</li>
+        </ul>
+      </div>
+
+      <p class="smartscreen">
+        <b>Windows will warn you that the installer is unsigned.</b> That is expected. Choose
+        <b>More info</b>, then <b>Run anyway</b>.
+      </p>
+
+      <p class="privacystrip">
+        🛡 <b>Patient data never leaves your computer.</b> There is no cloud and no account. Your
+        scans, your case log and your histories all sit in one folder that <b>you</b> choose, and
+        it should be an encrypted drive. <a href="#privacy">How your data is protected →</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="privacy" id="privacy">
+    <h2><span>🛡</span> How your patient data is protected</h2>
+    <p class="lead">These are patient records, and you are the one answerable for them. So here is
+      exactly what the app does with them, in plain English.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <span class="big">🚫☁️</span>
+        <h3>Nothing is ever uploaded</h3>
+        <p>No cloud. No account. No tracking. Your patient data never leaves your computer.</p>
+      </div>
+      <div class="pillar">
+        <span class="big">🔐</span>
+        <h3>It all sits on your encrypted drive</h3>
+        <p>Scans, case log, histories, everything the app keeps is in one folder, on the drive you chose.</p>
+      </div>
+      <div class="pillar">
+        <span class="big">📁</span>
+        <h3>You choose that drive</h3>
+        <p>The app has no default folder. Until you pick one, nothing is saved anywhere at all.</p>
+      </div>
+    </div>
+
+    <div class="pblock">
+      <h3>🚫☁️ Nothing is ever uploaded, there is nowhere to upload it to</h3>
+      <p>The app has <b>no server, no cloud storage, no account to sign up for, and no tracking of
+        any kind</b>. It does not phone home. It cannot see your cases, and neither can we.</p>
+      <p>All it does is drive <b>your own browser</b> to the CT Dent portal, the same portal you
+        already use, and read the pages that come back. Your patient data goes from CT Dent to your
+        computer, and stops there.</p>
+    </div>
+
+    <div class="pblock">
+      <h3>📁 You choose where everything is kept, and it must be an encrypted drive</h3>
+      <p>The first time you run the app, it asks you to pick a folder. This is your <b>Storage
+        Target</b>. It should be on a <b>BitLocker-encrypted drive</b>, internal or external, either
+        is fine. "Encrypted" simply means that if someone steals the disk, its contents are unreadable
+        without your login.</p>
+      <p>There is <b>no default folder</b>. The app will not download a single scan until you have
+        told it where they should go.</p>
+    </div>
+
+    <div class="pblock">
+      <h3>🔐 Everything the app keeps lives in that one place</h3>
+      <p>All of it goes on your encrypted drive, together:</p>
+      <ul>
+        <li><b>The scans</b> you download.</li>
+        <li><b>Your case log</b>, the patient names and fees behind your month-end report.</li>
+        <li><b>The clinical histories</b> the app fetches for the History drawer.</li>
+        <li><b>The browser profile.</b> This one is easy to overlook: a browser quietly keeps copies
+          of the pages it shows you, and those portal pages have patient names on them. So the app
+          keeps its browser profile on your encrypted drive too.</li>
+        <li><b>Your month-end report</b> (in <b>ctdent-reports</b>, with your own log and the redacted appraisal log kept apart).</li>
+      </ul>
+      <p class="fixnote">
+        <b>An honest word about older versions.</b> Version 2.1.3 and earlier got this wrong: some of
+        the above, the case log, the histories, the downloaded zips and the browser profile, was
+        left on your computer's <b>C: drive</b>, which may not be encrypted. <b>Version 2.2.0 fixes
+        it.</b> When you first run it, it moves all of that onto your encrypted drive and
+        <b>deletes the old copies from C:</b>. You do not need to do anything, but you deserved to
+        be told.
+      </p>
+    </div>
+
+    <div class="pblock">
+      <h3>✅ The app checks your drive for you</h3>
+      <p>When you choose your folder, the app asks Windows whether that drive is <b>actually</b>
+        encrypted with BitLocker. If it is not, it says so, loudly, before anything is saved there.</p>
+      <p>Sometimes Windows will not answer, that check normally needs administrator rights, and the
+        app deliberately runs without them. When that happens the app tells you plainly that it could
+        not confirm it, and asks you to check the drive yourself.</p>
+    </div>
+
+    <div class="pblock">
+      <h3>🔑 Your portal sign-in is protected</h3>
+      <p>So that you are not asked for a one-time code every single time, the app saves your portal
+        <b>session</b>, the "you are already signed in" pass the portal gives your browser.</p>
+      <p>It is scrambled using <b>Windows' own built-in protection</b> and locked to <b>your Windows
+        account</b>. In practice: if that file is copied onto another computer, or opened by another
+        person's Windows account, it is <b>useless to them</b>.</p>
+      <p>To be straight with you about the limit of that: it does <b>not</b> protect you against a
+        virus or spyware that is already running on your own computer, signed in as you. Nothing
+        stored on a computer can. Keep the machine locked and patched.</p>
+    </div>
+
+    <div class="pblock">
+      <h3>🙈 The app never asks for your CT Dent password</h3>
+      <p>It does not ask for it, does not type it, and does not store it, anywhere. You sign in
+        yourself, on the real portal page, in your own browser.</p>
+    </div>
+
+    <div class="pblock">
+      <h3>🗑 Uninstalling never quietly deletes patient records</h3>
+      <p>When you remove the app, it asks you <b>separately</b> about your scans, your invoices and
+        your exported reports. Every one of those questions is set to <b>Keep</b> by default, so a
+        stray press of Enter can never destroy a patient record. Your files go only when you
+        deliberately say so.</p>
+    </div>
+
+    <div class="yours">
+      <h3>⚖️ What is still down to you</h3>
+      <p class="lead">The app can only do its half. This half is yours:</p>
+      <ul>
+        <li><b>Use an encrypted drive.</b> BitLocker for an internal disk, BitLocker To Go for a USB
+          or external one. This is required by your CT Dent agreement.</li>
+        <li><b>Lock your computer when you step away.</b> Windows key + L.</li>
+        <li><b>Do not email scans around</b>, and do not copy them onto unencrypted memory sticks.</li>
+        <li><b>Delete cases you no longer need.</b> Keeping patient data longer than you need it is
+          itself a breach.</li>
+        <li><b>Remember your position.</b> As the reporting clinician you are the <b>data
+          controller</b> under UK GDPR. This app is a tool you use; the responsibility for the data
+          remains yours.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="whatsnew">
+    <h2>What's new <span class="tag">v2.4.38</span></h2>
+    <ul>
+      <li><b>New in 2.4.38 — your own rates, VAT, and a sign-off name.</b> The app now ships with
+        no fee rates: enter yours once in <b>⚙ Advanced setup → Rates</b>. Until you do, cases
+        still log and month reports still export; only invoicing waits for rates. Upgrading keeps
+        every setting and record you have, and carries your rates over automatically from your
+        case log. Invoices can now show your <b>VAT number</b> and add <b>VAT</b> as a separate
+        line, and the invoice email can end with your name.</li>
+      <li><b>New in 2.4.37 — a fourth app in the footer.</b> The strip at the bottom of the window
+        now also links to <b>Notegral</b>, a study companion that turns scattered notes into
+        flashcards, quizzes, mind maps and spaced repetition. Nothing else changes: signing in,
+        syncing, downloading, pricing and reporting all work exactly as before.</li>
+      <li><b>New in 2.4.36 — patient names no longer appear in the app's diagnostic log.</b> The
+        technical log the app keeps on your system drive used to record patients by name. Names are
+        now replaced with initials and each case is identified by its Report Req ID instead, so the
+        log stays just as useful for diagnosing a problem while naming nobody. Your existing log is
+        cleaned automatically the first time you run this version.</li>
+      <li><b>New in 2.4.35 — your worklist is read in full, every time.</b> Occasionally a sync
+        stopped after the first page and showed 25 cases when the portal held 68. The app now
+        notices a page that failed to turn and tries again, and if a page still cannot be read it
+        keeps the cases it already knew about rather than dropping them off the list.</li>
+      <li><b>New in 2.4.33 — live cases no longer show a grey “Unknown” chip.</b> The portal
+        changed how it spells its in-progress status. Status wording is now read tolerantly, so
+        hyphens, run-together words and unusual spacing all match. The worklist is also sorted in
+        work order — pending first, then in progress, then drafts, then signed off — and a
+        <b>search box</b> on the action bar filters the list as you type by name, Report Req ID,
+        date, scan type or status.</li>
+      <li><b>New in 2.4.32 — patients with more than one scan open correctly.</b> Once the first
+        scan of a multi-scan patient was downloaded, clicking the second scan's button kept
+        reopening the first scan's copy instead of downloading the second. Each scan's button now
+        fetches and opens its own scan, and the study picker ticks the ones already done.</li>
+      <li><b>New in 2.4.31 — a stuck download can no longer stall the whole batch.</b> A transfer
+        the portal freezes is cancelled after two minutes; one throttled to a crawl is set aside
+        after five and retried at the end of the batch on a fresh link, which usually runs at full
+        speed. The Stop button now works even mid-transfer, an incomplete file is named plainly
+        instead of raising a cryptic error, and if several cases in a row fail the same way the
+        batch stops itself with one clear message rather than grinding through the rest. Finished
+        downloads also turn their button green silently — the list no longer visibly rebuilds
+        once per downloaded case.</li>
+      <li><b>New in 2.4.27 — keep an eye on storage, and clear space safely.</b> The app warns
+        when your storage drive drops below 10&nbsp;GB free, and ⚙ Advanced setup gained a
+        🧹 Storage tab that clears downloaded scans older than an age you choose. Fees, reports
+        and invoices are never touched — cleared scans simply become downloadable again.</li>
+      <li><b>New in 2.4.25 — i-CAT Vision downloads are supported.</b> Some cases are offered on
+        the portal under a single <i>i-CAT Vision</i> link — a cone-beam export that contains a
+        standard DICOM series. The DICOM button now downloads and opens these in your DICOM
+        viewer like any other case, and the app says plainly what it is doing. If a case ever
+        shows a download link the app does not recognise, it now tells you the label is new to it
+        rather than claiming the record has no files.</li>
+      <li><b>New in 2.4.24 — restoring a backup can no longer point the app at a lost drive.</b>
+        A restore now brings back your case log, fees and invoice record while keeping the storage
+        folder <i>you</i> chose on <i>this</i> machine — exactly what you need when the original
+        drive is gone, which is when restores happen. The app also warns you clearly if a backup
+        was taken while your drive was unplugged (it holds settings only, no case log), both when
+        it is written and if you try to restore one.</li>
+      <li><b>New in 2.4 — choose the format per case.</b> The single "Preferred Format" setting is
+        gone. Every row now has a <b>DICOM</b> and a <b>Volume Viewer</b> button — green when that
+        version is on your drive (opens instantly), blue when the portal offers it, greyed when
+        that patient has no such version. Both versions of one case can sit side by side, and
+        combined portal packages open correctly whichever button you press.</li>
+      <li><b>New in 2.4 — only one patient on screen, ever.</b> Opening a case now closes every
+        previous viewer window, whatever it is called and however it was started — the way a
+        report ends up written against the wrong patient is gone.</li>
+      <li><b>New in 2.4 — you can always see which case you are reporting.</b> Its row is
+        highlighted and marked, and the list scrolls back to it after the scan opens. The side
+        strip carries the whole loop now — open, Done reporting, set the fee — with an optional
+        fully see-through background so it floats over your viewer.</li>
+      <li><b>New in 2.4 — a tidier window.</b> Setup folds away once you are signed in (the ⚙
+        Setup button brings it back), permanent Start/Close session controls live in the header,
+        the app opens sized to your screen, and batch download counts each format honestly —
+        including cases that simply have no version in the format you asked for.</li>
+      <li><b>Fixed in 2.4 — an unplugged drive can no longer blank your records.</b> If your
+        encrypted drive disconnects mid-session, the app now refuses to trust — or save — what it
+        could not read, and everything returns by itself the moment the drive is back.</li>
+      <li><b>New in 2.3.8 — the worklist loads itself.</b> Signing in used to leave the list empty
+        until you pressed Sync. Now it appears on its own the moment your session is active — one
+        fewer click, every time.</li>
+      <li><b>New in 2.3.7 — Advanced setup, tidied.</b> Invoice details, where your files are saved,
+        and your encrypted backup are now three clear tabs instead of one long scroll, so the backup
+        settings are easy to find.</li>
+      <li><b>Fixed in 2.3.6 — a case is never counted twice.</b> When the portal updated a row —
+        a case being signed off, or a patient's title appearing — the app could stop recognising
+        it as the same case. Scans you had already downloaded looked missing, fees you had already
+        set went blank, and a patient could end up on your invoice <b>twice</b>. Cases are now
+        matched on their Report Req ID, which does not change, and any duplicates already recorded
+        are merged the first time you open this version. <b>Check any invoice you issued recently.</b></li>
+      <li><b>Fixed in 2.3.6 — a case can never open another patient's scan.</b> A rare consequence
+        of the same problem: one patient's row could end up pointing at a scan belonging to someone
+        else. The app now refuses that link and fetches the correct scan instead.</li>
+      <li><b>New in 2.3.6 — an encrypted backup, kept off your scan drive.</b> Your case log, fees
+        and invoice record are about 125 KB and cannot be downloaded again from the portal. The app
+        now writes them, encrypted with a passphrase you choose, to a folder you pick — OneDrive, a
+        second drive, anywhere — every time it closes. If the drive is lost or the computer dies,
+        <b>Restore</b> brings everything back. Only your passphrase opens it: keep it somewhere
+        safe, because nobody can recover it for you.</li>
+      <li><b>Your case log survives a power cut.</b> Saving the log used to empty the file before
+        writing the new one, so losing power at the wrong moment could leave it blank. It is now
+        written safely, keeps a spare copy, and will never overwrite a file it could not read.</li>
+      <li><b>Moving your storage folder no longer looks like losing everything.</b> Choose a new
+        folder and the app offers to bring your scans, case log and invoices across.</li>
+      <li><b>Invoices take other items.</b> Add an expense or a credit — an encrypted drive you are
+        recharging, say — as its own line. Months now read as <b>July 2026</b> rather than 2026-07.</li>
+      <li><b>The appraisal log no longer names the referring clinician.</b> Referral notes are
+        signed, and those names were reaching a document meant to be shared. They are now removed
+        along with the patient's.</li>
+      <li><b>Fixed in 2.3.3 — your worklist shows all of it.</b> On a worklist long enough to run to
+        a second page, the app could read just one page and report that as your whole list, and a
+        case you could see on screen might refuse to open. It now checks the portal's own case count
+        and tells you plainly if it ever comes up short.</li>
+      <li><b>New in 2.3.3 — reporting in one tab.</b> Opening a case takes you straight to that
+        patient's report page in the tab you are already in, instead of leaving a new tab behind
+        every time. When you have finished, <b>Done reporting</b> brings you back to the worklist and
+        refreshes just that patient, without re-reading the whole list.</li>
+      <li><b>Your scans are found again when the drive letter changes.</b> An encrypted USB drive
+        does not always come back as the same letter. The app now recognises your downloaded scans
+        wherever the drive has landed, so it stops offering to fetch cases you already have.</li>
+      <li><b>The month report is a spreadsheet too.</b> Alongside the CSV you get an <b>.xlsx</b>
+        with the columns already sized and the long history text wrapped, so it opens ready to read
+        instead of needing an hour of dragging column edges.</li>
+      <li><b>New in 2.3.2.</b> Opening a case now also opens that patient on the portal, ready to
+        report — so the scan is in your viewer and the report page is in front of you, without
+        hunting for the patient again.</li>
+      <li><b>Fixed in 2.3.1.</b> Opening a case now tells you what it is doing while it does it, and
+        a case already on your drive opens at once instead of queueing behind a batch download. The
+        row updates the moment a download finishes, without a redraw. Batch downloads no longer
+        surface in the browser window you are working in, and never fetch the same patient twice.</li>
+      <li><b>One fee per patient, not per study.</b> CT Dent's rates are written per patient: two
+        small volumes, or a single jaw, is one fee. Earlier versions priced each study separately,
+        so a patient scanned on both sides was billed twice. If you have used an earlier version,
+        it is worth checking any patient who had more than one study.</li>
+      <li><b>Batch download.</b> Fetch every case, or just the pending ones, in one go. It runs in
+        a browser you cannot see, skips anything already on your drive, and tells you what it did.</li>
+      <li><b>An appraisal log.</b> A PDF of your year's work with the patient names and references
+        redacted out of it and no fees anywhere in it, so you can hand it to an appraiser. Your own
+        CSV log, with the names and the money, stays on your encrypted drive.</li>
+      <li><b>Read the case before you price it.</b> Press <b>£ Log</b> on any row and the app reads
+        that patient from the portal, shows you the region and the scan type, and then asks the fee.
+        No download needed.</li>
+      <li><b>Your invoice, as a PDF.</b> Built from the fees you recorded, with no patient names on
+        it. The invoice number and its ledger now live with the invoices, so reinstalling the app
+        never restarts your numbering.</li>
+      <li><b>Bigger, clearer text.</b> The patient's name now leads each row, and you can scale the
+        whole interface up if you want to.</li>
+      <li><b>Uninstalling removes every patient record.</b> The scans, the case log, the clinical
+        histories, the browser profile. Your invoices and your appraisal logs are the only things it
+        asks about, because they are the only things that name nobody.
+        <a href="#privacy" style="color:var(--green)">Read how your data is protected</a></li>
+    </ul>
+  </section>
+
+  <section class="grid" id="features">
+    <div class="card"><h3><span class="ico">📋</span> Your case list</h3><p>Shows your current cases and their status in colour.</p></div>
+    <div class="card"><h3><span class="ico">🖱️</span> One-click open</h3><p>Downloads the scan and opens it in the viewer you chose.</p></div>
+    <div class="card"><h3><span class="ico">🗒️</span> Clinical history</h3><p>Read the patient's history and clinical question before you open the case.</p></div>
+    <div class="card"><h3><span class="ico">🧩</span> Several studies?</h3><p>Each study opens with its own button. The fee is one per patient, as CT Dent's rates are written.</p></div>
+    <div class="card"><h3><span class="ico">💷</span> Month-end billing</h3><p>Records every case you open and exports the month in one click.</p></div>
+    <div class="card"><h3><span class="ico">📄</span> Invoice as a PDF</h3><p>Builds your monthly invoice from the fees you recorded. Save, print or email it.</p></div>
+    <div class="card"><h3><span class="ico">🛡</span> Stays on your PC</h3><p>Nothing is ever uploaded. It all sits on the encrypted drive you choose. Your password is never stored. <a href="#privacy" style="color:var(--green);text-decoration:none">More →</a></p></div>
+  </section>
+
+  <section class="req" id="requirements">
+    <h2>What you need</h2>
+    <p class="lead">The app brings no browser and no viewer of its own. It uses the ones you already have.</p>
+    <ul>
+      <li><b>Windows 10 or 11</b> (64-bit)</li>
+      <li><b>Edge, Chrome or Brave</b></li>
+      <li><b>Your CT Dent portal login</b></li>
+      <li><b>A DICOM viewer</b>, if you report in DICOM. Any one you like.</li>
+      <li><b>A secure folder</b> for the scans. They are patient records.</li>
+    </ul>
+  </section>
+
+  <section class="steps" id="setup">
+    <h2>Setting up</h2>
+    <p class="lead">Once, and you are done.</p>
+    <ol>
+      <li><b>Run the installer.</b> It installs for you alone, so Windows will not ask for an admin password.</li>
+      <li><b>Choose where scans are saved.</b> Pick a secure folder. Nothing is downloaded until you do.</li>
+      <li><b>Pick your browser and your format.</b> If you choose DICOM, the app asks which of your
+        installed viewers should open the scans. Volume Viewer downloads bring their own.</li>
+      <li><b>Click Start Session and sign in yourself</b>, in the browser window that opens. You
+        should only need to do this once: the app remembers the session, so next time you are
+        straight in.</li>
+    </ol>
+  </section>
+
+  <section class="faq" id="faq">
+    <h2>Questions people actually ask</h2>
+    <p class="lead">The app shows one of these as a tip each day, under your worklist.</p>
+
+    <details>
+      <summary>Can I keep the app on top of the browser?</summary>
+      <p>Yes. Turn on "Pin on top" and the window stays above the browser and your viewer, so the
+        worklist never disappears behind them.</p>
+    </details>
+    <details>
+      <summary>The window is in my way. Can I see through it?</summary>
+      <p>Yes. "Transparent" fades the window so you can read the scan or the portal straight through
+        it, and "Side Strip" docks it as a slim bar down the edge of the screen.</p>
+    </details>
+    <details>
+      <summary>Which browser does the app use?</summary>
+      <p>Whichever you tell it to: Edge, Chrome or Brave. The app signs in to the portal using that
+        browser, in a window of its own.</p>
+    </details>
+    <details>
+      <summary>Which app opens my scans?</summary>
+      <p>The one you pick. Click "Configure Viewers" to choose which viewer opens your DICOM scans,
+        and change it whenever you like.</p>
+    </details>
+    <details>
+      <summary>My browser or my viewer is not in the list.</summary>
+      <p>The lists only show what is already installed on that computer. Install the browser or
+        viewer you want first, then come back and change the setting. Nothing to reinstall.</p>
+    </details>
+    <details>
+      <summary>Do I have to enter a one-time code every time?</summary>
+      <p>No. Sign in on the CT Dent page once and the app remembers the session. After that, click
+        "Start Session" and you are straight in.</p>
+    </details>
+    <details>
+      <summary>Can I read the clinical history before opening a case?</summary>
+      <p>Yes. Click "History" on the row. The app reads this from the portal in the background after
+        each sync, one patient at a time, so give it a few minutes to arrive.</p>
+    </details>
+    <details>
+      <summary>How do I know a patient has more than one study?</summary>
+      <p>The background sync finds out for you. A patient with several studies gets one button per
+        study on their row, and one £ button per study, so each is opened and priced separately.</p>
+    </details>
+    <details>
+      <summary>Why did the £ button turn green?</summary>
+      <p>Because a fee is recorded for that study. It stays editable: click the green button at any
+        time to correct the amount.</p>
+    </details>
+    <details>
+      <summary>What is in the month-end report?</summary>
+      <p>Every study you opened, its fee, and its clinical summary, not just the amount. The
+        spreadsheet still makes sense months later.</p>
+    </details>
+    <details>
+      <summary>Can the app write my invoice?</summary>
+      <p>Yes. One click builds the month's invoice as a PDF from the fees you recorded, and then
+        offers to save, print or email it. You put your company details, bank details and invoice
+        numbering into Advanced settings once, and the app does the rest. The invoice number
+        advances by itself each time you save one.</p>
+    </details>
+    <details>
+      <summary>I priced a case wrongly. Can I redo an invoice?</summary>
+      <p>Yes. Correct the fee, then invoice that month again. The app replaces the same PDF, under
+        the same number and the same file name. It will never create a second invoice for a month
+        you may already have sent.</p>
+    </details>
+    <details>
+      <summary>Does the invoice contain patient names?</summary>
+      <p>No. It summarises the month per fee band, for example "12 x small-volume scans", with no names and no
+        clinical details. It is a document that leaves your computer, so nothing identifiable goes
+        on it.</p>
+    </details>
+    <details>
+      <summary>Where do my scans and my password go?</summary>
+      <p>The scans stay in the folder you chose, on your computer, and are never uploaded. The app
+        never asks for your portal password, never types it and never stores it. You sign in
+        yourself. <a href="#privacy" style="color:var(--green)">How your data is protected →</a></p>
+    </details>
+    <details>
+      <summary>Does my scan folder really have to be on an encrypted drive?</summary>
+      <p>Yes. Your CT Dent agreement requires patient data to be held on an encrypted drive, and as
+        the reporting clinician you are the data controller under UK GDPR. Use BitLocker on an
+        internal disk, or BitLocker To Go on a USB or external one. When you choose your folder the
+        app asks Windows whether that drive is encrypted, and warns you if it is not.</p>
+    </details>
+    <details>
+      <summary>Does the app upload anything, anywhere?</summary>
+      <p>No. There is no server, no cloud, no account and no tracking. The app only drives your own
+        browser to the CT Dent portal you already use. Nothing about your patients is sent to us,
+        because there is nowhere for it to be sent to.</p>
+    </details>
+    <details>
+      <summary>What else has this developer made?</summary>
+      <p>Leela-SR, for building systematic reviews. Moonshot, which turns your work into
+        presentations and papers. RadInsights, your radiology companion. Notegral, which turns
+        scattered notes into flashcards, quizzes and mind maps. All four are listed below.</p>
+    </details>
+  </section>
+
+  <section class="apps" id="more">
+    <h2>More from the same developer</h2>
+    <p class="lead">CT Dent Assistant is built by Dr. Gaurav S Gupta (Eralight Limited). Do have a look at these:</p>
+    <div class="appgrid">
+
+      <div class="appcard" style="--ac:#1a6b47;--ach:#2d9a6a;--tint:#0f2e20;--bd:#2d9a6a">
+        <div class="appicon"><img src="/static/worklist-manager/assets/leela-logo.png" alt="Leela-SR"></div>
+        <h4>Leela-SR</h4>
+        <p>Evidence Synthesis Platform</p>
+        <a class="appbtn" href="https://leela-sr.vercel.app/" target="_blank" rel="noopener">Open Leela-SR</a>
+      </div>
+
+      <div class="appcard" style="--ac:#DA7756;--ach:#C4623F;--tint:#2a1a13;--bd:#DA7756">
+        <div class="appicon"><img src="/static/worklist-manager/assets/moonshot-logo.png" alt="Moonshot"></div>
+        <h4>Moonshot</h4>
+        <p>AI Presentations &amp; Papers</p>
+        <a class="appbtn" href="https://moonshot-app.vercel.app/" target="_blank" rel="noopener">Launch Moonshot</a>
+      </div>
+
+      <div class="appcard" style="--ac:#e96304;--ach:#c75002;--tint:#16232b;--bd:#5E899E">
+        <div class="appicon"><img src="/static/worklist-manager/assets/radinsights-logo.png" alt="RadInsights"></div>
+        <h4>RadInsights</h4>
+        <p>Your Radiology Companion</p>
+        <a class="appbtn" href="https://www.radinsights.xyz" target="_blank" rel="noopener">Enter RadInsights</a>
+      </div>
+
+      <div class="appcard" style="--ac:#0e7490;--ach:#279fb4;--tint:#0c2e38;--bd:#279fb4">
+        <div class="appicon"><img src="/static/worklist-manager/assets/notegral-logo.png" alt="Notegral"></div>
+        <h4>Notegral</h4>
+        <p>Know Your Notes</p>
+        <a class="appbtn" href="https://notegral.xyz" target="_blank" rel="noopener">Open Notegral</a>
+      </div>
+
+    </div>
+  </section>
+
+  <p class="note">CT Dent Assistant handles patient data entirely on your own machine, nothing is
+    uploaded. Keep it on an encrypted drive and use it in line with UK GDPR and your CT Dent
+    agreement. <a href="#privacy" style="color:var(--green)">How your data is protected →</a></p>
+
+  <footer>
+    Developed by <strong>Dr. Gaurav S Gupta</strong> • Eralight Limited •
+    <a href="mailto:contact@radinsights.xyz" style="color:var(--accent)">contact@radinsights.xyz</a> •
+    © Eralight Limited. All rights reserved.
+  </footer>
+</div>
+</body>
+</html>

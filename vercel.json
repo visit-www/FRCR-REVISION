@@ -34,6 +34,14 @@
       "destination": "/static/$1"
     },
     {
+      "source": "/worklist-manager",
+      "destination": "/static/worklist-manager/index.html"
+    },
+    {
+      "source": "/worklist-manager/",
+      "destination": "/static/worklist-manager/index.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/api/index.py"
     }
