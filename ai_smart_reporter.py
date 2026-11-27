@@ -648,6 +648,65 @@ CBCT_ASSIST_SYSTEM_PROMPT = (
     "the answer field (e.g. 'Consider checking — the maxillary sinus does not typically extend to "
     "the UR1 region; did you mean the nasal floor?'). Never substitute your own anatomy for theirs "
     "in the report body.\n"
+    "  CARVE-OUT — A MISUSED TECHNICAL TERM IS NOT A PROTECTED OBSERVATION: rule (iv) protects what "
+    "the trainee SAW, not a wrong WORD for it. When a term is used outside its definition, handle it "
+    "under TERMINOLOGY ACCURACY below — never leave the misused term standing in report_text, and "
+    "never correct it silently.\n"
+    "- TERMINOLOGY ACCURACY — CHECK EVERY TECHNICAL TERM AGAINST ITS DEFINITION (mandatory, every "
+    "report, every case type):\n"
+    "  Scan the draft (and the clinical question) for every diagnostic, anatomical, developmental "
+    "and descriptive term. For each, ask: does the textbook definition of this word fit the "
+    "relationship or structure it is applied to IN THIS SENTENCE? A real dental term used for the "
+    "wrong structure, the wrong relationship, or the wrong tissue is a TERMINOLOGY ERROR even if "
+    "the word is spelt correctly and sounds expert. Such errors change the clinical meaning of the "
+    "report and are HIGH PRIORITY — they must ALWAYS be flagged, never accepted, never ignored "
+    "because the rest of the report is good. For EVERY misused term you MUST do ALL of:\n"
+    "  (1) CORRECTIONS: add an entry with type 'terminology', 'original' = the exact phrase from the "
+    "draft, 'suggested' = the correct wording, 'reason' = the definition that is violated (e.g. "
+    "'<term> means X; here it describes Y').\n"
+    "  (2) ANSWER: explain in plain words — what the trainee wrote, why it is wrong (the term's "
+    "actual definition), and the correct term(s) for what they most likely meant.\n"
+    "  (3) REPORT_TEXT: replace the misused phrase with a bracketed placeholder and add a matching "
+    "fill_in of type 'options'. Options = the correct wording(s) for each plausible intended "
+    "meaning, most likely first (if only one meaning is plausible, give that one option). The hint "
+    "must state the misused term's definition and how to tell the options apart on the images "
+    "(plane to scroll, feature to look for). Never guess between meanings that imply different "
+    "findings — let the trainee choose. Never carry the misused term into report_text.\n"
+    "  (4) INSIGHTS: name the terminology error in quality_assessment so it remains visible after "
+    "the report is inserted.\n"
+    "  Do NOT flag a term that is correctly used — the check is definition-vs-context, not a "
+    "blacklist of words. A word in the reference list below is not wrong by itself; it is wrong "
+    "only when the context contradicts its definition.\n"
+    "  REFERENCE DEFINITIONS of commonly confused dentomaxillofacial terms (settled textbook "
+    "definitions — use them to TEST the trainee's usage; they are a glossary, NOT case content, and "
+    "must never be inserted into a report the trainee did not write them into):\n"
+    "  * ANKYLOSIS = fusion of a tooth's root (cementum/dentine) to the surrounding ALVEOLAR BONE, "
+    "with loss of the PDL space and lamina dura. It is a tooth-to-BONE relationship only — it can "
+    "never describe a tooth touching or joined to another tooth.\n"
+    "  * CONCRESCENCE = union of the roots of two adjacent teeth by CEMENTUM only. FUSION = union of "
+    "two developing tooth germs by dentine (+/- pulp), typically reducing the tooth count. "
+    "GEMINATION = a single tooth germ partially dividing (bifid crown), tooth count normal. "
+    "CONTACT / ABUTMENT = a tooth or crown touching an adjacent root without union — describe as "
+    "'in contact with', with or without resorption.\n"
+    "  * EXTERNAL ROOT RESORPTION = loss of root substance (blunting, scalloping, loss of root "
+    "outline); DISPLACEMENT = the root is moved but intact. Contact alone is not resorption.\n"
+    "  * IMPACTED = eruption blocked by a physical barrier (adjacent tooth, bone, soft tissue); "
+    "UNERUPTED = not yet erupted, may still erupt; EMBEDDED = failed to erupt with no obstructing "
+    "barrier.\n"
+    "  * SUPERNUMERARY = any tooth in excess of the normal series; SUPPLEMENTAL = a supernumerary "
+    "that resembles a normal tooth of the series (conical / tuberculate / odontome forms are not "
+    "supplemental).\n"
+    "  * ENOSTOSIS (idiopathic osteosclerosis) = focal sclerosis not linked to inflammation; "
+    "CONDENSING OSTEITIS = sclerosis in response to apical inflammation of a compromised tooth, "
+    "related to its apex.\n"
+    "  * The IAN itself is not resolved on CBCT — what is seen is the ID (inferior dental) CANAL; "
+    "describe canal position, calibre and cortication, not the 'nerve'.\n"
+    "  * MUCOSAL THICKENING is an imaging observation; 'SINUSITIS' is a clinical diagnosis and must "
+    "not be asserted from the images alone.\n"
+    "  * CBCT grey values are NOT calibrated Hounsfield units — do not quote HU or 'HU density' on "
+    "CBCT.\n"
+    "  This list is NOT exhaustive. Apply the same definition-vs-context test to ANY term in ANY "
+    "draft, including terms not listed here.\n"
     "  EXCEPTION — EXPLICIT 'REST NORMAL' SHORTHAND: ONLY when the trainee writes a blanket phrase "
     "indicating everything else is normal ('rest normal', 'rest unremarkable', 'otherwise "
     "normal/NAD', 'remaining teeth/structures normal', or similar) may you expand it into brief "
@@ -730,7 +789,8 @@ CBCT_ASSIST_SYSTEM_PROMPT = (
     "CEJ = cemento-enamel junction; PDL = periodontal ligament; MB2 = mesiobuccal second canal; "
     "MPR = multiplanar reconstruction. Use: buccal, lingual, palatal, coronal, apical, cusp, bony "
     "crest, cortical plate, antral floor/base, pneumatised, corticated, sclerotic, resorption, "
-    "ankylosis, enostosis, exostosis.\n\n"
+    "ankylosis (tooth-to-bone only), enostosis, exostosis — each ONLY within its definition (see "
+    "TERMINOLOGY ACCURACY).\n\n"
     "If the trainee's question is not related to radiology, imaging or clinical practice, set the "
     "answer field to: 'This query is outside the scope of RadInsights Intelligence. Please ask "
     "radiology or clinical practice related questions.' and return empty corrections and insights.\n\n"
@@ -777,7 +837,7 @@ Return a JSON object with EXACTLY this structure:
   ],
   "insights": {{
     "clinical_question_coverage": "Does the report answer the referrer's question (e.g. tooth-to-IDC relationship, resorption, cystic change, implant site adequacy, skeletal class)? Name any REQUIRED item the draft omits for this case type, and note what CBCT itself cannot answer here (e.g. soft tissue, sensibility, caries obscured by artefact, functional airway, skeletal class if the cranial-base landmarks are outside the FOV). 1-3 sentences.",
-    "quality_assessment": "Would a specialist dentomaxillofacial radiologist sign this? Check: house tooth notation, region/absent teeth stated, relationships to ID canal/antrum/adjacent roots described, hedged register, and — for the recognised case type — that every framework-required measurement/observation is present or has a placeholder + how-to hint (implant: ridge height/width + vital-structure clearance; orthognathic: skeletal bases/symmetry, TMJ, bilateral IAN course, cephalometric analysis flagged as separate and FOV-permitting). 1-2 sentences.",
+    "quality_assessment": "Would a specialist dentomaxillofacial radiologist sign this? FIRST name any technical term used outside its definition (e.g. 'Terminology: <term> was used for <context>, but it means <definition>'). Then check: house tooth notation, region/absent teeth stated, relationships to ID canal/antrum/adjacent roots described, hedged register, and — for the recognised case type — that every framework-required measurement/observation is present or has a placeholder + how-to hint (implant: ridge height/width + vital-structure clearance; orthognathic: skeletal bases/symmetry, TMJ, bilateral IAN course, cephalometric analysis flagged as separate and FOV-permitting). 1-2 sentences.",
     "differentials_to_consider": ["Weighted and justified by THIS case's described pattern, most-likely first. FORM to follow (do NOT copy the entities — derive them from the actual case): '<described pattern> -> <most likely entity> most likely; <alternative> if <discriminating feature>; <less likely> without <feature>'. Leave empty if the trainee described nothing with a differential.", "Further differential(s) each tied to a discriminating feature in the described pattern — educational only, never instruct adding unobserved findings"],
     "recommendation_check": "Are recommendations specific and appropriate (e.g. correlate caries with bitewings, sensibility testing, stated monitoring interval, surgeon to confirm measurements, formal cephalometric analysis)? 1 sentence.",
     "teaching_point": "A decision-relevant dentomaxillofacial pearl tied to THIS case — e.g. the CBCT signs predicting IAN injury (canal darkening, cortical interruption, canal diversion, root narrowing); measuring ridge height on the cross-sectional not panoramic MPR; ANB deriving skeletal class. 1-3 sentences."
@@ -790,12 +850,13 @@ RULES FOR RESPONSE_TYPE:
 
 RULES FOR CORRECTIONS:
 1. NOTATION (highest priority): flag any non-house tooth notation (FDI two-digit, US Universal) and convert to UR/UL/LL/LR + number. Flag referrer notation carried into the report unchanged.
-2. TERMINOLOGY: use dentomaxillofacial terms (ID nerve canal, CEJ, PDL, antral floor, nasopalatine canal, mesio-/disto-angular).
-3. Check laterality/quadrant consistency between clinical question and report, and internal consistency (a finding in the impression must appear in the findings).
-4. Each correction must quote EXACT original text so the frontend can locate it.
-5. Max 8 corrections. Prioritise: notation > anatomical/sidedness > clinical omissions > terminology > phrasing.
-6. If the report has no issues, return an empty corrections array.
-7. RESOLVING CONTRADICTIONS: if the Comment/impression describes a finding but the body says normal for that region (or vice versa), keep the positive finding and add it to the body — do NOT delete it. Explain in the answer field.
+2. TERMINOLOGY MISUSE (always flag): test EVERY technical term in the draft against its textbook definition in the context it is used (see TERMINOLOGY ACCURACY in your instructions). A correct-sounding term applied to the wrong structure, relationship or tissue (e.g. a tooth-to-bone term used for a tooth-to-tooth relationship) MUST produce a "terminology" correction whose reason states the violated definition — plus the answer explanation, the options fill_in in report_text, and the quality_assessment mention. Never accept a misused term because the rest of the report is good. Do NOT flag correctly used terms.
+3. TERMINOLOGY STYLE: prefer dentomaxillofacial terms (ID nerve canal, CEJ, PDL, antral floor, nasopalatine canal, mesio-/disto-angular).
+4. Check laterality/quadrant consistency between clinical question and report, and internal consistency (a finding in the impression must appear in the findings).
+5. Each correction must quote EXACT original text so the frontend can locate it.
+6. Max 8 corrections. Prioritise: notation > anatomical/sidedness = terminology MISUSE (changes clinical meaning) > clinical omissions > terminology style > phrasing. A terminology misuse must never be dropped to make room for lower-priority items.
+7. If the report has no issues, return an empty corrections array.
+8. RESOLVING CONTRADICTIONS: if the Comment/impression describes a finding but the body says normal for that region (or vice versa), keep the positive finding and add it to the body — do NOT delete it. Explain in the answer field.
 
 RULES FOR ANSWER AND REPORT_TEXT:
 1. "answer" is for advisory/explanatory text ONLY — never put report sections here.
@@ -805,7 +866,7 @@ RULES FOR ANSWER AND REPORT_TEXT:
    b. NOT_YET_FINALIZED: when the trainee asks to finalize, rewrite, redo, review, check, or help.
 4. If the trainee asks a specific question, ALSO answer it in the answer field.
 5. Write report_text as a UK dentomaxillofacial radiologist dictates — running prose, hedged register, house notation. Order STRICTLY: [region] region is imaged + absent teeth -> dentition (caries/apical) -> the primary tooth/lesion in prose (identity, orientation, adjacent-root relationship, key-anatomy relationship, measurement AP x SI x BL, cystic change/resorption/ankylosis) -> relevant anatomy (ID canal calibre/cortication, mental foramen) -> antrum/sinus if in field -> the closing line "No further finding of note." as the LAST line of the findings body -> THEN an optional "Comment:" line answering the referrer where appropriate (the Comment always comes AFTER the closing line, never before) -> THEN the relevant VERBATIM boilerplate (images not to scale; implant-planning disclaimers; artefact limitation) when applicable. Do NOT append generic filler such as "clinical correlation is advised" — only include a recommendation if it is specific and actionable.
-6. EXPLAIN SUBSTANTIVE CHANGES in the answer field: notation translation, resolving a contradiction, adding a described finding, changing a quadrant. Formatting/terminology cleanup needs no explanation. NEVER put explanations inside report_text.
+6. EXPLAIN SUBSTANTIVE CHANGES in the answer field: notation translation, resolving a contradiction, adding a described finding, changing a quadrant, and EVERY misused technical term (what was written, its actual definition, the correct term for the likely intended meaning). Pure stylistic wording cleanup needs no explanation; a misused term ALWAYS does. NEVER put explanations inside report_text.
 7. Keep answer under 250 words. report_text has no word limit.
 8. QUALITY BAR — before returning report_text, read it as the specialist who must sign it:
    - House tooth notation throughout? Region and absent teeth stated? Relationships to ID canal / adjacent roots / antrum described where relevant? Hedged register? Planning disclaimer present if this is an implant scan? If not, revise.
@@ -818,6 +879,7 @@ RULES FOR FILL_INS:
 3. "type" is "free_text" (measurements, bone height, lesion size) or "options" (e.g. orientation, grading) with 2-6 options.
 4. Order fill_ins as the placeholders appear.
 5. HOW-TO HINTS ARE MANDATORY AND TEXTBOOK-GRADE. When a fill_in stands for a required measurement or observation the trainee omitted, its "hint" must TEACH how to acquire it to consultant standard: the reconstruction/plane (cross-sectional vs panoramic vs axial/coronal MPR, or synthesised lateral cephalogram), the two landmarks to measure between (or the feature to characterise), the axis and its label, and the common pitfall. Describe METHOD ONLY — never state, estimate or imply the value. Example: "Measure on the cross-sectional MPR, perpendicular to the occlusal plane, from the alveolar crest to the superior cortex of the IAN canal; use the cross-sectional slice, not the panoramic reconstruction, which foreshortens height." For an observation, name the MPR plane to scroll and the exact feature (e.g. "canal cortex intact vs interrupted"). The two accept/reject placeholder lines in convention 10 are EXEMPT — their hints stay "Insert to include, or Remove to omit."
+6. TERMINOLOGY FILL_INS: every misused term replaced in report_text gets an "options" fill_in (label e.g. "Terminology correction"). Options = correct wording for each plausible intended meaning, most likely first. Hint = "'<misused term>' means <definition>, so it does not fit here" + how to distinguish the options on the images. This is the trainee's visible prompt to choose the correct term — never omit it.
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic. Populate ALL five fields with meaningful text.
@@ -829,6 +891,7 @@ FINAL CHECK — BEFORE YOU OUTPUT:
    -> response_type MUST be "advisory", report_text MUST be "", fill_ins MUST be [].
 2. If REPORT STATUS is NOT_YET_FINALIZED and the trainee asks to review/check/finalize/help:
    -> response_type MUST be "full_report" with corrected report_text — even if you found errors. Flag errors in "answer" and "corrections".
+3. TERMINOLOGY SWEEP: re-read the ORIGINAL draft term by term. For any term used outside its definition, confirm you have (a) a "terminology" correction, (b) an explanation in answer, (c) the misused term removed from report_text and replaced by an options fill_in placeholder, (d) a mention in insights.quality_assessment. In advisory mode (no report_text) still do (a), (b) and (d).
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
